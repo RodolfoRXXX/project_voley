@@ -19,7 +19,7 @@ module.exports = functions.firestore
     const user = userSnap.data();
 
     const statsSnap = await db
-      .collection("systemStats")
+      .collection("groupStats")
       .doc("global")
       .get();
 

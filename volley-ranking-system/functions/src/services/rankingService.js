@@ -1,9 +1,8 @@
-// Implementación REAL de calcularPuntaje() y recalcularRaning()
+// rankingService.js
+// Implementación REAL y FINAL de ranking por grupo
 
-const admin = require("firebase-admin");
+const { db } = require("../firebase");
 const { FACTORES_POSICION } = require("../config/positions");
-
-const db = admin.firestore();
 
 /* ===========================
    Utils
@@ -14,41 +13,84 @@ function clamp(value, min, max) {
 }
 
 /* ===========================
-   Puntaje
+   Puntaje (PURO)
 =========================== */
 
-function calcularPuntaje(player, partidosTotalesSistema, posicion) {
+function calcularPuntaje({
+  estadoCompromiso,
+  partidosJugadosGrupo,
+  partidosTotalesGrupo,
+  posicion,
+}) {
   const factorPosicion = FACTORES_POSICION[posicion] || 0;
 
-  const compromiso = player.estadoCompromiso || 0;
-  const jugados = player.partidosJugados || 0;
-
   let factorRotacion = 1;
-  if (partidosTotalesSistema > 0) {
-    factorRotacion = 1 - jugados / partidosTotalesSistema;
+  if (partidosTotalesGrupo > 0) {
+    factorRotacion =
+      1 - partidosJugadosGrupo / partidosTotalesGrupo;
     factorRotacion = clamp(factorRotacion, 0, 1);
   }
 
   const puntaje =
     factorPosicion * 3 +
-    compromiso * 2 +
+    estadoCompromiso * 2 +
     factorRotacion * 2;
 
   return Number(puntaje.toFixed(2));
 }
 
-/* ===========================
+/* =========================
    Ranking completo
 =========================== */
 
 async function recalcularRanking(matchId) {
-  const matchSnap = await db.collection("matches").doc(matchId).get();
-  if (!matchSnap.exists) return;
+  console.log("📥 recalcularRanking llamado con:", matchId);
+
+  /* =========================
+     MATCH
+  ========================= */
+
+  const matchRef = db.collection("matches").doc(matchId);
+  const matchSnap = await matchRef.get();
+
+  console.log(
+    "🧪 match existe? ",
+    matchSnap.exists,
+    "| path:",
+    `matches/${matchId}`
+  );
+
+  if (!matchSnap.exists) {
+    console.log("❌ Match no encontrado, saliendo");
+    return;
+  }
 
   const match = matchSnap.data();
-  const posicionesObjetivo = match.posicionesObjetivo;
 
-  const cupos = { ...posicionesObjetivo };
+  /* =========================
+     GROUP
+  ========================= */
+
+  const groupSnap = await db
+    .collection("groups")
+    .doc(match.groupId)
+    .get();
+
+  const partidosTotalesGrupo = groupSnap.exists
+    ? groupSnap.data().partidosTotales
+    : 0;
+
+  console.log("📊 partidosTotalesGrupo:", partidosTotalesGrupo);
+
+  /* =========================
+     CUPOS
+  ========================= */
+
+  const cupos = { ...match.posicionesObjetivo };
+
+  /* =========================
+     PARTICIPATIONS
+  ========================= */
 
   const participationsSnap = await db
     .collection("participations")
@@ -56,40 +98,63 @@ async function recalcularRanking(matchId) {
     .where("estado", "!=", "eliminado")
     .get();
 
-  const participations = participationsSnap.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  }));
-
-  const statsSnap = await db
-    .collection("groupStats")
-    .doc("global")
-    .get();
-
-  const partidosTotales = statsSnap.data()?.partidosTotales || 0;
+  console.log(
+    "👥 participations encontradas:",
+    participationsSnap.size
+  );
 
   const titulares = [];
   const suplentes = [];
 
-  for (const p of participations) {
-    const userSnap = await db.collection("users").doc(p.userId).get();
+  /* =========================
+     PROCESO DE RANKING
+  ========================= */
+
+  for (const doc of participationsSnap.docs) {
+    const participation = { id: doc.id, ...doc.data() };
+
+    // USER
+    const userSnap = await db
+      .collection("users")
+      .doc(participation.userId)
+      .get();
+
+    if (!userSnap.exists) continue;
+
     const user = userSnap.data();
 
+    // GROUP STATS
+    const statsSnap = await db
+      .collection("groupStats")
+      .doc(`${match.groupId}_${participation.userId}`)
+      .get();
+
+    const partidosJugadosGrupo = statsSnap.exists
+      ? statsSnap.data().partidosJugados
+      : 0;
+
     let asignado = false;
+
+    /* =========================
+       INTENTO TITULAR
+    ========================= */
 
     for (const posicion of user.posicionesPreferidas) {
       if (cupos[posicion] > 0) {
         const puntaje = calcularPuntaje(
-          user,
-          partidosTotales,
+          {
+            ...user,
+            partidosJugados: partidosJugadosGrupo
+          },
+          partidosTotalesGrupo,
           posicion
         );
 
         titulares.push({
-          id: p.id,
+          participationId: participation.id,
           posicionAsignada: posicion,
           puntaje,
-          partidosJugados: user.partidosJugados || 0,
+          partidosJugados: partidosJugadosGrupo
         });
 
         cupos[posicion]--;
@@ -98,20 +163,33 @@ async function recalcularRanking(matchId) {
       }
     }
 
+    /* =========================
+       SUPLENTE
+    ========================= */
+
     if (!asignado) {
+      const posicionFallback = user.posicionesPreferidas[0];
+
       const puntaje = calcularPuntaje(
-        user,
-        partidosTotales,
-        user.posicionesPreferidas[0]
+        {
+          ...user,
+          partidosJugados: partidosJugadosGrupo
+        },
+        partidosTotalesGrupo,
+        posicionFallback
       );
 
       suplentes.push({
-        id: p.id,
+        participationId: participation.id,
         puntaje,
-        partidosJugados: user.partidosJugados || 0,
+        partidosJugados: partidosJugadosGrupo
       });
     }
   }
+
+  /* =========================
+     ORDENAR
+  ========================= */
 
   titulares.sort((a, b) => {
     if (b.puntaje !== a.puntaje) return b.puntaje - a.puntaje;
@@ -123,28 +201,32 @@ async function recalcularRanking(matchId) {
     return a.partidosJugados - b.partidosJugados;
   });
 
+  /* =========================
+     PERSISTIR
+  ========================= */
+
   const batch = db.batch();
 
   titulares.forEach((p, index) => {
     batch.update(
-      db.collection("participations").doc(p.id),
+      db.collection("participations").doc(p.participationId),
       {
         estado: "titular",
         posicionAsignada: p.posicionAsignada,
         rankingTitular: index + 1,
-        rankingSuplente: null,
+        rankingSuplente: null
       }
     );
   });
 
   suplentes.forEach((p, index) => {
     batch.update(
-      db.collection("participations").doc(p.id),
+      db.collection("participations").doc(p.participationId),
       {
         estado: "suplente",
         posicionAsignada: null,
         rankingSuplente: index + 1,
-        rankingTitular: null,
+        rankingTitular: null
       }
     );
   });

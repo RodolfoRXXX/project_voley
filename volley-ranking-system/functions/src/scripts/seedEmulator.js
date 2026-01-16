@@ -1,9 +1,10 @@
 
 // Seed emulator
 
+process.env.GCLOUD_PROJECT = 'project-groupvolley';
 process.env.FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080";
-process.env.GCLOUD_PROJECT = 'volley-ranking-system';
 
+const admin = require("firebase-admin");
 require("../firebase");
 
 const { db } = require("../firebase");
@@ -29,8 +30,18 @@ console.log('EMULATOR:', process.env.FIRESTORE_EMULATOR_HOST);
      MATCH
   ========================= */
 
+  const ahora = admin.firestore.Timestamp.now();
+
+  // match empieza en 2 horas (para que el deadline ya esté vencido)
+  const horaInicio = admin.firestore.Timestamp.fromMillis(
+    ahora.toMillis() + 2 * 60 * 60 * 1000
+  );
+
   await db.collection("matches").doc("match1").set({
     groupId: "group1",
+    estado: "abierto",
+    deadlineProcesado: false,
+    horaInicio,
     posicionesObjetivo: {
       central: 2,
       armador: 1,

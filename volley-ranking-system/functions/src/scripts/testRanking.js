@@ -1,7 +1,7 @@
 
 // 🔴 SIEMPRE PRIMERO
+process.env.GCLOUD_PROJECT = 'project-groupvolley';
 process.env.FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080";
-process.env.GCLOUD_PROJECT = 'volley-ranking-system';
 
 // 🔵 inicializa firebase-admin contra emulator
 require("../firebase");

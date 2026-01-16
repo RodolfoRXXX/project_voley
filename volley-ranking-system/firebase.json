@@ -7,9 +7,6 @@
       "enabled": true,
       "port": 4000
     }
-  },
-  "projects": {
-    "default": "volley-ranking-system"
   }
 }
 

@@ -22,6 +22,7 @@ function calcularPuntaje({
   partidosTotalesGrupo,
   posicion,
 }) {
+
   const factorPosicion = FACTORES_POSICION[posicion] || 0;
 
   let factorRotacion = 1;
@@ -141,14 +142,13 @@ async function recalcularRanking(matchId) {
 
     for (const posicion of user.posicionesPreferidas) {
       if (cupos[posicion] > 0) {
-        const puntaje = calcularPuntaje(
-          {
-            ...user,
-            partidosJugados: partidosJugadosGrupo
-          },
+
+        const puntaje = calcularPuntaje({
+          estadoCompromiso: user.estadoCompromiso,
+          partidosJugadosGrupo,
           partidosTotalesGrupo,
           posicion
-        );
+        });
 
         titulares.push({
           participationId: participation.id,
@@ -170,14 +170,12 @@ async function recalcularRanking(matchId) {
     if (!asignado) {
       const posicionFallback = user.posicionesPreferidas[0];
 
-      const puntaje = calcularPuntaje(
-        {
-          ...user,
-          partidosJugados: partidosJugadosGrupo
-        },
+      const puntaje = calcularPuntaje({
+        estadoCompromiso: user.estadoCompromiso,
+        partidosJugadosGrupo,
         partidosTotalesGrupo,
         posicionFallback
-      );
+      });
 
       suplentes.push({
         participationId: participation.id,
@@ -214,7 +212,8 @@ async function recalcularRanking(matchId) {
         estado: "titular",
         posicionAsignada: p.posicionAsignada,
         rankingTitular: index + 1,
-        rankingSuplente: null
+        rankingSuplente: null,
+        puntaje: p.puntaje
       }
     );
   });
@@ -226,7 +225,8 @@ async function recalcularRanking(matchId) {
         estado: "suplente",
         posicionAsignada: null,
         rankingSuplente: index + 1,
-        rankingTitular: null
+        rankingTitular: null,
+        puntaje: p.puntaje
       }
     );
   });

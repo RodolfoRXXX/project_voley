@@ -3,7 +3,8 @@ const admin = require("firebase-admin");
 
 if (!admin.apps.length) {
   admin.initializeApp({
-    projectId: process.env.GCLOUD_PROJECT || "volley-ranking-system"
+    projectId: process.env.GCLOUD_PROJECT
+    //projectId: "volley-ranking-system" // 👈 EXACTO al firebase.json
   });
 }
 

@@ -2,6 +2,7 @@
 // Seed emulator
 
 process.env.FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080";
+process.env.GCLOUD_PROJECT = 'volley-ranking-system';
 
 require("../firebase");
 
@@ -9,6 +10,9 @@ const { db } = require("../firebase");
 
 async function seed() {
   console.log("🌱 Seedeando datos en Firestore Emulator...");
+
+  console.log('PROJECT:', process.env.GCLOUD_PROJECT);
+console.log('EMULATOR:', process.env.FIRESTORE_EMULATOR_HOST);
 
   /* =========================
      GROUP
@@ -115,5 +119,5 @@ seed().catch((err) => {
   process.exit(1);
 });
 
-const snap = await db.collection("groups").get();
-console.log("📂 groups docs:", snap.docs.map(d => d.id));
+//const snap = await db.collection("groups").get();
+//console.log("📂 groups docs:", snap.docs.map(d => d.id));

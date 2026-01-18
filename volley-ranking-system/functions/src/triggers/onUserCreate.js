@@ -9,11 +9,11 @@ module.exports = functions.auth.user().onCreate(async (user) => {
   const userRef = db.collection("users").doc(user.uid);
 
   await userRef.set({
-    email: user.email,
-    nombre: user.nombre || "",
+    email: user.email || "",
+    nombre: user.displayName || "",
     photoURL: user.photoURL || "",
 
-    roles: null,
+    roles: "player",
     posicionesPreferidas: [],
 
     estadoCompromiso: 0,

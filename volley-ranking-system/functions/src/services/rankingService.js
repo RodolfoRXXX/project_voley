@@ -2,7 +2,7 @@
 // Implementación REAL y FINAL de ranking por grupo
 
 const { db } = require("../firebase");
-const { FACTORES_POSICION } = require("../config/positions");
+const { FACTORES_POSICION } = require("../config/factorPosicion");
 
 /* ===========================
    Utils

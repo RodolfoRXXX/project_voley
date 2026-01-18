@@ -23,11 +23,28 @@ module.exports = functions.firestore
       return null;
     }
 
-    const matchSnap = await db
-      .collection("matches")
-      .doc(after.matchId)
+    /* =========================
+       VALIDAR USUARIO ONBOARDED
+    ========================= */
+
+    const userSnap = await db
+      .collection("users")
+      .doc(after.userId)
       .get();
 
+    const user = userSnap.data();
+
+    if (!user?.onboarded) {
+      console.log("Usuario no onboarded, se aborta reemplazo");
+      return null;
+    }
+
+    /* =========================
+       OBTENER MATCH
+    ========================= */
+
+    const matchRef = db.collection("matches").doc(after.matchId);
+    const matchSnap = await matchRef.get();
     if (!matchSnap.exists) return null;
 
     const match = matchSnap.data();
@@ -38,21 +55,19 @@ module.exports = functions.firestore
 
     const postDeadline = diffHoras <= 3;
 
-    // 🔐 LOCK por match + posición
-    const lockRef = db
-      .collection("locks")
-      .doc(`replace_${after.matchId}_${before.posicionAsignada}`);
+    /* =========================
+       LOCK GLOBAL DEL MATCH
+    ========================= */
 
     await db.runTransaction(async (tx) => {
-      const lockSnap = await tx.get(lockRef);
-      if (lockSnap.exists) {
-        console.log("🔒 Reemplazo ya en curso, abortando");
-        return;
+      const snap = await tx.get(matchRef);
+      if (!snap.exists) throw new Error("Match no existe");
+
+      if (snap.data().lock) {
+        throw new Error("Match bloqueado");
       }
 
-      tx.set(lockRef, {
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      tx.update(matchRef, { lock: true });
     });
 
     try {
@@ -62,11 +77,9 @@ module.exports = functions.firestore
         postDeadline,
       });
 
-      // 🔁 Reordenar todo el ranking
       await recalcularRanking(after.matchId);
     } finally {
-      // 🔓 liberar lock
-      await lockRef.delete().catch(() => {});
+      await matchRef.update({ lock: false }).catch(() => {});
     }
 
     return null;

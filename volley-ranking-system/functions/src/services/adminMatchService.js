@@ -37,7 +37,6 @@ async function crearMatch({
     cantidadSuplentes,
     deadlineProcesado: false,
     lock: false,
-    rankingCerrado: false,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 }

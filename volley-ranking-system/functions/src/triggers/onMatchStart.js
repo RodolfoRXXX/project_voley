@@ -1,4 +1,5 @@
 // triggers/onMatchStart.js
+// Evento 8 — inicio real del partido
 
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
@@ -24,13 +25,16 @@ module.exports = functions.pubsub
         if (!matchSnap.exists) return;
 
         const match = matchSnap.data();
-
-        if (!match.horaInicio) return;
+        if (!match.horaInicio || !match.groupId) return;
 
         // ⏱️ ¿ya empezó el partido?
         if (now.toMillis() < match.horaInicio.toMillis()) {
           return;
         }
+
+        /* =========================
+           GROUP
+        ========================= */
 
         const groupRef = db
           .collection("groups")
@@ -42,7 +46,51 @@ module.exports = functions.pubsub
         const partidosTotales =
           groupSnap.data().partidosTotales || 0;
 
-        // 🔒 LOCK REAL: cambio de estado
+        /* =========================
+           TITULARES DEL MATCH
+        ========================= */
+
+        const participationsSnap = await tx.get(
+          db
+            .collection("participations")
+            .where("matchId", "==", matchRef.id)
+            .where("estado", "==", "titular")
+        );
+
+        /* =========================
+           ACTUALIZAR groupStats
+        ========================= */
+
+        for (const pDoc of participationsSnap.docs) {
+          const p = pDoc.data();
+          if (!p.userId) continue;
+
+          const statRef = db
+            .collection("groupStats")
+            .doc(`${match.groupId}_${p.userId}`);
+
+          const statSnap = await tx.get(statRef);
+
+          if (statSnap.exists) {
+            const actuales =
+              statSnap.data().partidosJugados || 0;
+
+            tx.update(statRef, {
+              partidosJugados: actuales + 1,
+            });
+          } else {
+            tx.set(statRef, {
+              groupId: match.groupId,
+              userId: p.userId,
+              partidosJugados: 1,
+            });
+          }
+        }
+
+        /* =========================
+           ACTUALIZAR GROUP + MATCH
+        ========================= */
+
         tx.update(groupRef, {
           partidosTotales: partidosTotales + 1,
         });
@@ -52,7 +100,7 @@ module.exports = functions.pubsub
         });
 
         console.log(
-          `🏐 Match ${matchRef.id} iniciado → partidosTotales +1`
+          `🏐 Match ${matchRef.id} iniciado → grupo ${match.groupId}`
         );
       });
     }

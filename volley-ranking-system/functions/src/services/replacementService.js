@@ -7,7 +7,6 @@ const db = admin.firestore();
 /**
  * Reemplaza un titular eliminado por el mejor suplente válido
  * NO recalcula ranking
- * NO maneja locks
  */
 async function reemplazarTitular({
   matchId,
@@ -19,62 +18,74 @@ async function reemplazarTitular({
     return;
   }
 
-  const participationsSnap = await db
-    .collection("participations")
-    .where("matchId", "==", matchId)
-    .where("estado", "==", "suplente")
-    .orderBy("rankingSuplente", "asc")
-    .get();
+  const matchRef = db.collection("matches").doc(matchId);
 
-  if (participationsSnap.empty) {
-    console.log("⚠️ No hay suplentes disponibles");
-    return;
-  }
+  await db.runTransaction(async (tx) => {
+    const matchSnap = await tx.get(matchRef);
+    if (!matchSnap.exists) return;
 
-  let suplenteElegido = null;
+    const match = matchSnap.data();
 
-  for (const doc of participationsSnap.docs) {
-    const suplente = doc.data();
-
-    if (
-      Array.isArray(suplente.posicionesPreferidas) &&
-      suplente.posicionesPreferidas.includes(posicionLiberada)
-    ) {
-      suplenteElegido = {
-        id: doc.id,
-        userId: suplente.userId,
-      };
-      break;
+    if (match.lock) {
+      console.log("🔒 Reemplazo en curso");
+      return;
     }
-  }
 
-  if (!suplenteElegido) {
-    console.log(
-      `⚠️ Ningún suplente cubre la posición ${posicionLiberada}`
+    tx.update(matchRef, { lock: true });
+
+    const suplentesSnap = await tx.get(
+      db.collection("participations")
+        .where("matchId", "==", matchId)
+        .where("estado", "==", "suplente")
+        .orderBy("rankingSuplente", "asc")
     );
-    return;
-  }
 
-  const updates = {
-    estado: "titular",
-    posicionAsignada: posicionLiberada,
-    rankingSuplente: null,
-    rankingTitular: null, // se define luego en recalcularRanking
-  };
+    if (suplentesSnap.empty) {
+      console.log("⚠️ No hay suplentes disponibles");
+      return;
+    }
 
-  // 🔥 ÚNICO CASO AUTOMÁTICO DE PAGO
-  if (postDeadline) {
-    updates.pagoEstado = "pospuesto";
-  }
+    let suplenteElegido = null;
 
-  await db
-    .collection("participations")
-    .doc(suplenteElegido.id)
-    .update(updates);
+    for (const doc of suplentesSnap.docs) {
+      const suplente = doc.data();
+      if (
+        Array.isArray(suplente.posicionesPreferidas) &&
+        suplente.posicionesPreferidas.includes(posicionLiberada)
+      ) {
+        suplenteElegido = { id: doc.id, ...suplente };
+        break;
+      }
+    }
 
-  console.log(
-    `✅ Suplente ${suplenteElegido.userId} promovido a titular en ${posicionLiberada}`
-  );
+    if (!suplenteElegido) {
+      tx.update(matchRef, { lock: false });
+      console.log(
+        `⚠️ Ningún suplente cubre la posición ${posicionLiberada}`
+      );
+      return;
+    }
+
+    const updates = {
+      estado: "titular",
+      posicionAsignada: posicionLiberada,
+      rankingSuplente: null,
+      rankingTitular: null, // se define luego en recalcularRanking
+    };
+
+    if (postDeadline) updates.pagoEstado = "pospuesto";
+
+    tx.update(
+      db.collection("participations").doc(suplenteElegido.id),
+      updates
+    );
+
+    tx.update(matchRef, { lock: false });
+
+    console.log(
+      `✅ Suplente ${suplenteElegido.userId} promovido a titular en ${posicionLiberada}`
+    );
+  });
 }
 
 module.exports = {

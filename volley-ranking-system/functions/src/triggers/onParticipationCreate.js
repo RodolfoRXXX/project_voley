@@ -3,21 +3,33 @@
 const functions = require("firebase-functions");
 const { recalcularRanking } = require("../services/rankingService");
 
-module.exports = functions.firestore
+  module.exports = functions.firestore
   .document("participations/{id}")
   .onCreate(async (snap) => {
     const participation = snap.data();
+    const matchRef = db.collection("matches").doc(participation.matchId);
 
-    console.log(
-      "🆕 Participation creada:",
-      participation.userId,
-      "match:",
-      participation.matchId
-    );
+    await db.runTransaction(async (tx) => {
+      const matchSnap = await tx.get(matchRef);
+      if (!matchSnap.exists) throw new Error("Match no existe");
 
-    if (!participation.matchId) return null;
+      const match = matchSnap.data();
 
-    await recalcularRanking(participation.matchId);
+      if (match.lock) {
+        throw new Error("Ranking bloqueado");
+      }
 
-    return null;
+      // 🔒 lock
+      tx.update(matchRef, {
+        lock: true,
+      });
+
+      // ⚙️ recalcular ranking
+      await recalcularRanking(participation.matchId);
+
+      // 🔓 unlock
+      tx.update(matchRef, {
+        lock: false,
+      });
+    });
   });

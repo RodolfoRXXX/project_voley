@@ -1,7 +1,7 @@
 // schedulers/onMatchDeadline.js
 // Evento 6 — Deadline automático (3 horas antes)
 
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 
 const db = admin.firestore();

@@ -1,23 +1,22 @@
 // functions/triggers/onUserCreate.js
 
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 
 const db = admin.firestore();
+const { FieldValue } = admin.firestore;
 
 module.exports = functions.auth.user().onCreate(async (user) => {
   const userRef = db.collection("users").doc(user.uid);
 
   await userRef.set({
-    email: user.email || "",
+    email: user.email,
     nombre: user.displayName || "",
     photoURL: user.photoURL || "",
 
-    roles: "player",
+    roles: null,
     posicionesPreferidas: [],
-
     estadoCompromiso: 0,
-
     onboarded: false,
 
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -25,3 +24,4 @@ module.exports = functions.auth.user().onCreate(async (user) => {
 
   console.log(`👤 Usuario creado: ${user.uid}`);
 });
+

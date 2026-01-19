@@ -1,10 +1,11 @@
-// entrypoint Firebase
-
-require("./src/firebase");
-
-const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-
 admin.initializeApp();
 
-exports.api = require("./src");
+// Exportar triggers directamente
+exports.onUserCreate = require("./src/triggers/onUserCreate");
+exports.onParticipationCreate = require("./src/triggers/onParticipationCreate");
+exports.onParticipationUpdate = require("./src/triggers/onParticipationUpdate");
+exports.onMatchDeadline = require("./src/triggers/onMatchDeadline");
+exports.onMatchStart = require("./src/triggers/onMatchStart");
+exports.onMatchClose = require("./src/triggers/onMatchClose");
+

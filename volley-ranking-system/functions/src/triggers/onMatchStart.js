@@ -1,7 +1,7 @@
 // triggers/onMatchStart.js
 // Evento 8 — inicio real del partido
 
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 
 const db = admin.firestore();

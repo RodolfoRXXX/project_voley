@@ -1,7 +1,11 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFunctions } from "firebase/functions";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
+
+/*
+
+  PRODUCCION
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
@@ -10,6 +14,12 @@ const firebaseConfig = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+};*/
+
+const firebaseConfig = {
+  apiKey: "fake-api-key", // EMULADOR NO valida API KEY
+  authDomain: "localhost",
+  projectId: "project-groupvolley",
 };
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
@@ -17,3 +27,15 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const functions = getFunctions(app);
+
+// ⚠️ SOLO en desarrollo
+if (typeof window !== "undefined") {
+  if (process.env.NODE_ENV === "development") {
+    connectAuthEmulator(auth, "http://localhost:9099", {
+      disableWarnings: true,
+    });
+    connectFirestoreEmulator(db, "localhost", 8080);
+  }
+}
+
+

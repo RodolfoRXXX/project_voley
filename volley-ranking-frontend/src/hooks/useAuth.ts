@@ -42,6 +42,7 @@ export const useAuth = () => {
     firebaseUser,
     userDoc,
     loading,
-    needsOnboarding: !!firebaseUser && !userDoc,
+    needsOnboarding:
+      !!firebaseUser && !!userDoc && userDoc.onboarded === false,
   };
 };

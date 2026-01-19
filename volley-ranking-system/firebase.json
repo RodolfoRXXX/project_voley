@@ -3,8 +3,14 @@
     "source": "functions"
   },
   "emulators": {
+    "auth": {
+      "port": 9099
+    },
     "firestore": {
       "port": 8080
+    },
+    "functions": {
+      "port": 5001
     },
     "ui": {
       "enabled": true,
@@ -12,3 +18,4 @@
     }
   }
 }
+

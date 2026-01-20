@@ -1,5 +1,5 @@
-const admin = require("firebase-admin");
-admin.initializeApp();
+//const admin = require("firebase-admin");
+//admin.initializeApp();
 
 // Exportar triggers directamente
 exports.onUserCreate = require("./src/triggers/onUserCreate");

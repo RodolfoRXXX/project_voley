@@ -6,13 +6,12 @@ if (process.env.NODE_ENV === 'test' && !process.env.FIRESTORE_EMULATOR_HOST) {
 }
 
 if (!admin.apps.length) {
-  admin.initializeApp({
-    projectId: process.env.GCLOUD_PROJECT
-    //projectId: "project-groupvolley" // 👈 EXACTO al firebase.json
-  });
+  admin.initializeApp(); // 👈 SIN CONFIG
 }
 
+const db = admin.firestore();
+
 module.exports = {
-  admin,
-  db: admin.firestore()
+  admin, // 🔴 exportamos el admin REAL
+  db,
 };

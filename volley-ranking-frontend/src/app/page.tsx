@@ -1,20 +1,25 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
-import { loginWithGoogle } from "@/services/authService";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function HomePage() {
-  const { firebaseUser, userDoc, loading, needsOnboarding } = useAuth();
+  const { loading, firebaseUser, needsOnboarding } = useAuth();
+  const router = useRouter();
 
-  if (loading) return <p>Cargando...</p>;
+  useEffect(() => {
+    if (loading) return;
 
-  if (!firebaseUser) {
-    return <button onClick={loginWithGoogle}>Login con Google</button>;
-  }
+    if (!firebaseUser) return;
 
-  if (needsOnboarding) {
-    return <p>Ir a onboarding</p>;
-  }
+    if (needsOnboarding) {
+      router.replace("/onboarding");
+    } else {
+      router.replace("/dashboard");
+    }
+  }, [loading, firebaseUser, needsOnboarding, router]);
 
-  return <p>Bienvenido {userDoc?.nombre}</p>;
+  return <p>Cargando...</p>;
 }
+

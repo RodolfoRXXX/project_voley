@@ -1,23 +1,34 @@
-const functions = require("firebase-functions");
+// functions/src/callables/completeOnboarding.js
+
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
-const { completarOnboarding } = require("../services/onboardingService");
+
+const db = admin.firestore();
 
 module.exports = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
       "unauthenticated",
-      "Usuario no autenticado"
+      "No autenticado"
     );
   }
 
   const uid = context.auth.uid;
   const { roles, posicionesPreferidas } = data;
 
-  await completarOnboarding({
-    uid,
+  if (!roles || !Array.isArray(posicionesPreferidas)) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Datos inválidos"
+    );
+  }
+
+  await db.collection("users").doc(uid).update({
     roles,
     posicionesPreferidas,
+    onboarded: true,
   });
 
-  return { success: true };
+  return { ok: true };
 });
+

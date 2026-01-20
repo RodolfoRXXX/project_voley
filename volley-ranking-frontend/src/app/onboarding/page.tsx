@@ -10,16 +10,25 @@ export default function OnboardingPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !firebaseUser) {
+    if (loading) return;
+
+    // No logueado → fuera
+    if (!firebaseUser) {
       router.replace("/");
+      return;
     }
 
-    if (!loading && userDoc) {
+    // Ya onboardeado → fuera
+    if (userDoc?.onboarded) {
       router.replace("/");
     }
   }, [firebaseUser, userDoc, loading, router]);
 
-  if (loading || !firebaseUser || userDoc) {
+  if (
+    loading ||
+    !firebaseUser ||
+    userDoc?.onboarded
+  ) {
     return <p>Cargando...</p>;
   }
 

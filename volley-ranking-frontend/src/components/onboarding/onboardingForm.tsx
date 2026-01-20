@@ -16,7 +16,7 @@ const POSICIONES = [
 export default function OnboardingForm() {
   const router = useRouter();
 
-  const [rol, setRol] = useState<"player" | "admin">("player");
+  const [roles, setRol] = useState<"player" | "admin">("player");
   const [posiciones, setPosiciones] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,8 +34,8 @@ export default function OnboardingForm() {
   const submit = async () => {
     setError(null);
 
-    if (posiciones.length !== 3) {
-      setError("Elegí exactamente 3 posiciones");
+    if (posiciones.length === 0) {
+      setError("Elegí 1 posición");
       return;
     }
 
@@ -48,14 +48,19 @@ export default function OnboardingForm() {
       );
 
       await completeOnboarding({
-        rol,
+        roles,
         posicionesPreferidas: posiciones,
       });
 
       router.replace("/");
-    } catch (err) {
-      console.error(err);
-      setError("Error al completar onboarding");
+    } catch (err: any) {
+      console.error("❌ completeOnboarding error:", err);
+
+      setError(
+        err?.message ||
+        err?.details ||
+        "Error al completar onboarding"
+      );
     } finally {
       setLoading(false);
     }
@@ -67,7 +72,7 @@ export default function OnboardingForm() {
       <div>
         <label className="block font-semibold mb-2">Rol</label>
         <select
-          value={rol}
+          value={roles}
           onChange={(e) => setRol(e.target.value as any)}
           className="border p-2 rounded w-full"
         >

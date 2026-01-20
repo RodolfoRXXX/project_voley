@@ -1,10 +1,8 @@
 // triggers/onParticipationCreate.js
 
 const functions = require("firebase-functions/v1");
-const admin = require("firebase-admin");
+const { db } = require("../firebase");
 const { recalcularRanking } = require("../services/rankingService");
-
-const db = admin.firestore();
 
 module.exports = functions.firestore
   .document("participations/{id}")

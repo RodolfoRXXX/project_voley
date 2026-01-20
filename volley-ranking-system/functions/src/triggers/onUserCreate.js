@@ -1,8 +1,7 @@
 // functions/triggers/onUserCreate.js
 
 const functions = require("firebase-functions/v1");
-//const admin = require("firebase-admin");
-const { admin, db } = require("../firebase");
+const { db } = require("../firebase");
 
 // 👇 IMPORT CORRECTO
 const { FieldValue } = require("firebase-admin/firestore");

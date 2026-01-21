@@ -44,6 +44,16 @@ export default function Navbar() {
             {userDoc && (
               <>
                 <Link href="/dashboard">Dashboard</Link>
+
+                {userDoc.roles === "admin" && (
+                  <Link
+                    href="/admin/groups"
+                    className="font-semibold text-blue-600"
+                  >
+                    Groups
+                  </Link>
+                )}
+
                 <Link href="/profile">Perfil</Link>
               </>
             )}
@@ -65,7 +75,7 @@ export default function Navbar() {
 
               <button
                 onClick={logout}
-                className="text-sm text-gray-600 underline"
+                className="text-sm text-gray-600 border rounded px-2 py-1 pointer"
               >
                 Salir
               </button>

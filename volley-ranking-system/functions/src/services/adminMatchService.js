@@ -1,7 +1,13 @@
-// services/adminMatchService.js
+// functions/src/services/adminMatchService.js
 
-const admin = require("firebase-admin");
-const db = admin.firestore();
+const { initializeApp, getApps } = require("firebase-admin/app");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+
+if (!getApps().length) {
+  initializeApp();
+}
+
+const db = getFirestore();
 const { recalcularRanking } = require("./rankingService");
 
 /* =========================
@@ -30,14 +36,14 @@ async function crearMatch({
     groupId,
     adminId,
     estado: "abierto",
-    horaInicio,
+    horaInicio, // Timestamp válido
     cantidadEquipos,
     formacion,
     posicionesObjetivo,
     cantidadSuplentes,
     deadlineProcesado: false,
     lock: false,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(), // ✅ AHORA SÍ
   });
 }
 

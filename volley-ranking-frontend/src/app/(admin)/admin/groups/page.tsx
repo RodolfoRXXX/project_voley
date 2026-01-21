@@ -7,11 +7,11 @@ import Link from "next/link";
 
 interface Group {
   id: string;
-  name: string;
-  description: string;
-  active: boolean;
+  nombre: string;
+  descripcion: string;
+  activo: boolean;
   partidosTotales: number;
-  createdBy: string;
+  adminId: string;
 }
 
 export default function AdminGroupsPage() {
@@ -60,10 +60,10 @@ export default function AdminGroupsPage() {
             className="border rounded p-4 flex justify-between items-center"
           >
             <div>
-              <h2 className="text-lg font-semibold">{group.name}</h2>
-              <p className="text-sm text-gray-600">{group.description}</p>
+              <h2 className="text-lg font-semibold">{group.nombre}</h2>
+              <p className="text-sm text-gray-600">{group.descripcion}</p>
               <p className="text-sm mt-1">
-                Estado: {group.active ? "🟢 Activo" : "🔴 Inactivo"}
+                Estado: {group.activo ? "🟢 Activo" : "🔴 Inactivo"}
               </p>
               <p className="text-sm">
                 Partidos totales: {group.partidosTotales}

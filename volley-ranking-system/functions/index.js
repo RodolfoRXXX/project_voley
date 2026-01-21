@@ -9,5 +9,7 @@ exports.onMatchDeadline = require("./src/triggers/onMatchDeadline");
 exports.onMatchStart = require("./src/triggers/onMatchStart");
 exports.onMatchClose = require("./src/triggers/onMatchClose");
 exports.completeOnboarding = require("./callables/completeOnboarding");
+exports.getFormaciones = require("./callables/getFormaciones");
+exports.createMatch = require("./callables/createMatch");
 
 

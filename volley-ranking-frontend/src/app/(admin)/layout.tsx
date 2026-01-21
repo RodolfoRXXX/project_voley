@@ -3,9 +3,12 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import OnboardingForm from "@/components/onboarding/onboardingForm";
 
-export default function OnboardingPage() {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { firebaseUser, userDoc, loading } = useAuth();
   const router = useRouter();
 
@@ -17,20 +20,15 @@ export default function OnboardingPage() {
       return;
     }
 
-    if (userDoc?.onboarded) {
+    if (!userDoc || userDoc.roles !== "admin") {
       router.replace("/dashboard");
       return;
     }
   }, [firebaseUser, userDoc, loading, router]);
 
-  if (loading || !firebaseUser || userDoc?.onboarded) {
-    return <p>Cargando...</p>;
+  if (loading || !firebaseUser || !userDoc) {
+    return <p className="p-6">Cargando...</p>;
   }
 
-  return (
-    <main className="max-w-xl mx-auto mt-10">
-      <h1 className="text-2xl font-bold mb-6">Completar perfil</h1>
-      <OnboardingForm />
-    </main>
-  );
+  return <>{children}</>;
 }

@@ -9,8 +9,6 @@ import {
   query,
   where,
   getDocs,
-  updateDoc,
-  Timestamp,
 } from "firebase/firestore";
 import { db, app } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
@@ -185,14 +183,16 @@ export default function MatchDetailPage() {
       formData.cantidadEquipos
     );
 
-    await updateDoc(doc(db, "matches", match.id), {
+    const fn = httpsCallable(functions, "editMatch");
+
+    await fn({
+      matchId: match.id,
       cantidadEquipos: formData.cantidadEquipos,
       cantidadSuplentes: formData.cantidadSuplentes,
       formacion: formData.formacion,
-      posicionesObjetivo,
-      horaInicio: Timestamp.fromDate(
-        new Date(formData.horaInicio)
-      ),
+      horaInicio: formData.horaInicio,
+      /*horaInicio: Timestamp.fromDate(
+        new Date(formData.horaInicio)),*/
     });
 
     setMatch({

@@ -65,8 +65,7 @@ async function actualizarMatch(matchId, cambios) {
     }
 
     tx.update(ref, {
-      ...cambios,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      ...cambios
     });
   });
 

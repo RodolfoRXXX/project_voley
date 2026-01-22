@@ -1,3 +1,5 @@
+// Functions/src/callables/createMatch.js
+
 const functions = require("firebase-functions/v1");
 const { crearMatch } = require("../src/services/adminMatchService");
 const formaciones = require("../src/config/formaciones");
@@ -8,6 +10,10 @@ const {
 } = require("firebase-admin/firestore");
 
 module.exports = functions.https.onCall(async (data, context) => {
+  /* =====================
+     Auth
+  ===================== */
+  
   if (!context.auth) {
     throw new functions.https.HttpsError(
       "unauthenticated",
@@ -15,6 +21,10 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
 
+  /* =====================
+     Data
+  ===================== */
+  
   const {
     groupId,
     horaInicio,

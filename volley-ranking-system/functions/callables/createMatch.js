@@ -42,6 +42,7 @@ module.exports = functions.https.onCall(async (data, context) => {
     formacion,
     posicionesBase: formaciones[formacion],
     cantidadSuplentes,
+    jugadores: [],
   });
 
   return { ok: true, matchId };

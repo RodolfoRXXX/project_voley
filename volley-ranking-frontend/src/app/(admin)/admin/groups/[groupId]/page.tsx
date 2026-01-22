@@ -130,7 +130,7 @@ export default function AdminGroupDetailPage() {
                 </div>
 
                 <Link
-                  href={`/admin/groups/${groupId}/matches/${m.id}`}
+                  href={`/groups/${groupId}/matches/${m.id}`}
                   className="text-blue-600 text-sm"
                 >
                   Ver detalle →

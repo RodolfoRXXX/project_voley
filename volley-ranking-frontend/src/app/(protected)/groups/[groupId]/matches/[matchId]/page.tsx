@@ -107,6 +107,8 @@ export default function AdminMatchDetailPage() {
         (ocupadosPorPosicion[p.posicion] || 0) + 1;
     });
 
+    const isAdmin = userDoc?.roles === "admin";
+
   return (
     <main className="max-w-4xl mx-auto mt-10 space-y-8">
       {/* Header */}
@@ -198,20 +200,21 @@ export default function AdminMatchDetailPage() {
         <h2 className="text-xl font-semibold mb-3">
           Acciones
         </h2>
+        {isAdmin && (
+          <div className="flex gap-4">
+            {match.estado === "abierto" && (
+              <button className="bg-black text-white px-4 py-2 rounded">
+                Cerrar match
+              </button>
+            )}
 
-        <div className="flex gap-4">
-          {match.estado === "abierto" && (
-            <button className="bg-black text-white px-4 py-2 rounded">
-              Cerrar match
-            </button>
-          )}
-
-          {match.estado !== "abierto" && (
-            <button className="border px-4 py-2 rounded">
-              Reabrir
-            </button>
-          )}
-        </div>
+            {match.estado !== "abierto" && (
+              <button className="border px-4 py-2 rounded">
+                Reabrir
+              </button>
+            )}
+          </div>
+        )}
       </section>
     </main>
   );

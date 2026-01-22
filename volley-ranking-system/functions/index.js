@@ -12,4 +12,6 @@ exports.completeOnboarding = require("./callables/completeOnboarding");
 exports.getFormaciones = require("./callables/getFormaciones");
 exports.createMatch = require("./callables/createMatch");
 exports.editMatch = require("./callables/editMatch");
+exports.editGroup = require("./callables/editGroup");
+
 

@@ -5,9 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { app } from "@/lib/firebase";
 import Link from "next/link";
 
-export default function AdminGroupDetailPage() {
+const functions = getFunctions(app);
+const editGroup = httpsCallable(functions, "editGroup");
+
+export default function AdminGroupPage() {
   const { groupId } = useParams<{ groupId: string }>();
   const router = useRouter();
   const { firebaseUser, userDoc, loading } = useAuth();
@@ -15,9 +20,14 @@ export default function AdminGroupDetailPage() {
   const [group, setGroup] = useState<any>(null);
   const [matches, setMatches] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [formData, setFormData] = useState({
+    nombre: "",
+    descripcion: "",
+  });
 
   /* =====================
-     Guards
+     Guard
   ===================== */
   useEffect(() => {
     if (!loading && (!firebaseUser || userDoc?.roles !== "admin")) {
@@ -33,24 +43,23 @@ export default function AdminGroupDetailPage() {
 
     const load = async () => {
       try {
-        // Group
         const ref = doc(db, "groups", groupId);
-        const snap = await getDoc(ref);
+      const snap = await getDoc(ref);
 
-        if (!snap.exists()) {
-          router.replace("/admin/groups");
-          return;
-        }
+      if (!snap.exists()) {
+        router.replace("/dashboard");
+        return;
+      }
 
-        setGroup({ id: snap.id, ...snap.data() });
+      const data = snap.data();
+      setGroup({ id: snap.id, ...data });
 
-        // Matches del group
-        const q = query(
-          collection(db, "matches"),
-          where("groupId", "==", groupId)
-        );
-
-        const snapMatches = await getDocs(q);
+      // Matches del group
+      const q = query(
+        collection(db, "matches"),
+        where("groupId", "==", groupId)
+      );
+      const snapMatches = await getDocs(q);
         setMatches(
           snapMatches.docs.map((d) => {
             const data = d.data();
@@ -63,6 +72,11 @@ export default function AdminGroupDetailPage() {
             };
           })
         );
+
+      setFormData({
+        nombre: data.nombre,
+        descripcion: data.descripcion || "",
+      });
       } finally {
         setLoadingData(false);
       }
@@ -71,39 +85,97 @@ export default function AdminGroupDetailPage() {
     load();
   }, [groupId, router]);
 
+  const handleSave = async () => {
+    await editGroup({
+      groupId,
+      nombre: formData.nombre,
+      descripcion: formData.descripcion,
+    });
+
+    setGroup({
+      ...group,
+      nombre: formData.nombre,
+      descripcion: formData.descripcion,
+    });
+
+    setEditMode(false);
+  };
+
   if (loading || loadingData) return <p>Cargando...</p>;
   if (!group) return null;
 
   return (
-    <main className="max-w-4xl mx-auto mt-10 space-y-8">
+    <main className="max-w-3xl mx-auto mt-10 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold">{group.nombre}</h1>
-          <p className="text-gray-600 mt-1">{group.descripcion}</p>
-
-          <div className="flex gap-4 mt-3 text-sm">
-            <span>
-              Estado:{" "}
-              <b className={group.activo ? "text-green-600" : "text-red-600"}>
-                {group.activo ? "Activo" : "Inactivo"}
-              </b>
-            </span>
-
-            <span>
-              Partidos jugados: <b>{group.partidosTotales}</b>
-            </span>
-          </div>
+          {group.descripcion && (
+            <p className="text-gray-600 mt-1">
+              {group.descripcion}
+            </p>
+          )}
         </div>
 
-        <Link
-          href={`/admin/groups/${groupId}/matches/new`}
-          className="bg-black text-white px-4 py-2 rounded"
-        >
-          + Crear match
-        </Link>
+        {!editMode && (
+          <button
+            onClick={() => setEditMode(true)}
+            className="border px-3 py-1 rounded"
+          >
+            Editar
+          </button>
+        )}
       </div>
 
+      {/* Edit form */}
+      {editMode && (
+        <section className="border rounded p-4 space-y-4">
+          <label className="block">
+            Nombre
+            <input
+              type="text"
+              value={formData.nombre}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  nombre: e.target.value,
+                })
+              }
+              className="border rounded px-2 py-1 w-full"
+            />
+          </label>
+
+          <label className="block">
+            Descripción
+            <textarea
+              value={formData.descripcion}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  descripcion: e.target.value,
+                })
+              }
+              className="border rounded px-2 py-1 w-full"
+            />
+          </label>
+
+          <div className="flex gap-3">
+            <button
+              onClick={handleSave}
+              className="bg-black text-white px-4 py-2 rounded"
+            >
+              Guardar
+            </button>
+
+            <button
+              onClick={() => setEditMode(false)}
+              className="border px-4 py-2 rounded"
+            >
+              Cancelar
+            </button>
+          </div>
+        </section>
+      )}
       {/* Matches */}
       <section>
         <h2 className="text-xl font-semibold mb-4">Matches</h2>

@@ -31,7 +31,6 @@ async function actualizarGrupo(groupId, cambios) {
   // cambios permitidos: nombre, descripcion, activo
   await db.collection("groups").doc(groupId).update({
     ...cambios,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 }
 

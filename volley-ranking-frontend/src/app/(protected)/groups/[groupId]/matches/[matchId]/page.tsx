@@ -24,6 +24,12 @@ type Match = {
   groupId: string;
 };
 
+type Group = {
+  id: string;
+  nombre: string;
+  descripcion?: string;
+};
+
 export default function AdminMatchDetailPage() {
   const { matchId } = useParams<{ matchId: string }>();
   const router = useRouter();
@@ -32,15 +38,17 @@ export default function AdminMatchDetailPage() {
   const [match, setMatch] = useState<Match | null>(null);
   const [participations, setParticipations] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [group, setGroup] = useState<Group | null>(null);
+
 
   /* =====================
      Guards
   ===================== */
   useEffect(() => {
-    if (!loading && (!firebaseUser || userDoc?.roles !== "admin")) {
+    if (!loading && !firebaseUser) {
       router.replace("/");
     }
-  }, [firebaseUser, userDoc, loading, router]);
+  }, [firebaseUser, loading, router]);
 
   /* =====================
      Load match + participations
@@ -60,6 +68,18 @@ export default function AdminMatchDetailPage() {
         }
 
         const data = snap.data();
+
+        // Group
+        const groupRef = doc(db, "groups", data.groupId);
+        const groupSnap = await getDoc(groupRef);
+
+        if (groupSnap.exists()) {
+          setGroup({
+            id: groupSnap.id,
+            nombre: groupSnap.data().nombre,
+            descripcion: groupSnap.data().descripcion,
+          });
+        }
 
         setMatch({
                 id: snap.id,
@@ -113,9 +133,25 @@ export default function AdminMatchDetailPage() {
     <main className="max-w-4xl mx-auto mt-10 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">
-          Match · {match.estado.toUpperCase()}
-        </h1>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold">
+              {group?.nombre ?? "Grupo"}
+            </h1>
+
+            {match.estado === "abierto" && (
+              <span className="text-sm text-green-600 flex items-center gap-1">
+                🟢 activo
+              </span>
+            )}
+          </div>
+
+          {group?.descripcion && (
+            <p className="text-gray-600">
+              {group.descripcion}
+            </p>
+          )}
+        </div>
         <p className="text-gray-600 mt-1">
           Inicio:{" "}
           {match.horaInicio

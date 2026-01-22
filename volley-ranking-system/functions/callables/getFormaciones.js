@@ -12,6 +12,6 @@ module.exports = functions.https.onCall((data, context) => {
   }
 
   return {
-    formaciones: Object.keys(formaciones),
+    formaciones
   };
 });

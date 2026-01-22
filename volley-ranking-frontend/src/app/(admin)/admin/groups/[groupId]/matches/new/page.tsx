@@ -25,8 +25,11 @@ export default function NewMatchPage() {
     const load = async () => {
       const fn = httpsCallable(functions, "getFormaciones");
       const res: any = await fn();
-      setFormaciones(res.data.formaciones);
+
+      // 👇 convertimos objeto → array
+      setFormaciones(Object.keys(res.data.formaciones));
     };
+
     load();
   }, []);
 

@@ -11,6 +11,7 @@ import Link from "next/link";
 
 const functions = getFunctions(app);
 const editGroup = httpsCallable(functions, "editGroup");
+const toggleGroupActivo = httpsCallable(functions, "toggleGroupActivo");
 
 export default function AdminGroupPage() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -127,6 +128,39 @@ export default function AdminGroupPage() {
         )}
       </div>
 
+      <section className="border rounded p-4">
+        <h2 className="text-xl font-semibold mb-3">
+          Estado del grupo
+        </h2>
+
+        <div className="flex items-center gap-4">
+          <span
+            className={`text-sm ${
+              group.activo ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            {group.activo ? "🟢 Activo" : "🔴 Inactivo"}
+          </span>
+
+          <button
+            onClick={async () => {
+              await toggleGroupActivo({
+                groupId: group.id,
+                activo: !group.activo,
+              });
+
+              setGroup({
+                ...group,
+                activo: !group.activo,
+              });
+            }}
+            className="border px-3 py-1 rounded"
+          >
+            {group.activo ? "Desactivar" : "Reactivar"}
+          </button>
+        </div>
+      </section>
+
       {/* Edit form */}
       {editMode && (
         <section className="border rounded p-4 space-y-4">
@@ -178,7 +212,31 @@ export default function AdminGroupPage() {
       )}
       {/* Matches */}
       <section>
-        <h2 className="text-xl font-semibold mb-4">Matches</h2>
+        {/* Header Matches*/}
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-xl font-semibold mb-4">Matches</h1>
+        </div>
+        <Link
+          href={
+            group.activo
+              ? `/admin/groups/${group.id}/matches/new`
+              : "#"
+          }
+          onClick={(e) => {
+            if (!group.activo) e.preventDefault();
+          }}
+          className={`px-4 py-2 rounded transition
+            ${
+              group.activo
+                ? "bg-black text-white hover:bg-gray-800"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }
+          `}
+        >
+          Crear match
+        </Link>
+      </div>
 
         {matches.length === 0 ? (
           <p className="text-gray-500">Todavía no hay matches en este group.</p>

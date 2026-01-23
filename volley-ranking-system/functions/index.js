@@ -13,5 +13,5 @@ exports.getFormaciones = require("./callables/getFormaciones");
 exports.createMatch = require("./callables/createMatch");
 exports.editMatch = require("./callables/editMatch");
 exports.editGroup = require("./callables/editGroup");
-
+exports.toggleGroupActivo = require("./callables/toggleGroupActivo");
 

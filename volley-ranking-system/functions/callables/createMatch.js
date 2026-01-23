@@ -33,6 +33,23 @@ module.exports = functions.https.onCall(async (data, context) => {
     cantidadSuplentes,
   } = data;
 
+  const db = getFirestore();
+  const groupSnap = await db.collection("groups").doc(data.groupId).get();
+
+  if (!groupSnap.exists) {
+    throw new functions.https.HttpsError(
+      "not-found",
+      "Grupo no existe"
+    );
+  }
+
+  if (!groupSnap.data().activo) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "El grupo está desactivado"
+    );
+  }
+
   if (!formaciones[formacion]) {
     throw new functions.https.HttpsError(
       "invalid-argument",
@@ -40,7 +57,6 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
 
-  const db = getFirestore();
   const matchId = db.collection("matches").doc().id;
 
   await crearMatch({

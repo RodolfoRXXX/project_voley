@@ -78,8 +78,21 @@ export default function AdminGroupsPage() {
                 Ver
               </Link>
               <Link
-                href={`/admin/groups/${group.id}/matches/new`}
-                className="border px-3 py-1 rounded"
+                href={
+                  group.activo
+                    ? `/admin/groups/${group.id}/matches/new`
+                    : "#"
+                }
+                onClick={(e) => {
+                  if (!group.activo) e.preventDefault();
+                }}
+                className={`px-4 py-2 rounded transition
+                  ${
+                    group.activo
+                      ? "bg-black text-white hover:bg-gray-800"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }
+                `}
               >
                 Crear match
               </Link>

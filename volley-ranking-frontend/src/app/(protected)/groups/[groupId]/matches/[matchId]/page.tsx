@@ -5,10 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import {
   doc,
   getDoc,
+  onSnapshot,
   collection,
   query,
   where,
-  getDocs,
 } from "firebase/firestore";
 import { db, app } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +19,8 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 ===================== */
 const functions = getFunctions(app);
 const getFormaciones = httpsCallable(functions, "getFormaciones");
+const joinMatch = httpsCallable(functions, "joinMatch");
+const leaveMatch = httpsCallable(functions, "leaveMatch");
 
 /* =====================
    Types
@@ -48,9 +50,8 @@ export default function MatchDetailPage() {
   const [match, setMatch] = useState<Match | null>(null);
   const [group, setGroup] = useState<Group | null>(null);
   const [participations, setParticipations] = useState<any[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
-
   const [editMode, setEditMode] = useState(false);
+  const [usersMap, setUsersMap] = useState<Record<string, any>>({});
 
   const [formaciones, setFormaciones] = useState<
     Record<string, Record<string, number>>
@@ -82,7 +83,6 @@ export default function MatchDetailPage() {
       const res: any = await getFormaciones();
       setFormaciones(res.data.formaciones);
     };
-
     loadFormaciones();
   }, []);
 
@@ -95,82 +95,132 @@ export default function MatchDetailPage() {
   ) => {
     const base = formaciones[formacion];
     if (!base) return {};
-
     const resultado: Record<string, number> = {};
     Object.entries(base).forEach(([pos, cant]) => {
       resultado[pos] = cant * cantidadEquipos;
     });
-
     return resultado;
   };
 
   /* =====================
-     Load match + group + participations
+     Match realtime
   ===================== */
   useEffect(() => {
     if (!matchId) return;
 
-    const load = async () => {
-      try {
-        const ref = doc(db, "matches", matchId);
-        const snap = await getDoc(ref);
+    const ref = doc(db, "matches", matchId);
+    const unsub = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) {
+        router.replace("/dashboard");
+        return;
+      }
+      const data = snap.data();
+      setMatch({
+        id: snap.id,
+        estado: data.estado,
+        formacion: data.formacion,
+        cantidadEquipos: data.cantidadEquipos,
+        cantidadSuplentes: data.cantidadSuplentes,
+        posicionesObjetivo: data.posicionesObjetivo,
+        groupId: data.groupId,
+        horaInicio: data.horaInicio?.toDate
+          ? data.horaInicio.toDate()
+          : null,
+      });
+      setFormData({
+        cantidadEquipos: data.cantidadEquipos,
+        cantidadSuplentes: data.cantidadSuplentes,
+        formacion: data.formacion,
+        horaInicio: data.horaInicio?.toDate
+          ? data.horaInicio.toDate().toISOString().slice(0, 16)
+          : "",
+      });
+    });
 
-        if (!snap.exists()) {
-          router.replace("/dashboard");
-          return;
-        }
+    return () => unsub();
+  }, [matchId, router]);
 
-        const data = snap.data();
-
-        // Group
-        const groupRef = doc(db, "groups", data.groupId);
-        const groupSnap = await getDoc(groupRef);
-        if (groupSnap.exists()) {
-          setGroup({
-            id: groupSnap.id,
-            nombre: groupSnap.data().nombre,
-            descripcion: groupSnap.data().descripcion,
-          });
-        }
-
-        setMatch({
+  /* =====================
+     Group load
+  ===================== */
+  useEffect(() => {
+    if (!match?.groupId) return;
+    const loadGroup = async () => {
+      const ref = doc(db, "groups", match.groupId);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        setGroup({
           id: snap.id,
-          estado: data.estado,
-          formacion: data.formacion,
-          cantidadEquipos: data.cantidadEquipos,
-          cantidadSuplentes: data.cantidadSuplentes,
-          posicionesObjetivo: data.posicionesObjetivo,
-          groupId: data.groupId,
-          horaInicio: data.horaInicio?.toDate
-            ? data.horaInicio.toDate()
-            : null,
+          nombre: snap.data().nombre,
+          descripcion: snap.data().descripcion,
         });
-
-        setFormData({
-          cantidadEquipos: data.cantidadEquipos,
-          cantidadSuplentes: data.cantidadSuplentes,
-          formacion: data.formacion,
-          horaInicio: data.horaInicio?.toDate
-            ? data.horaInicio.toDate().toISOString().slice(0, 16)
-            : "",
-        });
-
-        // Participations
-        const q = query(
-          collection(db, "participations"),
-          where("matchId", "==", matchId)
-        );
-        const snapP = await getDocs(q);
-        setParticipations(
-          snapP.docs.map((d) => ({ id: d.id, ...d.data() }))
-        );
-      } finally {
-        setLoadingData(false);
       }
     };
+    loadGroup();
+  }, [match?.groupId]);
 
-    load();
-  }, [matchId, router]);
+  /* =====================
+     Participations realtime
+  ===================== */
+  useEffect(() => {
+    if (!matchId) return;
+
+    const q = query(
+      collection(db, "participations"),
+      where("matchId", "==", matchId)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+      setParticipations(list);
+    });
+
+    return () => unsub();
+  }, [matchId]);
+
+  const myParticipation = participations.find(
+    (p) =>
+      p.userId === firebaseUser?.uid &&
+      p.estado !== "eliminado"
+  );
+  const isJoined = !!myParticipation;
+
+  const handleToggleParticipation = async () => {
+    if (!match || !firebaseUser) return;
+    if (isJoined) {
+      await leaveMatch({ matchId: match.id });
+    } else {
+      await joinMatch({ matchId: match.id });
+    }
+  };
+
+  /* =====================
+     nombre participations
+  ===================== */
+
+  useEffect(() => {
+    if (participations.length === 0) return;
+
+    const userIds = Array.from(
+      new Set(participations.map((p) => p.userId))
+    );
+
+    const unsubs = userIds.map((uid) =>
+      onSnapshot(doc(db, "users", uid), (snap) => {
+        if (!snap.exists()) return;
+
+        setUsersMap((prev) => ({
+          ...prev,
+          [uid]: snap.data(),
+        }));
+      })
+    );
+
+    return () => unsubs.forEach((u) => u());
+  }, [participations]);
 
   /* =====================
      Save
@@ -184,15 +234,12 @@ export default function MatchDetailPage() {
     );
 
     const fn = httpsCallable(functions, "editMatch");
-
     await fn({
       matchId: match.id,
       cantidadEquipos: formData.cantidadEquipos,
       cantidadSuplentes: formData.cantidadSuplentes,
       formacion: formData.formacion,
       horaInicio: formData.horaInicio,
-      /*horaInicio: Timestamp.fromDate(
-        new Date(formData.horaInicio)),*/
     });
 
     setMatch({
@@ -201,31 +248,48 @@ export default function MatchDetailPage() {
       posicionesObjetivo,
       horaInicio: new Date(formData.horaInicio),
     });
-
     setEditMode(false);
   };
 
-  if (loading || loadingData) return <p>Cargando...</p>;
-  if (!match) return null;
+  if (loading || !match) return <p>Cargando...</p>;
 
   /* =====================
     Cupos ocupados
   ===================== */
+      // Titulares ordenados por ranking
+  const titulares = participations
+    .filter((p) => p.estado === "titular" && p.rankingTitular !== null)
+    .sort((a, b) => a.rankingTitular - b.rankingTitular);
+
+    const suplentes = participations
+  .filter((p) => p.estado === "suplente" && p.rankingSuplente !== null)
+  .sort((a, b) => a.rankingSuplente - b.rankingSuplente);
+
+  // Cupos ocupados por posiciónAsignada titular
   const ocupadosPorPosicion: Record<string, number> = {};
 
-  participations
-    .filter((p) => p.estado === "titular")
-    .forEach((p) => {
-      ocupadosPorPosicion[p.posicion] =
-        (ocupadosPorPosicion[p.posicion] || 0) + 1;
-    });
+  titulares.forEach((p) => {
+    if (!p.posicionAsignada) return;
+
+    ocupadosPorPosicion[p.posicionAsignada] =
+      (ocupadosPorPosicion[p.posicionAsignada] || 0) + 1;
+  });
+
+  // Cupos ocupados por posiciónAsignada suplente
+  const ocupadosPorPosicionSuplente: Record<string, number> = {};
+
+  suplentes.forEach((p) => {
+    if (!p.posicionAsignada) return;
+
+    ocupadosPorPosicionSuplente[p.posicionAsignada] =
+      (ocupadosPorPosicionSuplente[p.posicionAsignada] || 0) + 1;
+  });
 
   /* =====================
      Render
   ===================== */
   return (
     <main className="max-w-4xl mx-auto mt-10 space-y-8">
-      {/* Header */}
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-3xl font-bold">
@@ -240,14 +304,12 @@ export default function MatchDetailPage() {
         )}
       </div>
 
-      {/* Info */}
       <section className="border rounded p-4 space-y-2">
         <p><b>Formación:</b> {match.formacion}</p>
         <p><b>Equipos:</b> {match.cantidadEquipos}</p>
         <p><b>Suplentes:</b> {match.cantidadSuplentes}</p>
       </section>
 
-      {/* Edit */}
       {isAdmin && match.estado !== "jugado" && (
         <section className="border rounded p-4 space-y-4">
           <div className="flex justify-between">
@@ -336,7 +398,6 @@ export default function MatchDetailPage() {
         </section>
       )}
 
-      {/* Cupos */}
       <section>
         <h2 className="text-xl font-semibold mb-4">
           Cupos por posición
@@ -363,57 +424,119 @@ export default function MatchDetailPage() {
         </div>
       </section>
 
-      {/* Participations */}
       <section>
-        <h2 className="text-xl font-semibold mb-4">
-          Jugadores anotados
-        </h2>
+        <h2 className="text-xl font-semibold mb-4">Titulares</h2>
 
-        {participations.length === 0 ? (
-          <p className="text-gray-500">
-            Todavía no hay jugadores.
-          </p>
+        {titulares.length === 0 ? (
+          <p className="text-gray-500">Todavía no hay titulares.</p>
         ) : (
-          <ul className="space-y-2">
-            {participations.map((p) => (
-              <li
-                key={p.id}
-                className="border rounded p-3 flex justify-between"
-              >
-                <span>
-                  {p.nombre || p.userId} ·{" "}
-                  <b>{p.posicion}</b>
-                </span>
+          <div className="border rounded overflow-hidden">
+            <div className="grid grid-cols-4 bg-gray-100 px-3 py-2 text-sm font-semibold">
+              <span>Ranking</span>
+              <span>Nombre</span>
+              <span>Posición</span>
+              <span>Pago</span>
+            </div>
 
-                <span className="text-sm text-gray-600">
-                  {p.estado}
+            {titulares.map((p) => (
+              <div
+                key={p.id}
+                className="grid grid-cols-4 px-3 py-2 border-t text-sm"
+              >
+                <span>{p.rankingTitular}</span>
+                <span>
+                  {usersMap[p.userId]?.nombre ?? "—"}
                 </span>
-              </li>
+                <span className="capitalize">
+                  {p.posicionAsignada}
+                </span>
+                <span
+                  className={
+                    p.pagoEstado === "pago"
+                      ? "text-green-600"
+                      : "text-yellow-600"
+                  }
+                >
+                  {p.pagoEstado}
+                </span>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </section>
 
-      {/* Acciones */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Suplentes</h2>
+
+        {suplentes.length === 0 ? (
+          <p className="text-gray-500">Todavía no hay suplentes.</p>
+        ) : (
+          <div className="border rounded overflow-hidden">
+            <div className="grid grid-cols-4 bg-gray-100 px-3 py-2 text-sm font-semibold">
+              <span>Ranking</span>
+              <span>Nombre</span>
+              <span>Posición</span>
+              <span>Pago</span>
+            </div>
+
+            {suplentes.map((p) => (
+              <div
+                key={p.id}
+                className="grid grid-cols-4 px-3 py-2 border-t text-sm"
+              >
+                <span>{p.rankingSuplente}</span>
+                <span>
+                  {usersMap[p.userId]?.nombre ?? "—"}
+                </span>
+                <span className="capitalize">
+                  {p.posicionAsignada}
+                </span>
+                <span
+                  className={
+                    p.pagoEstado === "pago"
+                      ? "text-green-600"
+                      : "text-yellow-600"
+                  }
+                >
+                  {p.pagoEstado}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       <section className="border-t pt-6">
         <h2 className="text-xl font-semibold mb-3">
           Acciones
         </h2>
-        {isAdmin && (
-          <div className="flex gap-4">
-            {match.estado === "abierto" && (
-              <button className="bg-black text-white px-4 py-2 rounded">
-                Cerrar match
-              </button>
-            )}
+        <div className="flex gap-3 pt-2">
+          <button
+            onClick={handleToggleParticipation}
+            className={`px-4 py-2 rounded ${
+              isJoined
+                ? "border border-red-500 text-red-500"
+                : "bg-green-600 text-white"
+            }`}
+          >
+            {isJoined ? "Desunirme" : "Unirme"}
+          </button>
 
-            {match.estado !== "abierto" && (
-              <button className="border px-4 py-2 rounded">
-                Reabrir
-              </button>
-            )}
-          </div>
-        )}
+          {isAdmin && (
+            <div className="flex gap-4">
+              {match.estado === "abierto" && (
+                <button className="bg-black text-white px-4 py-2 rounded">
+                  Cerrar match
+                </button>
+              )}
+              {match.estado !== "abierto" && (
+                <button className="border px-4 py-2 rounded">
+                  Reabrir
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </section>
     </main>
   );

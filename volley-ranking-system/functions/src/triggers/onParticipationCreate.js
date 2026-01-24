@@ -38,6 +38,8 @@ module.exports = functions.firestore
 
       const match = matchSnap.data();
 
+      if (match.estado !== "abierto") return;
+
       if (match.lock) {
         throw new Error("Ranking bloqueado");
       }

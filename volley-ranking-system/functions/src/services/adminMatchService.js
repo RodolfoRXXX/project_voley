@@ -102,21 +102,16 @@ async function reabrirMatch(matchId) {
    PAGOS
 ========================= */
 
-async function confirmarPago(participationId) {
-  await db
-    .collection("participations")
-    .doc(participationId)
-    .update({
-      pagoEstado: "confirmado",
-    });
-}
+async function actualizarPago(participationId, estado) {
+  if (!["confirmado", "pendiente", "pospuesto"].includes(estado)) {
+    throw new Error("Estado de pago inválido");
+  }
 
-async function marcarPagoPospuesto(participationId) {
   await db
     .collection("participations")
     .doc(participationId)
     .update({
-      pagoEstado: "pospuesto",
+      pagoEstado: estado,
     });
 }
 
@@ -189,8 +184,7 @@ module.exports = {
   crearMatch,
   actualizarMatch,
   reabrirMatch,
-  confirmarPago,
-  marcarPagoPospuesto,
+  actualizarPago,
   eliminarJugador,
   cerrarMatch,
 };

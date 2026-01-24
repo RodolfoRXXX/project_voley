@@ -68,6 +68,11 @@ async function recalcularRanking(matchId) {
 
   const match = matchSnap.data();
 
+  if (match.estado !== "abierto") {
+    console.log("⏸️ Match cerrado, no se recalcula ranking");
+    return;
+  }
+
   /* =========================
      GROUP
   ========================= */

@@ -1,3 +1,5 @@
+// Detalle del match
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -21,6 +23,10 @@ const functions = getFunctions(app);
 const getFormaciones = httpsCallable(functions, "getFormaciones");
 const joinMatch = httpsCallable(functions, "joinMatch");
 const leaveMatch = httpsCallable(functions, "leaveMatch");
+const updatePagoEstadoFn = httpsCallable(
+  functions,
+  "updatePagoEstado"
+);
 
 /* =====================
    Types
@@ -42,6 +48,30 @@ type Group = {
   descripcion?: string;
 };
 
+/* =====================
+   Pagos
+===================== */
+
+const pagoColor = (estado: string) => {
+  switch (estado) {
+    case "confirmado":
+      return "bg-green-600 text-white";
+    case "pendiente":
+      return "bg-yellow-400 text-black";
+    case "pospuesto":
+      return "bg-blue-500 text-white";
+    default:
+      return "bg-gray-300 text-black";
+  }
+};
+
+const pagoStyles: Record<string, string> = {
+  confirmado: "bg-green-100 text-green-700 border-green-400",
+  pendiente: "bg-yellow-100 text-yellow-700 border-yellow-400",
+  pospuesto: "bg-blue-100 text-blue-700 border-blue-400",
+};
+
+
 export default function MatchDetailPage() {
   const { matchId } = useParams<{ matchId: string }>();
   const router = useRouter();
@@ -52,6 +82,7 @@ export default function MatchDetailPage() {
   const [participations, setParticipations] = useState<any[]>([]);
   const [editMode, setEditMode] = useState(false);
   const [usersMap, setUsersMap] = useState<Record<string, any>>({});
+  const [pagoModal, setPagoModal] = useState<null | any>(null);
 
   const [formaciones, setFormaciones] = useState<
     Record<string, Record<string, number>>
@@ -65,6 +96,18 @@ export default function MatchDetailPage() {
   });
 
   const isAdmin = userDoc?.roles === "admin";
+
+  const updatePagoEstado = async (
+    participationId: string,
+    estado: "confirmado" | "pendiente" | "pospuesto"
+  ) => {
+    await updatePagoEstadoFn({
+      participationId,
+      estado,
+    });
+
+    setPagoModal(null);
+  };
 
   /* =====================
      Guards
@@ -289,255 +332,245 @@ export default function MatchDetailPage() {
      Render
   ===================== */
   return (
-    <main className="max-w-4xl mx-auto mt-10 space-y-8">
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-bold">
-            {group?.nombre ?? "Grupo"}
-          </h1>
-          {match.estado === "abierto" && (
-            <span className="text-sm text-green-600">🟢 activo</span>
-          )}
-        </div>
-        {group?.descripcion && (
-          <p className="text-gray-600">{group.descripcion}</p>
+  <main className="max-w-4xl mx-auto mt-10 space-y-8">
+    <div>
+      <div className="flex items-center gap-2">
+        <h1 className="text-3xl font-bold">
+          {group?.nombre ?? "Grupo"}
+        </h1>
+        {match.estado === "abierto" && (
+          <span className="text-sm text-green-600">🟢 activo</span>
         )}
       </div>
+      {group?.descripcion && (
+        <p className="text-gray-600">{group.descripcion}</p>
+      )}
+    </div>
 
-      <section className="border rounded p-4 space-y-2">
-        <p><b>Formación:</b> {match.formacion}</p>
-        <p><b>Equipos:</b> {match.cantidadEquipos}</p>
-        <p><b>Suplentes:</b> {match.cantidadSuplentes}</p>
-      </section>
+    <section className="border rounded p-4 space-y-2">
+      <p><b>Formación:</b> {match.formacion}</p>
+      <p><b>Equipos:</b> {match.cantidadEquipos}</p>
+      <p><b>Suplentes:</b> {match.cantidadSuplentes}</p>
+    </section>
 
-      {isAdmin && match.estado !== "jugado" && (
-        <section className="border rounded p-4 space-y-4">
-          <div className="flex justify-between">
-            <h2 className="text-xl font-semibold">Editar match</h2>
-            {!editMode && (
-              <button
-                onClick={() => setEditMode(true)}
-                className="border px-3 py-1 rounded"
+    <section>
+      <h2 className="text-xl font-semibold mb-4">
+        Cupos por posición
+      </h2>
+
+      <div className="grid grid-cols-2 gap-4">
+        {Object.entries(match.posicionesObjetivo).map(
+          ([pos, total]) => {
+            const ocupados = ocupadosPorPosicion[pos] || 0;
+
+            return (
+              <div
+                key={pos}
+                className="border rounded p-3 flex justify-between"
               >
-                Editar
-              </button>
-            )}
+                <span className="capitalize">{pos}</span>
+                <span>
+                  {ocupados} / {total}
+                </span>
+              </div>
+            );
+          }
+        )}
+      </div>
+    </section>
+
+    {/* ================= TITULARES ================= */}
+
+    <section>
+      <h2 className="text-xl font-semibold mb-4">Titulares</h2>
+
+      {titulares.length === 0 ? (
+        <p className="text-gray-500">Todavía no hay titulares.</p>
+      ) : (
+        <div className="border rounded overflow-hidden">
+          <div className="grid grid-cols-4 bg-gray-100 px-3 py-2 text-sm font-semibold">
+            <span>Ranking</span>
+            <span>Nombre</span>
+            <span>Posición</span>
+            <span>Pago</span>
           </div>
 
-          {editMode && (
-            <div className="grid gap-4">
-              <input
-                type="number"
-                value={formData.cantidadEquipos}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    cantidadEquipos: Number(e.target.value),
-                  })
-                }
-                className="border px-2 py-1 rounded"
-              />
+          {titulares.map((p) => {
+            const isMe = p.userId === firebaseUser?.uid;
 
-              <input
-                type="number"
-                value={formData.cantidadSuplentes}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    cantidadSuplentes: Number(e.target.value),
-                  })
-                }
-                className="border px-2 py-1 rounded"
-              />
-
-              <select
-                value={formData.formacion}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    formacion: e.target.value,
-                  })
-                }
-                className="border px-2 py-1 rounded"
-              >
-                {Object.keys(formaciones).map((f) => (
-                  <option key={f} value={f}>
-                    {f.replace("_", " ")}
-                  </option>
-                ))}
-              </select>
-
-              <input
-                type="datetime-local"
-                value={formData.horaInicio}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    horaInicio: e.target.value,
-                  })
-                }
-                className="border px-2 py-1 rounded"
-              />
-
-              <div className="flex gap-3">
-                <button
-                  onClick={handleSave}
-                  className="bg-black text-white px-4 py-2 rounded"
-                >
-                  Guardar
-                </button>
-                <button
-                  onClick={() => setEditMode(false)}
-                  className="border px-4 py-2 rounded"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          )}
-        </section>
-      )}
-
-      <section>
-        <h2 className="text-xl font-semibold mb-4">
-          Cupos por posición
-        </h2>
-
-        <div className="grid grid-cols-2 gap-4">
-          {Object.entries(match.posicionesObjetivo).map(
-            ([pos, total]) => {
-              const ocupados = ocupadosPorPosicion[pos] || 0;
-
-              return (
-                <div
-                  key={pos}
-                  className="border rounded p-3 flex justify-between"
-                >
-                  <span className="capitalize">{pos}</span>
-                  <span>
-                    {ocupados} / {total}
-                  </span>
-                </div>
-              );
-            }
-          )}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Titulares</h2>
-
-        {titulares.length === 0 ? (
-          <p className="text-gray-500">Todavía no hay titulares.</p>
-        ) : (
-          <div className="border rounded overflow-hidden">
-            <div className="grid grid-cols-4 bg-gray-100 px-3 py-2 text-sm font-semibold">
-              <span>Ranking</span>
-              <span>Nombre</span>
-              <span>Posición</span>
-              <span>Pago</span>
-            </div>
-
-            {titulares.map((p) => (
+            return (
               <div
                 key={p.id}
-                className="grid grid-cols-4 px-3 py-2 border-t text-sm"
+                className={`grid grid-cols-4 px-3 py-2 border-t text-sm ${
+                  isMe ? "bg-blue-100 font-semibold" : ""
+                }`}
               >
                 <span>{p.rankingTitular}</span>
                 <span>
                   {usersMap[p.userId]?.nombre ?? "—"}
+                  {isMe && (
+                    <span className="ml-2 text-xs text-blue-600">(vos)</span>
+                  )}
                 </span>
                 <span className="capitalize">
                   {p.posicionAsignada}
                 </span>
-                <span
-                  className={
-                    p.pagoEstado === "pago"
-                      ? "text-green-600"
-                      : "text-yellow-600"
-                  }
-                >
-                  {p.pagoEstado}
+                <span>
+                  <button
+                    disabled={!isAdmin}
+                    onClick={() => setPagoModal(p)}
+                    className={`px-2 py-1 rounded text-xs font-semibold ${
+                      pagoColor(p.pagoEstado)
+                    }`}
+                  >
+                    {p.pagoEstado}
+                  </button>
                 </span>
               </div>
-            ))}
+            );
+          })}
+        </div>
+      )}
+    </section>
+
+    {/* ================= SUPLENTES ================= */}
+
+    <section>
+      <h2 className="text-xl font-semibold mb-4">Suplentes</h2>
+
+      {suplentes.length === 0 ? (
+        <p className="text-gray-500">Todavía no hay suplentes.</p>
+      ) : (
+        <div className="border rounded overflow-hidden">
+          <div className="grid grid-cols-4 bg-gray-100 px-3 py-2 text-sm font-semibold">
+            <span>Ranking</span>
+            <span>Nombre</span>
+            <span>Posición</span>
+            <span>Pago</span>
           </div>
-        )}
-      </section>
 
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Suplentes</h2>
+          {suplentes.map((p) => {
+            const isMe = p.userId === firebaseUser?.uid;
 
-        {suplentes.length === 0 ? (
-          <p className="text-gray-500">Todavía no hay suplentes.</p>
-        ) : (
-          <div className="border rounded overflow-hidden">
-            <div className="grid grid-cols-4 bg-gray-100 px-3 py-2 text-sm font-semibold">
-              <span>Ranking</span>
-              <span>Nombre</span>
-              <span>Posición</span>
-              <span>Pago</span>
-            </div>
-
-            {suplentes.map((p) => (
+            return (
               <div
                 key={p.id}
-                className="grid grid-cols-4 px-3 py-2 border-t text-sm"
+                className={`grid grid-cols-4 px-3 py-2 border-t text-sm ${
+                  isMe ? "bg-orange-100 font-semibold" : ""
+                }`}
               >
                 <span>{p.rankingSuplente}</span>
                 <span>
                   {usersMap[p.userId]?.nombre ?? "—"}
+                  {isMe && (
+                    <span className="ml-2 text-xs text-orange-600">(vos)</span>
+                  )}
                 </span>
                 <span className="capitalize">
-                  {p.posicionAsignada}
+                  {p.posicionAsignada ?? "—"}
                 </span>
-                <span
-                  className={
-                    p.pagoEstado === "pago"
-                      ? "text-green-600"
-                      : "text-yellow-600"
-                  }
+                <button
+                  onClick={() => setPagoModal(p)}
+                  className={`px-2 py-1 rounded text-xs font-medium border ${pagoStyles[p.pagoEstado]}`}
                 >
                   {p.pagoEstado}
-                </span>
+                </button>
               </div>
-            ))}
+            );
+          })}
+        </div>
+      )}
+    </section>
+
+    <section className="border-t pt-6">
+      <h2 className="text-xl font-semibold mb-3">
+        Acciones
+      </h2>
+      <div className="flex gap-3 pt-2">
+        <button
+          onClick={handleToggleParticipation}
+          className={`px-4 py-2 rounded ${
+            isJoined
+              ? "border border-red-500 text-red-500"
+              : "bg-green-600 text-white"
+          }`}
+        >
+          {isJoined ? "Desunirme" : "Unirme"}
+        </button>
+
+        {isAdmin && (
+          <div className="flex gap-4">
+            {match.estado === "abierto" && (
+              <button className="bg-black text-white px-4 py-2 rounded">
+                Cerrar match
+              </button>
+            )}
+            {match.estado !== "abierto" && (
+              <button className="border px-4 py-2 rounded">
+                Reabrir
+              </button>
+            )}
           </div>
         )}
-      </section>
+      </div>
+    </section>
 
-      <section className="border-t pt-6">
-        <h2 className="text-xl font-semibold mb-3">
-          Acciones
-        </h2>
-        <div className="flex gap-3 pt-2">
-          <button
-            onClick={handleToggleParticipation}
-            className={`px-4 py-2 rounded ${
-              isJoined
-                ? "border border-red-500 text-red-500"
-                : "bg-green-600 text-white"
-            }`}
-          >
-            {isJoined ? "Desunirme" : "Unirme"}
-          </button>
+    {pagoModal && (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg w-full max-w-md p-6 space-y-4">
+          <h3 className="text-xl font-semibold">
+            Estado de pago
+          </h3>
 
-          {isAdmin && (
-            <div className="flex gap-4">
-              {match.estado === "abierto" && (
-                <button className="bg-black text-white px-4 py-2 rounded">
-                  Cerrar match
-                </button>
-              )}
-              {match.estado !== "abierto" && (
-                <button className="border px-4 py-2 rounded">
-                  Reabrir
-                </button>
-              )}
+          {/* Info jugador */}
+          <div className="text-sm space-y-1">
+            <p><b>Nombre:</b> {usersMap[pagoModal.userId]?.nombre}</p>
+            <p><b>Posición:</b> {pagoModal.posicionAsignada}</p>
+            <p><b>Ranking:</b> {pagoModal.rankingTitular}</p>
+            <p><b>Puntaje:</b> {pagoModal.puntaje}</p>
+          </div>
+
+          <div className="border-t pt-4 space-y-2">
+            <p className="text-sm font-semibold">Estado actual</p>
+
+            <div
+              className={`border rounded px-3 py-2 text-sm text-center font-medium opacity-60 ${pagoStyles[pagoModal.pagoEstado]}`}
+            >
+              {pagoModal.pagoEstado}
             </div>
-          )}
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-semibold">
+              Cambiar a
+            </p>
+
+            {["confirmado", "pendiente", "pospuesto"]
+              .filter((e) => e !== pagoModal.pagoEstado)
+              .map((estado) => (
+                <button
+                  key={estado}
+                  onClick={() =>
+                    updatePagoEstado(pagoModal.id, estado as any)
+                  }
+                  className={`w-full border rounded px-3 py-2 text-sm hover:opacity-80 ${pagoStyles[estado]}`}
+                >
+                  {estado}
+                </button>
+              ))}
+          </div>
+
+          <div className="pt-4 flex justify-end">
+            <button
+              onClick={() => setPagoModal(null)}
+              className="text-sm text-gray-500 hover:underline"
+            >
+              Cancelar
+            </button>
+          </div>
         </div>
-      </section>
-    </main>
-  );
+      </div>
+    )}
+  </main>
+);
 }

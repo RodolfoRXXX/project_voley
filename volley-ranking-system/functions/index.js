@@ -16,4 +16,5 @@ exports.editGroup = require("./callables/editGroup");
 exports.toggleGroupActivo = require("./callables/toggleGroupActivo");
 exports.joinMatch = require("./callables/joinMatch");
 exports.leaveMatch = require("./callables/leaveMatch");
+exports.updatePagoEstado = require("./callables/updatePagoEstado");
 

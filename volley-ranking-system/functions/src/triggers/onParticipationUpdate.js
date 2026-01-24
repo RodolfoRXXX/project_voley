@@ -13,75 +13,97 @@ module.exports = functions.firestore
     const before = change.before.data();
     const after = change.after.data();
 
-    // Solo titular → eliminado
+    if (!after.matchId) return null;
+
+    // 🔒 Guard anti-loop
+    if (before.estado === after.estado) {
+      return null;
+    }
+
+    /* ==================================
+       CASO 1: TITULAR → ELIMINADO
+    ================================== */
     if (
-      before.estado !== "titular" ||
-      after.estado !== "eliminado" ||
-      !after.matchId ||
-      !before.posicionAsignada
+      before.estado === "titular" &&
+      after.estado === "eliminado" &&
+      before.posicionAsignada
     ) {
-      return null;
-    }
+      /* =========================
+         VALIDAR USUARIO ONBOARDED
+      ========================= */
+      const userRef = db.collection("users").doc(after.userId);
+      const userSnap = await userRef.get();
+      const user = userSnap.data();
 
-    /* =========================
-       VALIDAR USUARIO ONBOARDED
-    ========================= */
-
-    const userSnap = await db
-      .collection("users")
-      .doc(after.userId)
-      .get();
-
-    const user = userSnap.data();
-
-    if (!user?.onboarded) {
-      console.log("Usuario no onboarded, se aborta reemplazo");
-      return null;
-    }
-
-    /* =========================
-       OBTENER MATCH
-    ========================= */
-
-    const matchRef = db.collection("matches").doc(after.matchId);
-    const matchSnap = await matchRef.get();
-    if (!matchSnap.exists) return null;
-
-    const match = matchSnap.data();
-    if (!match.horaInicio) return null;
-
-    const diffHoras =
-      (match.horaInicio.toDate() - new Date()) / 36e5;
-
-    const postDeadline = diffHoras <= 3;
-
-    /* =========================
-       LOCK GLOBAL DEL MATCH
-    ========================= */
-
-    await db.runTransaction(async (tx) => {
-      const snap = await tx.get(matchRef);
-      if (!snap.exists) throw new Error("Match no existe");
-
-      if (snap.data().lock) {
-        throw new Error("Match bloqueado");
+      if (!user?.onboarded) {
+        console.log("Usuario no onboarded, se aborta reemplazo");
+        return null;
       }
 
-      tx.update(matchRef, { lock: true });
-    });
+      /* =========================
+        PENALIZAR ESTADO COMPROMISO
+      ========================= */
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(userRef);
+        if (!snap.exists) return;
 
-    try {
-      await reemplazarTitular({
-        matchId: after.matchId,
-        posicionLiberada: before.posicionAsignada,
-        postDeadline,
+        const actual = snap.data().estadoCompromiso ?? 0;
+        tx.update(userRef, {
+          estadoCompromiso: actual - 1,
+        });
       });
 
+      /* =========================
+         OBTENER MATCH
+      ========================= */
+      const matchRef = db.collection("matches").doc(after.matchId);
+      const matchSnap = await matchRef.get();
+      if (!matchSnap.exists) return null;
+
+      const match = matchSnap.data();
+      if (!match.horaInicio) return null;
+
+      const diffHoras =
+        (match.horaInicio.toDate() - new Date()) / 36e5;
+
+      const postDeadline = diffHoras <= 3;
+
+      /* =========================
+         LOCK GLOBAL DEL MATCH
+      ========================= */
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(matchRef);
+        if (!snap.exists) throw new Error("Match no existe");
+        if (snap.data().lock) throw new Error("Match bloqueado");
+        tx.update(matchRef, { lock: true });
+      });
+
+      try {
+        await reemplazarTitular({
+          matchId: after.matchId,
+          posicionLiberada: before.posicionAsignada,
+          postDeadline,
+        });
+
+        await recalcularRanking(after.matchId);
+      } finally {
+        await matchRef.update({ lock: false }).catch(() => {});
+      }
+
+      return null;
+    }
+
+    /* ==================================
+       CASO 2: ELIMINADO → PENDIENTE
+       (reincorporación)
+    ================================== */
+    if (
+      before.estado === "eliminado" &&
+      after.estado === "pendiente"
+    ) {
       await recalcularRanking(after.matchId);
-    } finally {
-      await matchRef.update({ lock: false }).catch(() => {});
+      return null;
     }
 
     return null;
   });
-

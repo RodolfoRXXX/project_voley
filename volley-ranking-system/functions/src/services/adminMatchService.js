@@ -139,6 +139,32 @@ async function eliminarJugador(participationId) {
 }
 
 /* =========================
+   REINCORPORAR JUGADOR
+========================= */
+
+async function reincorporarJugador(participationId) {
+  const ref = db.collection("participations").doc(participationId);
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) return;
+
+    const p = snap.data();
+    if (p.estado !== "eliminado") return;
+
+    tx.update(ref, {
+      estado: "pendiente",
+      posicionAsignada: null,
+      rankingTitular: null,
+      rankingSuplente: null,
+      puntaje: 0,
+    });
+  });
+
+  // 🔁 ranking se recalcula desde el trigger
+}
+
+/* =========================
    CIERRE MANUAL (opcional)
 ========================= */
 

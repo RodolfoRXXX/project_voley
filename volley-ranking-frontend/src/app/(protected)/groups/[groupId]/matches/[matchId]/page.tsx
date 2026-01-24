@@ -27,6 +27,15 @@ const updatePagoEstadoFn = httpsCallable(
   functions,
   "updatePagoEstado"
 );
+const eliminarJugadorFn = httpsCallable(
+  functions,
+  "eliminarJugador"
+);
+const reincorporarJugadorFn = httpsCallable(
+  functions,
+  "reincorporarJugador"
+);
+
 
 /* =====================
    Types
@@ -71,6 +80,25 @@ const pagoStyles: Record<string, string> = {
   pospuesto: "bg-blue-100 text-blue-700 border-blue-400",
 };
 
+/* =====================
+   Eliminar jugador
+===================== */
+
+const handleEliminarJugador = async (participationId: string) => {
+  if (!confirm("¿Eliminar jugador del match?")) return;
+
+  await eliminarJugadorFn({ participationId });
+};
+
+/* =====================
+   Reincorporar jugador
+===================== */
+
+const handleReincorporarJugador = async (participationId: string) => {
+  if (!confirm("¿Reincorporar jugador al match?")) return;
+
+  await reincorporarJugadorFn({ participationId });
+};
 
 export default function MatchDetailPage() {
   const { matchId } = useParams<{ matchId: string }>();
@@ -226,10 +254,12 @@ export default function MatchDetailPage() {
 
   const myParticipation = participations.find(
     (p) =>
-      p.userId === firebaseUser?.uid &&
-      p.estado !== "eliminado"
+      p.userId === firebaseUser?.uid
   );
-  const isJoined = !!myParticipation;
+
+  const isEliminado = myParticipation?.estado === "eliminado";
+  const isJoined = !!myParticipation && myParticipation.estado !== "eliminado";
+
 
   const handleToggleParticipation = async () => {
     if (!match || !firebaseUser) return;
@@ -328,6 +358,12 @@ export default function MatchDetailPage() {
       (ocupadosPorPosicionSuplente[p.posicionAsignada] || 0) + 1;
   });
 
+  // Cupos de eliminados
+  const eliminados = participations.filter(
+    (p) => p.estado === "eliminado"
+  );
+
+
   /* =====================
      Render
   ===================== */
@@ -352,6 +388,98 @@ export default function MatchDetailPage() {
       <p><b>Equipos:</b> {match.cantidadEquipos}</p>
       <p><b>Suplentes:</b> {match.cantidadSuplentes}</p>
     </section>
+
+    {isAdmin && match.estado !== "jugado" && (
+      <section className="border rounded p-4 space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Editar match</h2>
+
+          {!editMode && (
+            <button
+              onClick={() => setEditMode(true)}
+              className="border px-3 py-1 rounded"
+            >
+              Editar
+            </button>
+          )}
+        </div>
+
+        {editMode && (
+          <div className="grid gap-4">
+            <input
+              type="number"
+              value={formData.cantidadEquipos}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  cantidadEquipos: Number(e.target.value),
+                })
+              }
+              className="border px-2 py-1 rounded"
+              placeholder="Cantidad de equipos"
+            />
+
+            <input
+              type="number"
+              value={formData.cantidadSuplentes}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  cantidadSuplentes: Number(e.target.value),
+                })
+              }
+              className="border px-2 py-1 rounded"
+              placeholder="Cantidad de suplentes"
+            />
+
+            <select
+              value={formData.formacion}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  formacion: e.target.value,
+                })
+              }
+              className="border px-2 py-1 rounded"
+            >
+              {Object.keys(formaciones).map((f) => (
+                <option key={f} value={f}>
+                  {f.replace("_", " ")}
+                </option>
+              ))}
+            </select>
+
+            <input
+              type="datetime-local"
+              value={formData.horaInicio}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  horaInicio: e.target.value,
+                })
+              }
+              className="border px-2 py-1 rounded"
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleSave}
+                className="bg-black text-white px-4 py-2 rounded"
+              >
+                Guardar
+              </button>
+
+              <button
+                onClick={() => setEditMode(false)}
+                className="border px-4 py-2 rounded"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+    )}
 
     <section>
       <h2 className="text-xl font-semibold mb-4">
@@ -388,11 +516,12 @@ export default function MatchDetailPage() {
         <p className="text-gray-500">Todavía no hay titulares.</p>
       ) : (
         <div className="border rounded overflow-hidden">
-          <div className="grid grid-cols-4 bg-gray-100 px-3 py-2 text-sm font-semibold">
+          <div className="grid grid-cols-5 bg-gray-100 px-3 py-2 text-sm font-semibold">
             <span>Ranking</span>
             <span>Nombre</span>
             <span>Posición</span>
             <span>Pago</span>
+            {isAdmin && <span></span>}
           </div>
 
           {titulares.map((p) => {
@@ -401,7 +530,7 @@ export default function MatchDetailPage() {
             return (
               <div
                 key={p.id}
-                className={`grid grid-cols-4 px-3 py-2 border-t text-sm ${
+                className={`grid grid-cols-5 px-3 py-2 border-t text-sm ${
                   isMe ? "bg-blue-100 font-semibold" : ""
                 }`}
               >
@@ -426,6 +555,15 @@ export default function MatchDetailPage() {
                     {p.pagoEstado}
                   </button>
                 </span>
+                {isAdmin && (
+                  <button
+                    onClick={() => handleEliminarJugador(p.id)}
+                    className="w-6 h-6 flex items-center justify-center rounded-full border border-red-500 text-red-500 hover:bg-red-100"
+                    title="Eliminar jugador"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             );
           })}
@@ -482,6 +620,54 @@ export default function MatchDetailPage() {
       )}
     </section>
 
+    {/* ================= ELIMINADOS ================= */}
+
+    <section>
+      <h2 className="text-xl font-semibold mb-4">
+        Eliminados
+      </h2>
+
+      {eliminados.length === 0 ? (
+        <p className="text-gray-500">
+          No hay jugadores eliminados.
+        </p>
+      ) : (
+        <div className="border rounded overflow-hidden">
+          <div className="grid grid-cols-5 bg-gray-100 px-3 py-2 text-sm font-semibold">
+            <span>Nombre</span>
+            <span>Posiciones</span>
+            <span>Ranking</span>
+            <span>Pago</span>
+            <span></span>
+          </div>
+
+          {eliminados.map((p) => (
+            <div
+              key={p.id}
+              className="grid grid-cols-5 px-3 py-2 border-t text-sm items-center"
+            >
+              <span>{usersMap[p.userId]?.nombre ?? "—"}</span>
+              <span className="text-xs text-gray-500">
+                {usersMap[p.userId]?.posicionesPreferidas?.join(", ")}
+              </span>
+              <span>—</span>
+              <span className="capitalize">{p.pagoEstado}</span>
+
+              {isAdmin && (
+                <button
+                  onClick={() => handleReincorporarJugador(p.id)}
+                  className="w-8 h-8 rounded-full bg-green-600 text-white font-bold flex items-center justify-center hover:bg-green-700"
+                  title="Reincorporar jugador"
+                >
+                  +
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+
     <section className="border-t pt-6">
       <h2 className="text-xl font-semibold mb-3">
         Acciones
@@ -489,13 +675,20 @@ export default function MatchDetailPage() {
       <div className="flex gap-3 pt-2">
         <button
           onClick={handleToggleParticipation}
+          disabled={isEliminado}
           className={`px-4 py-2 rounded ${
-            isJoined
+            isEliminado
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : isJoined
               ? "border border-red-500 text-red-500"
               : "bg-green-600 text-white"
           }`}
         >
-          {isJoined ? "Desunirme" : "Unirme"}
+          {isEliminado
+            ? "Eliminado"
+            : isJoined
+            ? "Desunirme"
+            : "Unirme"}
         </button>
 
         {isAdmin && (

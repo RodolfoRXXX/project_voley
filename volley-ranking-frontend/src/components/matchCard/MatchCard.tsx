@@ -24,6 +24,7 @@ export default function MatchCard({
   const [suplentes, setSuplentes] = useState(0);
   const [yaAnotado, setYaAnotado] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
+  const [miParticipacion, setMiParticipacion] = useState<any | null>(null);
 
   const valores: number[] = Object.values(match.posicionesObjetivo || {});
   const titularesTotales = valores.reduce(
@@ -35,9 +36,11 @@ export default function MatchCard({
   const functions = getFunctions(app);
   const joinMatch = httpsCallable(functions, "joinMatch");
   const leaveMatch = httpsCallable(functions, "leaveMatch");
-
-  const isJoined = yaAnotado;
   const lleno = titulares >= titularesTotales;
+
+  const isEliminado = miParticipacion?.estado === "eliminado";
+  const isJoined = !!miParticipacion && miParticipacion.estado !== "eliminado";
+
 
   /* =====================
      Real-time participations
@@ -53,24 +56,22 @@ export default function MatchCard({
     const unsubscribe = onSnapshot(q, (snap) => {
       let t = 0;
       let s = 0;
-      let anotado = false;
+      let mine: any = null;
 
       snap.docs.forEach((d) => {
         const p = d.data();
 
         if (p.estado === "titular") t++;
         if (p.estado === "suplente") s++;
-        if (
-          p.userId === userId &&
-          p.estado !== "eliminado"
-        ) {
-          anotado = true;
+
+        if (p.userId === userId) {
+          mine = p;
         }
       });
 
       setTitulares(t);
       setSuplentes(s);
-      setYaAnotado(anotado);
+      setMiParticipacion(mine);
     });
 
     return () => unsubscribe();
@@ -124,14 +125,24 @@ export default function MatchCard({
       <div className="flex gap-3 pt-2 items-center">
         <button
           onClick={handleToggleParticipation}
-          disabled={loadingAction || (!isJoined && lleno)}
+          disabled={
+            loadingAction ||
+            isEliminado ||
+            (!isJoined && lleno)
+          }
           className={`px-4 py-2 rounded transition ${
-            isJoined
+            isEliminado
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : isJoined
               ? "border border-red-500 text-red-500"
               : "bg-green-600 text-white"
           } disabled:opacity-50`}
         >
-          {isJoined ? "Desunirme" : "Unirme"}
+          {isEliminado
+            ? "Eliminado"
+            : isJoined
+            ? "Desunirme"
+            : "Unirme"}
         </button>
 
         <Link

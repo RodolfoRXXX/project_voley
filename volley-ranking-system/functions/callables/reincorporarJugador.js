@@ -41,7 +41,6 @@ module.exports = functions.https.onCall(async (data, context) => {
       rankingTitular: null,
       rankingSuplente: null,
       puntaje: 0,
-      pagoEstado: "pendiente",
     });
   });
 

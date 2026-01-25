@@ -25,6 +25,7 @@ const joinMatch = httpsCallable(functions, "joinMatch");
 const leaveMatch = httpsCallable(functions, "leaveMatch");
 const cerrarMatchFn = httpsCallable(functions, "cerrarMatch");
 const eliminarMatchFn = httpsCallable(functions, "eliminarMatch");
+const reabrirMatchFn = httpsCallable(functions, "reabrirMatch");
 const updatePagoEstadoFn = httpsCallable(
   functions,
   "updatePagoEstado"
@@ -103,7 +104,7 @@ type Group = {
 };
 
 /* =====================
-   Pagos
+   Pagos Estilos
 ===================== */
 
 const pagoColor = (estado: string) => {
@@ -126,24 +127,8 @@ const pagoStyles: Record<string, string> = {
 };
 
 /* =====================
-   Eliminar jugador
+   FUNCTION
 ===================== */
-
-const handleEliminarJugador = async (participationId: string) => {
-  if (!confirm("¿Eliminar jugador del match?")) return;
-
-  await eliminarJugadorFn({ participationId });
-};
-
-/* =====================
-   Reincorporar jugador
-===================== */
-
-const handleReincorporarJugador = async (participationId: string) => {
-  if (!confirm("¿Reincorporar jugador al match?")) return;
-
-  await reincorporarJugadorFn({ participationId });
-};
 
 export default function MatchDetailPage() {
   const { matchId } = useParams<{ matchId: string }>();
@@ -421,6 +406,27 @@ export default function MatchDetailPage() {
 
   const accionesJugadorBloqueadas =
   match.estado !== "abierto";
+
+  /* =====================
+    HANDLERS
+  ===================== */
+
+  const handleEliminarJugador = async (participationId: string) => {
+    if (!confirm("¿Eliminar jugador del match?")) return;
+
+    await eliminarJugadorFn({ participationId });
+  };
+
+  const handleReincorporarJugador = async (participationId: string) => {
+    if (!confirm("¿Reincorporar jugador al match?")) return;
+
+    await reincorporarJugadorFn({ participationId });
+  };
+
+  const handleReabrirMatch = async () => {
+    if (!confirm("¿Reabrir el match? Volverá a estado abierto.")) return;
+    await reabrirMatchFn({ matchId: match.id });
+  };
 
   const handleCerrarMatch = async () => {
     await cerrarMatchFn({ matchId: match.id });
@@ -829,6 +835,14 @@ export default function MatchDetailPage() {
                 }`}
               >
                 Confirmar cierre
+              </button>
+            )}
+            {isAdmin && match.estado === "verificando" && (
+              <button
+                onClick={handleReabrirMatch}
+                className="border border-yellow-600 text-yellow-600 px-4 py-2 rounded"
+              >
+                Reabrir match
               </button>
             )}
           </div>

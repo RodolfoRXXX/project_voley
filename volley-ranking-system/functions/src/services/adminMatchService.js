@@ -215,14 +215,27 @@ async function cerrarMatch(matchId, adminId) {
 
     const match = matchSnap.data();
 
-    // ⛔ Solo desde verificando
-    if (match.estado !== "verificando") {
-      throw new Error("Match no está en estado verificando");
+    /* =========================
+       PASO 1 → ABIERTO → VERIFICANDO
+    ========================= */
+
+    if (match.estado === "abierto") {
+      tx.update(matchRef, {
+        estado: "verificando",
+        lock: false,
+      });
+      return;
     }
 
     /* =========================
-       VALIDAR PAGOS
+       PASO 2 → VERIFICANDO → CERRADO
     ========================= */
+
+    if (match.estado !== "verificando") {
+      throw new Error(
+        "El match no se puede cerrar desde el estado actual"
+      );
+    }
 
     const participationsSnap = await tx.get(
       db.collection("participations")
@@ -239,15 +252,45 @@ async function cerrarMatch(matchId, adminId) {
     });
 
     if (hayPendientes) {
-      throw new Error("Aún hay pagos pendientes");
+      throw new Error(
+        "Aún hay pagos pendientes en titulares"
+      );
     }
-
-    /* =========================
-       CIERRE DEFINITIVO
-    ========================= */
 
     tx.update(matchRef, {
       estado: "cerrado",
+      lock: true,
+      nextDeadlineAt: null,
+    });
+  });
+}
+
+/* =========================
+   ELIMINAR MATCH
+   (soft delete)
+========================= */
+
+async function eliminarMatch(matchId, adminId) {
+  const ref = db.collection("matches").doc(matchId);
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) {
+      throw new Error("Match no existe");
+    }
+
+    const match = snap.data();
+
+    if (match.estado === "jugado") {
+      throw new Error("No se puede eliminar un match ya jugado");
+    }
+
+    if (match.estado === "eliminado") {
+      return;
+    }
+
+    tx.update(ref, {
+      estado: "eliminado",
       lock: true,
       nextDeadlineAt: null,
     });
@@ -262,4 +305,5 @@ module.exports = {
   eliminarJugador,
   cerrarMatch,
   reincorporarJugador,
+  eliminarMatch,
 };

@@ -21,3 +21,5 @@ exports.eliminarJugador = require("./callables/eliminarJugador");
 exports.reincorporarJugador = require("./callables/reincorporarJugador");
 exports.cerrarMatch = require("./callables/cerrarMatch");
 exports.reabrirMatch = require("./callables/reabrirMatch");
+exports.eliminarMatch = require("./callables/eliminarMatch");
+

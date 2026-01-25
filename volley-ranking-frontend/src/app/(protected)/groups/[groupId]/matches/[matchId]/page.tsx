@@ -23,6 +23,8 @@ const functions = getFunctions(app);
 const getFormaciones = httpsCallable(functions, "getFormaciones");
 const joinMatch = httpsCallable(functions, "joinMatch");
 const leaveMatch = httpsCallable(functions, "leaveMatch");
+const cerrarMatchFn = httpsCallable(functions, "cerrarMatch");
+const eliminarMatchFn = httpsCallable(functions, "eliminarMatch");
 const updatePagoEstadoFn = httpsCallable(
   functions,
   "updatePagoEstado"
@@ -36,6 +38,49 @@ const reincorporarJugadorFn = httpsCallable(
   "reincorporarJugador"
 );
 
+/* =====================
+   BADGES ESTADO MATCH
+===================== */
+
+function MatchStatusBadge({ estado }: any) {
+  if (estado === "abierto") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+        🟢 Abierto
+      </span>
+    );
+  }
+  if (estado === "verificando") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-700">
+        ✔️ Verificando
+      </span>
+    );
+  }
+  if (estado === "cerrado") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+        🔒 Cerrado
+      </span>
+    );
+  }
+  if (estado === "eliminado") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
+        ❌ Eliminado
+      </span>
+    );
+  }
+  if (estado === "jugado") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
+        ✅ Jugado
+      </span>
+    );
+  }
+
+  return null;
+}
 
 /* =====================
    Types
@@ -260,7 +305,6 @@ export default function MatchDetailPage() {
   const isEliminado = myParticipation?.estado === "eliminado";
   const isJoined = !!myParticipation && myParticipation.estado !== "eliminado";
 
-
   const handleToggleParticipation = async () => {
     if (!match || !firebaseUser) return;
     if (isJoined) {
@@ -363,12 +407,39 @@ export default function MatchDetailPage() {
     (p) => p.estado === "eliminado"
   );
 
+  /* =====================
+     PAGOS PENDIENTES
+  ===================== */
+
+  const titularesConPagoPendiente = titulares.filter(
+    (p) =>
+      p.pagoEstado !== "confirmado" &&
+      p.pagoEstado !== "pospuesto"
+  );
+
+  const hayPagosPendientes = titularesConPagoPendiente.length > 0;
+
+  const accionesJugadorBloqueadas =
+  match.estado !== "abierto";
+
+  const handleCerrarMatch = async () => {
+    await cerrarMatchFn({ matchId: match.id });
+  };
+
+  const handleEliminarMatch = async () => {
+    if (!confirm("¿Eliminar el match? No se jugará.")) return;
+    await eliminarMatchFn({ matchId: match.id });
+  };
+
 
   /* =====================
      Render
   ===================== */
   return (
   <main className="max-w-4xl mx-auto mt-10 space-y-8">
+
+    {/* ================== TITULO ================== */}
+
     <div>
       <div className="flex items-center gap-2">
         <h1 className="text-3xl font-bold">
@@ -383,22 +454,31 @@ export default function MatchDetailPage() {
       )}
     </div>
 
+    {/* ================= DETALLES ================= */}
+
     <section className="border rounded p-4 space-y-2">
+      <p className="flex items-center gap-2">
+        <span className="flex-1">
+          <b>Inicio:</b>{" "}
+          <span className="font-medium">
+            {match.horaInicio
+              ? match.horaInicio.toLocaleString("es-AR", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "Sin definir"}
+          </span>
+        </span>
+
+        <MatchStatusBadge estado={match.estado} />
+      </p>
+
       <p><b>Formación:</b> {match.formacion}</p>
       <p><b>Equipos:</b> {match.cantidadEquipos}</p>
       <p><b>Suplentes:</b> {match.cantidadSuplentes}</p>
-      <p>
-        <b>Inicio:</b>{" "}
-        {match.horaInicio
-          ? match.horaInicio.toLocaleString("es-AR", {
-              weekday: "long",
-              day: "2-digit",
-              month: "2-digit",
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "—"}
-      </p>
     </section>
 
     {/* =============== EDITAR MATCH =============== */}
@@ -585,6 +665,14 @@ export default function MatchDetailPage() {
           })}
         </div>
       )}
+
+      {match.estado === "verificando" && hayPagosPendientes && (
+        <p className="mt-2 text-sm text-red-600">
+          Todos los titulares deben tener un pago confirmado o pospuesto
+          para cerrar el match.
+        </p>
+      )}
+
     </section>
 
     {/* ================= SUPLENTES ================= */}
@@ -636,7 +724,7 @@ export default function MatchDetailPage() {
       )}
     </section>
 
-    {/* ================= ELIMINADOS ================= */}
+    {/* ================= ELIMINADOS ================ */}
 
     <section>
       <h2 className="text-xl font-semibold mb-4">
@@ -684,6 +772,8 @@ export default function MatchDetailPage() {
       )}
     </section>
 
+    {/* ================== ACCIONES ================= */}
+
     <section className="border-t pt-6">
       <h2 className="text-xl font-semibold mb-3">
         Acciones
@@ -691,38 +781,63 @@ export default function MatchDetailPage() {
       <div className="flex gap-3 pt-2">
         <button
           onClick={handleToggleParticipation}
-          disabled={isEliminado}
+          disabled={isEliminado || accionesJugadorBloqueadas}
           className={`px-4 py-2 rounded ${
-            isEliminado
+            isEliminado || accionesJugadorBloqueadas
               ? "bg-gray-300 text-gray-500 cursor-not-allowed"
               : isJoined
               ? "border border-red-500 text-red-500"
               : "bg-green-600 text-white"
           }`}
         >
-          {isEliminado
-            ? "Eliminado"
+          {accionesJugadorBloqueadas
+            ? "No disponible"
             : isJoined
             ? "Desunirme"
             : "Unirme"}
         </button>
 
         {isAdmin && (
-          <div className="flex gap-4">
+          <div className="flex gap-3">
+            {/* ELIMINAR MATCH */}
+            <button
+              onClick={handleEliminarMatch}
+              disabled={["eliminado", "jugado"].includes(match.estado)}
+              className="border border-red-600 text-red-600 px-4 py-2 rounded disabled:opacity-50"
+            >
+              Eliminar match
+            </button>
+
+            {/* CIERRE / CONFIRMACIÓN */}
             {match.estado === "abierto" && (
-              <button className="bg-black text-white px-4 py-2 rounded">
+              <button
+                onClick={handleCerrarMatch}
+                className="bg-black text-white px-4 py-2 rounded"
+              >
                 Cerrar match
               </button>
             )}
-            {match.estado !== "abierto" && (
-              <button className="border px-4 py-2 rounded">
-                Reabrir
+
+            {match.estado === "verificando" && (
+              <button
+                onClick={handleCerrarMatch}
+                disabled={hayPagosPendientes}
+                className={`px-4 py-2 rounded ${
+                  hayPagosPendientes
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-green-600 text-white"
+                }`}
+              >
+                Confirmar cierre
               </button>
             )}
           </div>
         )}
+
       </div>
     </section>
+
+    {/* ================ MODAL PAGOS ================ */}
 
     {pagoModal && (
       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">

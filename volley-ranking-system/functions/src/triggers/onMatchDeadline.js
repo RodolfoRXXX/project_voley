@@ -1,6 +1,4 @@
 // schedulers/onMatchDeadline.js
-// Evento 6 — Deadline automático (3 horas antes)
-
 const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 
@@ -10,51 +8,43 @@ exports.onMatchDeadline = functions.pubsub
   .schedule("every 5 minutes")
   .timeZone("America/Argentina/Buenos_Aires")
   .onRun(async () => {
-    console.log("⏱️ Verificando deadlines de matches...");
-
     const now = admin.firestore.Timestamp.now();
 
     const matchesSnap = await db
       .collection("matches")
       .where("estado", "==", "abierto")
-      .where("deadlineProcesado", "==", false)
+      .where("nextDeadlineAt", "<=", now)
       .get();
 
     for (const doc of matchesSnap.docs) {
       const match = doc.data();
-      const matchId = doc.id;
+      const matchRef = doc.ref;
 
-      if (!match.horaInicio) continue;
+      // 🔒 no tocar si está bloqueado
+      if (match.lock === true) continue;
 
-      const deadline = admin.firestore.Timestamp.fromMillis(
-        match.horaInicio.toMillis() - 3 * 60 * 60 * 1000
-      );
+      const stage = match.deadlineStage ?? 1;
 
-      if (now.toMillis() >= deadline.toMillis()) {
-        console.log(`⏰ Deadline alcanzado para match ${matchId}`);
+      // 🛑 si ya agotó los deadlines
+      if (stage > 3) continue;
 
-        // 1️⃣ Detectar pagos pendientes
-        const participationsSnap = await db
-          .collection("participations")
-          .where("matchId", "==", matchId)
-          .where("estado", "==", "titular")
-          .where("pagoEstado", "==", "pendiente")
-          .get();
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(matchRef);
+        if (!snap.exists) return;
 
-        console.log(
-          `💰 ${participationsSnap.size} pagos pendientes en match ${matchId}`
-        );
+        const fresh = snap.data();
+        if (fresh.estado !== "abierto") return;
+        if (fresh.lock === true) return;
 
-        // 2️⃣ Actualizar match
-        await doc.ref.update({
-          estado: "pagos_pendientes",
-          deadlineProcesado: true,
+        tx.update(matchRef, {
+          estado: "verificando",
         });
+      });
 
-        // 👉 Acá solo notificaciones (dashboard, mail, etc)
-      }
+      console.log(
+        `⏰ Match ${doc.id} → verificando (stage ${stage})`
+      );
     }
 
     return null;
   });
-

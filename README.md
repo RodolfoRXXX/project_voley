@@ -54,7 +54,7 @@ Es un evento puntual.
 match {
   groupId
   creadoPor
-  estado: "abierto" | "pagos_pendientes" | "jugado" | "eliminado"
+  estado: "abierto" | "verificando" | "jugado" | "cerrado" | "eliminado"
   horaInicio: Timestamp
   posicionesObjetivo: {
     central: 2,
@@ -180,7 +180,7 @@ horaInicio - 3hs
 
 Acciones:
 
-estado → pagos_pendientes
+estado → verificando
 
 deadlineProcesado → true
 
@@ -290,7 +290,7 @@ Lineamientos principales
 
 1) el home contiene el boton de iniciar sesion con google, si el usuario ya tiene cuenta entonces ingresó y puede anotarse a los matches, si no está registrado, salta una venta onboarding que pregunta el rol que desea(player|admin) y las tres posiciones preferidas por orden de importancia(central|armador|opuesto|punta|libero) y luego de registrarse le permite unirse a los matches.
 
-2) un admin crea groups que muestra el estado activo del mismo, quien lo creo, su descripcion, el nombre, ademas de q se guarda en la variable partidosTotales la cantidad de partidos jugados de ese grupo. Desde un group se pueden crear matches, estos matches dicen quien lo creo, su estado(abierto|pagos_pendientes|jugado|eliminado), a que group pertenecen, su horaInicio(de esta informacion se saca la fecha y la hora de inicio), un array con las posicionesObjetivo, que son las posiciones de jugadores necesarias y que cantidad, el deadlineProcesado(true|false) que indica si ya paso el deadline o no.
+2) un admin crea groups que muestra el estado activo del mismo, quien lo creo, su descripcion, el nombre, ademas de q se guarda en la variable partidosTotales la cantidad de partidos jugados de ese grupo. Desde un group se pueden crear matches, estos matches dicen quien lo creo, su estado(abierto|verificando| cerrado | jugado|eliminado), a que group pertenecen, su horaInicio(de esta informacion se saca la fecha y la hora de inicio), un array con las posicionesObjetivo, que son las posiciones de jugadores necesarias y que cantidad, el deadlineProcesado(true|false) que indica si ya paso el deadline o no.
 
 3) cuando un jugador se une a un match, el sistema crea un documento en la coleccion participations con su estado(pendiente|titular|suplente), el matchId, el puntaje(que ya vimos como lo calcula), la posicionAsignada(el sistema la asigna de acuerdo a las opciones preferidas del jugador, si la primera opción es central, busca en el listado de titulares si hay lugares libres para central, si hay entonces lo ubica en el ranking de acuerdo a su puntaje, si no hay, busca en la segunda opción o en la tercera, en el caso de que las tres posiciones preferidas del jugador esten completas en el ranking de titulares, se lo coloca como suplente en una posicion de ranking de suplentes q depende de su puntaje), y el ranking, ya sea este titular o suplente. Despues hay otras variables como pagoEstado(pendiente|pospuesto|confirmado, q esta informacion la define el admin.
 
@@ -303,3 +303,153 @@ Lineamientos principales
 7) el match se cierra cuando se pasa del deadline y cuando la condicion de pago de todos en el listado es de pago confirmado o pago pospuesto.
 
 8) cuando se alcance la fecha y hora de la variable horaInicio entonces el sistema suma +1 a la variable del group "partidosTotales".
+
+
+
+1️⃣ LÓGICA FINAL DEL CIERRE DE MATCH (VERSIÓN CONSOLIDADA)
+🧩 Estados reales del match
+
+El estado del match sí necesita más de 3 valores, y está bien así:
+
+abierto
+verificando
+cerrado
+jugado
+eliminado
+
+
+verificando NO es solo visual, tiene reglas propias.
+
+🔓 Estado: ABIERTO
+Qué se puede
+
+Jugadores:
+
+unirse
+
+desunirse
+
+Admin:
+
+editar match
+
+eliminar jugadores
+
+cerrar match (manual)
+
+eliminar match
+
+Cómo se sale
+
+📅 Automáticamente por deadline (3h / 2h / 1h)
+
+👑 Manualmente si el admin intenta cerrar
+
+➡️ En ambos casos:
+
+estado → verificando
+
+🔎 Estado: VERIFICANDO
+Cómo se entra
+
+Deadline alcanzado (automático)
+
+Admin intenta cerrar match manualmente
+
+Qué se puede
+
+👑 Solo admin:
+
+eliminar jugadores
+
+revisar pagos
+
+cerrar match (si pagos OK)
+
+volver a abrir el match
+
+eliminar el match
+
+Qué NO se puede
+
+❌ jugadores:
+
+unirse
+
+desunirse
+
+❌ edición del match
+
+Eliminación en verificando
+
+Admin elimina un titular
+
+El sistema:
+
+busca suplente válido
+
+recalcula puntaje
+
+recalcula ranking
+
+promueve suplente a titular
+
+✔️ exactamente como ya tenés hoy
+
+Condición para cerrar
+
+✔️ TODOS los jugadores deben tener:
+
+pagoEstado === confirmado || pospuesto
+
+
+Si no se cumple:
+
+❌ no se puede cerrar
+
+se muestra el motivo
+
+🔒 Estado: CERRADO
+Qué implica
+
+Lista definitiva de jugadores
+
+No hay modificaciones
+
+Se habilita:
+
+Armar equipos
+
+Transición automática
+
+⏰ Cuando llega horaInicio:
+
+cerrado → jugado
+
+🏁 Estado: JUGADO
+Qué pasa
+
+El match ocurrió
+
+El sistema:
+
+suma +1 a:
+
+users.estadoCompromiso
+
+groups.partidosTotales
+
+No hay más acciones
+
+❌ Estado: ELIMINADO
+Qué implica
+
+El partido no se juega
+
+No se borra el match
+
+No se recalcula nada
+
+No se suma compromiso
+
+Estado final

@@ -30,7 +30,7 @@ module.exports = functions.firestore
         return;
       }
 
-      if (match.estado !== "pagos_pendientes") return;
+      if (match.estado !== "verificando") return;
 
       const participationsSnap = await tx.get(
         db
@@ -48,12 +48,6 @@ module.exports = functions.firestore
       });
 
       if (hayPendientes) return;
-
-      // 🔐 ACTIVAR LOCK + CIERRE
-      tx.update(matchRef, {
-        estado: "cerrado",
-        lock: true,
-      });
 
       console.log(`🔒 Match ${matchId} cerrado con lock`);
     });

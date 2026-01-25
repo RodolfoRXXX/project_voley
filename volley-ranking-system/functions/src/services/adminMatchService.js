@@ -1,7 +1,11 @@
 // functions/src/services/adminMatchService.js
 
 const { initializeApp, getApps } = require("firebase-admin/app");
-const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const {
+  getFirestore,
+  FieldValue,
+  Timestamp,
+} = require("firebase-admin/firestore");
 
 if (!getApps().length) {
   initializeApp();
@@ -9,6 +13,14 @@ if (!getApps().length) {
 
 const db = getFirestore();
 const { recalcularRanking } = require("./rankingService");
+
+function calcularDeadline(horaInicio, stage = 1) {
+  const horas = stage === 1 ? 3 : stage === 2 ? 2 : 1;
+
+  return Timestamp.fromMillis(
+    horaInicio.toMillis() - horas * 60 * 60 * 1000
+  );
+}
 
 /* =========================
    CREAR MATCH
@@ -21,29 +33,40 @@ async function crearMatch({
   horaInicio,
   cantidadEquipos,
   formacion,
-  posicionesBase, // ej: { central:2, armador:1, opuesto:1, punta:2 }
+  posicionesBase,
   cantidadSuplentes,
 }) {
   const posicionesObjetivo = {};
 
-  // multiplicar por cantidadEquipos
   for (const pos in posicionesBase) {
     posicionesObjetivo[pos] =
       posicionesBase[pos] * cantidadEquipos;
   }
 
+  // 🕒 DEADLINE INICIAL
+  const deadlineStage = 1;
+  const nextDeadlineAt = calcularDeadline(horaInicio, deadlineStage);
+
   await db.collection("matches").doc(matchId).set({
     groupId,
     adminId,
+
     estado: "abierto",
-    horaInicio, // Timestamp válido
+
+    horaInicio,
     cantidadEquipos,
     formacion,
     posicionesObjetivo,
     cantidadSuplentes,
-    deadlineProcesado: false,
+
+    // ⏱️ DEADLINES
+    deadlineStage,
+    nextDeadlineAt,
+
+    // 🔒 LOCK
     lock: false,
-    createdAt: FieldValue.serverTimestamp(), // ✅ AHORA SÍ
+
+    createdAt: FieldValue.serverTimestamp(),
   });
 }
 
@@ -71,31 +94,6 @@ async function actualizarMatch(matchId, cambios) {
 
   // 🔁 recalcular ranking SIEMPRE
   await recalcularRanking(matchId);
-}
-
-/* =========================
-   REABRIR MATCH (antes de horaInicio)
-========================= */
-
-async function reabrirMatch(matchId) {
-  const ref = db.collection("matches").doc(matchId);
-
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists) return;
-
-    const match = snap.data();
-    const now = admin.firestore.Timestamp.now();
-
-    if (now.toMillis() >= match.horaInicio.toMillis()) {
-      throw new Error("No se puede reabrir");
-    }
-
-    tx.update(ref, {
-      estado: "abierto",
-      deadlineProcesado: false,
-    });
-  });
 }
 
 /* =========================
@@ -165,21 +163,66 @@ async function reincorporarJugador(participationId) {
 }
 
 /* =========================
-   CIERRE MANUAL (opcional)
+   REABRIR MATCH
+   (solo desde "verificando" y antes de horaInicio)
 ========================= */
 
-async function cerrarMatch(matchId) {
+async function reabrirMatch(matchId) {
+  const ref = db.collection("matches").doc(matchId);
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) return;
+
+    const match = snap.data();
+    const now = Timestamp.now();
+
+    // ⛔ No reabrir si ya empezó el partido
+    if (!match.horaInicio || now.toMillis() >= match.horaInicio.toMillis()) {
+      throw new Error("No se puede reabrir después del inicio");
+    }
+
+    // ⛔ Solo desde verificando
+    if (match.estado !== "verificando") {
+      throw new Error("El match no está en estado verificando");
+    }
+
+    // 🔁 Avanzar etapa de deadline (máx 3)
+    const currentStage = match.deadlineStage ?? 1;
+    const nextStage = Math.min(currentStage + 1, 3);
+
+    tx.update(ref, {
+      estado: "abierto",
+      deadlineStage: nextStage,
+      nextDeadlineAt: calcularDeadline(match.horaInicio, nextStage),
+      lock: false,
+    });
+  });
+}
+
+/* =========================
+   CIERRE MANUAL / FINAL
+========================= */
+
+async function cerrarMatch(matchId, adminId) {
   const matchRef = db.collection("matches").doc(matchId);
 
   await db.runTransaction(async (tx) => {
     const matchSnap = await tx.get(matchRef);
-    if (!matchSnap.exists) throw new Error("Match no existe");
+    if (!matchSnap.exists) {
+      throw new Error("Match no existe");
+    }
 
     const match = matchSnap.data();
 
-    if (match.estado !== "pagos_pendientes") {
-      throw new Error("Match no está listo para cerrar");
+    // ⛔ Solo desde verificando
+    if (match.estado !== "verificando") {
+      throw new Error("Match no está en estado verificando");
     }
+
+    /* =========================
+       VALIDAR PAGOS
+    ========================= */
 
     const participationsSnap = await tx.get(
       db.collection("participations")
@@ -187,7 +230,7 @@ async function cerrarMatch(matchId) {
         .where("estado", "==", "titular")
     );
 
-    const pendientes = participationsSnap.docs.filter((d) => {
+    const hayPendientes = participationsSnap.docs.some((d) => {
       const p = d.data();
       return (
         p.pagoEstado !== "confirmado" &&
@@ -195,13 +238,18 @@ async function cerrarMatch(matchId) {
       );
     });
 
-    if (pendientes.length > 0) {
+    if (hayPendientes) {
       throw new Error("Aún hay pagos pendientes");
     }
 
+    /* =========================
+       CIERRE DEFINITIVO
+    ========================= */
+
     tx.update(matchRef, {
       estado: "cerrado",
-      closedAt: admin.firestore.FieldValue.serverTimestamp(),
+      lock: true,
+      nextDeadlineAt: null,
     });
   });
 }
@@ -213,4 +261,5 @@ module.exports = {
   actualizarPago,
   eliminarJugador,
   cerrarMatch,
+  reincorporarJugador,
 };

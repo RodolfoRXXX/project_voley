@@ -387,7 +387,21 @@ export default function MatchDetailPage() {
       <p><b>Formación:</b> {match.formacion}</p>
       <p><b>Equipos:</b> {match.cantidadEquipos}</p>
       <p><b>Suplentes:</b> {match.cantidadSuplentes}</p>
+      <p>
+        <b>Inicio:</b>{" "}
+        {match.horaInicio
+          ? match.horaInicio.toLocaleString("es-AR", {
+              weekday: "long",
+              day: "2-digit",
+              month: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "—"}
+      </p>
     </section>
+
+    {/* =============== EDITAR MATCH =============== */}
 
     {isAdmin && match.estado !== "jugado" && (
       <section className="border rounded p-4 space-y-4">
@@ -480,6 +494,8 @@ export default function MatchDetailPage() {
         )}
       </section>
     )}
+
+    {/* ============ CUPOS POR POSICION ============ */}
 
     <section>
       <h2 className="text-xl font-semibold mb-4">

@@ -11,6 +11,54 @@ import { db, app } from "@/lib/firebase";
 import Link from "next/link";
 import { getFunctions, httpsCallable } from "firebase/functions";
 
+/* =====================
+     BADGE ESTADO
+  ===================== */
+
+function MatchStatusBadge({ estado }: { estado: string }) {
+  if (estado === "abierto") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+        🟢 Abierto
+      </span>
+    );
+  }
+  if (estado === "verificando") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-700">
+        ✔️ Verificando
+      </span>
+    );
+  }
+  if (estado === "cerrado") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+        🔒 Cerrado
+      </span>
+    );
+  }
+  if (estado === "eliminado") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
+        ❌ Eliminado
+      </span>
+    );
+  }
+  if (estado === "jugado") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
+        ✅ Jugado
+      </span>
+    );
+  }
+
+  return null;
+}
+
+/* =====================
+     FUNCTION
+  ===================== */
+
 export default function MatchCard({
   match,
   userId,
@@ -22,7 +70,6 @@ export default function MatchCard({
 }) {
   const [titulares, setTitulares] = useState(0);
   const [suplentes, setSuplentes] = useState(0);
-  const [yaAnotado, setYaAnotado] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
   const [miParticipacion, setMiParticipacion] = useState<any | null>(null);
 
@@ -40,6 +87,7 @@ export default function MatchCard({
 
   const isEliminado = miParticipacion?.estado === "eliminado";
   const isJoined = !!miParticipacion && miParticipacion.estado !== "eliminado";
+  const accionesBloqueadas = match.estado !== "abierto";
 
 
   /* =====================
@@ -80,6 +128,7 @@ export default function MatchCard({
   /* =====================
      Join / Leave
   ===================== */
+
   const handleToggleParticipation = async () => {
     if (!userId || loadingAction) return;
 
@@ -98,8 +147,16 @@ export default function MatchCard({
     }
   };
 
+  /* =====================
+     RENDER
+  ===================== */
+
   return (
-    <div className="border rounded p-4 space-y-2">
+    <div className="relative border rounded p-4 space-y-2">
+        {/* BADGE ESTADO */}
+      <div className="absolute top-2 right-2">
+        <MatchStatusBadge estado={match.estado} />
+      </div>
       <p className="font-semibold">
         <b>{groupNombre ?? "—"}</b>
       </p>
@@ -127,18 +184,21 @@ export default function MatchCard({
           onClick={handleToggleParticipation}
           disabled={
             loadingAction ||
+            accionesBloqueadas ||
             isEliminado ||
             (!isJoined && lleno)
           }
           className={`px-4 py-2 rounded transition ${
-            isEliminado
+            accionesBloqueadas || isEliminado
               ? "bg-gray-300 text-gray-500 cursor-not-allowed"
               : isJoined
               ? "border border-red-500 text-red-500"
               : "bg-green-600 text-white"
           } disabled:opacity-50`}
         >
-          {isEliminado
+          {accionesBloqueadas
+            ? "No disponible"
+            : isEliminado
             ? "Eliminado"
             : isJoined
             ? "Desunirme"

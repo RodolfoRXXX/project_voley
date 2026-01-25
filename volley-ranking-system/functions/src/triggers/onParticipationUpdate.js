@@ -74,7 +74,13 @@ module.exports = functions.firestore
       await db.runTransaction(async (tx) => {
         const snap = await tx.get(matchRef);
         if (!snap.exists) throw new Error("Match no existe");
-        if (snap.data().lock) throw new Error("Match bloqueado");
+        if (snap.data().lock) {
+          console.log(
+            `🔒 Match ${after.matchId} bloqueado. Se ignora reemplazo`
+          );
+          return;
+        }
+
         tx.update(matchRef, { lock: true });
       });
 

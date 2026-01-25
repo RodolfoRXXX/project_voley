@@ -37,10 +37,10 @@ function MatchStatusBadge({ estado }: { estado: string }) {
       </span>
     );
   }
-  if (estado === "eliminado") {
+  if (estado === "cancelado") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
-        ❌ Eliminado
+        ❌ Cancelado
       </span>
     );
   }

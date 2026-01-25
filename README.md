@@ -54,7 +54,7 @@ Es un evento puntual.
 match {
   groupId
   creadoPor
-  estado: "abierto" | "verificando" | "jugado" | "cerrado" | "eliminado"
+  estado: "abierto" | "verificando" | "jugado" | "cerrado" | "cancelado"
   horaInicio: Timestamp
   posicionesObjetivo: {
     central: 2,
@@ -290,7 +290,7 @@ Lineamientos principales
 
 1) el home contiene el boton de iniciar sesion con google, si el usuario ya tiene cuenta entonces ingresó y puede anotarse a los matches, si no está registrado, salta una venta onboarding que pregunta el rol que desea(player|admin) y las tres posiciones preferidas por orden de importancia(central|armador|opuesto|punta|libero) y luego de registrarse le permite unirse a los matches.
 
-2) un admin crea groups que muestra el estado activo del mismo, quien lo creo, su descripcion, el nombre, ademas de q se guarda en la variable partidosTotales la cantidad de partidos jugados de ese grupo. Desde un group se pueden crear matches, estos matches dicen quien lo creo, su estado(abierto|verificando| cerrado | jugado|eliminado), a que group pertenecen, su horaInicio(de esta informacion se saca la fecha y la hora de inicio), un array con las posicionesObjetivo, que son las posiciones de jugadores necesarias y que cantidad, el deadlineProcesado(true|false) que indica si ya paso el deadline o no.
+2) un admin crea groups que muestra el estado activo del mismo, quien lo creo, su descripcion, el nombre, ademas de q se guarda en la variable partidosTotales la cantidad de partidos jugados de ese grupo. Desde un group se pueden crear matches, estos matches dicen quien lo creo, su estado(abierto|verificando| cerrado | jugado|cancelado), a que group pertenecen, su horaInicio(de esta informacion se saca la fecha y la hora de inicio), un array con las posicionesObjetivo, que son las posiciones de jugadores necesarias y que cantidad, el deadlineProcesado(true|false) que indica si ya paso el deadline o no.
 
 3) cuando un jugador se une a un match, el sistema crea un documento en la coleccion participations con su estado(pendiente|titular|suplente), el matchId, el puntaje(que ya vimos como lo calcula), la posicionAsignada(el sistema la asigna de acuerdo a las opciones preferidas del jugador, si la primera opción es central, busca en el listado de titulares si hay lugares libres para central, si hay entonces lo ubica en el ranking de acuerdo a su puntaje, si no hay, busca en la segunda opción o en la tercera, en el caso de que las tres posiciones preferidas del jugador esten completas en el ranking de titulares, se lo coloca como suplente en una posicion de ranking de suplentes q depende de su puntaje), y el ranking, ya sea este titular o suplente. Despues hay otras variables como pagoEstado(pendiente|pospuesto|confirmado, q esta informacion la define el admin.
 
@@ -315,7 +315,7 @@ abierto
 verificando
 cerrado
 jugado
-eliminado
+cancelado
 
 
 verificando NO es solo visual, tiene reglas propias.
@@ -441,7 +441,7 @@ groups.partidosTotales
 
 No hay más acciones
 
-❌ Estado: ELIMINADO
+❌ Estado: cancelado
 Qué implica
 
 El partido no se juega

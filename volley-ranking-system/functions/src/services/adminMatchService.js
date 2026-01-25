@@ -285,12 +285,12 @@ async function eliminarMatch(matchId, adminId) {
       throw new Error("No se puede eliminar un match ya jugado");
     }
 
-    if (match.estado === "eliminado") {
+    if (match.estado === "cancelado") {
       return;
     }
 
     tx.update(ref, {
-      estado: "eliminado",
+      estado: "cancelado",
       lock: true,
       nextDeadlineAt: null,
     });

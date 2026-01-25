@@ -65,10 +65,10 @@ function MatchStatusBadge({ estado }: any) {
       </span>
     );
   }
-  if (estado === "eliminado") {
+  if (estado === "cancelado") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
-        ❌ Eliminado
+        ❌ Cancelado
       </span>
     );
   }
@@ -808,7 +808,7 @@ export default function MatchDetailPage() {
             {/* ELIMINAR MATCH */}
             <button
               onClick={handleEliminarMatch}
-              disabled={["eliminado", "jugado"].includes(match.estado)}
+              disabled={["cancelado", "jugado"].includes(match.estado)}
               className="border border-red-600 text-red-600 px-4 py-2 rounded disabled:opacity-50"
             >
               Eliminar match

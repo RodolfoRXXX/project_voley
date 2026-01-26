@@ -88,6 +88,7 @@ function MatchStatusBadge({ estado }: any) {
 ===================== */
 type Match = {
   id: string;
+  adminId: string,
   estado: string;
   horaInicio: Date | null;
   formacion: string;
@@ -141,6 +142,7 @@ export default function MatchDetailPage() {
   const [editMode, setEditMode] = useState(false);
   const [usersMap, setUsersMap] = useState<Record<string, any>>({});
   const [pagoModal, setPagoModal] = useState<null | any>(null);
+  const [adminUser, setAdminUser] = useState<any | null>(null);
 
   const [formaciones, setFormaciones] = useState<
     Record<string, Record<string, number>>
@@ -218,6 +220,7 @@ export default function MatchDetailPage() {
       const data = snap.data();
       setMatch({
         id: snap.id,
+        adminId: data.adminId,
         estado: data.estado,
         formacion: data.formacion,
         cantidadEquipos: data.cantidadEquipos,
@@ -240,6 +243,22 @@ export default function MatchDetailPage() {
 
     return () => unsub();
   }, [matchId, router]);
+
+  /* =====================
+   Admin del match
+===================== */
+useEffect(() => {
+  if (!match?.adminId) return;
+
+  const ref = doc(db, "users", match.adminId);
+
+  const unsub = onSnapshot(ref, (snap) => {
+    if (!snap.exists()) return;
+    setAdminUser(snap.data());
+  });
+
+  return () => unsub();
+}, [match?.adminId]);
 
   /* =====================
      Group load
@@ -433,7 +452,7 @@ export default function MatchDetailPage() {
   };
 
   const handleEliminarMatch = async () => {
-    if (!confirm("¿Eliminar el match? No se jugará.")) return;
+    if (!confirm("¿Cancelar el juego? No se jugará.")) return;
     await eliminarMatchFn({ matchId: match.id });
   };
 
@@ -485,6 +504,30 @@ export default function MatchDetailPage() {
       <p><b>Formación:</b> {match.formacion}</p>
       <p><b>Equipos:</b> {match.cantidadEquipos}</p>
       <p><b>Suplentes:</b> {match.cantidadSuplentes}</p>
+      {adminUser && (
+        <div className="flex items-center gap-3 pt-3 border-t">
+          {adminUser.photoURL ? (
+            <img
+              src={adminUser.photoURL}
+              alt={adminUser.nombre}
+              className="w-10 h-10 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-sm">
+              👤
+            </div>
+          )}
+
+          <div className="text-sm">
+            <p className="font-medium">
+              {adminUser.nombre || "Admin"}
+            </p>
+            <p className="text-gray-500 text-xs">
+              Admin del match
+            </p>
+          </div>
+        </div>
+      )}
     </section>
 
     {/* =============== EDITAR MATCH =============== */}
@@ -805,13 +848,13 @@ export default function MatchDetailPage() {
 
         {isAdmin && (
           <div className="flex gap-3">
-            {/* ELIMINAR MATCH */}
+            {/* CANCELAR MATCH */}
             <button
               onClick={handleEliminarMatch}
               disabled={["cancelado", "jugado"].includes(match.estado)}
               className="border border-red-600 text-red-600 px-4 py-2 rounded disabled:opacity-50"
             >
-              Eliminar match
+              Cancelar Juego
             </button>
 
             {/* CIERRE / CONFIRMACIÓN */}

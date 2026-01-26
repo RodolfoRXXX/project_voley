@@ -266,7 +266,7 @@ async function cerrarMatch(matchId, adminId) {
 }
 
 /* =========================
-   ELIMINAR MATCH
+   CANCELAR MATCH
    (soft delete)
 ========================= */
 

@@ -6,6 +6,7 @@ import {
   onSnapshot,
   query,
   where,
+  doc,
 } from "firebase/firestore";
 import { db, app } from "@/lib/firebase";
 import Link from "next/link";
@@ -72,6 +73,7 @@ export default function MatchCard({
   const [suplentes, setSuplentes] = useState(0);
   const [loadingAction, setLoadingAction] = useState(false);
   const [miParticipacion, setMiParticipacion] = useState<any | null>(null);
+  const [adminUser, setAdminUser] = useState<any | null>(null);
 
   const valores: number[] = Object.values(match.posicionesObjetivo || {});
   const titularesTotales = valores.reduce(
@@ -126,6 +128,22 @@ export default function MatchCard({
   }, [match.id, userId]);
 
   /* =====================
+   Admin del match
+===================== */
+useEffect(() => {
+  if (!match?.adminId) return;
+
+  const ref = doc(db, "users", match.adminId);
+
+  const unsub = onSnapshot(ref, (snap) => {
+    if (!snap.exists()) return;
+    setAdminUser(snap.data());
+  });
+
+  return () => unsub();
+}, [match.adminId]);
+
+  /* =====================
      Join / Leave
   ===================== */
 
@@ -160,6 +178,19 @@ export default function MatchCard({
       <p className="font-semibold">
         <b>{groupNombre ?? "—"}</b>
       </p>
+
+      {adminUser && (
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <img
+            src={adminUser.photoURL || "/avatar-default.png"}
+            alt={adminUser.nombre}
+            className="w-6 h-6 rounded-full object-cover"
+          />
+          <span>
+            Admin: <b>{adminUser.nombre}</b>
+          </span>
+        </div>
+      )}
 
       <p className="text-sm text-gray-500">
         Formación – {match.formacion}

@@ -1,7 +1,18 @@
+
+"use client";
+
+import ProfileHeader from "@/components/profile/ProfileHeader";
+import { useAuth } from "@/hooks/useAuth";
+
 export default function ProfilePage() {
+  const { userDoc, loading } = useAuth();
+
+  if (loading || !userDoc) return <p>Cargando...</p>;
+
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-bold">Mi perfil</h1>
+    <main className="max-w-4xl mx-auto mt-10 space-y-8">
+      <ProfileHeader user={userDoc} />
     </main>
   );
 }
+

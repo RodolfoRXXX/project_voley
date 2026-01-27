@@ -4,6 +4,7 @@
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useAuth } from "@/hooks/useAuth";
 import ProfileGame from "@/components/profile/profileGame";
+import ProfileMatches from "@/components/profile/ProfileMatches";
 
 export default function ProfilePage() {
   const { userDoc, loading } = useAuth();
@@ -21,6 +22,10 @@ export default function ProfilePage() {
       <ProfileGame
         posicionesPreferidas={userDoc.posicionesPreferidas || []}
       />
+
+      {/* Profile Matches */}
+
+      <ProfileMatches />
     </main>
   );
 }

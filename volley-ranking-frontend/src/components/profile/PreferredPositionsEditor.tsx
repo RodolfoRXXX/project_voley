@@ -10,6 +10,7 @@ type Props = {
 };
 
 export default function PreferredPositionsEditor({ initial }: Props) {
+  const [savedPositions, setSavedPositions] = useState<string[]>(initial);
   const [positions, setPositions] = useState<string[]>(initial);
   const [allPositions, setAllPositions] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
@@ -32,6 +33,7 @@ export default function PreferredPositionsEditor({ initial }: Props) {
   ===================== */
   useEffect(() => {
     setPositions(initial);
+    setSavedPositions(initial);
   }, [initial]);
 
   /* =====================
@@ -64,18 +66,14 @@ export default function PreferredPositionsEditor({ initial }: Props) {
   };
 
   const save = async () => {
-    if (positions.length < 1 || saving) return;
+    if (positions.length < 1) return;
 
-    try {
-      setSaving(true);
-      await updateFn({ posiciones: positions });
-      setEditing(false);
-    } catch (err) {
-      console.error("Error al guardar posiciones", err);
-      alert("No se pudieron guardar las posiciones");
-    } finally {
-      setSaving(false);
-    }
+    setSaving(true);
+    await updateFn({ posiciones: positions });
+
+    setSavedPositions(positions); // 👈 CLAVE
+    setEditing(false);
+    setSaving(false);
   };
 
   if (loadingCatalog) {
@@ -109,22 +107,27 @@ export default function PreferredPositionsEditor({ initial }: Props) {
             key={`${p}-${i}`}
             label={p}
             index={i + 1}
-            editable={editing}
-            onRemove={() => {
+            onRemove={editing ? () => {
               if (positions.length <= 1) return;
               setPositions(
                 positions.filter((_, idx) => idx !== i)
               );
-            }}
-            onMoveUp={() => move(i, i - 1)}
-            onMoveDown={() => move(i, i + 1)}
+            } : undefined}
+            onMoveUp={editing ? () => move(i, i - 1) : undefined}
+            onMoveDown={editing ? () => move(i, i + 1) : undefined}
           />
         ))}
 
-        {editing && positions.length < 3 && available.length > 0 && (
+        {editing && positions.length < 3 && (
           <PositionBadge
             isPlaceholder
-            onAdd={() => setPositions([...positions, available[0]])} editable={false}          />
+            options={available}
+            disabled={saving}
+            onSelect={(value) => {
+              if (!value) return;
+              setPositions([...positions, value]);
+            }}
+          />
         )}
       </div>
 
@@ -140,7 +143,7 @@ export default function PreferredPositionsEditor({ initial }: Props) {
 
           <button
             onClick={() => {
-              setPositions(initial);
+              setPositions(savedPositions);
               setEditing(false);
             }}
             className="border px-4 py-1 rounded"

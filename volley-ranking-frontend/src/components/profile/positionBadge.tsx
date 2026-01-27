@@ -3,11 +3,13 @@
 type Props = {
   label?: string;
   index?: number;
+
+  editable?: boolean;
+
   onRemove?: () => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
 
-  // nuevo
   options?: string[];
   onSelect?: (value: string) => void;
 
@@ -18,6 +20,7 @@ type Props = {
 export default function PositionBadge({
   label,
   index,
+  editable = false,
   onRemove,
   onMoveUp,
   onMoveDown,
@@ -26,17 +29,20 @@ export default function PositionBadge({
   isPlaceholder,
   disabled,
 }: Props) {
+  /* =====================
+     Placeholder
+  ===================== */
   if (isPlaceholder) {
     return (
-      <div className="flex items-center gap-2 border border-dashed rounded px-3 py-2">
+      <div className="inline-flex items-center gap-2 border border-dashed rounded-full px-3 py-1 text-sm text-gray-500">
         <select
           disabled={disabled}
           defaultValue=""
           onChange={(e) => onSelect?.(e.target.value)}
-          className="flex-1 border rounded px-2 py-1 text-sm"
+          className="bg-transparent focus:outline-none"
         >
           <option value="" disabled>
-            Seleccionar posición
+            + Agregar posición
           </option>
           {options?.map((p) => (
             <option key={p} value={p}>
@@ -48,23 +54,45 @@ export default function PositionBadge({
     );
   }
 
+  const isPrimary = index === 1;
+
   return (
-    <div className="flex items-center justify-between border rounded px-3 py-2 bg-gray-50">
-      <span className="text-sm font-semibold">
+    <div
+      className={`
+        inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm
+        ${isPrimary ? "bg-blue-100 text-blue-800 font-semibold" : "bg-gray-100"}
+      `}
+    >
+      <span>
+        {isPrimary && "➤ "}
         {index}. {label}
       </span>
 
-      <div className="flex items-center gap-1">
-        <button onClick={onMoveUp} disabled={disabled}>↑</button>
-        <button onClick={onMoveDown} disabled={disabled}>↓</button>
-        <button
-          onClick={onRemove}
-          disabled={disabled}
-          className="text-red-500"
-        >
-          ×
-        </button>
-      </div>
+      {editable && (
+        <div className="flex items-center gap-1 ml-1">
+          <button
+            onClick={onMoveUp}
+            disabled={disabled}
+            className="text-xs hover:text-black disabled:opacity-40"
+          >
+            ↑
+          </button>
+          <button
+            onClick={onMoveDown}
+            disabled={disabled}
+            className="text-xs hover:text-black disabled:opacity-40"
+          >
+            ↓
+          </button>
+          <button
+            onClick={onRemove}
+            disabled={disabled}
+            className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 }

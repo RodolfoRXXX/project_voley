@@ -101,12 +101,14 @@ export default function PreferredPositionsEditor({ initial }: Props) {
         )}
       </div>
 
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2 items-start">
         {positions.map((p, i) => (
           <PositionBadge
             key={`${p}-${i}`}
             label={p}
             index={i + 1}
+            editable={editing}
+            disabled={saving}
             onRemove={editing ? () => {
               if (positions.length <= 1) return;
               setPositions(

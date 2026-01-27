@@ -3,6 +3,7 @@
 
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useAuth } from "@/hooks/useAuth";
+import ProfileGame from "@/components/profile/profileGame";
 
 export default function ProfilePage() {
   const { userDoc, loading } = useAuth();
@@ -11,7 +12,15 @@ export default function ProfilePage() {
 
   return (
     <main className="max-w-4xl mx-auto mt-10 space-y-8">
+
+      {/* Profile Header */}
       <ProfileHeader user={userDoc} />
+
+      {/* Profile Game */}
+
+      <ProfileGame
+        posicionesPreferidas={userDoc.posicionesPreferidas || []}
+      />
     </main>
   );
 }

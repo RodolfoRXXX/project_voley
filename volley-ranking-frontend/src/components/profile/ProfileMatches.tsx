@@ -121,14 +121,19 @@ export default function ProfileMatches() {
 
           horaInicio: match.horaInicio?.toDate
             ? match.horaInicio.toDate()
-            : new Date(),
+            : null,
 
           matchEstado: match.estado,
           participationEstado: p.estado,
           posicionAsignada: p.posicionAsignada,
         };
       })
-      .filter(Boolean);
+      .filter(Boolean)
+      .sort((a: any, b: any) => {
+        if (!a.horaInicio) return 1;
+        if (!b.horaInicio) return -1;
+        return b.horaInicio.getTime() - a.horaInicio.getTime();
+      });
   }, [participations, matchesMap, groupsMap]);
 
   /* =====================

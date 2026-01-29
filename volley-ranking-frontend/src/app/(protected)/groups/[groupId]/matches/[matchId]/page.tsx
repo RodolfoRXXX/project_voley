@@ -16,6 +16,7 @@ import { db, app } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import MatchStatusBadge from "@/components/matchCard/MatchStatusBadge";
+import { formatDateTime, formatForDateTimeLocal } from "@/lib/date";
 
 /* =====================
    Firebase functions
@@ -192,8 +193,11 @@ export default function MatchDetailPage() {
         cantidadEquipos: data.cantidadEquipos,
         cantidadSuplentes: data.cantidadSuplentes,
         formacion: data.formacion,
-        horaInicio: data.horaInicio?.toDate
-          ? data.horaInicio.toDate().toISOString().slice(0, 16)
+        //horaInicio: data.horaInicio?.toDate
+        //  ? data.horaInicio.toDate().toISOString().slice(0, 16)
+        //  : "",
+        horaInicio: data.horaInicio
+          ? formatForDateTimeLocal(data.horaInicio)
           : "",
       });
     });
@@ -312,12 +316,14 @@ useEffect(() => {
     );
 
     const fn = httpsCallable(functions, "editMatch");
+    const date = new Date(formData.horaInicio); // interpretado en el navegador (AR)
+    const horaInicioMillis = date.getTime(); // 🔥 instante absoluto
     await fn({
       matchId: match.id,
       cantidadEquipos: formData.cantidadEquipos,
       cantidadSuplentes: formData.cantidadSuplentes,
       formacion: formData.formacion,
-      horaInicio: formData.horaInicio,
+      horaInicioMillis,
     });
 
     setMatch({
@@ -444,13 +450,7 @@ useEffect(() => {
           <b>Inicio:</b>{" "}
           <span className="font-medium">
             {match.horaInicio
-              ? match.horaInicio.toLocaleString("es-AR", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
+              ? formatDateTime(match.horaInicio)
               : "Sin definir"}
           </span>
         </span>

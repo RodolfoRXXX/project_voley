@@ -29,7 +29,7 @@ module.exports = functions.https.onCall(async (data, context) => {
     cantidadEquipos,
     cantidadSuplentes,
     formacion,
-    horaInicio,
+    horaInicioMillis,
   } = data;
 
   if (!matchId) {
@@ -71,11 +71,13 @@ module.exports = functions.https.onCall(async (data, context) => {
     cambios.cantidadSuplentes = cantidadSuplentes;
   }
 
-  if (horaInicio) {
-    /*cambios.horaInicio = admin.firestore.Timestamp.fromDate(
-      new Date(horaInicio)
-    );*/
-    cambios.horaInicio = Timestamp.fromDate(new Date(horaInicio)); // ✅
+  if (typeof horaInicioMillis !== "number") {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "horaInicioMillis inválido"
+    );
+  } else {
+    cambios.horaInicio = Timestamp.fromMillis(horaInicioMillis);
   }
 
   /* =====================

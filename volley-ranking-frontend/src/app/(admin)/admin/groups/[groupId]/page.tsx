@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { app } from "@/lib/firebase";
 import Link from "next/link";
+import { formatDateTime } from "@/lib/date";
 
 const functions = getFunctions(app);
 const editGroup = httpsCallable(functions, "editGroup");
@@ -251,11 +252,11 @@ export default function AdminGroupPage() {
                   <p className="font-semibold">
                     {m.estado?.toUpperCase()}
                   </p>
-                  <p className="text-sm text-gray-600">
-                    Inicio:{" "}
+                  <p className="text-sm">
+                    <span className="text-gray-600">Inicio:{" "}</span>
                     {m.horaInicio
-                      ? m.horaInicio.toLocaleString("es-AR")
-                      : "Sin fecha"}
+                      ? formatDateTime(m.horaInicio)
+                      : "Sin definir"}
                   </p>
                 </div>
 

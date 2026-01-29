@@ -20,3 +20,14 @@ export function formatDateTime(value: DateLike): string {
   });
 }
 
+// 👇 NUEVO: para inputs datetime-local
+export function formatForDateTimeLocal(value: DateLike): string {
+  const date =
+    value instanceof Date ? value : value.toDate();
+
+  const pad = (n: number) => n.toString().padStart(2, "0");
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate()
+  )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}

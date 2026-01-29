@@ -36,11 +36,6 @@ export default function NewGroupPage() {
   const isNombreValid = nombre.trim().length > 0;
   const isFormValid = isNombreValid && !saving;
 
-  const fieldClass = (valid: boolean) =>
-    `border p-2 w-full rounded ${
-      valid ? "border-green-500" : "border-red-500"
-    }`;
-
   /* =====================
      Submit
   ===================== */

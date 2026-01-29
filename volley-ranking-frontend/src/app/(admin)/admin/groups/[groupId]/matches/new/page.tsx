@@ -1,4 +1,7 @@
-// Muestra el nuevo match
+
+// -------------------
+// CREA UN NUEVO MATCH
+// -------------------
 
 "use client";
 
@@ -6,6 +9,7 @@ import { useEffect, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
 import { useParams, useRouter } from "next/navigation";
+import useToast from "@/components/ui/toast/useToast";
 
 export default function NewMatchPage() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -17,6 +21,7 @@ export default function NewMatchPage() {
   const [cantidadSuplentes, setCantidadSuplentes] = useState(5);
   const [horaInicio, setHoraInicio] = useState("");
   const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
 
   /* =====================
      Load formaciones
@@ -34,11 +39,60 @@ export default function NewMatchPage() {
   }, []);
 
   const submit = async () => {
+    /* =====================
+      Validaciones
+    ===================== */
+    if (!formacion) {
+      showToast({
+        type: "warning",
+        message: "Seleccioná una formación",
+      });
+      return;
+    }
+
+    if (!cantidadEquipos || cantidadEquipos <= 0) {
+      showToast({
+        type: "warning",
+        message: "Cantidad de equipos inválida",
+      });
+      return;
+    }
+
+    if (cantidadSuplentes < 0) {
+      showToast({
+        type: "warning",
+        message: "Cantidad de suplentes inválida",
+      });
+      return;
+    }
+
+    if (!horaInicio) {
+      showToast({
+        type: "warning",
+        message: "Seleccioná fecha y hora del partido",
+      });
+      return;
+    }
+
+    const date = new Date(horaInicio);
+
+    if (isNaN(date.getTime())) {
+      showToast({
+        type: "error",
+        message: "Fecha/hora inválida",
+      });
+      return;
+    }
+
+    const horaInicioMillis = date.getTime(); // ✅ ahora es seguro
+
+    /* =====================
+      Submit
+    ===================== */
     setLoading(true);
+
     try {
       const fn = httpsCallable(functions, "createMatch");
-      const date = new Date(horaInicio); // interpretado en el navegador (AR)
-      const horaInicioMillis = date.getTime(); // 🔥 instante absoluto
 
       await fn({
         groupId,
@@ -48,10 +102,23 @@ export default function NewMatchPage() {
         horaInicioMillis,
       });
 
+      showToast({
+        type: "success",
+        message: "Match creado correctamente",
+      });
+
       router.replace(`/admin/groups/${groupId}`);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Error al crear match");
+
+      showToast({
+        type: "error",
+        message: e?.message || "Error al crear el match",
+      });
+
+      if (e?.code === "not-found") {
+        router.push("/matches");
+      }
     } finally {
       setLoading(false);
     }

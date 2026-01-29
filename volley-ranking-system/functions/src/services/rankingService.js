@@ -62,8 +62,10 @@ async function recalcularRanking(matchId) {
   );
 
   if (!matchSnap.exists) {
-    console.log("❌ Match no encontrado, saliendo");
-    return;
+    throw new functions.https.HttpsError(
+      "not-found",
+      "El partido ya no existe"
+    );
   }
 
   const match = matchSnap.data();

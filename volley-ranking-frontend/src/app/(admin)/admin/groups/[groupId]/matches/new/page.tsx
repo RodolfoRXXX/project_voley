@@ -10,6 +10,7 @@ import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
 import { useParams, useRouter } from "next/navigation";
 import useToast from "@/components/ui/toast/useToast";
+import { Spinner } from "@/components/ui/toast/spinner/spinner";
 
 export default function NewMatchPage() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -22,6 +23,23 @@ export default function NewMatchPage() {
   const [horaInicio, setHoraInicio] = useState("");
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
+
+  const isFormacionValid = formacion !== "";
+  const isEquiposValid = cantidadEquipos > 0;
+  const isSuplentesValid = cantidadSuplentes >= 0;
+  const isHoraValid =
+    horaInicio !== "" && !isNaN(new Date(horaInicio).getTime());
+
+  const isFormValid =
+    isFormacionValid &&
+    isEquiposValid &&
+    isSuplentesValid &&
+    isHoraValid;
+
+  const fieldClass = (valid: boolean) =>
+  `border p-2 w-full rounded ${
+    valid ? "border-green-500" : "border-red-500"
+  }`;
 
   /* =====================
      Load formaciones
@@ -39,56 +57,8 @@ export default function NewMatchPage() {
   }, []);
 
   const submit = async () => {
-    /* =====================
-      Validaciones
-    ===================== */
-    if (!formacion) {
-      showToast({
-        type: "warning",
-        message: "Seleccioná una formación",
-      });
-      return;
-    }
+    if (!isFormValid) return;
 
-    if (!cantidadEquipos || cantidadEquipos <= 0) {
-      showToast({
-        type: "warning",
-        message: "Cantidad de equipos inválida",
-      });
-      return;
-    }
-
-    if (cantidadSuplentes < 0) {
-      showToast({
-        type: "warning",
-        message: "Cantidad de suplentes inválida",
-      });
-      return;
-    }
-
-    if (!horaInicio) {
-      showToast({
-        type: "warning",
-        message: "Seleccioná fecha y hora del partido",
-      });
-      return;
-    }
-
-    const date = new Date(horaInicio);
-
-    if (isNaN(date.getTime())) {
-      showToast({
-        type: "error",
-        message: "Fecha/hora inválida",
-      });
-      return;
-    }
-
-    const horaInicioMillis = date.getTime(); // ✅ ahora es seguro
-
-    /* =====================
-      Submit
-    ===================== */
     setLoading(true);
 
     try {
@@ -99,7 +69,7 @@ export default function NewMatchPage() {
         formacion,
         cantidadEquipos,
         cantidadSuplentes,
-        horaInicioMillis,
+        horaInicioMillis: new Date(horaInicio).getTime(),
       });
 
       showToast({
@@ -109,16 +79,10 @@ export default function NewMatchPage() {
 
       router.replace(`/admin/groups/${groupId}`);
     } catch (e: any) {
-      console.error(e);
-
       showToast({
         type: "error",
         message: e?.message || "Error al crear el match",
       });
-
-      if (e?.code === "not-found") {
-        router.push("/matches");
-      }
     } finally {
       setLoading(false);
     }
@@ -128,10 +92,12 @@ export default function NewMatchPage() {
     <main className="max-w-xl mx-auto mt-10 space-y-6">
       <h1 className="text-2xl font-bold">Nuevo match</h1>
 
+      {/* Formación */}
+
       <select
         value={formacion}
         onChange={(e) => setFormacion(e.target.value)}
-        className="border p-2 w-full"
+        className={fieldClass(isFormacionValid)}
       >
         <option value="">Seleccionar formación</option>
         {formaciones.map((f) => (
@@ -141,36 +107,59 @@ export default function NewMatchPage() {
         ))}
       </select>
 
+      {/* Cantidad equipos */}
+
       <input
         type="number"
         value={cantidadEquipos}
         onChange={(e) => setCantidadEquipos(+e.target.value)}
-        className="border p-2 w-full"
+        className={fieldClass(isEquiposValid)}
         placeholder="Cantidad de equipos"
       />
+
+      {/* Cantidad suplentes */}
 
       <input
         type="number"
         value={cantidadSuplentes}
         onChange={(e) => setCantidadSuplentes(+e.target.value)}
-        className="border p-2 w-full"
+        className={fieldClass(isSuplentesValid)}
         placeholder="Cantidad de suplentes"
       />
+
+      {/* Fecha y hora inicio */}
 
       <input
         type="datetime-local"
         value={horaInicio}
         onChange={(e) => setHoraInicio(e.target.value)}
-        className="border p-2 w-full"
+        className={fieldClass(isHoraValid)}
       />
+
+      {/* Botón submit */}
 
       <button
         onClick={submit}
-        disabled={loading}
-        className="bg-black text-white px-4 py-2 rounded"
+        disabled={!isFormValid || loading}
+        className={`
+          px-4 py-2 rounded flex items-center justify-center gap-2
+          ${
+            !isFormValid || loading
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-black text-white hover:bg-gray-800"
+          }
+        `}
       >
-        Crear match
+        {loading ? (
+          <>
+            <Spinner />
+            Creando...
+          </>
+        ) : (
+          "Crear match"
+        )}
       </button>
+
     </main>
   );
 }

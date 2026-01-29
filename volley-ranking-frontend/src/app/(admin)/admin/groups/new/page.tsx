@@ -5,17 +5,24 @@ import { useRouter } from "next/navigation";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
+import useToast from "@/components/ui/toast/useToast";
+import FormField from "@/components/ui/form/FormField";
+import { inputClass } from "@/components/ui/form/utils";
+import SubmitButton from "@/components/ui/form/SubmitButton";
 
 export default function NewGroupPage() {
   const router = useRouter();
   const { firebaseUser, userDoc, loading } = useAuth();
+  const { showToast } = useToast();
 
-  const [nombre, setName] = useState("");
-  const [descripcion, setDescription] = useState("");
-  const [activo, setActive] = useState(true);
+  const [nombre, setNombre] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [activo, setActivo] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
+  /* =====================
+     Auth guard
+  ===================== */
   if (loading) return <p>Cargando...</p>;
 
   if (!firebaseUser || userDoc?.roles !== "admin") {
@@ -23,11 +30,26 @@ export default function NewGroupPage() {
     return null;
   }
 
-  const submit = async () => {
-    setError(null);
+  /* =====================
+     Validations
+  ===================== */
+  const isNombreValid = nombre.trim().length > 0;
+  const isFormValid = isNombreValid && !saving;
 
-    if (!nombre.trim()) {
-      setError("El nombre es obligatorio");
+  const fieldClass = (valid: boolean) =>
+    `border p-2 w-full rounded ${
+      valid ? "border-green-500" : "border-red-500"
+    }`;
+
+  /* =====================
+     Submit
+  ===================== */
+  const submit = async () => {
+    if (!isFormValid) {
+      showToast({
+        type: "warning",
+        message: "El nombre del grupo es obligatorio",
+      });
       return;
     }
 
@@ -43,57 +65,80 @@ export default function NewGroupPage() {
         partidosTotales: 0,
       });
 
+      showToast({
+        type: "success",
+        message: "Grupo creado correctamente",
+      });
+
       router.replace(`/admin/groups/${docRef.id}`);
     } catch (err) {
       console.error(err);
-      setError("Error al crear el group");
+
+      showToast({
+        type: "error",
+        message: "Error al crear el grupo",
+      });
     } finally {
       setSaving(false);
     }
   };
 
+  /* =====================
+     Render
+  ===================== */
   return (
     <main className="max-w-xl mx-auto mt-10 space-y-6">
-      <h1 className="text-2xl font-bold">Nuevo Group</h1>
+      <h1 className="text-2xl font-bold">Nuevo grupo</h1>
 
+      {/* NOMBRE */}
       <div>
-        <label className="block font-semibold mb-1">Nombre</label>
-        <input
-          value={nombre}
-          onChange={(e) => setName(e.target.value)}
-          className="border p-2 w-full rounded"
-          placeholder="Ej: Vóley Martes Noche"
-        />
+        <FormField
+          label="Nombre"
+          required
+          error={!isNombreValid ? "El nombre es obligatorio" : undefined}
+        >
+          <input
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            className={inputClass(isNombreValid)}
+            placeholder="Voley Martes 21hs"
+          />
+        </FormField>
       </div>
 
+      {/* DESCRIPCIÓN */}
       <div>
-        <label className="block font-semibold mb-1">Descripción</label>
-        <textarea
-          value={descripcion}
-          onChange={(e) => setDescription(e.target.value)}
-          className="border p-2 w-full rounded"
-          placeholder="Grupo recreativo, nivel intermedio..."
-        />
+        <FormField
+          label="Descripción"
+        >
+          <input
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            className="border p-2 w-full rounded"
+            placeholder="Grupo recreativo, nivel intermedio..."
+          />
+        </FormField>
       </div>
 
+      {/* ACTIVO */}
       <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={activo}
-          onChange={(e) => setActive(e.target.checked)}
-        />
-        <label>Group activo</label>
+        <FormField label="Grupo activo">
+          <input
+            type="checkbox"
+            checked={activo}
+            onChange={(e) => setActivo(e.target.checked)}
+          />
+        </FormField>
       </div>
 
-      {error && <p className="text-red-600">{error}</p>}
-
-      <button
+      {/* BOTÓN */}
+      <SubmitButton
+        loading={saving}
+        disabled={!isFormValid}
         onClick={submit}
-        disabled={saving}
-        className="bg-black text-white px-4 py-2 rounded"
       >
-        {saving ? "Creando..." : "Crear group"}
-      </button>
+        Crear group
+      </SubmitButton>
     </main>
   );
 }

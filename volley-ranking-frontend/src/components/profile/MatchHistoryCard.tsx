@@ -4,6 +4,7 @@
 import Link from "next/link";
 import MatchStatusBadge from "../matchCard/MatchStatusBadge";
 import PlayerStatusBadge from "./PlayerStatusBadge";
+import { formatDateTime } from "@/lib/date";
 
 type Props = {
   matchId: string;
@@ -67,7 +68,7 @@ export default function MatchHistoryCard({
 
       {/* FECHA */}
       <p className="text-sm text-gray-600">
-        {horaInicio.toLocaleString()}
+        {formatDateTime(horaInicio)}
       </p>
 
       {/* INFO JUGADOR */}

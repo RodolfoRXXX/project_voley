@@ -27,7 +27,7 @@ module.exports = functions.https.onCall(async (data, context) => {
   
   const {
     groupId,
-    horaInicio,
+    horaInicioMillis,
     cantidadEquipos,
     formacion,
     cantidadSuplentes,
@@ -58,12 +58,20 @@ module.exports = functions.https.onCall(async (data, context) => {
   }
 
   const matchId = db.collection("matches").doc().id;
+  if (typeof horaInicioMillis !== "number") {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "horaInicioMillis inválido"
+    );
+  }
+
+  const horaInicioTs = Timestamp.fromMillis(horaInicioMillis);
 
   await crearMatch({
     matchId,
     groupId,
     adminId: context.auth.uid,
-    horaInicio: Timestamp.fromDate(new Date(horaInicio)), // ✅
+    horaInicio: horaInicioTs, // ✅
     cantidadEquipos,
     formacion,
     posicionesBase: formaciones[formacion],

@@ -12,6 +12,7 @@ import { db, app } from "@/lib/firebase";
 import Link from "next/link";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import MatchStatusBadge from "./MatchStatusBadge";
+import { formatDateTime } from "@/lib/date";
 
 /* =====================
      FUNCTION
@@ -154,9 +155,7 @@ useEffect(() => {
       </p>
 
       <p className="text-sm text-gray-600">
-        {new Date(
-          match.horaInicio.seconds * 1000
-        ).toLocaleString()}
+        {formatDateTime(match.horaInicio)}
       </p>
 
       <p className="text-sm">

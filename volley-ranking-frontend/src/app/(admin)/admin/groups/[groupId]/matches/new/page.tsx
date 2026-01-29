@@ -37,12 +37,15 @@ export default function NewMatchPage() {
     setLoading(true);
     try {
       const fn = httpsCallable(functions, "createMatch");
+      const date = new Date(horaInicio); // interpretado en el navegador (AR)
+      const horaInicioMillis = date.getTime(); // 🔥 instante absoluto
+
       await fn({
         groupId,
         formacion,
         cantidadEquipos,
         cantidadSuplentes,
-        horaInicio,
+        horaInicioMillis,
       });
 
       router.replace(`/admin/groups/${groupId}`);

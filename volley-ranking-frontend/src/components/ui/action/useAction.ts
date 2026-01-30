@@ -14,13 +14,13 @@
 import { useState } from "react";
 import useToast from "@/components/ui/toast/useToast";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
-
-type ConfirmVariant = "default" | "danger";
+import { ConfirmVariant } from "@/components/ui/types/types";
 
 type ActionOptions = {
   confirm?: {
     message: string;
     confirmText?: string;
+    cancelText?: string;
     variant?: ConfirmVariant;
   };
   successMessage?: string;

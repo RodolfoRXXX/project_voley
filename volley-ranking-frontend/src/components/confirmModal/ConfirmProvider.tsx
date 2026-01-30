@@ -2,13 +2,14 @@
 
 import { createContext, useContext, useState } from "react";
 import ConfirmModal from "./ConfirmModal";
+import { ConfirmVariant } from "@/components/ui/types/types";
 
 type ConfirmOptions = {
   title?: string;
   message: string;
   confirmText?: string;
   cancelText?: string;
-  variant?: "default" | "danger";
+  variant?: ConfirmVariant;
 };
 
 type ConfirmContextType = {

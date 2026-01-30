@@ -17,7 +17,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import MatchStatusBadge from "@/components/matchCard/MatchStatusBadge";
 import { formatDateTime, formatForDateTimeLocal } from "@/lib/date";
-import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
+import { useAction } from "@/components/ui/action/useAction";
+import { Spinner } from "@/components/ui/spinner/spinner";
 
 /* =====================
    Firebase functions
@@ -91,10 +92,10 @@ const pagoStyles: Record<string, string> = {
 ===================== */
 
 export default function MatchDetailPage() {
-  const { confirm } = useConfirm();
+  const { run, loading } = useAction();
   const { matchId } = useParams<{ matchId: string }>();
   const router = useRouter();
-  const { firebaseUser, userDoc, loading } = useAuth();
+  const { firebaseUser, userDoc, loading: authLoading } = useAuth();
 
   const [match, setMatch] = useState<Match | null>(null);
   const [group, setGroup] = useState<Group | null>(null);
@@ -133,10 +134,10 @@ export default function MatchDetailPage() {
      Guards
   ===================== */
   useEffect(() => {
-    if (!loading && !firebaseUser) {
+    if (!authLoading && !firebaseUser) {
       router.replace("/dashboard");
     }
-  }, [firebaseUser, loading, router]);
+  }, [firebaseUser, authLoading, router]);
 
   /* =====================
      Load formaciones
@@ -269,19 +270,34 @@ useEffect(() => {
   const isEliminado = myParticipation?.estado === "eliminado";
   const isJoined = !!myParticipation && myParticipation.estado !== "eliminado";
 
-  const handleToggleParticipation = async () => {
+  const handleToggleParticipation = () => {
     if (!match || !firebaseUser) return;
+
     if (isJoined) {
-        const ok = await confirm({
-          message: "Estás por abandonar el partido",
-          confirmText: "Abandonar",
-        });
-
-        if (!ok) return;
-
-        await leaveMatch({ matchId: match.id });
+      run(
+        async () => {
+            await leaveMatch({ matchId: match.id });
+        },
+        {
+          confirm: {
+            message: "¿Querés abandonar el partido?",
+            confirmText: "Abandonar",
+            variant: "danger",
+          },
+          successMessage: "Saliste del partido",
+          errorMessage: "No se pudo salir del partido",
+        }
+      );
     } else {
-      await joinMatch({ matchId: match.id });
+      run(
+        async () => {
+            await joinMatch({ matchId: match.id });
+        },
+        {
+          successMessage: "Te uniste al partido",
+          errorMessage: "No se pudo unir al partido",
+        }
+      );
     }
   };
 
@@ -341,7 +357,7 @@ useEffect(() => {
     setEditMode(false);
   };
 
-  if (loading || !match) return <p>Cargando...</p>;
+  if (authLoading || !match) return <p>Cargando...</p>;
 
   /* =====================
     Cupos ocupados
@@ -399,59 +415,101 @@ useEffect(() => {
     HANDLERS
   ===================== */
 
-  const handleEliminarJugador = async (participationId: string) => {
-    const ok = await confirm({
-      message: "¿Eliminar jugador del partido?",
-      confirmText: "Eliminar",
-      variant: "danger",
-    });
+  // Eliminar jugador
 
-    if (!ok) return;
+  const handleEliminarJugador = (participationId: string) => {
 
-    await eliminarJugadorFn({ participationId });
+    run(
+      async () => {
+            await eliminarJugadorFn({ participationId });
+      },
+      {
+        confirm: {
+          message:
+            "¿Eliminar jugador del partido?",
+        },
+        successMessage: "El jugador se ha eliminado correctamente",
+        errorMessage: "No se pudo eliminar al jugador",
+      }
+    );
   };
 
-  const handleReincorporarJugador = async (participationId: string) => {
-    const ok = await confirm({
-      message: "¿Reincorporar jugador al partido?",
-      confirmText: "Reincorporar",
-    });
+  // Reincorporar jugador
 
-    if (!ok) return;
-
-    await reincorporarJugadorFn({ participationId });
+  const handleReincorporarJugador = (participationId: string) => {
+    run(
+      async () => {
+        await reincorporarJugadorFn({ participationId });
+      },
+      {
+        confirm: {
+          message: "¿Reincorporar jugador al partido?",
+        },
+        successMessage: "El jugador se ha reincorporado correctamente",
+        errorMessage: "No se pudo reincorporar al jugador",
+      }
+    );
   };
 
-  const handleReabrirMatch = async () => {
-    const ok = await confirm({
-      message: "¿Reabrir el partido? Volverá a estado abierto.",
-    });
+  // Reabrir Match
 
-    if (!ok) return;
+  const handleReabrirMatch = () => {
+    if (!match) return;
 
-    await reabrirMatchFn({ matchId: match.id });
+    run(
+      async () => {
+            await reabrirMatchFn({ matchId: match.id });
+      },
+      {
+        confirm: {
+          message:
+            "¿Reabrir el juego? Volverá a estado abierto.",
+        },
+        successMessage: "Juego reabierto correctamente",
+        errorMessage: "No se pudo reabrir el juego",
+      }
+    );
   };
 
-  const handleCerrarMatch = async () => {
-    const ok = await confirm({
-      message: "Estas por iniciar la verificación de los jugadores ¿Estas seguro?",
-    });
+  // Cerrar Match
 
-    if (!ok) return;
+  const handleCerrarMatch = () => {
+    if (!match) return;
 
-    await cerrarMatchFn({ matchId: match.id });
+    run(
+      async () => {
+            await cerrarMatchFn({ matchId: match.id });
+      },
+      {
+        confirm: {
+          message:
+            "¿Desea cerrar el juego?",
+        },
+        successMessage: "Juego cerrado correctamente",
+        errorMessage: "No se pudo cerrar el juego",
+      }
+    );
   };
 
-  const handleEliminarMatch = async () => {
-    const ok = await confirm({
-      message: "¿Cancelar el juego? No se podrá volver a abrir.",
-    });
+  // Eliminar Match
 
-    if (!ok) return;
+  const handleEliminarMatch = () => {
+    if (!match) return;
 
-    await eliminarMatchFn({ matchId: match.id });
+    run(
+      async () => {
+            await eliminarMatchFn({ matchId: match.id });
+      },
+      {
+        confirm: {
+          message:
+            "¿Cancelar el juego? No se podrá volver a abrir.",
+        },
+        successMessage: "Juego cancelado correctamente",
+        errorMessage: "No se pudo cancelar el juego",
+      }
+    );
   };
-
 
   /* =====================
      Render
@@ -820,20 +878,34 @@ useEffect(() => {
       <div className="flex gap-3 pt-2">
         <button
           onClick={handleToggleParticipation}
-          disabled={isEliminado || accionesJugadorBloqueadas}
-          className={`px-4 py-2 rounded ${
-            isEliminado || accionesJugadorBloqueadas
-              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-              : isJoined
-              ? "border border-red-500 text-red-500"
-              : "bg-green-600 text-white"
-          }`}
+          disabled={
+            authLoading ||
+            isEliminado ||
+            accionesJugadorBloqueadas
+          }
+          className={`
+            h-10 min-w-[140px]
+            flex items-center justify-center
+            px-4 rounded transition
+            ${
+              isEliminado || accionesJugadorBloqueadas
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : isJoined
+                ? "border border-red-500 text-red-500"
+                : "bg-green-600 text-white"
+            }
+            disabled:opacity-50
+          `}
         >
-          {accionesJugadorBloqueadas
-            ? "No disponible"
-            : isJoined
-            ? "Desunirme"
-            : "Unirme"}
+          {loading ? (
+            <Spinner />
+          ) : accionesJugadorBloqueadas ? (
+            "No disponible"
+          ) : isJoined ? (
+            "Desunirme"
+          ) : (
+            "Unirme"
+          )}
         </button>
 
         {isAdmin && (

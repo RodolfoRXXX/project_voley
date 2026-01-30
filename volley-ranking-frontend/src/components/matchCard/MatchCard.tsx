@@ -14,6 +14,7 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import MatchStatusBadge from "./MatchStatusBadge";
 import { formatDateTime } from "@/lib/date";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
+import { Spinner } from "@/components/ui/spinner/spinner";
 
 /* =====================
      FUNCTION
@@ -111,8 +112,6 @@ useEffect(() => {
     if (!userId || loadingAction) return;
 
     try {
-      setLoadingAction(true);
-
       if (isJoined) {
         const ok = await confirm({
           message: "Estás por abandonar el partido",
@@ -120,7 +119,11 @@ useEffect(() => {
         });
 
         if (!ok) return;
+      }
 
+      setLoadingAction(true);
+
+      if (isJoined) {
         await leaveMatch({ matchId: match.id });
       } else {
         await joinMatch({ matchId: match.id });
@@ -184,23 +187,19 @@ useEffect(() => {
             isEliminado ||
             (!isJoined && lleno)
           }
-          className={`px-4 py-2 rounded transition ${
-            accionesBloqueadas || isEliminado
-              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-              : isJoined
-              ? "border border-red-500 text-red-500"
-              : "bg-green-600 text-white"
-          } disabled:opacity-50`}
+          className={`px-4 h-10 min-w-[130px] rounded transition
+            flex items-center justify-center
+            ${
+              accionesBloqueadas || isEliminado
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : isJoined
+                ? "border border-red-500 text-red-500"
+                : "bg-green-600 text-white"
+            }
+            disabled:opacity-50`}
         >
-          {accionesBloqueadas
-            ? "No disponible"
-            : isEliminado
-            ? "Eliminado"
-            : isJoined
-            ? "Desunirme"
-            : "Unirme"}
+          {loadingAction ? <Spinner /> : isJoined ? "Desunirme" : "Unirme"}
         </button>
-
         <Link
           href={`/groups/${match.groupId}/matches/${match.id}`}
           className="text-blue-600 text-sm"

@@ -15,6 +15,8 @@ import MatchStatusBadge from "./MatchStatusBadge";
 import { formatDateTime } from "@/lib/date";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 import { Spinner } from "@/components/ui/spinner/spinner";
+import { useAction } from "@/components/ui/action/useAction";
+
 
 /* =====================
      FUNCTION
@@ -32,7 +34,7 @@ export default function MatchCard({
   const { confirm } = useConfirm();
   const [titulares, setTitulares] = useState(0);
   const [suplentes, setSuplentes] = useState(0);
-  const [loadingAction, setLoadingAction] = useState(false);
+  const { run, loading } = useAction();
   const [miParticipacion, setMiParticipacion] = useState<any | null>(null);
   const [adminUser, setAdminUser] = useState<any | null>(null);
 
@@ -108,30 +110,33 @@ useEffect(() => {
      Join / Leave
   ===================== */
 
-  const handleToggleParticipation = async () => {
-    if (!userId || loadingAction) return;
+  const handleToggleParticipation = () => {
+    if (!userId) return;
 
-    try {
-      if (isJoined) {
-        const ok = await confirm({
-          message: "Estás por abandonar el partido",
-          confirmText: "Abandonar",
-        });
-
-        if (!ok) return;
-      }
-
-      setLoadingAction(true);
-
-      if (isJoined) {
-        await leaveMatch({ matchId: match.id });
-      } else {
-        await joinMatch({ matchId: match.id });
-      }
-    } catch (err) {
-      console.error("Error al unirse/desunirse", err);
-    } finally {
-      setLoadingAction(false);
+    if (isJoined) {
+      run(
+        async () => {
+          await leaveMatch({ matchId: match.id });
+        },
+        {
+          confirm: {
+            message: "¿Querés abandonar el partido?",
+            confirmText: "Abandonar",
+          },
+          successMessage: "Saliste del partido",
+          errorMessage: "No se pudo salir del partido",
+        }
+      );
+    } else {
+      run(
+        async () => {
+          await joinMatch({ matchId: match.id });
+        },
+        {
+          successMessage: "Te uniste al partido",
+          errorMessage: "No se pudo unir al partido",
+        }
+      );
     }
   };
 
@@ -182,13 +187,15 @@ useEffect(() => {
         <button
           onClick={handleToggleParticipation}
           disabled={
-            loadingAction ||
+            loading ||
             accionesBloqueadas ||
             isEliminado ||
             (!isJoined && lleno)
           }
-          className={`px-4 h-10 min-w-[130px] rounded transition
+          className={`
+            h-10 min-w-[140px]
             flex items-center justify-center
+            px-4 rounded transition
             ${
               accionesBloqueadas || isEliminado
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
@@ -196,9 +203,20 @@ useEffect(() => {
                 ? "border border-red-500 text-red-500"
                 : "bg-green-600 text-white"
             }
-            disabled:opacity-50`}
+            disabled:opacity-50
+          `}
         >
-          {loadingAction ? <Spinner /> : isJoined ? "Desunirme" : "Unirme"}
+          {loading ? (
+            <Spinner />
+          ) : accionesBloqueadas ? (
+            "No disponible"
+          ) : isEliminado ? (
+            "Eliminado"
+          ) : isJoined ? (
+            "Desunirme"
+          ) : (
+            "Unirme"
+          )}
         </button>
         <Link
           href={`/groups/${match.groupId}/matches/${match.id}`}

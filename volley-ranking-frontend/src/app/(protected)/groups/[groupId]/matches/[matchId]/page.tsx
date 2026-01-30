@@ -272,7 +272,14 @@ useEffect(() => {
   const handleToggleParticipation = async () => {
     if (!match || !firebaseUser) return;
     if (isJoined) {
-      await leaveMatch({ matchId: match.id });
+        const ok = await confirm({
+          message: "Estás por abandonar el partido",
+          confirmText: "Abandonar",
+        });
+
+        if (!ok) return;
+
+        await leaveMatch({ matchId: match.id });
     } else {
       await joinMatch({ matchId: match.id });
     }

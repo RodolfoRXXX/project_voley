@@ -13,6 +13,7 @@ import Link from "next/link";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import MatchStatusBadge from "./MatchStatusBadge";
 import { formatDateTime } from "@/lib/date";
+import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 
 /* =====================
      FUNCTION
@@ -27,6 +28,7 @@ export default function MatchCard({
   userId?: string;
   groupNombre?: string;
 }) {
+  const { confirm } = useConfirm();
   const [titulares, setTitulares] = useState(0);
   const [suplentes, setSuplentes] = useState(0);
   const [loadingAction, setLoadingAction] = useState(false);
@@ -112,6 +114,13 @@ useEffect(() => {
       setLoadingAction(true);
 
       if (isJoined) {
+        const ok = await confirm({
+          message: "Estás por abandonar el partido",
+          confirmText: "Abandonar",
+        });
+
+        if (!ok) return;
+
         await leaveMatch({ matchId: match.id });
       } else {
         await joinMatch({ matchId: match.id });

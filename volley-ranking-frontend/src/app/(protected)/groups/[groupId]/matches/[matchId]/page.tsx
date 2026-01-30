@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import MatchStatusBadge from "@/components/matchCard/MatchStatusBadge";
 import { formatDateTime, formatForDateTimeLocal } from "@/lib/date";
+import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 
 /* =====================
    Firebase functions
@@ -90,6 +91,7 @@ const pagoStyles: Record<string, string> = {
 ===================== */
 
 export default function MatchDetailPage() {
+  const { confirm } = useConfirm();
   const { matchId } = useParams<{ matchId: string }>();
   const router = useRouter();
   const { firebaseUser, userDoc, loading } = useAuth();
@@ -193,9 +195,6 @@ export default function MatchDetailPage() {
         cantidadEquipos: data.cantidadEquipos,
         cantidadSuplentes: data.cantidadSuplentes,
         formacion: data.formacion,
-        //horaInicio: data.horaInicio?.toDate
-        //  ? data.horaInicio.toDate().toISOString().slice(0, 16)
-        //  : "",
         horaInicio: data.horaInicio
           ? formatForDateTimeLocal(data.horaInicio)
           : "",
@@ -394,28 +393,55 @@ useEffect(() => {
   ===================== */
 
   const handleEliminarJugador = async (participationId: string) => {
-    if (!confirm("¿Eliminar jugador del match?")) return;
+    const ok = await confirm({
+      message: "¿Eliminar jugador del partido?",
+      confirmText: "Eliminar",
+      variant: "danger",
+    });
+
+    if (!ok) return;
 
     await eliminarJugadorFn({ participationId });
   };
 
   const handleReincorporarJugador = async (participationId: string) => {
-    if (!confirm("¿Reincorporar jugador al match?")) return;
+    const ok = await confirm({
+      message: "¿Reincorporar jugador al partido?",
+      confirmText: "Reincorporar",
+    });
+
+    if (!ok) return;
 
     await reincorporarJugadorFn({ participationId });
   };
 
   const handleReabrirMatch = async () => {
-    if (!confirm("¿Reabrir el match? Volverá a estado abierto.")) return;
+    const ok = await confirm({
+      message: "¿Reabrir el partido? Volverá a estado abierto.",
+    });
+
+    if (!ok) return;
+
     await reabrirMatchFn({ matchId: match.id });
   };
 
   const handleCerrarMatch = async () => {
+    const ok = await confirm({
+      message: "Estas por iniciar la verificación de los jugadores ¿Estas seguro?",
+    });
+
+    if (!ok) return;
+
     await cerrarMatchFn({ matchId: match.id });
   };
 
   const handleEliminarMatch = async () => {
-    if (!confirm("¿Cancelar el juego? No se jugará.")) return;
+    const ok = await confirm({
+      message: "¿Cancelar el juego? No se podrá volver a abrir.",
+    });
+
+    if (!ok) return;
+
     await eliminarMatchFn({ matchId: match.id });
   };
 

@@ -79,12 +79,18 @@ async function actualizarMatch(matchId, cambios) {
 
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    if (!snap.exists) throw new Error("Match no existe");
+    if (!snap.exists) throw new functions.https.HttpsError(
+      "not-found",
+      "El partido ya no existe"
+    );
 
     const match = snap.data();
 
     if (match.estado !== "abierto") {
-      throw new Error("Match no editable");
+      throw new functions.https.HttpsError(
+        "not-found",
+        "El partido no es editable"
+      );
     }
 
     tx.update(ref, {
@@ -102,7 +108,10 @@ async function actualizarMatch(matchId, cambios) {
 
 async function actualizarPago(participationId, estado) {
   if (!["confirmado", "pendiente", "pospuesto"].includes(estado)) {
-    throw new Error("Estado de pago inválido");
+    throw new functions.https.HttpsError(
+      "not-found",
+      "Estado de pago inválido"
+    );
   }
 
   await db
@@ -179,12 +188,18 @@ async function reabrirMatch(matchId) {
 
     // ⛔ No reabrir si ya empezó el partido
     if (!match.horaInicio || now.toMillis() >= match.horaInicio.toMillis()) {
-      throw new Error("No se puede reabrir después del inicio");
+      throw new functions.https.HttpsError(
+        "not-found",
+        "No se puede reabrir después del inicio"
+      );
     }
 
     // ⛔ Solo desde verificando
     if (match.estado !== "verificando") {
-      throw new Error("El match no está en estado verificando");
+      throw new functions.https.HttpsError(
+        "not-found",
+        "El partido no está en estado verificado"
+      );
     }
 
     // 🔁 Avanzar etapa de deadline (máx 3)

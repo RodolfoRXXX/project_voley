@@ -328,32 +328,43 @@ useEffect(() => {
   /* =====================
      Save
   ===================== */
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!match) return;
 
-    const posicionesObjetivo = calcularPosicionesObjetivo(
-      formData.formacion,
-      formData.cantidadEquipos
+    run(
+      "save-match",
+      async () => {
+        const posicionesObjetivo = calcularPosicionesObjetivo(
+          formData.formacion,
+          formData.cantidadEquipos
+        );
+
+        const fn = httpsCallable(functions, "editMatch");
+        const date = new Date(formData.horaInicio);
+        const horaInicioMillis = date.getTime();
+
+        await fn({
+          matchId: match.id,
+          cantidadEquipos: formData.cantidadEquipos,
+          cantidadSuplentes: formData.cantidadSuplentes,
+          formacion: formData.formacion,
+          horaInicioMillis,
+        });
+
+        setMatch({
+          ...match,
+          ...formData,
+          posicionesObjetivo,
+          horaInicio: new Date(formData.horaInicio),
+        });
+
+        setEditMode(false);
+      },
+      {
+        successMessage: "Match actualizado correctamente",
+        errorMessage: "No se pudo guardar el match",
+      }
     );
-
-    const fn = httpsCallable(functions, "editMatch");
-    const date = new Date(formData.horaInicio); // interpretado en el navegador (AR)
-    const horaInicioMillis = date.getTime(); // 🔥 instante absoluto
-    await fn({
-      matchId: match.id,
-      cantidadEquipos: formData.cantidadEquipos,
-      cantidadSuplentes: formData.cantidadSuplentes,
-      formacion: formData.formacion,
-      horaInicioMillis,
-    });
-
-    setMatch({
-      ...match,
-      ...formData,
-      posicionesObjetivo,
-      horaInicio: new Date(formData.horaInicio),
-    });
-    setEditMode(false);
   };
 
   if (authLoading || !match) return <p>Cargando...</p>;
@@ -579,7 +590,7 @@ useEffect(() => {
 
     {/* =============== EDITAR MATCH =============== */}
 
-    {isAdmin && match.estado !== "jugado" && (
+    {isAdmin && (match.estado !== "jugado" && match.estado !== "cancelado") && (
       <section className="border rounded p-4 space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">Editar match</h2>
@@ -652,12 +663,13 @@ useEffect(() => {
             />
 
             <div className="flex gap-3">
-              <button
+              <ActionButton
                 onClick={handleSave}
-                className="bg-black text-white px-4 py-2 rounded"
+                loading={isLoading("save-match")}
+                disabled={isLoading("save-match")}
               >
                 Guardar
-              </button>
+              </ActionButton>
 
               <button
                 onClick={() => setEditMode(false)}

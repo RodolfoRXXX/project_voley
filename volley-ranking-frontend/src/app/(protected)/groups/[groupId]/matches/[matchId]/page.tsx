@@ -19,6 +19,7 @@ import MatchStatusBadge from "@/components/matchCard/MatchStatusBadge";
 import { formatDateTime, formatForDateTimeLocal } from "@/lib/date";
 import { useAction } from "@/components/ui/action/useAction";
 import { Spinner } from "@/components/ui/spinner/spinner";
+import { ActionButton } from "@/components/ui/action/ActionButton";
 
 /* =====================
    Firebase functions
@@ -782,13 +783,14 @@ useEffect(() => {
                   </button>
                 </span>
                 {isAdmin && (
-                  <button
+                  <ActionButton
+                    round
+                    variant="danger"
+                    loading={loading && currentAction === "remove"}
                     onClick={() => handleEliminarJugador(p.id)}
-                    className="w-6 h-6 flex items-center justify-center rounded-full border border-red-500 text-red-500 hover:bg-red-100"
-                    title="Eliminar jugador"
                   >
                     ×
-                  </button>
+                  </ActionButton>
                 )}
               </div>
             );
@@ -888,13 +890,14 @@ useEffect(() => {
               <span className="capitalize">{p.pagoEstado}</span>
 
               {isAdmin && (
-                <button
+                <ActionButton
+                  round
+                  variant="success"
+                  loading={loading && currentAction === "insert"}
                   onClick={() => handleReincorporarJugador(p.id)}
-                  className="w-8 h-8 rounded-full bg-green-600 text-white font-bold flex items-center justify-center hover:bg-green-700"
-                  title="Reincorporar jugador"
                 >
                   +
-                </button>
+                </ActionButton>
               )}
             </div>
           ))}
@@ -905,115 +908,72 @@ useEffect(() => {
     {/* ================== ACCIONES ================= */}
 
     <section className="border-t pt-6">
-      <h2 className="text-xl font-semibold mb-3">
-        Acciones
-      </h2>
-      <div className="flex gap-3 pt-2">
-        <button
+      <h2 className="text-xl font-semibold mb-3">Acciones</h2>
+
+      <div className="flex gap-3 pt-2 flex-wrap">
+        {/* JUGADOR */}
+        <ActionButton
           onClick={handleToggleParticipation}
-          disabled={
-            authLoading ||
-            isEliminado ||
-            accionesJugadorBloqueadas
-          }
-          className={`
-            h-10 min-w-[140px]
-            flex items-center justify-center
-            px-4 rounded transition
-            ${
-              isEliminado || accionesJugadorBloqueadas
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : isJoined
-                ? "border border-red-500 text-red-500"
-                : "bg-green-600 text-white"
-            }
-            disabled:opacity-50
-          `}
+          loading={loading && currentAction === "join"}
+          disabled={isEliminado || accionesJugadorBloqueadas}
+          variant={isJoined ? "danger" : "success"}
         >
-          {loading ? (
-            <Spinner />
-          ) : accionesJugadorBloqueadas ? (
-            "No disponible"
-          ) : isJoined ? (
-            "Desunirme"
-          ) : (
-            "Unirme"
-          )}
-        </button>
+          {accionesJugadorBloqueadas
+            ? "No disponible"
+            : isJoined
+            ? "Desunirme"
+            : "Unirme"}
+        </ActionButton>
 
+        {/* ADMIN */}
         {isAdmin && (
-          <div className="flex gap-3">
+          <>
             {/* CANCELAR MATCH */}
-            <button
+            <ActionButton
               onClick={handleEliminarMatch}
+              loading={loading && currentAction === "cancel"}
               disabled={["cancelado", "jugado"].includes(match.estado)}
-              className="border border-red-600 text-red-600 px-4 py-2 rounded disabled:opacity-50"
+              variant="danger"
             >
-              Cancelar Juego
-            </button>
+              Cancelar juego
+            </ActionButton>
 
-            {/* CIERRE / CONFIRMACIÓN */}
+            {/* CERRAR MATCH */}
             {match.estado === "abierto" && (
-              <button
+              <ActionButton
                 onClick={handleCerrarMatch}
+                loading={loading && currentAction === "close"}
                 disabled={loading}
-                className="
-                  h-10 min-w-[160px]
-                  flex items-center justify-center
-                  bg-black text-white px-4 rounded
-                  disabled:opacity-50
-                "
               >
-                {loading && currentAction === "close" ? (
-                  <Spinner />
-                ) : (
-                  "Cerrar Juego"
-                )}
-              </button>
+                Cerrar juego
+              </ActionButton>
             )}
 
+            {/* CONFIRMAR CIERRE */}
             {match.estado === "verificando" && (
-              <button
+              <ActionButton
                 onClick={handleCerrarMatch}
-                disabled={hayPagosPendientes && loading}
-                className={`
-                  h-10 min-w-[160px]
-                  flex items-center justify-center rounded
-                  disabled:opacity-50 
-                  ${
-                  hayPagosPendientes
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-green-600 text-white"
-                }`}
+                loading={loading && currentAction === "close"}
+                disabled={hayPagosPendientes || loading}
+                variant="success"
               >
-                {loading && currentAction === "close" ? (
-                  <Spinner />
-                ) : (
-                  "Confirmar cierre"
-                )}
-              </button>
+                Confirmar cierre
+              </ActionButton>
             )}
-            {isAdmin && match.estado === "verificando" && (
-              <button
-                onClick={handleReabrirMatch}
-                disabled={loading}
-                className="
-                  h-10 min-w-[160px]
-                  flex items-center justify-center
-                  border-yellow-800 text-yellow-600 px-4 rounded
-                  disabled:opacity-50
-                "
-              >
-                {loading && currentAction === "reopen" ? (
-                  <Spinner />
-                ) : (
-                  "Reabrir juego"
-                )}
-              </button>
-            )}
-          </div>
-        )}
 
+            {/* REABRIR */}
+            {match.estado === "verificando" && (
+              <ActionButton
+                onClick={handleReabrirMatch}
+                loading={loading && currentAction === "reopen"}
+                disabled={loading}
+                variant="warning"
+              >
+                Reabrir juego
+              </ActionButton>
+            )}
+          </>
+        )}
       </div>
     </section>
 

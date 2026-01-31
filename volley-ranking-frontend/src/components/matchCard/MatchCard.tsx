@@ -16,6 +16,7 @@ import { formatDateTime } from "@/lib/date";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 import { Spinner } from "@/components/ui/spinner/spinner";
 import { useAction } from "@/components/ui/action/useAction";
+import { ActionButton } from "../ui/action/ActionButton";
 
 
 /* =====================
@@ -34,7 +35,7 @@ export default function MatchCard({
   const { confirm } = useConfirm();
   const [titulares, setTitulares] = useState(0);
   const [suplentes, setSuplentes] = useState(0);
-  const { run, loading } = useAction();
+  const { run, isLoading } = useAction();
   const [miParticipacion, setMiParticipacion] = useState<any | null>(null);
   const [adminUser, setAdminUser] = useState<any | null>(null);
 
@@ -53,6 +54,17 @@ export default function MatchCard({
   const isEliminado = miParticipacion?.estado === "eliminado";
   const isJoined = !!miParticipacion && miParticipacion.estado !== "eliminado";
   const accionesBloqueadas = match.estado !== "abierto";
+
+  const accionesJugadorBloqueadas =
+  match.estado !== "abierto" || isEliminado;
+
+const loadingJoinLeave =
+  isLoading("join") || isLoading("leave");
+
+const puedeUnirse =
+  !accionesJugadorBloqueadas &&
+  !loadingJoinLeave &&
+  (isJoined || !lleno);
 
 
   /* =====================
@@ -115,6 +127,7 @@ useEffect(() => {
 
     if (isJoined) {
       run(
+        "leave",
         async () => {
           await leaveMatch({ matchId: match.id });
         },
@@ -130,6 +143,7 @@ useEffect(() => {
       );
     } else {
       run(
+        "join",
         async () => {
           await joinMatch({ matchId: match.id });
         },
@@ -185,47 +199,28 @@ useEffect(() => {
       </p>
 
       <div className="flex gap-3 pt-2 items-center">
-        <button
-          onClick={handleToggleParticipation}
-          disabled={
-            loading ||
-            accionesBloqueadas ||
-            isEliminado ||
-            (!isJoined && lleno)
-          }
-          className={`
-            h-10 min-w-[140px]
-            flex items-center justify-center
-            px-4 rounded transition
-            ${
-              accionesBloqueadas || isEliminado
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : isJoined
-                ? "border border-red-500 text-red-500"
-                : "bg-green-600 text-white"
-            }
-            disabled:opacity-50
-          `}
-        >
-          {loading ? (
-            <Spinner />
-          ) : accionesBloqueadas ? (
-            "No disponible"
-          ) : isEliminado ? (
-            "Eliminado"
-          ) : isJoined ? (
-            "Desunirme"
-          ) : (
-            "Unirme"
-          )}
-        </button>
-        <Link
-          href={`/groups/${match.groupId}/matches/${match.id}`}
-          className="text-blue-600 text-sm"
-        >
-          Ver detalle →
-        </Link>
-      </div>
+      <ActionButton
+        onClick={handleToggleParticipation}
+        loading={loadingJoinLeave}
+        disabled={!puedeUnirse}
+        variant={isJoined ? "danger" : "success"}
+      >
+        {accionesJugadorBloqueadas
+          ? "No disponible"
+          : isEliminado
+          ? "Eliminado"
+          : isJoined
+          ? "Desunirme"
+          : "Unirme"}
+      </ActionButton>
+
+      <Link
+        href={`/groups/${match.groupId}/matches/${match.id}`}
+        className="text-blue-600 text-sm"
+      >
+        Ver detalle →
+      </Link>
+    </div>
     </div>
   );
 }

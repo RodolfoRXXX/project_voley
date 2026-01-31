@@ -18,7 +18,6 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import MatchStatusBadge from "@/components/matchCard/MatchStatusBadge";
 import { formatDateTime, formatForDateTimeLocal } from "@/lib/date";
 import { useAction } from "@/components/ui/action/useAction";
-import { Spinner } from "@/components/ui/spinner/spinner";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 
 /* =====================
@@ -93,7 +92,7 @@ const pagoStyles: Record<string, string> = {
 ===================== */
 
 export default function MatchDetailPage() {
-  const { run, loading } = useAction();
+  const { run, isLoading } = useAction();
   const { matchId } = useParams<{ matchId: string }>();
   const router = useRouter();
   const { firebaseUser, userDoc, loading: authLoading } = useAuth();
@@ -105,8 +104,6 @@ export default function MatchDetailPage() {
   const [usersMap, setUsersMap] = useState<Record<string, any>>({});
   const [pagoModal, setPagoModal] = useState<null | any>(null);
   const [adminUser, setAdminUser] = useState<any | null>(null);
-  const [currentAction, setCurrentAction] = useState<
-  null | "join" | "disjoin" | "close" | "cancel" | "reopen" | "remove" | "insert" >(null);
 
   const [formaciones, setFormaciones] = useState<
     Record<string, Record<string, number>>
@@ -274,45 +271,34 @@ useEffect(() => {
   const isJoined = !!myParticipation && myParticipation.estado !== "eliminado";
 
   const handleToggleParticipation = () => {
-    if (!match || !firebaseUser) return;
+  if (!match || !firebaseUser) return;
 
-    if (isJoined) {
-
-      setCurrentAction("join");
-
-      run(
-        async () => {
-            await leaveMatch({ matchId: match.id });
+  if (isJoined) {
+    run(
+      "leave",
+      () => leaveMatch({ matchId: match.id }),
+      {
+        confirm: {
+          message: "¿Querés abandonar el partido?",
+          confirmText: "Abandonar",
+          variant: "danger",
         },
-        {
-          confirm: {
-            message: "¿Querés abandonar el partido?",
-            confirmText: "Abandonar",
-            variant: "danger",
-          },
-          successMessage: "Saliste del partido",
-          errorMessage: "No se pudo salir del partido",
-        }
-      ).finally(() => {
-        setCurrentAction(null);
-      });
-    } else {
+        successMessage: "Saliste del partido",
+        errorMessage: "No se pudo salir del partido",
+      }
+    );
+  } else {
+    run(
+      "join",
+      () => joinMatch({ matchId: match.id }),
+      {
+        successMessage: "Te uniste al partido",
+        errorMessage: "No se pudo unir al partido",
+      }
+    );
+  }
+};
 
-      setCurrentAction("disjoin");
-
-      run(
-        async () => {
-            await joinMatch({ matchId: match.id });
-        },
-        {
-          successMessage: "Te uniste al partido",
-          errorMessage: "No se pudo unir al partido",
-        }
-      ).finally(() => {
-        setCurrentAction(null);
-      });
-    }
-  };
 
   /* =====================
      nombre participations
@@ -431,33 +417,26 @@ useEffect(() => {
   // Eliminar jugador
 
   const handleEliminarJugador = (participationId: string) => {
-
-    setCurrentAction("remove");
-
     run(
+      "remove",
       async () => {
-            await eliminarJugadorFn({ participationId });
+        await eliminarJugadorFn({ participationId });
       },
       {
         confirm: {
-          message:
-            "¿Eliminar jugador del partido?",
+          message: "¿Eliminar jugador del partido?",
         },
         successMessage: "El jugador se ha eliminado correctamente",
         errorMessage: "No se pudo eliminar al jugador",
       }
-    ).finally(() => {
-      setCurrentAction(null);
-    });
+    );
   };
 
   // Reincorporar jugador
 
   const handleReincorporarJugador = (participationId: string) => {
-
-    setCurrentAction("insert");
-
     run(
+      "insert",
       async () => {
         await reincorporarJugadorFn({ participationId });
       },
@@ -468,9 +447,7 @@ useEffect(() => {
         successMessage: "El jugador se ha reincorporado correctamente",
         errorMessage: "No se pudo reincorporar al jugador",
       }
-    ).finally(() => {
-      setCurrentAction(null);
-    });
+    );
   };
 
   // Reabrir Match
@@ -478,23 +455,19 @@ useEffect(() => {
   const handleReabrirMatch = () => {
     if (!match) return;
 
-    setCurrentAction("reopen");
-
     run(
+      "reopen",
       async () => {
-            await reabrirMatchFn({ matchId: match.id });
+        await reabrirMatchFn({ matchId: match.id });
       },
       {
         confirm: {
-          message:
-            "¿Reabrir el juego? Volverá a estado abierto.",
+          message: "¿Reabrir el juego? Volverá a estado abierto.",
         },
         successMessage: "Juego reabierto correctamente",
         errorMessage: "No se pudo reabrir el juego",
       }
-    ).finally(() => {
-      setCurrentAction(null);
-    });
+    );
   };
 
   // Cerrar Match
@@ -502,23 +475,19 @@ useEffect(() => {
   const handleCerrarMatch = () => {
     if (!match) return;
 
-    setCurrentAction("close");
-
     run(
+      "close",
       async () => {
-            await cerrarMatchFn({ matchId: match.id });
+        await cerrarMatchFn({ matchId: match.id });
       },
       {
         confirm: {
-          message:
-            "¿Desea cerrar el juego?",
+          message: "¿Desea cerrar el juego?",
         },
         successMessage: "Juego cerrado correctamente",
         errorMessage: "No se pudo cerrar el juego",
       }
-    ).finally(() => {
-      setCurrentAction(null);
-    });
+    );
   };
 
   // Eliminar Match
@@ -526,23 +495,19 @@ useEffect(() => {
   const handleEliminarMatch = () => {
     if (!match) return;
 
-    setCurrentAction("cancel");
-
     run(
+      "cancel",
       async () => {
-            await eliminarMatchFn({ matchId: match.id });
+        await eliminarMatchFn({ matchId: match.id });
       },
       {
         confirm: {
-          message:
-            "¿Cancelar el juego? No se podrá volver a abrir.",
+          message: "¿Cancelar el juego? No se podrá volver a abrir.",
         },
         successMessage: "Juego cancelado correctamente",
         errorMessage: "No se pudo cancelar el juego",
       }
-    ).finally(() => {
-      setCurrentAction(null);
-    });
+    );
   };
 
   /* =====================
@@ -786,7 +751,7 @@ useEffect(() => {
                   <ActionButton
                     round
                     variant="danger"
-                    loading={loading && currentAction === "remove"}
+                    loading={isLoading("remove")}
                     onClick={() => handleEliminarJugador(p.id)}
                   >
                     ×
@@ -893,7 +858,7 @@ useEffect(() => {
                 <ActionButton
                   round
                   variant="success"
-                  loading={loading && currentAction === "insert"}
+                  loading={isLoading("insert")}
                   onClick={() => handleReincorporarJugador(p.id)}
                 >
                   +
@@ -914,7 +879,7 @@ useEffect(() => {
         {/* JUGADOR */}
         <ActionButton
           onClick={handleToggleParticipation}
-          loading={loading && currentAction === "join"}
+          loading={isLoading("join") || isLoading("leave")}
           disabled={isEliminado || accionesJugadorBloqueadas}
           variant={isJoined ? "danger" : "success"}
         >
@@ -931,8 +896,8 @@ useEffect(() => {
             {/* CANCELAR MATCH */}
             <ActionButton
               onClick={handleEliminarMatch}
-              loading={loading && currentAction === "cancel"}
-              disabled={["cancelado", "jugado"].includes(match.estado)}
+              disabled={match.estado === "cancelado" || match.estado === "jugado"}
+              loading={isLoading("cancel")}
               variant="danger"
             >
               Cancelar juego
@@ -942,8 +907,7 @@ useEffect(() => {
             {match.estado === "abierto" && (
               <ActionButton
                 onClick={handleCerrarMatch}
-                loading={loading && currentAction === "close"}
-                disabled={loading}
+                loading={isLoading("close")}
               >
                 Cerrar juego
               </ActionButton>
@@ -953,8 +917,7 @@ useEffect(() => {
             {match.estado === "verificando" && (
               <ActionButton
                 onClick={handleCerrarMatch}
-                loading={loading && currentAction === "close"}
-                disabled={hayPagosPendientes || loading}
+                loading={isLoading("close")}
                 variant="success"
               >
                 Confirmar cierre
@@ -965,8 +928,7 @@ useEffect(() => {
             {match.estado === "verificando" && (
               <ActionButton
                 onClick={handleReabrirMatch}
-                loading={loading && currentAction === "reopen"}
-                disabled={loading}
+                loading={isLoading("reopen")}
                 variant="warning"
               >
                 Reabrir juego

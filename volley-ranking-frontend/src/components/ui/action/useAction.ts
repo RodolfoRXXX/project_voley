@@ -1,27 +1,15 @@
-
-// función reusable que:
-
-//      - maneje confirm
-
-//      - maneje spinner
-
-//      - maneje toast
-
-//      - ejecute la acción
-
 "use client";
 
 import { useState } from "react";
 import useToast from "@/components/ui/toast/useToast";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
-import { ConfirmVariant } from "@/components/ui/types/types";
 
 type ActionOptions = {
   confirm?: {
     message: string;
     confirmText?: string;
     cancelText?: string;
-    variant?: ConfirmVariant;
+    variant?: "default" | "danger" | "warning" | "success";
   };
   successMessage?: string;
   errorMessage?: string;
@@ -30,28 +18,31 @@ type ActionOptions = {
 export function useAction() {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
-  const [loading, setLoading] = useState(false);
 
-  const run = async (
-    action: () => Promise<void>,
+  const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
+
+  const run = async <T>(
+    actionId: string,
+    action: () => Promise<T>,
     options?: ActionOptions
   ): Promise<boolean> => {
+    if (loadingMap[actionId]) return false;
+
     try {
       if (options?.confirm) {
         const ok = await confirm(options.confirm);
         if (!ok) return false;
       }
 
-      setLoading(true);
+      setLoadingMap((p) => ({ ...p, [actionId]: true }));
 
       await action();
 
-      if (options?.successMessage) {
+      options?.successMessage &&
         showToast({
           type: "success",
           message: options.successMessage,
         });
-      }
 
       return true;
     } catch (err: any) {
@@ -64,9 +55,12 @@ export function useAction() {
       });
       return false;
     } finally {
-      setLoading(false);
+      setLoadingMap((p) => ({ ...p, [actionId]: false }));
     }
   };
 
-  return { run, loading };
+  const isLoading = (actionId: string) =>
+    Boolean(loadingMap[actionId]);
+
+  return { run, isLoading };
 }

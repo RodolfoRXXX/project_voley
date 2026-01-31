@@ -104,6 +104,8 @@ export default function MatchDetailPage() {
   const [usersMap, setUsersMap] = useState<Record<string, any>>({});
   const [pagoModal, setPagoModal] = useState<null | any>(null);
   const [adminUser, setAdminUser] = useState<any | null>(null);
+  const [currentAction, setCurrentAction] = useState<
+  null | "join" | "disjoin" | "close" | "cancel" | "reopen" | "remove" | "insert" >(null);
 
   const [formaciones, setFormaciones] = useState<
     Record<string, Record<string, number>>
@@ -274,6 +276,9 @@ useEffect(() => {
     if (!match || !firebaseUser) return;
 
     if (isJoined) {
+
+      setCurrentAction("join");
+
       run(
         async () => {
             await leaveMatch({ matchId: match.id });
@@ -287,8 +292,13 @@ useEffect(() => {
           successMessage: "Saliste del partido",
           errorMessage: "No se pudo salir del partido",
         }
-      );
+      ).finally(() => {
+        setCurrentAction(null);
+      });
     } else {
+
+      setCurrentAction("disjoin");
+
       run(
         async () => {
             await joinMatch({ matchId: match.id });
@@ -297,7 +307,9 @@ useEffect(() => {
           successMessage: "Te uniste al partido",
           errorMessage: "No se pudo unir al partido",
         }
-      );
+      ).finally(() => {
+        setCurrentAction(null);
+      });
     }
   };
 
@@ -419,6 +431,8 @@ useEffect(() => {
 
   const handleEliminarJugador = (participationId: string) => {
 
+    setCurrentAction("remove");
+
     run(
       async () => {
             await eliminarJugadorFn({ participationId });
@@ -431,12 +445,17 @@ useEffect(() => {
         successMessage: "El jugador se ha eliminado correctamente",
         errorMessage: "No se pudo eliminar al jugador",
       }
-    );
+    ).finally(() => {
+      setCurrentAction(null);
+    });
   };
 
   // Reincorporar jugador
 
   const handleReincorporarJugador = (participationId: string) => {
+
+    setCurrentAction("insert");
+
     run(
       async () => {
         await reincorporarJugadorFn({ participationId });
@@ -448,13 +467,17 @@ useEffect(() => {
         successMessage: "El jugador se ha reincorporado correctamente",
         errorMessage: "No se pudo reincorporar al jugador",
       }
-    );
+    ).finally(() => {
+      setCurrentAction(null);
+    });
   };
 
   // Reabrir Match
 
   const handleReabrirMatch = () => {
     if (!match) return;
+
+    setCurrentAction("reopen");
 
     run(
       async () => {
@@ -468,13 +491,17 @@ useEffect(() => {
         successMessage: "Juego reabierto correctamente",
         errorMessage: "No se pudo reabrir el juego",
       }
-    );
+    ).finally(() => {
+      setCurrentAction(null);
+    });
   };
 
   // Cerrar Match
 
   const handleCerrarMatch = () => {
     if (!match) return;
+
+    setCurrentAction("close");
 
     run(
       async () => {
@@ -488,13 +515,17 @@ useEffect(() => {
         successMessage: "Juego cerrado correctamente",
         errorMessage: "No se pudo cerrar el juego",
       }
-    );
+    ).finally(() => {
+      setCurrentAction(null);
+    });
   };
 
   // Eliminar Match
 
   const handleEliminarMatch = () => {
     if (!match) return;
+
+    setCurrentAction("cancel");
 
     run(
       async () => {
@@ -508,7 +539,9 @@ useEffect(() => {
         successMessage: "Juego cancelado correctamente",
         errorMessage: "No se pudo cancelar el juego",
       }
-    );
+    ).finally(() => {
+      setCurrentAction(null);
+    });
   };
 
   /* =====================
@@ -923,31 +956,59 @@ useEffect(() => {
             {match.estado === "abierto" && (
               <button
                 onClick={handleCerrarMatch}
-                className="bg-black text-white px-4 py-2 rounded"
+                disabled={loading}
+                className="
+                  h-10 min-w-[160px]
+                  flex items-center justify-center
+                  bg-black text-white px-4 rounded
+                  disabled:opacity-50
+                "
               >
-                Cerrar match
+                {loading && currentAction === "close" ? (
+                  <Spinner />
+                ) : (
+                  "Cerrar Juego"
+                )}
               </button>
             )}
 
             {match.estado === "verificando" && (
               <button
                 onClick={handleCerrarMatch}
-                disabled={hayPagosPendientes}
-                className={`px-4 py-2 rounded ${
+                disabled={hayPagosPendientes && loading}
+                className={`
+                  h-10 min-w-[160px]
+                  flex items-center justify-center rounded
+                  disabled:opacity-50 
+                  ${
                   hayPagosPendientes
                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                     : "bg-green-600 text-white"
                 }`}
               >
-                Confirmar cierre
+                {loading && currentAction === "close" ? (
+                  <Spinner />
+                ) : (
+                  "Confirmar cierre"
+                )}
               </button>
             )}
             {isAdmin && match.estado === "verificando" && (
               <button
                 onClick={handleReabrirMatch}
-                className="border border-yellow-600 text-yellow-600 px-4 py-2 rounded"
+                disabled={loading}
+                className="
+                  h-10 min-w-[160px]
+                  flex items-center justify-center
+                  border-yellow-800 text-yellow-600 px-4 rounded
+                  disabled:opacity-50
+                "
               >
-                Reabrir match
+                {loading && currentAction === "reopen" ? (
+                  <Spinner />
+                ) : (
+                  "Reabrir juego"
+                )}
               </button>
             )}
           </div>

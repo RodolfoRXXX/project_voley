@@ -122,6 +122,7 @@ useEffect(() => {
           confirm: {
             message: "¿Querés abandonar el partido?",
             confirmText: "Abandonar",
+            variant: "danger",
           },
           successMessage: "Saliste del partido",
           errorMessage: "No se pudo salir del partido",

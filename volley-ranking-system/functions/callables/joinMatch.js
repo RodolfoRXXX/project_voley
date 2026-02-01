@@ -5,14 +5,20 @@ const { db } = require("../src/firebase");
 
 module.exports = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated");
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "No autenticado"
+    );
   }
 
   const { matchId } = data;
   const userId = context.auth.uid;
 
   if (!matchId) {
-    throw new functions.https.HttpsError("invalid-argument");
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "matchId requerido"
+    );
   }
 
   const existing = await db

@@ -5,6 +5,8 @@ import { httpsCallable, getFunctions } from "firebase/functions";
 import { app } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { ActionButton } from "@/components/ui/action/ActionButton";
+import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
+import useToast from "@/components/ui/toast/useToast";
 
 export default function OnboardingForm() {
   const router = useRouter();
@@ -16,6 +18,7 @@ export default function OnboardingForm() {
   const [loadingCatalog, setLoadingCatalog] = useState(true);
 
   const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
   const [error, setError] = useState<string | null>(null);
 
   const getPosicionesFn = httpsCallable<
@@ -76,10 +79,11 @@ export default function OnboardingForm() {
       router.replace("/");
     } catch (err: any) {
       console.error("❌ completeOnboarding error:", err);
-      setError(
-        err?.message ||
-          err?.details ||
-          "Error al completar onboarding"
+
+      handleFirebaseError(
+        err,
+        showToast,
+        "Error al completar el onboarding"
       );
     } finally {
       setLoading(false);

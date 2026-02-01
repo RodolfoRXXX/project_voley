@@ -12,9 +12,9 @@ import { useParams, useRouter } from "next/navigation";
 import useToast from "@/components/ui/toast/useToast";
 import FormField from "@/components/ui/form/FormField";
 import { inputClass } from "@/components/ui/form/utils";
-import SubmitButton from "@/components/ui/form/SubmitButton";
 import { useAction } from "@/components/ui/action/useAction";
 import { ActionButton } from "@/components/ui/action/ActionButton";
+import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 
 export default function NewMatchPage() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -26,7 +26,6 @@ export default function NewMatchPage() {
   const [cantidadEquipos, setCantidadEquipos] = useState(2);
   const [cantidadSuplentes, setCantidadSuplentes] = useState(5);
   const [horaInicio, setHoraInicio] = useState("");
-  //const [saving, setSaving] = useState(false);
   const { run, isLoading } = useAction();
 
   /* =====================
@@ -53,52 +52,24 @@ export default function NewMatchPage() {
         const fn = httpsCallable(functions, "getFormaciones");
         const res: any = await fn();
         setFormaciones(Object.keys(res.data.formaciones));
-      } catch {
-        showToast({
-          type: "error",
-          message: "No se pudieron cargar las formaciones",
-        });
-      }
+      } catch (err: any) {
+          console.error("❌ Error carga formaciones:", err);
+    
+          handleFirebaseError(
+            err,
+            showToast,
+            "No se pudieron cargar las formaciones"
+          );
+        }
     };
 
     load();
   }, [showToast]);
 
+
   /* =====================
      SUBMIT
   ===================== */
-  /*const submit = async () => {
-    if (!isFormValid || saving) return;
-
-    setSaving(true);
-
-    try {
-      const fn = httpsCallable(functions, "createMatch");
-
-      await fn({
-        groupId,
-        formacion,
-        cantidadEquipos,
-        cantidadSuplentes,
-        horaInicioMillis: new Date(horaInicio).getTime(),
-      });
-
-      showToast({
-        type: "success",
-        message: "Match creado correctamente",
-      });
-
-      router.replace(`/admin/groups/${groupId}`);
-    } catch (e: any) {
-      showToast({
-        type: "error",
-        message: e?.message || "Error al crear el match",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };*/
-
   const submit = () =>
   run(
     "create-match",

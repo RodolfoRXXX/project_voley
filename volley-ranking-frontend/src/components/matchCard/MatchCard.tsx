@@ -1,3 +1,6 @@
+
+// Card que muestra un Match determinado
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -13,11 +16,10 @@ import Link from "next/link";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import MatchStatusBadge from "./MatchStatusBadge";
 import { formatDateTime } from "@/lib/date";
-import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
-import { Spinner } from "@/components/ui/spinner/spinner";
 import { useAction } from "@/components/ui/action/useAction";
 import { ActionButton } from "../ui/action/ActionButton";
-
+import useToast from "@/components/ui/toast/useToast";
+import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 
 /* =====================
      FUNCTION
@@ -32,12 +34,12 @@ export default function MatchCard({
   userId?: string;
   groupNombre?: string;
 }) {
-  const { confirm } = useConfirm();
   const [titulares, setTitulares] = useState(0);
   const [suplentes, setSuplentes] = useState(0);
   const { run, isLoading } = useAction();
   const [miParticipacion, setMiParticipacion] = useState<any | null>(null);
   const [adminUser, setAdminUser] = useState<any | null>(null);
+  const { showToast } = useToast();
 
   const valores: number[] = Object.values(match.posicionesObjetivo || {});
   const titularesTotales = valores.reduce(
@@ -53,7 +55,6 @@ export default function MatchCard({
 
   const isEliminado = miParticipacion?.estado === "eliminado";
   const isJoined = !!miParticipacion && miParticipacion.estado !== "eliminado";
-  const accionesBloqueadas = match.estado !== "abierto";
 
   const accionesJugadorBloqueadas =
   match.estado !== "abierto" || isEliminado;
@@ -129,7 +130,16 @@ useEffect(() => {
       run(
         "leave",
         async () => {
-          await leaveMatch({ matchId: match.id });
+          try {
+            await leaveMatch({ matchId: match.id });
+          } catch (err: any) {
+            handleFirebaseError(
+              err,
+              showToast,
+              "No se pudo salir del partido"
+            );
+            throw err;
+          }
         },
         {
           confirm: {
@@ -137,19 +147,26 @@ useEffect(() => {
             confirmText: "Abandonar",
             variant: "danger",
           },
-          successMessage: "Saliste del partido",
-          errorMessage: "No se pudo salir del partido",
+          successMessage: "Saliste del partido"
         }
       );
     } else {
       run(
         "join",
         async () => {
-          await joinMatch({ matchId: match.id });
+          try {
+            await joinMatch({ matchId: match.id });
+          } catch (err: any) {
+            handleFirebaseError(
+              err,
+              showToast,
+              "No se pudo unir al partido"
+            );
+            throw err; // 🔑 para que useAction sepa que falló
+          }
         },
         {
-          successMessage: "Te uniste al partido",
-          errorMessage: "No se pudo unir al partido",
+          successMessage: "Te uniste al partido"
         }
       );
     }

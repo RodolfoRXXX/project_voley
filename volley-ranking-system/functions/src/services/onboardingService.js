@@ -1,27 +1,38 @@
 // services/onboardingService.js
 
 const admin = require("firebase-admin");
+const functions = require("firebase-functions/v1");
+
 const db = admin.firestore();
-
 const { POSICIONES_VALIDAS } = require("../config/posiciones");
-
 
 async function completarOnboarding({
   uid,
   roles,
   posicionesPreferidas,
 }) {
-  if (!uid) throw new Error("UID requerido");
+  if (!uid) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "UID requerido"
+    );
+  }
 
   if (!["player", "admin"].includes(roles)) {
-    throw new Error("Rol inválido");
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Rol inválido"
+    );
   }
 
   if (
     !Array.isArray(posicionesPreferidas) ||
     posicionesPreferidas.length !== 3
   ) {
-    throw new Error("Debe elegir 3 posiciones");
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Debe elegir exactamente 3 posiciones"
+    );
   }
 
   const posicionesValidas = posicionesPreferidas.every((p) =>
@@ -29,7 +40,10 @@ async function completarOnboarding({
   );
 
   if (!posicionesValidas) {
-    throw new Error("Posiciones inválidas");
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Posiciones inválidas"
+    );
   }
 
   const userRef = db.collection("users").doc(uid);

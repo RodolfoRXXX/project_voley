@@ -6,13 +6,19 @@ const { eliminarJugador } = require("../src/services/adminMatchService");
 
 module.exports = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated");
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "No autenticado"
+    );
   }
 
   const { participationId } = data;
 
   if (!participationId) {
-    throw new functions.https.HttpsError("invalid-argument");
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "participationId requerido"
+    );
   }
 
   // 🔐 validar admin
@@ -22,7 +28,10 @@ module.exports = functions.https.onCall(async (data, context) => {
     .get();
 
   if (!userSnap.exists || userSnap.data().roles !== "admin") {
-    throw new functions.https.HttpsError("permission-denied");
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "Admin no validado"
+    );
   }
 
   await eliminarJugador(participationId);

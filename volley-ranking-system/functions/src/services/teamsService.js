@@ -1,6 +1,8 @@
 // services/teamsService.js
 
 const admin = require("firebase-admin");
+const functions = require("firebase-functions/v1");
+
 const db = admin.firestore();
 
 /* =========================
@@ -28,13 +30,20 @@ async function generarEquipos(matchId, groupId) {
     ========================= */
 
     const matchSnap = await tx.get(matchRef);
-    if (!matchSnap.exists) throw new Error("Match no existe");
+
+    if (!matchSnap.exists) {
+      throw new functions.https.HttpsError(
+        "not-found",
+        "El match no existe"
+      );
+    }
 
     const match = matchSnap.data();
     const now = new Date();
 
     if (match.horaInicio.toDate() <= now) {
-      throw new Error(
+      throw new functions.https.HttpsError(
+        "failed-precondition",
         "El match ya comenzó, no se pueden generar ni rehacer equipos"
       );
     }
@@ -45,7 +54,10 @@ async function generarEquipos(matchId, groupId) {
       !cantidadEquipos ||
       typeof posicionesObjetivo !== "object"
     ) {
-      throw new Error("Configuración del match incompleta");
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "La configuración del match es incompleta"
+      );
     }
 
     /* =========================
@@ -58,7 +70,9 @@ async function generarEquipos(matchId, groupId) {
         .where("estado", "==", "titular")
     );
 
-    const titulares = participationsSnap.docs.map((d) => d.data());
+    const titulares = participationsSnap.docs.map((d) =>
+      d.data()
+    );
 
     /* =========================
        AGRUPAR POR POSICIÓN
@@ -90,7 +104,8 @@ async function generarEquipos(matchId, groupId) {
        ARMAR EQUIPOS
     ========================= */
 
-    const equipos = Array.from({ length: cantidadEquipos }).map(
+    const equipos = Array.from(
+      { length: cantidadEquipos },
       (_, i) => ({
         nombre: `Equipo ${i + 1}`,
         jugadores: [],

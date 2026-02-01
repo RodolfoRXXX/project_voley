@@ -9,7 +9,9 @@ module.exports = functions.firestore
   .onCreate(async (snap) => {
     const participation = snap.data();
 
-    const matchRef = db.collection("matches").doc(participation.matchId);
+    const matchRef = db
+      .collection("matches")
+      .doc(participation.matchId);
 
     /* =========================
        VALIDAR USUARIO ONBOARDED
@@ -23,17 +25,31 @@ module.exports = functions.firestore
     const user = userSnap.data();
 
     if (!user?.onboarded) {
-      throw new Error("Usuario no onboarded");
+      console.warn(
+        "[onParticipationCreate] Usuario no onboarded",
+        {
+          userId: participation.userId,
+          participationId: snap.id,
+        }
+      );
+      return;
     }
 
     /* =========================
        LOCK + VALIDACIÓN MATCH
     ========================= */
 
+    let shouldRecalculate = false;
+
     await db.runTransaction(async (tx) => {
       const matchSnap = await tx.get(matchRef);
+
       if (!matchSnap.exists) {
-        throw new Error("Match no existe");
+        console.warn(
+          "[onParticipationCreate] Match no existe",
+          participation.matchId
+        );
+        return;
       }
 
       const match = matchSnap.data();
@@ -41,12 +57,19 @@ module.exports = functions.firestore
       if (match.estado !== "abierto") return;
 
       if (match.lock) {
-        throw new Error("Ranking bloqueado");
+        console.warn(
+          "[onParticipationCreate] Ranking bloqueado",
+          participation.matchId
+        );
+        return;
       }
 
       // 🔒 lock
       tx.update(matchRef, { lock: true });
+      shouldRecalculate = true;
     });
+
+    if (!shouldRecalculate) return;
 
     /* =========================
        RECALCULAR RANKING
@@ -54,9 +77,13 @@ module.exports = functions.firestore
 
     try {
       await recalcularRanking(participation.matchId);
+    } catch (err) {
+      console.error(
+        "[onParticipationCreate] Error recalculando ranking",
+        err
+      );
     } finally {
       // 🔓 unlock (SIEMPRE)
       await matchRef.update({ lock: false });
     }
   });
-

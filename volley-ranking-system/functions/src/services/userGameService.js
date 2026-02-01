@@ -1,5 +1,6 @@
 // functions/src/services/userGameService.js
 
+const functions = require("firebase-functions/v1");
 const { getFirestore } = require("firebase-admin/firestore");
 const { POSICIONES_VALIDAS } = require("../config/posiciones");
 
@@ -7,27 +8,42 @@ const db = getFirestore();
 
 async function updatePreferredPositions(userId, posiciones) {
   if (!Array.isArray(posiciones)) {
-    throw new Error("Formato inválido");
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Formato inválido"
+    );
   }
 
   if (posiciones.length < 1) {
-    throw new Error("Debe haber al menos una posición");
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Debe haber al menos una posición"
+    );
   }
 
   if (posiciones.length > 3) {
-    throw new Error("Máximo 3 posiciones permitidas");
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Máximo 3 posiciones permitidas"
+    );
   }
 
   // validar duplicados
   const unique = new Set(posiciones);
   if (unique.size !== posiciones.length) {
-    throw new Error("Hay posiciones duplicadas");
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Hay posiciones duplicadas"
+    );
   }
 
   // validar catálogo (DOMINIO)
   posiciones.forEach((p) => {
     if (!POSICIONES_VALIDAS.includes(p)) {
-      throw new Error(`Posición inválida: ${p}`);
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        `Posición inválida: ${p}`
+      );
     }
   });
 

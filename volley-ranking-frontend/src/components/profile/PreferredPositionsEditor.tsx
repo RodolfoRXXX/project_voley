@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { app } from "@/lib/firebase";
 import PositionBadge from "./positionBadge";
+import { ActionButton } from "@/components/ui/action/ActionButton";
 
 type Props = {
   initial: string[];
@@ -92,12 +93,11 @@ export default function PreferredPositionsEditor({ initial }: Props) {
         <h3 className="font-semibold">Posiciones preferidas</h3>
 
         {!editing && (
-          <button
+          <ActionButton
             onClick={() => setEditing(true)}
-            className="text-sm text-blue-600 hover:underline"
           >
             Editar
-          </button>
+          </ActionButton>
         )}
       </div>
 
@@ -135,23 +135,24 @@ export default function PreferredPositionsEditor({ initial }: Props) {
 
       {editing && (
         <div className="flex gap-2 pt-2">
-          <button
+          <ActionButton
             onClick={save}
-            disabled={saving}
-            className="bg-black text-white px-4 py-1 rounded disabled:opacity-50"
+            loading={saving}
+            disabled={positions.length < 1}
+            variant="success"
           >
-            {saving ? "Guardando…" : "Guardar"}
-          </button>
+            Guardar
+          </ActionButton>
 
-          <button
+          <ActionButton
             onClick={() => {
-              setPositions(savedPositions);
+              setPositions(savedPositions); // 👈 descarta cambios
               setEditing(false);
             }}
-            className="border px-4 py-1 rounded"
+            disabled={saving}
           >
             Cancelar
-          </button>
+          </ActionButton>
         </div>
       )}
     </section>

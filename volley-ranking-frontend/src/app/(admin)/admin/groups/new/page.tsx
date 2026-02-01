@@ -6,19 +6,20 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import useToast from "@/components/ui/toast/useToast";
+import { useAction } from "@/components/ui/action/useAction";
+import { ActionButton } from "@/components/ui/action/ActionButton";
 import FormField from "@/components/ui/form/FormField";
 import { inputClass } from "@/components/ui/form/utils";
-import SubmitButton from "@/components/ui/form/SubmitButton";
 
 export default function NewGroupPage() {
   const router = useRouter();
   const { firebaseUser, userDoc, loading } = useAuth();
   const { showToast } = useToast();
+  const { run, isLoading } = useAction();
 
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [activo, setActivo] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   /* =====================
      Auth guard
@@ -34,12 +35,12 @@ export default function NewGroupPage() {
      Validations
   ===================== */
   const isNombreValid = nombre.trim().length > 0;
-  const isFormValid = isNombreValid && !saving;
+  const isFormValid = isNombreValid;
 
   /* =====================
-     Submit
+     Submit (useAction)
   ===================== */
-  const submit = async () => {
+  const submit = () => {
     if (!isFormValid) {
       showToast({
         type: "warning",
@@ -48,34 +49,25 @@ export default function NewGroupPage() {
       return;
     }
 
-    setSaving(true);
+    return run(
+      "create-group",
+      async () => {
+        const docRef = await addDoc(collection(db, "groups"), {
+          nombre: nombre.trim(),
+          descripcion: descripcion.trim(),
+          activo,
+          adminId: firebaseUser.uid,
+          createdAt: serverTimestamp(),
+          partidosTotales: 0,
+        });
 
-    try {
-      const docRef = await addDoc(collection(db, "groups"), {
-        nombre: nombre.trim(),
-        descripcion: descripcion.trim(),
-        activo,
-        adminId: firebaseUser.uid,
-        createdAt: serverTimestamp(),
-        partidosTotales: 0,
-      });
-
-      showToast({
-        type: "success",
-        message: "Grupo creado correctamente",
-      });
-
-      router.replace(`/admin/groups/${docRef.id}`);
-    } catch (err) {
-      console.error(err);
-
-      showToast({
-        type: "error",
-        message: "Error al crear el grupo",
-      });
-    } finally {
-      setSaving(false);
-    }
+        router.replace(`/admin/groups/${docRef.id}`);
+      },
+      {
+        successMessage: "Grupo creado correctamente",
+        errorMessage: "Error al crear el grupo",
+      }
+    );
   };
 
   /* =====================
@@ -86,54 +78,47 @@ export default function NewGroupPage() {
       <h1 className="text-2xl font-bold">Nuevo grupo</h1>
 
       {/* NOMBRE */}
-      <div>
-        <FormField
-          label="Nombre"
-          required
-          error={!isNombreValid ? "El nombre es obligatorio" : undefined}
-        >
-          <input
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            className={inputClass(isNombreValid)}
-            placeholder="Voley Martes 21hs"
-          />
-        </FormField>
-      </div>
+      <FormField
+        label="Nombre"
+        required
+        error={!isNombreValid ? "El nombre es obligatorio" : undefined}
+      >
+        <input
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          className={inputClass(isNombreValid)}
+          placeholder="Voley Martes 21hs"
+        />
+      </FormField>
 
       {/* DESCRIPCIÓN */}
-      <div>
-        <FormField
-          label="Descripción"
-        >
-          <input
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            className="border p-2 w-full rounded"
-            placeholder="Grupo recreativo, nivel intermedio..."
-          />
-        </FormField>
-      </div>
+      <FormField label="Descripción">
+        <input
+          value={descripcion}
+          onChange={(e) => setDescripcion(e.target.value)}
+          className="border p-2 w-full rounded"
+          placeholder="Grupo recreativo, nivel intermedio..."
+        />
+      </FormField>
 
       {/* ACTIVO */}
-      <div className="flex items-center gap-2">
-        <FormField label="Grupo activo">
-          <input
-            type="checkbox"
-            checked={activo}
-            onChange={(e) => setActivo(e.target.checked)}
-          />
-        </FormField>
-      </div>
+      <FormField label="Grupo activo">
+        <input
+          type="checkbox"
+          checked={activo}
+          onChange={(e) => setActivo(e.target.checked)}
+        />
+      </FormField>
 
-      {/* BOTÓN */}
-      <SubmitButton
-        loading={saving}
-        disabled={!isFormValid}
+      {/* BOTÓN UNIFICADO */}
+      <ActionButton
         onClick={submit}
+        loading={isLoading("create-group")}
+        disabled={!isFormValid}
+        variant="success"
       >
-        Crear group
-      </SubmitButton>
+        Crear grupo
+      </ActionButton>
     </main>
   );
 }

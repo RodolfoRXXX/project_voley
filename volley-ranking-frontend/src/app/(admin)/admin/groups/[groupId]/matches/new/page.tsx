@@ -13,6 +13,8 @@ import useToast from "@/components/ui/toast/useToast";
 import FormField from "@/components/ui/form/FormField";
 import { inputClass } from "@/components/ui/form/utils";
 import SubmitButton from "@/components/ui/form/SubmitButton";
+import { useAction } from "@/components/ui/action/useAction";
+import { ActionButton } from "@/components/ui/action/ActionButton";
 
 export default function NewMatchPage() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -24,7 +26,8 @@ export default function NewMatchPage() {
   const [cantidadEquipos, setCantidadEquipos] = useState(2);
   const [cantidadSuplentes, setCantidadSuplentes] = useState(5);
   const [horaInicio, setHoraInicio] = useState("");
-  const [saving, setSaving] = useState(false);
+  //const [saving, setSaving] = useState(false);
+  const { run, isLoading } = useAction();
 
   /* =====================
      VALIDACIONES
@@ -64,7 +67,7 @@ export default function NewMatchPage() {
   /* =====================
      SUBMIT
   ===================== */
-  const submit = async () => {
+  /*const submit = async () => {
     if (!isFormValid || saving) return;
 
     setSaving(true);
@@ -94,7 +97,30 @@ export default function NewMatchPage() {
     } finally {
       setSaving(false);
     }
-  };
+  };*/
+
+  const submit = () =>
+  run(
+    "create-match",
+    async () => {
+      const fn = httpsCallable(functions, "createMatch");
+
+      await fn({
+        groupId,
+        formacion,
+        cantidadEquipos,
+        cantidadSuplentes,
+        horaInicioMillis: new Date(horaInicio).getTime(),
+      });
+
+      router.replace(`/admin/groups/${groupId}`);
+    },
+    {
+      successMessage: "Match creado correctamente",
+      errorMessage: "Error al crear el match",
+    }
+  );
+
 
   /* =====================
      RENDER
@@ -167,13 +193,14 @@ export default function NewMatchPage() {
       </FormField>
 
       {/* Submit */}
-      <SubmitButton
-        loading={saving}
-        disabled={!isFormValid}
+      <ActionButton
         onClick={submit}
+        loading={isLoading("create-match")}
+        disabled={!isFormValid}
+        variant="success"
       >
         Crear match
-      </SubmitButton>
+      </ActionButton>
     </main>
   );
 }

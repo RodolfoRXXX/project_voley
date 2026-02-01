@@ -1,4 +1,4 @@
-// Trigger que activa la llamada a la acción para reemplazar a un titular eliminado
+// triggers/onParticipationUpdate.js
 
 const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
@@ -16,9 +16,7 @@ module.exports = functions.firestore
     if (!after.matchId) return null;
 
     // 🔒 Guard anti-loop
-    if (before.estado === after.estado) {
-      return null;
-    }
+    if (before.estado === after.estado) return null;
 
     /* ==================================
        CASO 1: TITULAR → ELIMINADO
@@ -36,12 +34,15 @@ module.exports = functions.firestore
       const user = userSnap.data();
 
       if (!user?.onboarded) {
-        console.log("Usuario no onboarded, se aborta reemplazo");
+        console.warn(
+          "[onParticipationUpdate] Usuario no onboarded",
+          after.userId
+        );
         return null;
       }
 
       /* =========================
-        PENALIZAR ESTADO COMPROMISO
+         PENALIZAR ESTADO COMPROMISO
       ========================= */
       await db.runTransaction(async (tx) => {
         const snap = await tx.get(userRef);
@@ -58,7 +59,14 @@ module.exports = functions.firestore
       ========================= */
       const matchRef = db.collection("matches").doc(after.matchId);
       const matchSnap = await matchRef.get();
-      if (!matchSnap.exists) return null;
+
+      if (!matchSnap.exists) {
+        console.warn(
+          "[onParticipationUpdate] Match no existe",
+          after.matchId
+        );
+        return null;
+      }
 
       const match = matchSnap.data();
       if (!match.horaInicio) return null;
@@ -71,19 +79,28 @@ module.exports = functions.firestore
       /* =========================
          LOCK GLOBAL DEL MATCH
       ========================= */
+      let locked = false;
+
       await db.runTransaction(async (tx) => {
         const snap = await tx.get(matchRef);
-        if (!snap.exists) throw new Error("Match no existe");
+        if (!snap.exists) return;
+
         if (snap.data().lock) {
-          console.log(
-            `🔒 Match ${after.matchId} bloqueado. Se ignora reemplazo`
+          console.warn(
+            `🔒 Match ${after.matchId} ya bloqueado`
           );
           return;
         }
 
         tx.update(matchRef, { lock: true });
+        locked = true;
       });
 
+      if (!locked) return null;
+
+      /* =========================
+         REEMPLAZO + RANKING
+      ========================= */
       try {
         await reemplazarTitular({
           matchId: after.matchId,
@@ -92,8 +109,15 @@ module.exports = functions.firestore
         });
 
         await recalcularRanking(after.matchId);
+      } catch (err) {
+        console.error(
+          "[onParticipationUpdate] Error en reemplazo",
+          err
+        );
       } finally {
-        await matchRef.update({ lock: false }).catch(() => {});
+        await matchRef
+          .update({ lock: false })
+          .catch(() => {});
       }
 
       return null;
@@ -101,13 +125,19 @@ module.exports = functions.firestore
 
     /* ==================================
        CASO 2: ELIMINADO → PENDIENTE
-       (reincorporación)
     ================================== */
     if (
       before.estado === "eliminado" &&
       after.estado === "pendiente"
     ) {
-      await recalcularRanking(after.matchId);
+      try {
+        await recalcularRanking(after.matchId);
+      } catch (err) {
+        console.error(
+          "[onParticipationUpdate] Error recalculando ranking",
+          err
+        );
+      }
       return null;
     }
 

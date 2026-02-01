@@ -4,13 +4,14 @@ import { useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
+import { ActionButton } from "@/components/ui/action/ActionButton";
 
 const POSICIONES = [
   "central",
   "armador",
   "opuesto",
   "punta",
-  "libero"
+  "libero",
 ];
 
 export default function OnboardingForm() {
@@ -26,8 +27,8 @@ export default function OnboardingForm() {
       prev.includes(pos)
         ? prev.filter((p) => p !== pos)
         : prev.length < 3
-          ? [...prev, pos]
-          : prev
+        ? [...prev, pos]
+        : prev
     );
   };
 
@@ -35,7 +36,7 @@ export default function OnboardingForm() {
     setError(null);
 
     if (posiciones.length === 0) {
-      setError("Elegí 1 posición");
+      setError("Elegí al menos 1 posición");
       return;
     }
 
@@ -58,13 +59,15 @@ export default function OnboardingForm() {
 
       setError(
         err?.message ||
-        err?.details ||
-        "Error al completar onboarding"
+          err?.details ||
+          "Error al completar onboarding"
       );
     } finally {
       setLoading(false);
     }
   };
+
+  const isFormValid = posiciones.length > 0 && !loading;
 
   return (
     <div className="space-y-6">
@@ -75,6 +78,7 @@ export default function OnboardingForm() {
           value={roles}
           onChange={(e) => setRol(e.target.value as any)}
           className="border p-2 rounded w-full"
+          disabled={loading}
         >
           <option value="player">Jugador</option>
           <option value="admin">Administrador</option>
@@ -84,36 +88,43 @@ export default function OnboardingForm() {
       {/* Posiciones */}
       <div>
         <label className="block font-semibold mb-2">
-          Posiciones preferidas (3)
+          Posiciones preferidas (máx. 3)
         </label>
 
         <div className="grid grid-cols-2 gap-2">
-          {POSICIONES.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => togglePosicion(p)}
-              className={`border p-2 rounded ${
-                posiciones.includes(p)
-                  ? "bg-blue-500 text-white"
-                  : "bg-white"
-              }`}
-            >
-              {p}
-            </button>
-          ))}
+          {POSICIONES.map((p) => {
+            const selected = posiciones.includes(p);
+
+            return (
+              <ActionButton
+                key={p}
+                onClick={() => togglePosicion(p)}
+                disabled={
+                  loading ||
+                  (!selected && posiciones.length >= 3)
+                }
+                variant={selected ? "primary" : "secondary"}
+              >
+                {p}
+              </ActionButton>
+            );
+          })}
         </div>
       </div>
 
-      {error && <p className="text-red-600">{error}</p>}
+      {error && (
+        <p className="text-sm text-red-600">{error}</p>
+      )}
 
-      <button
+      {/* Submit */}
+      <ActionButton
         onClick={submit}
-        disabled={loading}
-        className="bg-black text-white px-4 py-2 rounded"
+        loading={loading}
+        disabled={!isFormValid}
+        variant="success"
       >
-        {loading ? "Guardando..." : "Completar"}
-      </button>
+        Completar
+      </ActionButton>
     </div>
   );
 }

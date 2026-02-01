@@ -2,7 +2,7 @@
 
 import { Spinner } from "@/components/ui/spinner/spinner";
 
-type Variant = "default" | "success" | "danger" | "warning";
+type Variant = "default" | "success" | "danger" | "warning" | "primary" | "secondary";
 
 type ActionButtonProps = {
   children: React.ReactNode;
@@ -29,6 +29,8 @@ export function ActionButton({
     success: "bg-green-600 text-white",
     danger: "bg-red-600 text-white",
     warning: "bg-yellow-500 text-black",
+    primary: "bg-blue-500 text-white",
+    secondary: "bg-gray-200 text-black",
   };
 
   const shape = round ? "rounded-full w-10 p-0" : "rounded";

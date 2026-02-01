@@ -45,15 +45,6 @@ export function useAction() {
         });
 
       return true;
-    } catch (err: any) {
-      showToast({
-        type: "error",
-        message:
-          options?.errorMessage ||
-          err?.message ||
-          "Ocurrió un error",
-      });
-      return false;
     } finally {
       setLoadingMap((p) => ({ ...p, [actionId]: false }));
     }

@@ -29,7 +29,7 @@ export function handleFirebaseError(
       break;
 
     case "functions/not-found":
-      message = "El recurso solicitado no existe";
+      message = "No se puede acceder al recurso solicitado";
       break;
     
     case "functions/failed-precondition":

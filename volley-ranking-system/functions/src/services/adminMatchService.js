@@ -79,16 +79,18 @@ async function actualizarMatch(matchId, cambios) {
 
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    if (!snap.exists) throw new functions.https.HttpsError(
-      "not-found",
-      "El partido ya no existe"
-    );
+    if (!snap.exists) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "El partido ya no existe"
+      );
+    }
 
     const match = snap.data();
 
     if (match.estado !== "abierto") {
       throw new functions.https.HttpsError(
-        "not-found",
+        "failed-precondition",
         "El partido no es editable"
       );
     }
@@ -109,7 +111,7 @@ async function actualizarMatch(matchId, cambios) {
 async function actualizarPago(participationId, estado) {
   if (!["confirmado", "pendiente", "pospuesto"].includes(estado)) {
     throw new functions.https.HttpsError(
-      "not-found",
+      "failed-precondition",
       "Estado de pago inválido"
     );
   }
@@ -189,7 +191,7 @@ async function reabrirMatch(matchId) {
     // ⛔ No reabrir si ya empezó el partido
     if (!match.horaInicio || now.toMillis() >= match.horaInicio.toMillis()) {
       throw new functions.https.HttpsError(
-        "not-found",
+        "failed-precondition",
         "No se puede reabrir después del inicio"
       );
     }
@@ -197,7 +199,7 @@ async function reabrirMatch(matchId) {
     // ⛔ Solo desde verificando
     if (match.estado !== "verificando") {
       throw new functions.https.HttpsError(
-        "not-found",
+        "nfailed-precondition",
         "El partido no está en estado verificado"
       );
     }
@@ -225,7 +227,10 @@ async function cerrarMatch(matchId, adminId) {
   await db.runTransaction(async (tx) => {
     const matchSnap = await tx.get(matchRef);
     if (!matchSnap.exists) {
-      throw new Error("Match no existe");
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "El partido no existe"
+      );
     }
 
     const match = matchSnap.data();
@@ -247,8 +252,9 @@ async function cerrarMatch(matchId, adminId) {
     ========================= */
 
     if (match.estado !== "verificando") {
-      throw new Error(
-        "El match no se puede cerrar desde el estado actual"
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "El juego no se puede cerrar desde el estado actual"
       );
     }
 
@@ -267,7 +273,8 @@ async function cerrarMatch(matchId, adminId) {
     });
 
     if (hayPendientes) {
-      throw new Error(
+      throw new functions.https.HttpsError(
+        "failed-precondition",
         "Aún hay pagos pendientes en titulares"
       );
     }
@@ -291,13 +298,19 @@ async function eliminarMatch(matchId, adminId) {
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists) {
-      throw new Error("Match no existe");
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "El juego no existe"
+      );
     }
 
     const match = snap.data();
 
     if (match.estado === "jugado") {
-      throw new Error("No se puede eliminar un match ya jugado");
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "No se puede eliminar si fue jugado"
+      );
     }
 
     if (match.estado === "cancelado") {

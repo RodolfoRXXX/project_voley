@@ -1,26 +1,46 @@
 "use client";
 
-import { useState } from "react";
-import { httpsCallable } from "firebase/functions";
-import { functions } from "@/lib/firebase";
+import { useEffect, useState } from "react";
+import { httpsCallable, getFunctions } from "firebase/functions";
+import { app } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 
-const POSICIONES = [
-  "central",
-  "armador",
-  "opuesto",
-  "punta",
-  "libero",
-];
-
 export default function OnboardingForm() {
   const router = useRouter();
+  const functions = getFunctions(app);
 
   const [roles, setRol] = useState<"player" | "admin">("player");
   const [posiciones, setPosiciones] = useState<string[]>([]);
+  const [allPositions, setAllPositions] = useState<string[]>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(true);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const getPosicionesFn = httpsCallable<
+    void,
+    { posiciones: string[] }
+  >(functions, "getValidPositions");
+
+  /* =====================
+     Load posiciones válidas
+  ===================== */
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await getPosicionesFn();
+        setAllPositions(res.data.posiciones);
+      } catch (err) {
+        console.error("Error cargando posiciones", err);
+        setError("No se pudieron cargar las posiciones");
+      } finally {
+        setLoadingCatalog(false);
+      }
+    };
+
+    load();
+  }, []);
 
   const togglePosicion = (pos: string) => {
     setPosiciones((prev) =>
@@ -56,7 +76,6 @@ export default function OnboardingForm() {
       router.replace("/");
     } catch (err: any) {
       console.error("❌ completeOnboarding error:", err);
-
       setError(
         err?.message ||
           err?.details ||
@@ -67,7 +86,13 @@ export default function OnboardingForm() {
     }
   };
 
-  const isFormValid = posiciones.length > 0 && !loading;
+  if (loadingCatalog) {
+    return (
+      <p className="text-sm text-gray-500">
+        Cargando posiciones…
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -92,7 +117,7 @@ export default function OnboardingForm() {
         </label>
 
         <div className="grid grid-cols-2 gap-2">
-          {POSICIONES.map((p) => {
+          {allPositions.map((p) => {
             const selected = posiciones.includes(p);
 
             return (
@@ -110,6 +135,12 @@ export default function OnboardingForm() {
             );
           })}
         </div>
+
+        {posiciones.length === 3 && (
+          <p className="text-xs text-gray-500 mt-1">
+            Máximo de posiciones alcanzado
+          </p>
+        )}
       </div>
 
       {error && (
@@ -120,7 +151,7 @@ export default function OnboardingForm() {
       <ActionButton
         onClick={submit}
         loading={loading}
-        disabled={!isFormValid}
+        disabled={posiciones.length === 0}
         variant="success"
       >
         Completar

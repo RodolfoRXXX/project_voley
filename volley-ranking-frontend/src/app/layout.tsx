@@ -1,3 +1,4 @@
+
 import { ConfirmProvider } from "@/components/confirmModal/ConfirmProvider";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";

@@ -1,4 +1,7 @@
-// services/teamsService.js
+
+// -------------------
+// GENERACION DE EQUIPOS - Service
+// -------------------
 
 const admin = require("firebase-admin");
 const functions = require("firebase-functions/v1");

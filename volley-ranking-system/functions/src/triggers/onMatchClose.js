@@ -1,4 +1,7 @@
-// triggers/onMatchClose.js
+
+// -------------------
+// TRIGGER QUE GESTIONA EL CIERRE AUTOMATICO DEL MATCH
+// -------------------
 
 const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
@@ -18,39 +21,50 @@ module.exports = functions.firestore
 
     const matchRef = db.collection("matches").doc(matchId);
 
-    await db.runTransaction(async (tx) => {
-      const matchSnap = await tx.get(matchRef);
-      if (!matchSnap.exists) return;
+    try {
+      await db.runTransaction(async (tx) => {
+        const matchSnap = await tx.get(matchRef);
+        if (!matchSnap.exists) return;
 
-      const match = matchSnap.data();
+        const match = matchSnap.data();
 
-      // 🔒 LOCK
-      if (match.lock === true) {
-        console.log(`🔒 Match ${matchId} ya bloqueado`);
-        return;
-      }
+        // 🔒 ya bloqueado → no tocar
+        if (match.lock === true) return;
 
-      if (match.estado !== "verificando") return;
+        if (match.estado !== "verificando") return;
 
-      const participationsSnap = await tx.get(
-        db
-          .collection("participations")
-          .where("matchId", "==", matchId)
-          .where("estado", "==", "titular")
-      );
-
-      const hayPendientes = participationsSnap.docs.some((doc) => {
-        const p = doc.data();
-        return (
-          p.pagoEstado !== "confirmado" &&
-          p.pagoEstado !== "pospuesto"
+        const participationsSnap = await tx.get(
+          db
+            .collection("participations")
+            .where("matchId", "==", matchId)
+            .where("estado", "==", "titular")
         );
+
+        const hayPendientes = participationsSnap.docs.some((doc) => {
+          const p = doc.data();
+          return (
+            p.pagoEstado !== "confirmado" &&
+            p.pagoEstado !== "pospuesto"
+          );
+        });
+
+        if (hayPendientes) return;
+
+        // ✅ CIERRE REAL
+        tx.update(matchRef, {
+          estado: "cerrado",
+          lock: true,
+        });
+
+        console.log(`✅ Match ${matchId} cerrado correctamente`);
       });
-
-      if (hayPendientes) return;
-
-      console.log(`🔒 Match ${matchId} cerrado con lock`);
-    });
+    } catch (err) {
+      console.error(
+        `🔥 Error cerrando match ${matchId}`,
+        err
+      );
+    }
 
     return null;
   });
+

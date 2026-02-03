@@ -1,4 +1,7 @@
-// functions/src/services/adminMatchService.js
+
+// -------------------
+// adminMatchService - gestión de matches
+// -------------------
 
 const { initializeApp, getApps } = require("firebase-admin/app");
 const {

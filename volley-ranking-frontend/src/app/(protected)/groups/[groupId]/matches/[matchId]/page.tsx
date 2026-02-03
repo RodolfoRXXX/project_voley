@@ -1,4 +1,7 @@
-// Detalle del match
+
+// -------------------
+// DETALLE DE UN MATCH
+// -------------------
 
 "use client";
 
@@ -26,7 +29,6 @@ import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
    Firebase functions
 ===================== */
 const functions = getFunctions(app);
-const { showToast } = useToast();
 const getFormaciones = httpsCallable(functions, "getFormaciones");
 const joinMatch = httpsCallable(functions, "joinMatch");
 const leaveMatch = httpsCallable(functions, "leaveMatch");
@@ -96,6 +98,7 @@ const pagoStyles: Record<string, string> = {
 
 export default function MatchDetailPage() {
   const { run, isLoading } = useAction();
+  const { showToast } = useToast();
   const { matchId } = useParams<{ matchId: string }>();
   const router = useRouter();
   const { firebaseUser, userDoc, loading: authLoading } = useAuth();

@@ -1,5 +1,7 @@
 
-// Card que muestra un Match determinado
+// -------------------
+// CARD DE UN MATCH
+// -------------------
 
 "use client";
 

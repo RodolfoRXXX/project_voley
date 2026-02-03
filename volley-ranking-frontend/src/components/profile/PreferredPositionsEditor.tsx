@@ -1,3 +1,8 @@
+
+// -------------------
+// POSICIONES PREFERIDAS (PROFILE)
+// -------------------
+
 "use client";
 
 import { useEffect, useState } from "react";

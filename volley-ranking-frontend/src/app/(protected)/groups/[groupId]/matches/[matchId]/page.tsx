@@ -19,11 +19,14 @@ import MatchStatusBadge from "@/components/matchCard/MatchStatusBadge";
 import { formatDateTime, formatForDateTimeLocal } from "@/lib/date";
 import { useAction } from "@/components/ui/action/useAction";
 import { ActionButton } from "@/components/ui/action/ActionButton";
+import useToast from "@/components/ui/toast/useToast";
+import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 
 /* =====================
    Firebase functions
 ===================== */
 const functions = getFunctions(app);
+const { showToast } = useToast();
 const getFormaciones = httpsCallable(functions, "getFormaciones");
 const joinMatch = httpsCallable(functions, "joinMatch");
 const leaveMatch = httpsCallable(functions, "leaveMatch");
@@ -143,12 +146,17 @@ export default function MatchDetailPage() {
      Load formaciones
   ===================== */
   useEffect(() => {
-    const loadFormaciones = async () => {
+  const loadFormaciones = async () => {
+    try {
       const res: any = await getFormaciones();
       setFormaciones(res.data.formaciones);
-    };
-    loadFormaciones();
-  }, []);
+    } catch (err) {
+      handleFirebaseError(err, showToast, "No se pudieron cargar las formaciones");
+    }
+  };
+
+  loadFormaciones();
+}, [showToast]);
 
   /* =====================
      Helper

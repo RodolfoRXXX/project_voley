@@ -38,13 +38,26 @@ export function useAction() {
 
       await action();
 
-      options?.successMessage &&
+      if (options?.successMessage) {
         showToast({
           type: "success",
           message: options.successMessage,
         });
+      }
 
       return true;
+    } catch (err: any) {
+      console.error("[useAction]", err);
+
+      showToast({
+        type: "error",
+        message:
+          options?.errorMessage ||
+          err?.message ||
+          "Ocurrió un error",
+      });
+
+      return false;
     } finally {
       setLoadingMap((p) => ({ ...p, [actionId]: false }));
     }

@@ -36,7 +36,12 @@ export default function OnboardingForm() {
         setAllPositions(res.data.posiciones);
       } catch (err) {
         console.error("Error cargando posiciones", err);
-        setError("No se pudieron cargar las posiciones");
+
+        handleFirebaseError(
+          err,
+          showToast,
+          "No se pudieron cargar las posiciones"
+        );
       } finally {
         setLoadingCatalog(false);
       }

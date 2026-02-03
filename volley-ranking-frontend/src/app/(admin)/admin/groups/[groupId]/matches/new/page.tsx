@@ -88,7 +88,7 @@ export default function NewMatchPage() {
     },
     {
       successMessage: "Match creado correctamente",
-      errorMessage: "Error al crear el match",
+      errorMessage: "Error al crear el Juego",
     }
   );
 

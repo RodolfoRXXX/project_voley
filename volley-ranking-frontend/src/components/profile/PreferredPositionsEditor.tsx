@@ -5,6 +5,8 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { app } from "@/lib/firebase";
 import PositionBadge from "./positionBadge";
 import { ActionButton } from "@/components/ui/action/ActionButton";
+import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
+import useToast from "@/components/ui/toast/useToast";
 
 type Props = {
   initial: string[];
@@ -17,6 +19,7 @@ export default function PreferredPositionsEditor({ initial }: Props) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
+  const { showToast } = useToast();
 
   const functions = getFunctions(app);
   const updateFn = httpsCallable<
@@ -47,13 +50,19 @@ export default function PreferredPositionsEditor({ initial }: Props) {
         setAllPositions(res.data.posiciones);
       } catch (err) {
         console.error("Error cargando posiciones válidas", err);
+
+        handleFirebaseError(
+          err,
+          showToast,
+          "No se pudieron cargar las posiciones válidas"
+        );
       } finally {
         setLoadingCatalog(false);
       }
     };
 
     load();
-  }, []);
+  }, [showToast]);
 
   const available = allPositions.filter(
     (p) => !positions.includes(p)

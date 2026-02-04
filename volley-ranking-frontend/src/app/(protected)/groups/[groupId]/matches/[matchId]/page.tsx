@@ -603,7 +603,7 @@ useEffect(() => {
 
     {/* =============== EDITAR MATCH =============== */}
 
-    {isAdmin && (match.estado !== "jugado" && match.estado !== "cancelado") && (
+    {isAdmin && (match.estado !== "jugado" && match.estado !== "cancelado" && match.estado !== "cerrado") && (
       <section className="border rounded p-4 space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">Editar match</h2>

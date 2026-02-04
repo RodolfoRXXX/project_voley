@@ -34,7 +34,22 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
 
-  await actualizarPago(participationId, estado);
+  try {
+    await actualizarPago(participationId, estado);
+  } catch (err) {
+    if (err.code === "INVALID_PAGO_ESTADO") {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        err.message
+      );
+    }
+
+    throw new functions.https.HttpsError(
+      "internal",
+      "No se pudo actualizar el pago"
+    );
+  }
 
   return { ok: true };
 });
+

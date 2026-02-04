@@ -65,6 +65,26 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
 
+  if (
+    typeof cantidadEquipos !== "number" ||
+    cantidadEquipos <= 0
+  ) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "cantidadEquipos inválida"
+    );
+  }
+
+  if (
+    typeof cantidadSuplentes !== "number" ||
+    cantidadSuplentes < 0
+  ) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "cantidadSuplentes inválida"
+    );
+  }
+
   const horaInicioTs = Timestamp.fromMillis(horaInicioMillis);
 
   await crearMatch({

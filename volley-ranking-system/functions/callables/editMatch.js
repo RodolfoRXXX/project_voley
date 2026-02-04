@@ -83,7 +83,28 @@ module.exports = functions.https.onCall(async (data, context) => {
   /* =====================
      Update
   ===================== */
-  await actualizarMatch(matchId, cambios);
+  try {
+    await actualizarMatch(matchId, cambios);
+  } catch (err) {
+    if (err.message === "MATCH_NOT_FOUND") {
+      throw new functions.https.HttpsError(
+        "not-found",
+        "El partido ya no existe"
+      );
+    }
+
+    if (err.message === "MATCH_NOT_EDITABLE") {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "El partido no es editable"
+      );
+    }
+
+    throw new functions.https.HttpsError(
+      "internal",
+      "Error inesperado al editar el match"
+    );
+  }
 
   return { ok: true };
 });

@@ -2,6 +2,7 @@
 
 const functions = require("firebase-functions/v1");
 const { db } = require("../src/firebase");
+const { reincorporarJugador } = require("../src/services/adminMatchService");
 
 module.exports = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -12,7 +13,6 @@ module.exports = functions.https.onCall(async (data, context) => {
   }
 
   const { participationId } = data;
-
   if (!participationId) {
     throw new functions.https.HttpsError(
       "invalid-argument",
@@ -20,7 +20,7 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
 
-  // 🔐 validar admin
+  // 🔐 admin
   const userSnap = await db
     .collection("users")
     .doc(context.auth.uid)
@@ -33,25 +33,24 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
 
-  const ref = db.collection("participations").doc(participationId);
+  try {
+    await reincorporarJugador(participationId);
+    return { ok: true };
+  } catch (err) {
+    if (err.code === "PARTICIPATION_NOT_FOUND") {
+      throw new functions.https.HttpsError("not-found", err.message);
+    }
 
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists) return;
+    if (err.code === "PARTICIPATION_NOT_ELIMINATED") {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        err.message
+      );
+    }
 
-    const p = snap.data();
-
-    if (p.estado !== "eliminado") return;
-    if (!p.matchId) return;
-
-    tx.update(ref, {
-      estado: "pendiente",
-      posicionAsignada: null,
-      rankingTitular: null,
-      rankingSuplente: null,
-      puntaje: 0,
-    });
-  });
-
-  return { ok: true };
+    throw new functions.https.HttpsError(
+      "internal",
+      "No se pudo reincorporar el jugador"
+    );
+  }
 });

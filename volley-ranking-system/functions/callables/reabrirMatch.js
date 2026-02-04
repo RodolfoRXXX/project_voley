@@ -1,4 +1,5 @@
 // callables/reabrirMatch.js
+
 const functions = require("firebase-functions/v1");
 const { reabrirMatch } = require("../src/services/adminMatchService");
 
@@ -18,6 +19,27 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
 
-  await reabrirMatch(matchId);
-  return { ok: true };
+  try {
+    await reabrirMatch(matchId);
+    return { ok: true };
+  } catch (err) {
+    switch (err.code) {
+      case "MATCH_NOT_FOUND":
+        throw new functions.https.HttpsError("not-found", err.message);
+
+      case "MATCH_ALREADY_STARTED":
+      case "INVALID_MATCH_STATE":
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          err.message
+        );
+
+      default:
+        throw new functions.https.HttpsError(
+          "internal",
+          "No se pudo reabrir el partido"
+        );
+    }
+  }
 });
+

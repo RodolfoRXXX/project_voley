@@ -3,7 +3,6 @@
 // adminMatchService - gestión de matches
 // -------------------
 
-const functions = require("firebase-functions/v1");
 const { initializeApp, getApps } = require("firebase-admin/app");
 const {
   getFirestore,

@@ -1,4 +1,3 @@
-
 // -------------------
 // TRIGGER QUE GESTIONA EL CIERRE AUTOMATICO DEL MATCH
 // -------------------
@@ -14,6 +13,7 @@ module.exports = functions.firestore
     const before = change.before.data();
     const after = change.after.data();
 
+    // Solo reaccionar si cambia el estado de pago
     if (before.pagoEstado === after.pagoEstado) return null;
 
     const matchId = after.matchId;
@@ -28,35 +28,65 @@ module.exports = functions.firestore
 
         const match = matchSnap.data();
 
-        // 🔒 ya bloqueado → no tocar
+        // 🔒 Ya cerrado/bloqueado → no tocar
         if (match.lock === true) return;
 
+        // Solo se puede cerrar desde "verificando"
         if (match.estado !== "verificando") return;
 
+        // Traer TODAS las participations del match
         const participationsSnap = await tx.get(
           db
             .collection("participations")
             .where("matchId", "==", matchId)
-            .where("estado", "==", "titular")
         );
 
-        const hayPendientes = participationsSnap.docs.some((doc) => {
-          const p = doc.data();
-          return (
-            p.pagoEstado !== "confirmado" &&
-            p.pagoEstado !== "pospuesto"
+        const participations = participationsSnap.docs.map(d => d.data());
+
+        // Separar titulares y suplentes
+        const titulares = participations.filter(
+          p => p.estado === "titular"
+        );
+
+        const suplentes = participations.filter(
+          p => p.estado === "suplente"
+        );
+
+        // 1️⃣ Validar pagos de titulares
+        const hayPagosPendientes = titulares.some(p =>
+          p.pagoEstado !== "confirmado" &&
+          p.pagoEstado !== "pospuesto"
+        );
+
+        if (hayPagosPendientes) return;
+
+        // 2️⃣ Validar cupos completos
+
+        // Titulares esperados (según posicionesObjetivo)
+        const titularesEsperados = Object.values(
+          match.posicionesObjetivo || {}
+        ).reduce((acc, n) => acc + n, 0);
+
+        // Suplentes esperados
+        const suplentesEsperados = match.cantidadSuplentes ?? 0;
+
+        if (
+          titulares.length < titularesEsperados ||
+          suplentes.length < suplentesEsperados
+        ) {
+          console.log(
+            `⛔ Match ${matchId} NO se cierra: faltan jugadores`
           );
-        });
+          return;
+        }
 
-        if (hayPendientes) return;
-
-        // ✅ CIERRE REAL
+        // ✅ CIERRE REAL (pagos OK + cupos completos)
         tx.update(matchRef, {
           estado: "cerrado",
           lock: true,
         });
 
-        console.log(`✅ Match ${matchId} cerrado correctamente`);
+        console.log(`✅ Match ${matchId} cerrado automáticamente`);
       });
     } catch (err) {
       console.error(
@@ -67,4 +97,3 @@ module.exports = functions.firestore
 
     return null;
   });
-

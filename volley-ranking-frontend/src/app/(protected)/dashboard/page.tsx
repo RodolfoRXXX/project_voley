@@ -42,6 +42,10 @@ export default function DashboardPage() {
         ...(d.data() as Omit<Match, "id">),
       }));
 
+      loadedMatches.sort(
+        (a, b) => a.horaInicio.toMillis() - b.horaInicio.toMillis()
+      );
+
       setMatches(loadedMatches);
 
       // 🔑 SACAR groupIds de loadedMatches

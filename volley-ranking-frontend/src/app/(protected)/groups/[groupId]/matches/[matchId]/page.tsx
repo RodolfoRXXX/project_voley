@@ -884,6 +884,7 @@ useEffect(() => {
                   round
                   variant="success"
                   loading={isLoading("insert")}
+                  disabled={match.estado === "cancelado" || match.estado === "cerrado"}
                   onClick={() => handleReincorporarJugador(p.id)}
                 >
                   +
@@ -964,7 +965,7 @@ useEffect(() => {
         )}
 
         {/* GENERAR EQUIPOS */}
-        {isAdmin && match.estado === "cerrado" && (
+        {isAdmin && (match.estado === "cerrado" || match.estado === "jugado") && (
           <ActionButton
             onClick={() => setTeamsModalOpen(true)}
             variant="success"

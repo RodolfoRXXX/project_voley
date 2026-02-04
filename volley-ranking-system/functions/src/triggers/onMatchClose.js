@@ -71,8 +71,7 @@ module.exports = functions.firestore
         const suplentesEsperados = match.cantidadSuplentes ?? 0;
 
         if (
-          titulares.length < titularesEsperados ||
-          suplentes.length < suplentesEsperados
+          titulares.length < titularesEsperados
         ) {
           console.log(
             `⛔ Match ${matchId} NO se cierra: faltan jugadores`

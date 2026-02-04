@@ -968,7 +968,7 @@ useEffect(() => {
             onClick={() => setTeamsModalOpen(true)}
             variant="success"
           >
-            Generar equipos
+            Ver equipos
           </ActionButton>
         )}
 
@@ -1037,8 +1037,14 @@ useEffect(() => {
     <TeamsModal
       open={teamsModalOpen}
       onClose={() => setTeamsModalOpen(false)}
-      matchId={match.id}
+      matchId={matchId}
       usersMap={usersMap}
+      participations={Object.fromEntries(
+        participations.map((p) => [
+          p.userId,
+          { position: p.posicionAsignada || "" }
+        ])
+      )}
       isAdmin={isAdmin}
     />
 

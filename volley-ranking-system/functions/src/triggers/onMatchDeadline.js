@@ -8,7 +8,7 @@ const admin = require("firebase-admin");
 
 const db = admin.firestore();
 
-exports.onMatchDeadline = functions.pubsub
+module.exports = functions.pubsub
   .schedule("every 5 minutes")
   .timeZone("America/Argentina/Buenos_Aires")
   .onRun(async () => {

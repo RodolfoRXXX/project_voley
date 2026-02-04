@@ -9,8 +9,10 @@ const { generarEquipos } = require("../src/services/teamsService");
 
 const db = admin.firestore();
 
-exports.generarEquipos = functions.https.onCall(
+module.exports = functions.https.onCall(
   async (data, context) => {
+    console.log("🔥 generarEquipos callable INVOCADO");    
+
     if (!context.auth) {
       throw new functions.https.HttpsError(
         "unauthenticated",

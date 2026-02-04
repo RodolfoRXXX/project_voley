@@ -1,16 +1,11 @@
 
 
-type Props = {
+interface Props {
   nombre: string;
   jugadores: string[];
   usersMap: Record<string, any>;
-  participations: any[];
-};
-
-const getPosicion = (uid: string, participations: any[]) =>
-  participations.find(
-    (p) => p.userId === uid && p.estado === "titular"
-  )?.posicionAsignada;
+  participations: Record<string, { position: string }>;
+}
 
 export default function TeamColumn({
   nombre,
@@ -18,30 +13,30 @@ export default function TeamColumn({
   usersMap,
   participations,
 }: Props) {
+  console.log("participations", participations)
+  console.log("jugadores", jugadores)
   return (
     <div className="border rounded-lg p-3">
-      <h3 className="font-semibold mb-2 text-center">
-        {nombre}
-      </h3>
+      <h3 className="font-semibold mb-2">{nombre}</h3>
 
-      <ul className="space-y-2">
-        {jugadores.map((uid) => (
-          <li
-            key={uid}
-            className="flex items-center gap-2 border rounded px-2 py-1 text-sm"
-          >
-            <img
-              src={usersMap[uid]?.photoURL ?? "/avatar.png"}
-              className="w-6 h-6 rounded-full"
-            />
-            <span className="flex-1">
-              {usersMap[uid]?.nombre ?? "—"}
-            </span>
-            <span className="text-xs text-gray-500 capitalize">
-              {getPosicion(uid, participations)}
-            </span>
-          </li>
-        ))}
+      <ul className="space-y-1">
+        {jugadores.map((userId) => {
+          const user = usersMap[userId];
+          const participation = participations[userId];
+
+          return (
+            <li key={userId} className="flex items-center gap-2 text-sm">
+              <img
+                src={user?.photoURL}
+                className="w-6 h-6 rounded-full object-cover"
+              />
+              <span className="flex-1">{user?.nombre}</span>
+              <span className="text-gray-500">
+                {participation?.position ?? "-"}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

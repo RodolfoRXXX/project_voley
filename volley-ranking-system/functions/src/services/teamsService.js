@@ -2,10 +2,21 @@
 // GENERACION DE EQUIPOS - Service
 // -------------------
 
-const admin = require("firebase-admin");
+const { initializeApp, getApps } = require("firebase-admin/app");
+const {
+  getFirestore,
+  FieldValue,
+  Timestamp,
+} = require("firebase-admin/firestore");
+
+if (!getApps().length) {
+  initializeApp();
+}
+const db = getFirestore();
+//const admin = require("firebase-admin");
 const functions = require("firebase-functions/v1");
 
-const db = admin.firestore();
+//const db = admin.firestore();
 
 /* =========================
    UTILIDADES
@@ -139,8 +150,7 @@ async function generarEquipos(matchId, groupId) {
     tx.set(teamsRef, {
       matchId,
       groupId,
-      createdAt:
-        admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
       equipos,
     });
   });

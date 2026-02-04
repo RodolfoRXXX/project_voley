@@ -49,8 +49,10 @@ export default function TeamsModal({
         return;
       }
 
-      // solo hay uno
-      setTeams(snap.docs[0].data() as TeamsDoc);
+     const data = snap.docs[0].data();
+      console.log("📦 teams doc:", data);
+
+      setTeams(data as TeamsDoc);
     });
 
     return () => unsub();
@@ -101,15 +103,15 @@ export default function TeamsModal({
         {/* Equipos */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {teams?.equipos?.length ? (
-  teams.equipos.map((e) => (
-    <TeamColumn
-      key={e.nombre}
-      nombre={e.nombre}
-      jugadores={e.jugadores}
-      usersMap={usersMap}
-      participations={participations}
-    />
-  ))
+            teams.equipos.map((e) => (
+              <TeamColumn
+                key={e.nombre}
+                nombre={e.nombre}
+                jugadores={e.jugadores}
+                usersMap={usersMap}
+                participations={participations}
+              />
+            ))
           ) : (
             <p className="text-gray-500 col-span-full text-center">
               Todavía no hay equipos generados.

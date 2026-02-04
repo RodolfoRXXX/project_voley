@@ -24,4 +24,4 @@ exports.reabrirMatch = require("./callables/reabrirMatch");
 exports.eliminarMatch = require("./callables/eliminarMatch");
 exports.updatePreferredPositions = require("./callables/updatePreferredPositions");
 exports.getValidPositions = require("./callables/getValidPositions");
-
+exports.generarEquipos = require("./callables/generarEquipos");

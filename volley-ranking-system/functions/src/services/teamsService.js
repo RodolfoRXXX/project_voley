@@ -1,4 +1,3 @@
-
 // -------------------
 // GENERACION DE EQUIPOS - Service
 // -------------------
@@ -25,7 +24,7 @@ function shuffle(array) {
 
 async function generarEquipos(matchId, groupId) {
   const matchRef = db.collection("matches").doc(matchId);
-  const teamsRef = db.collection("teams").doc(matchId); // 1 teams por match
+  const teamsRef = db.collection("teams").doc(matchId); // 1 team por match
 
   await db.runTransaction(async (tx) => {
     /* =========================
@@ -44,22 +43,26 @@ async function generarEquipos(matchId, groupId) {
     const match = matchSnap.data();
     const now = new Date();
 
-    if (match.horaInicio.toDate() <= now) {
+    if (match.estado !== "cerrado") {
       throw new functions.https.HttpsError(
         "failed-precondition",
-        "El match ya comenzó, no se pueden generar ni rehacer equipos"
+        "El match debe estar cerrado para generar equipos"
+      );
+    }
+
+    if (match.horaInicio?.toDate && match.horaInicio.toDate() <= now) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "El match ya comenzó"
       );
     }
 
     const { cantidadEquipos, posicionesObjetivo } = match;
 
-    if (
-      !cantidadEquipos ||
-      typeof posicionesObjetivo !== "object"
-    ) {
+    if (!cantidadEquipos || !posicionesObjetivo) {
       throw new functions.https.HttpsError(
         "failed-precondition",
-        "La configuración del match es incompleta"
+        "Configuración del match incompleta"
       );
     }
 
@@ -90,10 +93,7 @@ async function generarEquipos(matchId, groupId) {
         jugadoresPorPosicion[p.posicionAsignada] = [];
       }
 
-      jugadoresPorPosicion[p.posicionAsignada].push({
-        userId: p.userId,
-        posicion: p.posicionAsignada,
-      });
+      jugadoresPorPosicion[p.posicionAsignada].push(p.userId);
     }
 
     // Shuffle por posición
@@ -110,18 +110,16 @@ async function generarEquipos(matchId, groupId) {
     const equipos = Array.from(
       { length: cantidadEquipos },
       (_, i) => ({
-        nombre: `Equipo ${i + 1}`,
+        nombre: `Equipo ${String.fromCharCode(65 + i)}`, // A, B, C
         jugadores: [],
       })
     );
 
     for (const pos in posicionesObjetivo) {
-      const totalNecesarios = posicionesObjetivo[pos];
-      const porEquipo = Math.floor(
-        totalNecesarios / cantidadEquipos
-      );
-
+      const total = posicionesObjetivo[pos];
+      const porEquipo = Math.floor(total / cantidadEquipos);
       const disponibles = jugadoresPorPosicion[pos] || [];
+
       let index = 0;
 
       for (let ronda = 0; ronda < porEquipo; ronda++) {
@@ -135,7 +133,7 @@ async function generarEquipos(matchId, groupId) {
     }
 
     /* =========================
-       GUARDAR TEAMS
+       GUARDAR
     ========================= */
 
     tx.set(teamsRef, {
@@ -148,15 +146,6 @@ async function generarEquipos(matchId, groupId) {
   });
 }
 
-/* =========================
-   REHACER EQUIPOS (ADMIN)
-========================= */
-
-async function rehacerEquipos(matchId, groupId) {
-  return generarEquipos(matchId, groupId);
-}
-
 module.exports = {
   generarEquipos,
-  rehacerEquipos,
 };

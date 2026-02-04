@@ -24,6 +24,7 @@ import { useAction } from "@/components/ui/action/useAction";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
+import TeamsModal from "@/components/teamsModal/TeamsModal";
 
 /* =====================
    Firebase functions
@@ -110,6 +111,7 @@ export default function MatchDetailPage() {
   const [usersMap, setUsersMap] = useState<Record<string, any>>({});
   const [pagoModal, setPagoModal] = useState<null | any>(null);
   const [adminUser, setAdminUser] = useState<any | null>(null);
+  const [teamsModalOpen, setTeamsModalOpen] = useState(false);
 
   const [formaciones, setFormaciones] = useState<
     Record<string, Record<string, number>>
@@ -959,10 +961,21 @@ useEffect(() => {
             )}
           </>
         )}
+
+        {/* GENERAR EQUIPOS */}
+        {isAdmin && match.estado === "cerrado" && (
+          <ActionButton
+            onClick={() => setTeamsModalOpen(true)}
+            variant="success"
+          >
+            Generar equipos
+          </ActionButton>
+        )}
+
       </div>
     </section>
 
-    {/* ================ MODAL PAGOS ================ */}
+    {/* ================ MODAL ================ */}
 
     {pagoModal && (
       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -1020,6 +1033,15 @@ useEffect(() => {
         </div>
       </div>
     )}
+
+    <TeamsModal
+      open={teamsModalOpen}
+      onClose={() => setTeamsModalOpen(false)}
+      matchId={match.id}
+      usersMap={usersMap}
+      isAdmin={isAdmin}
+    />
+
   </main>
 );
 }

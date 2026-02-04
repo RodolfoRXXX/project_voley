@@ -17,4 +17,5 @@ export interface TeamsModalProps {
   usersMap: Record<string, any>;
   participations: Record<string, { position: string }>;
   isAdmin: boolean;
+  matchEstado: string;
 }

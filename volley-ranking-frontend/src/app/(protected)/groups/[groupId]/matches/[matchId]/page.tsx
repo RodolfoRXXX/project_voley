@@ -1048,6 +1048,7 @@ useEffect(() => {
         ])
       )}
       isAdmin={isAdmin}
+      matchEstado={match.estado} 
     />
 
   </main>

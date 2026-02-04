@@ -27,10 +27,12 @@ export default function TeamsModal({
   usersMap,
   participations,
   isAdmin,
+  matchEstado,
 }: TeamsModalProps) {
   const { showToast } = useToast();
   const [teams, setTeams] = useState<TeamsDoc | null>(null);
   const [loading, setLoading] = useState(false);
+  const generarBloqueado = matchEstado === "jugado";
 
   /* =====================
      Realtime teams
@@ -125,9 +127,14 @@ export default function TeamsModal({
             <ActionButton
               onClick={handleGenerarEquipos}
               loading={loading}
+              disabled={generarBloqueado}
               variant="success"
             >
-              {teams ? "Regenerar equipos" : "Generar equipos"}
+              {generarBloqueado
+                ? "Partido jugado"
+                : teams
+                ? "Regenerar equipos"
+                : "Generar equipos"}
             </ActionButton>
           </div>
         )}

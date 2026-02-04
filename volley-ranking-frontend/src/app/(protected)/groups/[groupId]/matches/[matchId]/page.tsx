@@ -943,6 +943,7 @@ useEffect(() => {
               <ActionButton
                 onClick={handleCerrarMatch}
                 loading={isLoading("close")}
+                disabled={hayPagosPendientes}
                 variant="success"
               >
                 Confirmar cierre

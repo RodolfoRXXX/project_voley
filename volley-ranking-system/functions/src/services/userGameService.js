@@ -49,6 +49,14 @@ async function updatePreferredPositions(userId, posiciones) {
 
   const userRef = db.collection("users").doc(userId);
 
+  const snap = await userRef.get();
+  if (!snap.exists) {
+    throw new functions.https.HttpsError(
+      "not-found",
+      "Usuario no existe"
+    );
+  }
+
   await userRef.update({
     posicionesPreferidas: posiciones,
   });

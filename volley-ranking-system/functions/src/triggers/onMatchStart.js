@@ -16,7 +16,7 @@ module.exports = functions.pubsub
 
     const matchesSnap = await db
       .collection("matches")
-      .where("estado", "==", "cerrado")
+      .where("estado", "in", ["cerrado", "abierto", "verificando"])
       .where("horaInicio", "<=", now)
       .get();
 
@@ -30,28 +30,37 @@ module.exports = functions.pubsub
 
           const match = matchSnap.data();
 
+          // 🔒 Mutex defensivo
           if (match.lock === true) return;
-          if (!match.groupId) return;
-
-          // 🔒 lock
-          tx.update(matchRef, { lock: true });
 
           /* =========================
-             GROUP
+             DECISIÓN DE DESTINO
           ========================= */
-          const groupRef = db
-            .collection("groups")
-            .doc(match.groupId);
 
+          if (match.estado === "abierto" || match.estado === "verificando") {
+            tx.update(matchRef, {
+              estado: "eliminado",
+              lock: true,
+              nextDeadlineAt: null,
+            });
+            return;
+          }
+
+          if (match.estado !== "cerrado") return;
+
+          /* =========================
+             EFECTOS DE MATCH JUGADO
+          ========================= */
+
+          tx.update(matchRef, { lock: true });
+
+          const groupRef = db.collection("groups").doc(match.groupId);
           const groupSnap = await tx.get(groupRef);
           if (!groupSnap.exists) return;
 
           const partidosTotales =
             groupSnap.data().partidosTotales || 0;
 
-          /* =========================
-             TITULARES
-          ========================= */
           const participationsSnap = await tx.get(
             db
               .collection("participations")
@@ -90,12 +99,9 @@ module.exports = functions.pubsub
           });
         });
 
-        console.log(`🏐 Match ${doc.id} iniciado`);
+        console.log(`🏐 Match ${doc.id} procesado`);
       } catch (err) {
-        console.error(
-          `🔥 Error iniciando match ${doc.id}`,
-          err
-        );
+        console.error(`🔥 Error procesando match ${doc.id}`, err);
       }
     }
 

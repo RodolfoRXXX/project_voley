@@ -180,6 +180,8 @@ useEffect(() => {
     }
   };
 
+  const isLogged = !!userId;
+
   /* =====================
      RENDER
   ===================== */
@@ -224,29 +226,37 @@ useEffect(() => {
         Suplentes: {suplentes}/{suplentesTotales}
       </p>
 
-      <div className="flex gap-3 pt-2 items-center">
-      <ActionButton
-        onClick={handleToggleParticipation}
-        loading={loadingJoinLeave}
-        disabled={!puedeUnirse}
-        variant={isJoined ? "danger" : "success"}
-      >
-        {accionesJugadorBloqueadas
-          ? "No disponible"
-          : isEliminado
-          ? "Eliminado"
-          : isJoined
-          ? "Desunirme"
-          : "Unirme"}
-      </ActionButton>
+      <div className="pt-3">
+          {!isLogged ? (
+            <p className="text-sm text-gray-500 italic">
+              Iniciá sesión para unirte o ver el detalle del juego
+            </p>
+          ) : (
+            <div className="flex gap-3 items-center">
+              <ActionButton
+                onClick={handleToggleParticipation}
+                loading={loadingJoinLeave}
+                disabled={!puedeUnirse}
+                variant={isJoined ? "danger" : "success"}
+              >
+                {accionesJugadorBloqueadas
+                  ? "No disponible"
+                  : isEliminado
+                  ? "Eliminado"
+                  : isJoined
+                  ? "Desunirme"
+                  : "Unirme"}
+              </ActionButton>
 
-      <Link
-        href={userId ? `/groups/${match.groupId}/matches/${match.id}` : "/"}
-        className="text-blue-600 text-sm"
-      >
-        Ver detalle →
-      </Link>
-    </div>
+              <Link
+                href={`/groups/${match.groupId}/matches/${match.id}`}
+                className="text-blue-600 text-sm"
+              >
+                Ver detalle →
+              </Link>
+            </div>
+          )}
+      </div>
     </div>
   );
 }

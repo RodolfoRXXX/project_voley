@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { db, app } from "@/lib/firebase";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import MatchStatusBadge from "./MatchStatusBadge";
 import { formatDateTime } from "@/lib/date";
@@ -40,6 +41,7 @@ export default function MatchCard({
   const [titulares, setTitulares] = useState(0);
   const [suplentes, setSuplentes] = useState(0);
   const { run, isLoading } = useAction();
+  const router = useRouter();
   const [miParticipacion, setMiParticipacion] = useState<any | null>(null);
   const [adminUser, setAdminUser] = useState<any | null>(null);
   const { showToast } = useToast();
@@ -127,7 +129,10 @@ useEffect(() => {
   ===================== */
 
   const handleToggleParticipation = () => {
-    if (!userId) return;
+    if (!userId) {
+      router.push("/");
+      return;
+    }
 
     if (isJoined) {
       run(
@@ -236,7 +241,7 @@ useEffect(() => {
       </ActionButton>
 
       <Link
-        href={`/groups/${match.groupId}/matches/${match.id}`}
+        href={userId ? `/groups/${match.groupId}/matches/${match.id}` : "/"}
         className="text-blue-600 text-sm"
       >
         Ver detalle →

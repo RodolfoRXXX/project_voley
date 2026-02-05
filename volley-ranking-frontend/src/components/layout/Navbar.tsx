@@ -4,6 +4,7 @@ import { signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
+import UserAvatar from "../ui/avatar/UserAvatar";
 
 export default function Navbar() {
   const { firebaseUser, userDoc, loading } = useAuth();
@@ -66,9 +67,10 @@ export default function Navbar() {
 
             <div className="flex items-center gap-2">
               {firebaseUser.photoURL && (
-                <img
-                  src={firebaseUser.photoURL}
-                  alt="avatar"
+                <UserAvatar
+                  nombre={firebaseUser.displayName || "user"}
+                  photoURL={firebaseUser.photoURL}
+                  size={28}
                   className="w-8 h-8 rounded-full"
                 />
               )}

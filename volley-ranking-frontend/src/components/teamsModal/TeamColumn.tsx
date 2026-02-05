@@ -1,3 +1,4 @@
+import UserAvatar from "../ui/avatar/UserAvatar";
 
 
 interface Props {
@@ -26,8 +27,10 @@ export default function TeamColumn({
 
           return (
             <li key={userId} className="flex items-center gap-2 text-sm">
-              <img
-                src={user?.photoURL}
+              <UserAvatar
+                nombre={user?.nombre || "user"}
+                photoURL={user?.photoURL}
+                size={28}
                 className="w-6 h-6 rounded-full object-cover"
               />
               <span className="flex-1">{user?.nombre}</span>

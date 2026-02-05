@@ -22,6 +22,7 @@ import { useAction } from "@/components/ui/action/useAction";
 import { ActionButton } from "../ui/action/ActionButton";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
+import UserAvatar from "@/components/ui/avatar/UserAvatar";
 
 /* =====================
      FUNCTION
@@ -190,10 +191,11 @@ useEffect(() => {
 
       {adminUser && (
         <div className="flex items-center gap-2 text-sm text-gray-600">
-          <img
-            src={adminUser.photoURL || "/avatar-default.png"}
-            alt={adminUser.nombre}
-            className="w-6 h-6 rounded-full object-cover"
+          <UserAvatar
+            nombre={adminUser.nombre}
+            photoURL={adminUser.photoURL}
+            size={24}
+            className="ring-1 ring-blue-500"
           />
           <span>
             Admin: <b>{adminUser.nombre}</b>

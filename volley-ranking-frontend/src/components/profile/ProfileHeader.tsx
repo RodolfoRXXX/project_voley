@@ -1,8 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import CompromisoBadge from "./CompromisoBadge";
-
+import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { UserDoc } from "@/types/User";
 
 type Props = {
@@ -13,19 +12,12 @@ export default function ProfileHeader({ user }: Props) {
   return (
     <section className="flex items-center gap-6 border rounded p-6">
       {/* Avatar */}
-      {/*<Image
-        src={user.photoURL || "/avatar-placeholder.png"}
-        alt="Avatar"
-        width={112}
-        height={112}
-        className="rounded-full object-cover"
-      /> */}
-
-      <img
-        src={user.photoURL || "/avatar-placeholder.png"}
-        alt="Avatar"
-        className="w-28 h-28 rounded-full object-cover"
-        />
+      <UserAvatar
+        nombre={user.nombre}
+        photoURL={user.photoURL}
+        size={112}
+        className="ring-2 ring-gray-300"
+      />
 
       {/* Info */}
       <div className="flex-1">

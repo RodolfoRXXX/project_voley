@@ -25,6 +25,7 @@ import { ActionButton } from "@/components/ui/action/ActionButton";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import TeamsModal from "@/components/teamsModal/TeamsModal";
+import UserAvatar from "@/components/ui/avatar/UserAvatar";
 
 /* =====================
    Firebase functions
@@ -578,9 +579,10 @@ useEffect(() => {
       {adminUser && (
         <div className="flex items-center gap-3 pt-3 border-t">
           {adminUser.photoURL ? (
-            <img
-              src={adminUser.photoURL}
-              alt={adminUser.nombre}
+            <UserAvatar
+              nombre={adminUser.nombre}
+              photoURL={adminUser.photoURL}
+              size={34}
               className="w-10 h-10 rounded-full object-cover"
             />
           ) : (
@@ -753,10 +755,20 @@ useEffect(() => {
               >
                 <span>{p.rankingTitular}</span>
                 <span>
-                  {usersMap[p.userId]?.nombre ?? "—"}
-                  {isMe && (
-                    <span className="ml-2 text-xs text-blue-600">(vos)</span>
-                  )}
+                  <span className="flex items-center gap-2">
+                    <UserAvatar
+                      nombre={usersMap[p.userId]?.nombre}
+                      photoURL={usersMap[p.userId]?.photoURL}
+                      size={28}
+                    />
+
+                    <span>
+                      {usersMap[p.userId]?.nombre ?? "—"}
+                      {isMe && (
+                        <span className="ml-1 text-xs text-blue-600">(vos)</span>
+                      )}
+                    </span>
+                  </span>
                 </span>
                 <span className="capitalize">
                   {p.posicionAsignada}
@@ -826,13 +838,23 @@ useEffect(() => {
               >
                 <span>{p.rankingSuplente}</span>
                 <span>
-                  {usersMap[p.userId]?.nombre ?? "—"}
-                  {isMe && (
-                    <span className="ml-2 text-xs text-orange-600">(vos)</span>
-                  )}
+                  <span className="flex items-center gap-2">
+                    <UserAvatar
+                      nombre={usersMap[p.userId]?.nombre}
+                      photoURL={usersMap[p.userId]?.photoURL}
+                      size={28}
+                    />
+
+                    <span>
+                      {usersMap[p.userId]?.nombre ?? "—"}
+                      {isMe && (
+                        <span className="ml-1 text-xs text-orange-600">(vos)</span>
+                      )}
+                    </span>
+                  </span>
                 </span>
-                <span className="capitalize">
-                  {p.posicionAsignada ?? "—"}
+                <span className="text-xs text-gray-500">
+                  {usersMap[p.userId]?.posicionesPreferidas?.join(", ")}
                 </span>
                 <button
                   onClick={() => setPagoModal(p)}
@@ -873,7 +895,14 @@ useEffect(() => {
               key={p.id}
               className="grid grid-cols-5 px-3 py-2 border-t text-sm items-center"
             >
-              <span>{usersMap[p.userId]?.nombre ?? "—"}</span>
+              <span className="flex items-center gap-2">
+                <UserAvatar
+                  nombre={usersMap[p.userId]?.nombre}
+                  photoURL={usersMap[p.userId]?.photoURL}
+                  size={28}
+                />
+                <span>{usersMap[p.userId]?.nombre ?? "—"}</span>
+              </span>
               <span className="text-xs text-gray-500">
                 {usersMap[p.userId]?.posicionesPreferidas?.join(", ")}
               </span>

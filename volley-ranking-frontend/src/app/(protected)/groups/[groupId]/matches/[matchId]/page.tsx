@@ -1034,25 +1034,27 @@ useEffect(() => {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <p className="text-sm font-semibold">
-              Cambiar a
-            </p>
+          { (match.estado == "abierto" || match.estado == "verificando") && 
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">
+                Cambiar a
+              </p>
 
-            {["confirmado", "pendiente", "pospuesto"]
-              .filter((e) => e !== pagoModal.pagoEstado)
-              .map((estado) => (
-                <button
-                  key={estado}
-                  onClick={() =>
-                    updatePagoEstado(pagoModal.id, estado as any)
-                  }
-                  className={`w-full border rounded px-3 py-2 text-sm hover:opacity-80 ${pagoStyles[estado]}`}
-                >
-                  {estado}
-                </button>
-              ))}
-          </div>
+              {["confirmado", "pendiente", "pospuesto"]
+                .filter((e) => e !== pagoModal.pagoEstado)
+                .map((estado) => (
+                  <button
+                    key={estado}
+                    onClick={() =>
+                      updatePagoEstado(pagoModal.id, estado as any)
+                    }
+                    className={`w-full border rounded px-3 py-2 text-sm hover:opacity-80 ${pagoStyles[estado]}`}
+                  >
+                    {estado}
+                  </button>
+                ))}
+            </div>
+          }
 
           <div className="pt-4 flex justify-end">
             <button

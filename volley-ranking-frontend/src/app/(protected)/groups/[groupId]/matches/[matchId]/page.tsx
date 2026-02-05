@@ -777,6 +777,7 @@ useEffect(() => {
                     round
                     variant="danger"
                     loading={isLoading("remove")}
+                    disabled={match.estado === "jugado"}
                     onClick={() => handleEliminarJugador(p.id)}
                   >
                     ×

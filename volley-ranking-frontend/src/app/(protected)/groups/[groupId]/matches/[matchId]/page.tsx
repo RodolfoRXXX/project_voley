@@ -26,6 +26,7 @@ import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import TeamsModal from "@/components/teamsModal/TeamsModal";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
+import PagoModal from "@/components/pagoModal/pagoModal";
 
 /* =====================
    Firebase functions
@@ -131,11 +132,7 @@ export default function MatchDetailPage() {
     participationId: string,
     estado: "confirmado" | "pendiente" | "pospuesto"
   ) => {
-    await updatePagoEstadoFn({
-      participationId,
-      estado,
-    });
-
+    await updatePagoEstadoFn({ participationId, estado });
     setPagoModal(null);
   };
 
@@ -1007,66 +1004,18 @@ useEffect(() => {
       </div>
     </section>
 
-    {/* ================ MODAL ================ */}
+    {/* ================ MODALES ================ */}
 
-    {pagoModal && (
-      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg w-full max-w-md p-6 space-y-4">
-          <h3 className="text-xl font-semibold">
-            Estado de pago
-          </h3>
-
-          {/* Info jugador */}
-          <div className="text-sm space-y-1">
-            <p><b>Nombre:</b> {usersMap[pagoModal.userId]?.nombre}</p>
-            <p><b>Posición:</b> {pagoModal.posicionAsignada}</p>
-            <p><b>Ranking:</b> {pagoModal.rankingTitular}</p>
-            <p><b>Puntaje:</b> {pagoModal.puntaje}</p>
-          </div>
-
-          <div className="border-t pt-4 space-y-2">
-            <p className="text-sm font-semibold">Estado actual</p>
-
-            <div
-              className={`border rounded px-3 py-2 text-sm text-center font-medium opacity-60 ${pagoStyles[pagoModal.pagoEstado]}`}
-            >
-              {pagoModal.pagoEstado}
-            </div>
-          </div>
-
-          { (match.estado == "abierto" || match.estado == "verificando") && 
-            <div className="space-y-2">
-              <p className="text-sm font-semibold">
-                Cambiar a
-              </p>
-
-              {["confirmado", "pendiente", "pospuesto"]
-                .filter((e) => e !== pagoModal.pagoEstado)
-                .map((estado) => (
-                  <button
-                    key={estado}
-                    onClick={() =>
-                      updatePagoEstado(pagoModal.id, estado as any)
-                    }
-                    className={`w-full border rounded px-3 py-2 text-sm hover:opacity-80 ${pagoStyles[estado]}`}
-                  >
-                    {estado}
-                  </button>
-                ))}
-            </div>
-          }
-
-          <div className="pt-4 flex justify-end">
-            <button
-              onClick={() => setPagoModal(null)}
-              className="text-sm text-gray-500 hover:underline"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
+    <PagoModal
+      open={!!pagoModal}
+      onClose={() => setPagoModal(null)}
+      participation={pagoModal}
+      user={usersMap[pagoModal?.userId]}
+      isAdmin={isAdmin}
+      matchEstado={match.estado}
+      pagoStyles={pagoStyles}
+      onUpdatePago={updatePagoEstado}
+    />
 
     <TeamsModal
       open={teamsModalOpen}

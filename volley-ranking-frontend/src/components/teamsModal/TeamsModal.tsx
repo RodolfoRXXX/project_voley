@@ -52,7 +52,6 @@ export default function TeamsModal({
       }
 
      const data = snap.docs[0].data();
-      console.log("📦 teams doc:", data);
 
       setTeams(data as TeamsDoc);
     });

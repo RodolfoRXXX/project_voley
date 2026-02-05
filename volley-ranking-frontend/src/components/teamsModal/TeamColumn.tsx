@@ -14,8 +14,6 @@ export default function TeamColumn({
   usersMap,
   participations,
 }: Props) {
-  console.log("participations", participations)
-  console.log("jugadores", jugadores)
   return (
     <div className="border rounded-lg p-3">
       <h3 className="font-semibold mb-2">{nombre}</h3>

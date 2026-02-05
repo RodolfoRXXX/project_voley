@@ -854,6 +854,7 @@ useEffect(() => {
                   {usersMap[p.userId]?.posicionesPreferidas?.join(", ")}
                 </span>
                 <button
+                  disabled={!isAdmin}
                   onClick={() => setPagoModal(p)}
                   className={`px-2 py-1 rounded text-xs font-medium border ${pagoStyles[p.pagoEstado]}`}
                 >

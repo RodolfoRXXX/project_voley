@@ -1,7 +1,7 @@
 "use client";
 
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { useEffect, useState } from "react";
 
@@ -14,28 +14,45 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeUserDoc: (() => void) | null = null;
+
+    const unsub = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
 
       if (!user) {
+        if (unsubscribeUserDoc) {
+          unsubscribeUserDoc();
+          unsubscribeUserDoc = null;
+        }
+
         setUserDoc(null);
         setLoading(false);
         return;
       }
 
-      const ref = doc(db, "users", user.uid);
-      const snap = await getDoc(ref);
-
-      if (snap.exists()) {
-        setUserDoc(snap.data() as UserDoc);
-      } else {
-        setUserDoc(null);
+      if (unsubscribeUserDoc) {
+        unsubscribeUserDoc();
       }
 
-      setLoading(false);
+      const ref = doc(db, "users", user.uid);
+
+      unsubscribeUserDoc = onSnapshot(ref, (snap) => {
+        if (snap.exists()) {
+          setUserDoc(snap.data() as UserDoc);
+        } else {
+          setUserDoc(null);
+        }
+
+        setLoading(false);
+      });
     });
 
-    return () => unsub();
+    return () => {
+      unsub();
+      if (unsubscribeUserDoc) {
+        unsubscribeUserDoc();
+      }
+    };
   }, []);
 
   return {

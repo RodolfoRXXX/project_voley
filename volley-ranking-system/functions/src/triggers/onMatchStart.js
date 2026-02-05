@@ -1,6 +1,5 @@
-
 // -------------------
-// TRIGGER ACTUALIZA ESTADISTICAS Y CIERRA DEFINITIVAMENTE EL MATCH
+// TRIGGER QUE CIERRA EL CICLO AL INICIAR EL MATCH
 // -------------------
 
 const functions = require("firebase-functions/v1");
@@ -14,11 +13,17 @@ module.exports = functions.pubsub
   .onRun(async () => {
     const now = admin.firestore.Timestamp.now();
 
-    const matchesSnap = await db
-      .collection("matches")
-      .where("estado", "==", "cerrado")
-      .where("horaInicio", "<=", now)
-      .get();
+    let matchesSnap;
+    try {
+      matchesSnap = await db
+        .collection("matches")
+        .where("estado", "in", ["cerrado", "abierto", "verificando"])
+        .where("horaInicio", "<=", now)
+        .get();
+    } catch (err) {
+      console.error("❌ Error consultando matches por hora de inicio", err);
+      return null;
+    }
 
     for (const doc of matchesSnap.docs) {
       const matchRef = doc.ref;
@@ -30,75 +35,30 @@ module.exports = functions.pubsub
 
           const match = matchSnap.data();
 
-          if (match.lock === true) return;
-          if (!match.groupId) return;
-
-          // 🔒 lock
-          tx.update(matchRef, { lock: true });
-
-          /* =========================
-             GROUP
-          ========================= */
-          const groupRef = db
-            .collection("groups")
-            .doc(match.groupId);
-
-          const groupSnap = await tx.get(groupRef);
-          if (!groupSnap.exists) return;
-
-          const partidosTotales =
-            groupSnap.data().partidosTotales || 0;
-
-          /* =========================
-             TITULARES
-          ========================= */
-          const participationsSnap = await tx.get(
-            db
-              .collection("participations")
-              .where("matchId", "==", matchRef.id)
-              .where("estado", "==", "titular")
-          );
-
-          for (const pDoc of participationsSnap.docs) {
-            const p = pDoc.data();
-            if (!p.userId) continue;
-
-            const statRef = db
-              .collection("groupStats")
-              .doc(`${match.groupId}_${p.userId}`);
-
-            const statSnap = await tx.get(statRef);
-
-            tx.set(
-              statRef,
-              {
-                groupId: match.groupId,
-                userId: p.userId,
-                partidosJugados:
-                  (statSnap.data()?.partidosJugados || 0) + 1,
-              },
-              { merge: true }
-            );
+          if (match.estado === "cerrado") {
+            tx.update(matchRef, {
+              estado: "jugado",
+            });
+            return;
           }
 
-          tx.update(groupRef, {
-            partidosTotales: partidosTotales + 1,
-          });
-
-          tx.update(matchRef, {
-            estado: "jugado",
-          });
+          if (
+            match.estado === "abierto" ||
+            match.estado === "verificando"
+          ) {
+            tx.update(matchRef, {
+              estado: "eliminado",
+              lock: true,
+              nextDeadlineAt: null,
+            });
+          }
         });
 
-        console.log(`🏐 Match ${doc.id} iniciado`);
+        console.log(`⏱️ Match ${doc.id} procesado por horaInicio`);
       } catch (err) {
-        console.error(
-          `🔥 Error iniciando match ${doc.id}`,
-          err
-        );
+        console.error(`🔥 Error procesando match ${doc.id}`, err);
       }
     }
 
     return null;
   });
-

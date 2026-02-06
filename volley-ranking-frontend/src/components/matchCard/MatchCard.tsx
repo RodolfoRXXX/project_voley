@@ -187,22 +187,32 @@ useEffect(() => {
   ===================== */
 
   return (
-    <div className="relative border rounded p-4 space-y-2">
+    <div className="
+      relative
+      rounded-xl
+      border border-neutral-200
+      bg-white
+      p-5
+      space-y-3
+      shadow-sm
+      hover:shadow-md
+      transition-shadow
+    ">
         {/* BADGE ESTADO */}
-      <div className="absolute top-2 right-2">
+      <div className="absolute top-3 right-3">
         <MatchStatusBadge estado={match.estado} />
       </div>
-      <p className="font-semibold">
-        <b>{groupNombre ?? "—"}</b>
+      <p className="text-lg font-semibold text-neutral-800">
+        {groupNombre ?? "—"}
       </p>
 
       {adminUser && (
-        <div className="flex items-center gap-2 text-sm text-gray-600">
+        <div className="flex items-center gap-2 text-sm text-neutral-500">
           <UserAvatar
             nombre={adminUser.nombre}
             photoURL={adminUser.photoURL}
             size={24}
-            className="ring-1 ring-blue-500"
+            className="ring-1 ring-neutral-300"
           />
           <span>
             Admin: <b>{adminUser.nombre}</b>
@@ -210,23 +220,27 @@ useEffect(() => {
         </div>
       )}
 
-      <p className="text-sm text-gray-500">
-        Formación – {match.formacion}
-      </p>
+      <div className="text-sm text-neutral-600 space-y-1">
+        <p>
+          <span className="font-medium">Formación:</span> {match.formacion}
+        </p>
 
-      <p className="text-sm text-gray-600">
-        {formatDateTime(match.horaInicio)}
-      </p>
+        <p>
+          <span className="font-medium">Fecha:</span>{" "}
+          {formatDateTime(match.horaInicio)}
+        </p>
+      </div>
 
-      <p className="text-sm">
-        Titulares: {titulares}/{titularesTotales}
-      </p>
+      <div className="flex gap-4 text-sm text-neutral-600 pt-1">
+        <p>
+          Titulares: <b>{titulares}</b>/{titularesTotales}
+        </p>
+        <p>
+          Suplentes: <b>{suplentes}</b>/{suplentesTotales}
+        </p>
+      </div>
 
-      <p className="text-sm">
-        Suplentes: {suplentes}/{suplentesTotales}
-      </p>
-
-      <div className="pt-3">
+      <div className="pt-4 border-t border-neutral-200">
           {!isLogged ? (
             <p className="text-sm text-gray-500 italic">
               Iniciá sesión para unirte o ver el detalle del juego
@@ -250,7 +264,7 @@ useEffect(() => {
 
               <Link
                 href={`/groups/${match.groupId}/matches/${match.id}`}
-                className="text-blue-600 text-sm"
+                className="text-sm text-orange-600 hover:underline"
               >
                 Ver detalle →
               </Link>

@@ -33,7 +33,11 @@ export default function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 bg-neutral-50 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="relative max-w-7xl mx-auto px-4 py-3 flex items-center">
+  
+        {/* LEFT spacer */}
+        <div className="hidden md:block w-64" />
+
         {/* Logo */}
         <Link
           href="/dashboard"
@@ -45,8 +49,8 @@ export default function Navbar() {
           🏐 GroupVolley
         </Link>
 
-        {/* DESKTOP */}
-        <div className="hidden md:flex items-center gap-3">
+        {/* RIGHT */}
+        <div className="ml-auto hidden md:flex items-center gap-3">
           {!loading && !firebaseUser && (
             <button
               onClick={login}
@@ -80,7 +84,7 @@ export default function Navbar() {
         </div>
 
         {/* MOBILE */}
-        <div className="md:hidden flex items-center gap-2">
+        <div className="ml-auto md:hidden flex items-center gap-2">
           {firebaseUser?.photoURL && (
             <UserAvatar
               nombre={firebaseUser.displayName || "user"}
@@ -97,6 +101,7 @@ export default function Navbar() {
           </button>
         </div>
       </div>
+
 
       {/* MOBILE DRAWER */}
       {open && (

@@ -29,11 +29,15 @@ export default function ProtectedLayout({
     }
   }, [firebaseUser, userDoc, loading, router, isDashboardRoute]);
 
-  if (loading || !firebaseUser || !userDoc) {
+  if (loading) {
     return <p className="p-6">Cargando...</p>;
   }
 
   const isLoggedIn = !!firebaseUser && !!userDoc;
+
+  if (!isLoggedIn && !isDashboardRoute) {
+    return <p className="p-6">Cargando...</p>;
+  }
 
   return (
     <div className="flex flex-1 min-h-0 bg-[#F8FAFC]">

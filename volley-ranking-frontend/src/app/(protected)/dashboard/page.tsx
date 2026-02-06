@@ -77,7 +77,7 @@ export default function DashboardPage() {
   if (loading) return <p>Cargando matches...</p>;
 
   return (
-    <main className="max-w-5xl mx-auto mt-10 px-4 md:px-0 space-y-8">
+    <main className="max-w-5xl mx-auto mt-10 px-4 md:px-0 space-y-6">
       <h1 className="text-sm uppercase tracking-wide text-slate-400">
         Dashboard
       </h1>
@@ -89,7 +89,7 @@ export default function DashboardPage() {
       {matches.length === 0 ? (
         <p className="text-gray-500">No hay partidos disponibles.</p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {matches.map((match) => (
             <MatchCard
               key={match.id}

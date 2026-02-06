@@ -189,14 +189,11 @@ useEffect(() => {
   return (
     <div className="
       relative
-      rounded-xl
       border border-neutral-200
+      rounded-md
+      px-4 py-3
+      space-y-2
       bg-white
-      p-5
-      space-y-3
-      shadow-sm
-      hover:shadow-md
-      transition-shadow
     ">
         {/* BADGE ESTADO */}
       <div className="absolute top-3 right-3">
@@ -246,25 +243,30 @@ useEffect(() => {
               Iniciá sesión para unirte o ver el detalle del juego
             </p>
           ) : (
-            <div className="flex gap-3 items-center">
-              <ActionButton
+            <div className="flex items-center gap-3">
+              <button
                 onClick={handleToggleParticipation}
-                loading={loadingJoinLeave}
                 disabled={!puedeUnirse}
-                variant={isJoined ? "danger" : "success"}
+                className={`
+                  w-9 h-9
+                  flex items-center justify-center
+                  rounded-full
+                  font-bold text-lg
+                  transition-colors
+                  disabled:opacity-40 disabled:cursor-not-allowed
+                  ${
+                    isJoined
+                      ? "bg-red-500/10 text-red-600 hover:bg-red-500/20"
+                      : "bg-orange-500/10 text-orange-600 hover:bg-orange-500/20"
+                  }
+                `}
               >
-                {accionesJugadorBloqueadas
-                  ? "No disponible"
-                  : isEliminado
-                  ? "Eliminado"
-                  : isJoined
-                  ? "Desunirme"
-                  : "Unirme"}
-              </ActionButton>
+                {isJoined ? "−" : "+"}
+              </button>
 
               <Link
                 href={`/groups/${match.groupId}/matches/${match.id}`}
-                className="text-sm text-orange-600 hover:underline"
+                className="text-sm text-blue-600 hover:underline"
               >
                 Ver detalle →
               </Link>

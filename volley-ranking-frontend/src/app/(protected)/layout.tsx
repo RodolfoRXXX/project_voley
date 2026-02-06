@@ -50,7 +50,7 @@ export default function ProtectedLayout({
         <div
           className={
             isLoggedIn
-              ? "p-4 md:p-8"
+              ? "p-4 md:p-6"
               : "max-w-5xl mx-auto p-4 md:p-8"
           }
         >

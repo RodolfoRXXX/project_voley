@@ -45,7 +45,7 @@ export default function AppSidebar() {
 
   return (
     <aside className="
-      hidden md:flex w-64 flex-col h-full min-h-0
+      hidden md:flex w-64 flex-col h-auto min-h-0
       bg-neutral-100 text-neutral-700
       border-r border-neutral-200
     ">
@@ -80,9 +80,9 @@ export default function AppSidebar() {
       </nav>
 
       {/* User section */}
-      <div className="border-t border-white/10 p-4">
+      <div className="border-t border-neutral-200 p-4">
 
-        <div className="flex items-center mb-3 gap-3 text-sm text-slate-300">
+        <div className="flex items-center mb-3 px-3 gap-3 text-sm text-slate-600">
             {userDoc?.photoURL ? (
             <UserAvatar
                 nombre={userDoc?.nombre}
@@ -91,7 +91,7 @@ export default function AppSidebar() {
                 className="w-10 h-10 rounded-full object-cover"
             />
             ) : (
-            <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-sm">
+            <div className="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center text-sm">
                 👤
             </div>
             )}
@@ -107,7 +107,7 @@ export default function AppSidebar() {
         </div>
 
         <button
-          className="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+          className="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-600 hover:bg-orange-500/10 hover:text-orange-600 transition-colors"
           onClick={logout}
         >
           Cerrar sesión

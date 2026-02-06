@@ -9,12 +9,14 @@ import UserAvatar from "../ui/avatar/UserAvatar";
 import { useRouter } from "next/navigation";
 import useToast from "@/components/ui/toast/useToast";
 import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
+import { usePathname } from "next/navigation";
 
 export default function Navbar() {
   const { firebaseUser, userDoc, loading } = useAuth();
   const router = useRouter();
   const { showToast } = useToast();
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
@@ -30,6 +32,18 @@ export default function Navbar() {
     setOpen(false);
     router.replace("/dashboard");
   };
+
+  const navItems = [
+    { label: "Inicio", href: "/dashboard" },
+    { label: "Perfil", href: "/profile" },
+  ];
+
+  if (userDoc?.roles === "admin") {
+    navItems.push({
+      label: "Administración",
+      href: "/admin/groups",
+    });
+  }
 
   return (
     <nav className="sticky top-0 z-50 bg-neutral-50 shadow-sm">
@@ -85,14 +99,6 @@ export default function Navbar() {
 
         {/* MOBILE */}
         <div className="ml-auto md:hidden flex items-center gap-2">
-          {firebaseUser?.photoURL && (
-            <UserAvatar
-              nombre={firebaseUser.displayName || "user"}
-              photoURL={firebaseUser.photoURL}
-              size={32}
-            />
-          )}
-
           <button
             onClick={() => setOpen(!open)}
             className="p-2 rounded hover:bg-gray-100"
@@ -105,42 +111,80 @@ export default function Navbar() {
 
       {/* MOBILE DRAWER */}
       {open && (
-        <div className="md:hidden border-t bg-white px-4 py-3 space-y-3">
-          <Link href="/dashboard" onClick={() => setOpen(false)}>
-            Inicio
-          </Link>
+        <div className="md:hidden border-t bg-white">
 
+          {/* USER INFO */}
           {firebaseUser && (
-            <>
-              <Link href="/profile" onClick={() => setOpen(false)}>
-                Perfil
-              </Link>
+            <div className="px-4 py-4 flex items-center gap-3">
+              <UserAvatar
+                nombre={firebaseUser.displayName || "user"}
+                photoURL={firebaseUser.photoURL || ""}
+                size={40}
+              />
 
-              {userDoc?.roles === "admin" && (
-                <Link href="/admin/groups" onClick={() => setOpen(false)}>
-                  Administración
-                </Link>
-              )}
+              <div className="text-sm">
+                <p className="font-medium">
+                  {firebaseUser.displayName}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {userDoc?.roles || "Player"}
+                </p>
+              </div>
+            </div>
+          )}
 
+          {/* SEPARATOR */}
+          {firebaseUser && (
+          <div className="border-t border-neutral-200 my-1" />
+          )}
+
+          {/* NAV LINKS */}
+          {firebaseUser && (
+            <nav className="px-2 space-y-1 border-b border-neutral-200 py-2">
+              {navItems.map((item) => {
+                const isActive = pathname.startsWith(item.href);
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className={`block rounded-lg px-4 py-2 text-sm font-medium transition-colors
+                      ${
+                        isActive
+                          ? "bg-orange-500/10 text-orange-600"
+                          : "text-neutral-600 hover:bg-neutral-200/60"
+                      }
+                    `}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
+
+          {/* FOOTER */}
+          <div className="p-2">
+            {firebaseUser ? (
               <button
                 onClick={logout}
-                className="block text-left text-red-600"
+                className="w-full rounded-lg px-4 py-2 text-left text-sm text-slate-600 hover:bg-orange-500/10 hover:text-orange-600 transition-colors"
               >
                 Cerrar sesión
               </button>
-            </>
-          )}
-
-          {!firebaseUser && (
-            <button
-              onClick={login}
-              className="w-full bg-orange-500 text-white py-2 rounded-lg"
-            >
-              Ingresar con Google
-            </button>
-          )}
+            ) : (
+              <button
+                onClick={login}
+                className="w-full bg-orange-500 text-white py-2 rounded-lg"
+              >
+                Ingresar con Google
+              </button>
+            )}
+          </div>
         </div>
       )}
+
     </nav>
   );
 }

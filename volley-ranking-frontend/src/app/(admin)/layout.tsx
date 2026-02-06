@@ -30,5 +30,25 @@ export default function AdminLayout({
     return <p className="p-6">Cargando...</p>;
   }
 
-  return <>{children}</>;
+  const isAdmin = !!firebaseUser && userDoc?.roles === "admin";
+
+  return (
+    <div className="min-h-screen bg-slate-100 font-inter">
+      <div className="flex">
+        {/* Sidebar admin */}
+        <aside className="hidden md:flex w-64 bg-slate-900 text-slate-100">
+          <div className="p-6 text-lg font-semibold">
+            Admin
+          </div>
+          {/* nav admin después */}
+        </aside>
+
+        {/* Main */}
+        <main className="flex-1 p-6 md:p-10">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+
 }

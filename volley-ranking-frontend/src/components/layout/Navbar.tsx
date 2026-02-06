@@ -1,3 +1,8 @@
+
+// -------------------
+// NAVBAR
+// -------------------
+
 "use client";
 
 import { signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
@@ -30,73 +35,60 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="flex items-center justify-between px-6 py-4 border-b">
-      <Link href="/dashboard" className="font-bold text-lg">
-        🏐 GroupVolley
-      </Link>
+    <nav className="md:hidden sticky top-0 z-30 bg-white border-b border-slate-200">
+      <div className="flex h-14 items-center justify-between px-4">
+        {/* Logo */}
+        <Link
+          href="/dashboard"
+          className="text-lg font-bold text-slate-900"
+        >
+          🏐 GroupVolley
+        </Link>
 
-      <div className="flex items-center gap-4">
-        {!loading && !firebaseUser && (
-          <button
-            onClick={login}
-            className="bg-black text-white px-4 py-2 rounded"
-          >
-            Ingresar con Google
-          </button>
-        )}
+        {/* Right side */}
+        <div className="flex items-center gap-3">
+          {!loading && !firebaseUser && (
+            <button
+              onClick={login}
+              className="rounded-lg bg-[#FC4C02] px-4 py-2 text-sm font-semibold text-white hover:bg-[#E44402] transition-colors"
+            >
+              Entrar
+            </button>
+          )}
 
-        {!loading && firebaseUser && (
-          <>
-            {userDoc?.roles === "admin" && (
-              <span className="text-xs bg-red-600 text-white px-2 py-1 rounded">
-                ADMIN
-              </span>
-            )}
+          {!loading && firebaseUser && (
+            <>
+              {userDoc?.roles === "admin" && (
+                <span className="rounded-md bg-slate-900 px-2 py-1 text-xs font-semibold text-white">
+                  Admin
+                </span>
+              )}
 
-            {userDoc && (
-              <>
-                <Link href="/dashboard">Dashboard</Link>
-
-                {userDoc.roles === "admin" && (
-                  <Link
-                    href="/admin/groups"
-                    className="font-semibold text-blue-600"
-                  >
-                    Groups
-                  </Link>
-                )}
-
-                <Link href="/profile">Perfil</Link>
-              </>
-            )}
-
-            {!userDoc && (
-              <Link href="/onboarding" className="text-orange-600 font-semibold">
-                Completar perfil
-              </Link>
-            )}
-
-            <div className="flex items-center gap-2">
               {firebaseUser.photoURL && (
                 <UserAvatar
                   nombre={firebaseUser.displayName || "user"}
                   photoURL={firebaseUser.photoURL}
-                  size={28}
+                  size={32}
                   className="w-8 h-8 rounded-full"
                 />
               )}
 
+              {/* Botón menú (placeholder por ahora) */}
               <button
-                onClick={logout}
-                className="text-sm text-gray-600 border rounded px-2 py-1 pointer"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600"
+                onClick={() => {
+                  // después abrimos drawer
+                  console.log("open mobile menu");
+                }}
               >
-                Salir
+                ☰
               </button>
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
     </nav>
   );
+
 }
 

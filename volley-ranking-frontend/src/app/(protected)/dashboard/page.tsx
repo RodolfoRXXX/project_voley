@@ -7,6 +7,7 @@ import { collection, getDocs, query, where, Timestamp } from "firebase/firestore
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import MatchCard from "@/components/matchCard/MatchCard";
+import Navbar from "@/components/layout/Navbar";
 
 type Match = {
   id: string;

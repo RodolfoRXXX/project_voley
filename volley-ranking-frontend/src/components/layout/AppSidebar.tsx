@@ -45,7 +45,7 @@ export default function AppSidebar() {
 
   return (
     <aside className="
-      hidden md:flex w-64 flex-col
+      hidden md:flex w-64 flex-col h-full min-h-0
       bg-neutral-100 text-neutral-700
       border-r border-neutral-200
     ">
@@ -58,7 +58,7 @@ export default function AppSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 space-y-1">
+      <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (

@@ -1,14 +1,12 @@
-// Dashboard principal donde muestra los matches
+
 
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import MatchCard from "@/components/matchCard/MatchCard";
-
-import { Timestamp } from "firebase/firestore";
 
 type Match = {
   id: string;
@@ -23,11 +21,12 @@ type Match = {
 
 export default function DashboardPage() {
   const { firebaseUser } = useAuth();
+
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [groupsMap, setGroupsMap] = useState<Record<string, string>>({});
 
-
+  // 🔑 HOOKS SIEMPRE ARRIBA, SIN IF
   useEffect(() => {
     const load = async () => {
       const q = query(
@@ -48,7 +47,6 @@ export default function DashboardPage() {
 
       setMatches(loadedMatches);
 
-      // 🔑 SACAR groupIds de loadedMatches
       const groupIds = Array.from(
         new Set(loadedMatches.map((m) => m.groupId))
       );
@@ -75,6 +73,7 @@ export default function DashboardPage() {
     load();
   }, []);
 
+  // ⬇️ retornos CONDICIONALES van DESPUÉS de los hooks
   if (loading) return <p>Cargando matches...</p>;
 
   return (
@@ -83,9 +82,7 @@ export default function DashboardPage() {
       <h2 className="text-3xl font-bold">Próximos partidos</h2>
 
       {matches.length === 0 ? (
-        <p className="text-gray-500">
-          No hay partidos disponibles.
-        </p>
+        <p className="text-gray-500">No hay partidos disponibles.</p>
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
           {matches.map((match) => (

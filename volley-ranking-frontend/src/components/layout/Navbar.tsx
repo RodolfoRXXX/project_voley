@@ -5,22 +5,33 @@ import { auth } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import UserAvatar from "../ui/avatar/UserAvatar";
+import { useRouter } from "next/navigation";
+import useToast from "@/components/ui/toast/useToast";
+import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
 
 export default function Navbar() {
   const { firebaseUser, userDoc, loading } = useAuth();
+  const router = useRouter();
+  const { showToast } = useToast();
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      handleAuthPopupError(err, showToast);
+    }
   };
 
   const logout = async () => {
     await signOut(auth);
+    router.replace("/dashboard");
   };
 
   return (
     <nav className="flex items-center justify-between px-6 py-4 border-b">
-      <Link href="/" className="font-bold text-lg">
+      <Link href="/dashboard" className="font-bold text-lg">
         🏐 GroupVolley
       </Link>
 
@@ -88,3 +99,4 @@ export default function Navbar() {
     </nav>
   );
 }
+

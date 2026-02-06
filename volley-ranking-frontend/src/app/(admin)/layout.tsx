@@ -1,7 +1,8 @@
 "use client";
 
+import AppSidebar from "@/components/layout/AppSidebar";
 import { useAuth } from "@/hooks/useAuth";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function AdminLayout({
@@ -11,11 +12,13 @@ export default function AdminLayout({
 }) {
   const { firebaseUser, userDoc, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const isManageRoute = pathname === "/admin/groups";
 
   useEffect(() => {
     if (loading) return;
 
-    if (!firebaseUser) {
+    if (!firebaseUser && !isManageRoute) {
       router.replace("/");
       return;
     }
@@ -33,22 +36,23 @@ export default function AdminLayout({
   const isAdmin = !!firebaseUser && userDoc?.roles === "admin";
 
   return (
-    <div className="min-h-screen bg-slate-100 font-inter">
-      <div className="flex">
-        {/* Sidebar admin */}
-        <aside className="hidden md:flex w-64 bg-slate-900 text-slate-100">
-          <div className="p-6 text-lg font-semibold">
-            Admin
+      <div className="flex flex-1 min-h-0 bg-[#F8FAFC]">
+        {isAdmin && (
+          <AppSidebar />
+        )}
+  
+        <main className="flex-1 min-h-0 overflow-y-auto">
+          {/* Content */}
+          <div
+            className={
+              isAdmin
+                ? "p-4 md:p-8"
+                : "max-w-5xl mx-auto p-4 md:p-8"
+            }
+          >
+            {children}
           </div>
-          {/* nav admin después */}
-        </aside>
-
-        {/* Main */}
-        <main className="flex-1 p-6 md:p-10">
-          {children}
         </main>
       </div>
-    </div>
-  );
-
+    );
 }

@@ -29,15 +29,7 @@ export default function ProtectedLayout({
     }
   }, [firebaseUser, userDoc, loading, router, isDashboardRoute]);
 
-  if (loading) {
-    return <p className="p-6">Cargando...</p>;
-  }
-
-  if (!firebaseUser && isDashboardRoute) {
-    return <>{children}</>;
-  }
-
-  if (!firebaseUser || !userDoc) {
+  if (loading || !firebaseUser || !userDoc) {
     return <p className="p-6">Cargando...</p>;
   }
 

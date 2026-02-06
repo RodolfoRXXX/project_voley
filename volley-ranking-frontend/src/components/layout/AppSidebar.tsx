@@ -23,11 +23,11 @@ export default function AppSidebar() {
   const navItems = [
     {
       label: "Inicio",
-      href: "/dashboard",
+      href: "/dashboard"
     },
     {
       label: "Perfil",
-      href: "/profile",
+      href: "/profile"
     },
   ];
 
@@ -44,17 +44,23 @@ export default function AppSidebar() {
     };
 
   return (
-    <aside className="hidden md:flex w-64 flex-col bg-[#0F172A] text-slate-200">
+    <aside className="
+      hidden md:flex w-64 flex-col
+      bg-neutral-100 text-neutral-700
+      border-r border-neutral-200
+    ">
+
       {/* Logo */}
-      <div className="px-6 py-5 text-xl font-bold text-white">
-        🏐 VolleyApp
+      <div className="px-6 py-5">
+        <p className="text-xs uppercase tracking-wide text-slate-400">
+          Navegación
+        </p>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 px-3 space-y-1">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
-
           return (
             <Link
               key={item.href}
@@ -62,8 +68,8 @@ export default function AppSidebar() {
               className={`flex items-center gap-3 rounded-lg px-4 py-2 text-sm font-medium transition-colors
                 ${
                   isActive
-                    ? "bg-[rgba(252,76,2,0.15)] text-[#FC4C02]"
-                    : "text-slate-300 hover:bg-white/5 hover:text-white"
+                    ? "bg-orange-500/10 text-orange-600"
+                    : "hover:bg-neutral-200/60 text-neutral-600"
                 }
               `}
             >
@@ -94,7 +100,7 @@ export default function AppSidebar() {
             <p className="font-medium">
                 {userDoc?.nombre || "Admin"}
             </p>
-            <p className="text-gray-500 text-xs">
+            <p className="text-gray-400 text-xs">
                 {userDoc?.roles || "Player"}
             </p>
             </div>

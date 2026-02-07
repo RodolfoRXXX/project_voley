@@ -2,7 +2,7 @@
 
 import AppSidebar from "@/components/layout/AppSidebar";
 import { useAuth } from "@/hooks/useAuth";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function ProtectedLayout({
@@ -12,13 +12,11 @@ export default function ProtectedLayout({
 }) {
   const { firebaseUser, userDoc, loading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
-  const isDashboardRoute = pathname === "/dashboard";
 
   useEffect(() => {
     if (loading) return;
 
-    if (!firebaseUser && !isDashboardRoute) {
+    if (!firebaseUser) {
       router.replace("/");
       return;
     }
@@ -27,7 +25,7 @@ export default function ProtectedLayout({
       router.replace("/onboarding");
       return;
     }
-  }, [firebaseUser, userDoc, loading, router, isDashboardRoute]);
+  }, [firebaseUser, userDoc, loading, router]);
 
   if (loading) {
     return <p className="p-6">Cargando...</p>;
@@ -35,7 +33,7 @@ export default function ProtectedLayout({
 
   const isLoggedIn = !!firebaseUser && !!userDoc;
 
-  if (!isLoggedIn && !isDashboardRoute) {
+  if (!isLoggedIn) {
     return <p className="p-6">Cargando...</p>;
   }
 

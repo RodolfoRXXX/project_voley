@@ -24,6 +24,7 @@ import { ActionButton } from "../ui/action/ActionButton";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
+import { useAuth } from "@/hooks/useAuth";
 
 /* =====================
      FUNCTION
@@ -45,6 +46,8 @@ export default function MatchCard({
   const [miParticipacion, setMiParticipacion] = useState<any | null>(null);
   const [adminUser, setAdminUser] = useState<any | null>(null);
   const { showToast } = useToast();
+  const { userDoc } = useAuth();
+  const isOnboarded = !!userDoc?.onboarded;
 
   const valores: number[] = Object.values(match.posicionesObjetivo || {});
   const titularesTotales = valores.reduce(
@@ -125,14 +128,29 @@ const puedeUnirse =
   }, [match.adminId]);
 
   /* =====================
+     Redirect Onboarding
+  ===================== */
+
+  const requireOnboarding = () => {
+  if (!userId) {
+    router.push("/");
+    return false;
+  }
+
+  if (!isOnboarded) {
+    router.push("/onboarding");
+    return false;
+  }
+
+  return true;
+};
+
+  /* =====================
      Join / Leave
   ===================== */
 
   const handleToggleParticipation = () => {
-    if (!userId) {
-      router.push("/");
-      return;
-    }
+    if (!requireOnboarding()) return;
 
     if (isJoined) {
       run(
@@ -266,12 +284,15 @@ const puedeUnirse =
               </span>
             </button>
 
-            <Link
-              href={`/groups/${match.groupId}/matches/${match.id}`}
+            <button
+              onClick={() => {
+                if (!requireOnboarding()) return;
+                router.push(`/groups/${match.groupId}/matches/${match.id}`);
+              }}
               className="text-sm text-neutral-500 hover:text-neutral-800"
             >
               Ver detalle →
-            </Link>
+            </button>
 
           </>
         )}

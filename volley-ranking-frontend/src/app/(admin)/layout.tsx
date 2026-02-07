@@ -2,7 +2,7 @@
 
 import AppSidebar from "@/components/layout/AppSidebar";
 import { useAuth } from "@/hooks/useAuth";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function AdminLayout({
@@ -12,14 +12,17 @@ export default function AdminLayout({
 }) {
   const { firebaseUser, userDoc, loading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
-  const isManageRoute = pathname === "/admin/groups";
 
   useEffect(() => {
     if (loading) return;
 
-    if (!firebaseUser && !isManageRoute) {
+    if (!firebaseUser) {
       router.replace("/");
+      return;
+    }
+
+    if (userDoc && !userDoc.onboarded) {
+      router.replace("/onboarding");
       return;
     }
 

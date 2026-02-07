@@ -110,19 +110,19 @@ const puedeUnirse =
 
   /* =====================
    Admin del match
-===================== */
-useEffect(() => {
-  if (!match?.adminId) return;
+  ===================== */
+  useEffect(() => {
+    if (!match?.adminId) return;
 
-  const ref = doc(db, "users", match.adminId);
+    const ref = doc(db, "users", match.adminId);
 
-  const unsub = onSnapshot(ref, (snap) => {
-    if (!snap.exists()) return;
-    setAdminUser(snap.data());
-  });
+    const unsub = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) return;
+      setAdminUser(snap.data());
+    });
 
-  return () => unsub();
-}, [match.adminId]);
+    return () => unsub();
+  }, [match.adminId]);
 
   /* =====================
      Join / Leave
@@ -187,91 +187,94 @@ useEffect(() => {
   ===================== */
 
   return (
-    <div className="
-      relative
-      border border-neutral-200
-      rounded-md
-      px-4 py-3
-      space-y-2
-      bg-white
-    ">
-        {/* BADGE ESTADO */}
-      <div className="absolute top-3 right-3">
+    <div
+      className="
+        flex flex-col
+        bg-white
+        border border-neutral-200
+        px-4 py-4
+        h-full
+      "
+    >
+      {/* HEADER */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <p className="text-m font-medium text-neutral-900 leading-tight">
+            {groupNombre ?? "—"}
+          </p>
+          <p className="text-sm text-neutral-500">
+            Formación {match.formacion}
+          </p>
+        </div>
+
         <MatchStatusBadge estado={match.estado} />
       </div>
-      <p className="text-lg font-semibold text-neutral-800">
-        {groupNombre ?? "—"}
-      </p>
 
+      {/* ADMIN */}
       {adminUser && (
-        <div className="flex items-center gap-2 text-sm text-neutral-500">
+        <div className="flex items-center gap-2 mt-3 text-sm text-neutral-600">
           <UserAvatar
             nombre={adminUser.nombre}
             photoURL={adminUser.photoURL}
-            size={24}
-            className="ring-1 ring-neutral-300"
+            size={22}
           />
           <span>
-            Admin: <b>{adminUser.nombre}</b>
+            Admin <b className="font-medium">{adminUser.nombre}</b>
           </span>
         </div>
       )}
 
-      <div className="text-sm text-neutral-600 space-y-1">
-        <p>
-          <span className="font-medium">Formación:</span> {match.formacion}
-        </p>
-
-        <p>
-          <span className="font-medium">Fecha:</span>{" "}
-          {formatDateTime(match.horaInicio)}
+      {/* INFO */}
+      <div className="mt-4 space-y-1 text-sm text-neutral-700">
+        <p>{formatDateTime(match.horaInicio)}</p>
+        <p className="text-sm text-neutral-500">
+          Titulares {titulares}/{titularesTotales} · Suplentes {suplentes}/{suplentesTotales}
         </p>
       </div>
 
-      <div className="flex gap-4 text-sm text-neutral-600 pt-1">
-        <p>
-          Titulares: <b>{titulares}</b>/{titularesTotales}
-        </p>
-        <p>
-          Suplentes: <b>{suplentes}</b>/{suplentesTotales}
-        </p>
-      </div>
-
-      <div className="pt-4 border-t border-neutral-200">
-          {!isLogged ? (
-            <p className="text-sm text-gray-500 italic">
-              Iniciá sesión para unirte o ver el detalle del juego
-            </p>
-          ) : (
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleToggleParticipation}
-                disabled={!puedeUnirse}
-                className={`
-                  w-9 h-9
-                  flex items-center justify-center
-                  rounded-full
-                  font-bold text-lg
-                  transition-colors
-                  disabled:opacity-40 disabled:cursor-not-allowed
-                  ${
-                    isJoined
-                      ? "bg-red-500/10 text-red-600 hover:bg-red-500/20"
-                      : "bg-orange-500/10 text-orange-600 hover:bg-orange-500/20"
-                  }
-                `}
-              >
+      {/* FOOTER */}
+      <div className="mt-auto pt-4 flex items-center gap-4">
+        {!isLogged ? (
+          <p className="text-sm text-neutral-400 italic">
+            Iniciá sesión para unirte
+          </p>
+        ) : (
+          <>
+            <button
+              onClick={handleToggleParticipation}
+              disabled={!puedeUnirse}
+              className={`
+                flex items-center gap-2
+                px-4 h-10
+                rounded-full
+                font-semibold text-sm
+                transition
+                shadow-sm
+                disabled:opacity-40 disabled:cursor-not-allowed
+                ${
+                  isJoined
+                    ? "bg-red-500 text-white hover:bg-red-600"
+                    : "bg-orange-500 text-white hover:bg-orange-600"
+                }
+              `}
+            >
+              <span className="text-lg leading-none">
                 {isJoined ? "−" : "+"}
-              </button>
+              </span>
+              <span>
+                {isJoined ? "Salir" : "Unirme"}
+              </span>
+            </button>
 
-              <Link
-                href={`/groups/${match.groupId}/matches/${match.id}`}
-                className="text-sm text-blue-600 hover:underline"
-              >
-                Ver detalle →
-              </Link>
-            </div>
-          )}
+            <Link
+              href={`/groups/${match.groupId}/matches/${match.id}`}
+              className="text-sm text-neutral-500 hover:text-neutral-800"
+            >
+              Ver detalle →
+            </Link>
+
+          </>
+        )}
       </div>
     </div>
   );

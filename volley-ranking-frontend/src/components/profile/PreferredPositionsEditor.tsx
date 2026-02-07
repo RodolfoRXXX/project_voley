@@ -1,8 +1,3 @@
-
-// -------------------
-// POSICIONES PREFERIDAS (PROFILE)
-// -------------------
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -37,25 +32,17 @@ export default function PreferredPositionsEditor({ initial }: Props) {
     { posiciones: string[] }
   >(functions, "getValidPositions");
 
-  /* =====================
-     Sync initial (cuando cambia userDoc)
-  ===================== */
   useEffect(() => {
     setPositions(initial);
     setSavedPositions(initial);
   }, [initial]);
 
-  /* =====================
-     Load posiciones válidas
-  ===================== */
   useEffect(() => {
     const load = async () => {
       try {
         const res = await getPosicionesFn();
         setAllPositions(res.data.posiciones);
       } catch (err) {
-        console.error("Error cargando posiciones válidas", err);
-
         handleFirebaseError(
           err,
           showToast,
@@ -82,29 +69,35 @@ export default function PreferredPositionsEditor({ initial }: Props) {
 
   const save = async () => {
     if (positions.length < 1) return;
-
     setSaving(true);
     await updateFn({ posiciones: positions });
-
-    setSavedPositions(positions); // 👈 CLAVE
+    setSavedPositions(positions);
     setEditing(false);
     setSaving(false);
   };
 
   if (loadingCatalog) {
     return (
-      <section className="border rounded p-4">
-        <p className="text-sm text-gray-500">
-          Cargando posiciones…
-        </p>
-      </section>
+      <div className="text-sm text-gray-500">
+        Cargando posiciones…
+      </div>
     );
   }
 
   return (
-    <section className="border rounded p-4 space-y-3">
-      <div className="flex justify-between items-center">
-        <h3 className="font-semibold">Posiciones preferidas</h3>
+    <section
+      className="
+        bg-neutral-50
+        rounded-lg
+        p-4
+        space-y-4
+      "
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-gray-700">
+          Posiciones preferidas
+        </h3>
 
         {!editing && (
           <ActionButton
@@ -115,7 +108,8 @@ export default function PreferredPositionsEditor({ initial }: Props) {
         )}
       </div>
 
-      <div className="flex flex-col gap-2 items-start">
+      {/* Lista */}
+      <div className="flex flex-col gap-2">
         {positions.map((p, i) => (
           <PositionBadge
             key={`${p}-${i}`}
@@ -123,12 +117,14 @@ export default function PreferredPositionsEditor({ initial }: Props) {
             index={i + 1}
             editable={editing}
             disabled={saving}
-            onRemove={editing ? () => {
-              if (positions.length <= 1) return;
-              setPositions(
-                positions.filter((_, idx) => idx !== i)
-              );
-            } : undefined}
+            onRemove={
+              editing && positions.length > 1
+                ? () =>
+                    setPositions(
+                      positions.filter((_, idx) => idx !== i)
+                    )
+                : undefined
+            }
             onMoveUp={editing ? () => move(i, i - 1) : undefined}
             onMoveDown={editing ? () => move(i, i + 1) : undefined}
           />
@@ -147,20 +143,22 @@ export default function PreferredPositionsEditor({ initial }: Props) {
         )}
       </div>
 
+      {/* Acciones */}
       {editing && (
         <div className="flex gap-2 pt-2">
           <ActionButton
+            variant="success"
             onClick={save}
             loading={saving}
             disabled={positions.length < 1}
-            variant="success"
           >
-            Guardar
+            Guardar cambios
           </ActionButton>
 
           <ActionButton
+            variant="secondary"
             onClick={() => {
-              setPositions(savedPositions); // 👈 descarta cambios
+              setPositions(savedPositions);
               setEditing(false);
             }}
             disabled={saving}

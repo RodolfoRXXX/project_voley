@@ -156,9 +156,15 @@ export default function ProfileMatches() {
      RENDER
   ===================== */
   return (
-    <section className="border rounded p-6 space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold">
+    <section className="
+      bg-white
+      border border-neutral-200
+      rounded-xl
+      p-6
+      space-y-5
+    ">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
           🏐 Historial de partidos
         </h2>
 
@@ -167,7 +173,16 @@ export default function ProfileMatches() {
           onChange={(e) =>
             setFilter(e.target.value as Filter)
           }
-          className="border rounded px-2 py-1 text-sm"
+          className="
+            self-start sm:self-auto
+            rounded-full
+            border border-neutral-300
+            px-3 py-1.5
+            text-sm
+            bg-white
+            focus:outline-none
+            focus:ring-2 focus:ring-orange-400
+          "
         >
           <option value="todos">Todos</option>
           <option value="abierto">Abiertos</option>
@@ -178,7 +193,7 @@ export default function ProfileMatches() {
       </div>
 
       {filtered.length === 0 && (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-neutral-500 italic">
           No hay partidos para mostrar.
         </p>
       )}
@@ -192,5 +207,6 @@ export default function ProfileMatches() {
         ))}
       </div>
     </section>
+
   );
 }

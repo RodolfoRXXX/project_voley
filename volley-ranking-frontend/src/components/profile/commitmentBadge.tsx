@@ -1,25 +1,27 @@
-"use client";
+type Props = {
+  value: number;
+};
 
-export function CommitmentBadge({ value }: { value: number }) {
-  if (value >= 1) {
-    return (
-      <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-700">
-        🟢 Alto compromiso
-      </span>
-    );
-  }
+export default function CommitmentBadge({ value }: Props) {
+  let label = "Normal";
+  let style =
+    "bg-yellow-100 text-yellow-800 border border-yellow-200";
 
-  if (value === 0) {
-    return (
-      <span className="px-3 py-1 rounded-full text-sm bg-yellow-100 text-yellow-700">
-        🟡 Compromiso normal
-      </span>
-    );
+  if (value >= 3) {
+    label = "Alto";
+    style =
+      "bg-green-100 text-green-800 border border-green-200";
+  } else if (value < 0) {
+    label = "Bajo";
+    style =
+      "bg-red-100 text-red-800 border border-red-200";
   }
 
   return (
-    <span className="px-3 py-1 rounded-full text-sm bg-red-100 text-red-700">
-      🔴 Bajo compromiso
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${style}`}
+    >
+      🤝 Compromiso {label}
     </span>
   );
 }

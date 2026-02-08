@@ -8,7 +8,8 @@ type Variant =
   | "secondary"
   | "success"
   | "warning"
-  | "danger";
+  | "danger"
+  | "orange";
 
 type ActionButtonProps = {
   children: React.ReactNode;
@@ -17,6 +18,7 @@ type ActionButtonProps = {
   disabled?: boolean;
   variant?: Variant;
   round?: boolean;
+  compact?: boolean;
 };
 
 export function ActionButton({
@@ -26,6 +28,7 @@ export function ActionButton({
   disabled = false,
   variant = "default",
   round = false,
+  compact = false,
 }: ActionButtonProps) {
   const base =
     "inline-flex items-center justify-center gap-2 font-medium text-sm transition-all \
@@ -33,8 +36,11 @@ export function ActionButton({
      disabled:opacity-50 disabled:pointer-events-none";
 
   const sizes = round
-    ? "h-10 w-10 rounded-full"
+  ? "h-10 w-10 rounded-full"
+  : compact
+    ? "h-10 px-4 rounded-full" // 👈 sin min-width
     : "h-10 min-w-[140px] px-4 rounded-full";
+
 
   const variants: Record<Variant, string> = {
     default:
@@ -54,6 +60,9 @@ export function ActionButton({
 
     danger:
       "bg-red-600 text-white hover:bg-red-500 active:bg-red-700 focus-visible:ring-red-400",
+
+    orange: 
+      "bg-orange-500 text-white hover:bg-orange-600",
   };
 
   return (

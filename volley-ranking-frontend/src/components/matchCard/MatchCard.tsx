@@ -258,23 +258,12 @@ const puedeUnirse =
           </p>
         ) : (
           <>
-            <button
+            <ActionButton
               onClick={handleToggleParticipation}
               disabled={!puedeUnirse}
-              className={`
-                flex items-center gap-2
-                px-4 h-10
-                rounded-full
-                font-semibold text-sm
-                transition
-                shadow-sm
-                disabled:opacity-40 disabled:cursor-not-allowed
-                ${
-                  isJoined
-                    ? "bg-red-500 text-white hover:bg-red-600"
-                    : "bg-orange-500 text-white hover:bg-orange-600"
-                }
-              `}
+              loading={loadingJoinLeave}
+              variant={isJoined ? "danger" : "orange"}
+              compact
             >
               <span className="text-lg leading-none">
                 {isJoined ? "−" : "+"}
@@ -282,7 +271,7 @@ const puedeUnirse =
               <span>
                 {isJoined ? "Salir" : "Unirme"}
               </span>
-            </button>
+            </ActionButton>
 
             <button
               onClick={() => {

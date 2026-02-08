@@ -18,8 +18,7 @@ import {
 import { db, app } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import MatchStatusBadge from "@/components/matchCard/MatchStatusBadge";
-import { formatDateTime, formatForDateTimeLocal } from "@/lib/date";
+import { formatForDateTimeLocal } from "@/lib/date";
 import { useAction } from "@/components/ui/action/useAction";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import useToast from "@/components/ui/toast/useToast";
@@ -27,6 +26,13 @@ import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import TeamsModal from "@/components/teamsModal/TeamsModal";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import PagoModal from "@/components/pagoModal/pagoModal";
+import MatchHeader from "@/components/matchDetail/MatchHeader";
+import MatchInfoCard from "@/components/matchDetail/MatchInfoCard";
+import MatchEditForm from "@/components/matchDetail/MatchEditForm";
+import MatchPositions from "@/components/matchDetail/MatchPositions";
+import PlayersTable from "@/components/matchDetail/PlayersTable";
+import MatchActions from "@/components/matchDetail/MatchActions";
+import type { Match } from "@/types/match";
 
 /* =====================
    Firebase functions
@@ -54,17 +60,6 @@ const reincorporarJugadorFn = httpsCallable(
 /* =====================
    Types
 ===================== */
-type Match = {
-  id: string;
-  adminId: string,
-  estado: string;
-  horaInicio: Date | null;
-  formacion: string;
-  cantidadEquipos: number;
-  cantidadSuplentes: number;
-  posicionesObjetivo: Record<string, number>;
-  groupId: string;
-};
 
 type Group = {
   id: string;
@@ -540,262 +535,120 @@ useEffect(() => {
 
     {/* ================== TITULO ================== */}
 
-    <div>
-      <div className="flex items-center gap-2">
-        <h1 className="text-3xl font-bold">
-          {group?.nombre ?? "Grupo"}
-        </h1>
-        {match.estado === "abierto" && (
-          <span className="text-sm text-green-600">🟢 activo</span>
-        )}
-      </div>
-      {group?.descripcion && (
-        <p className="text-gray-600">{group.descripcion}</p>
-      )}
-    </div>
+    <MatchHeader
+      match={match}
+      group={group}
+    />
 
     {/* ================= DETALLES ================= */}
 
-    <section className="border rounded p-4 space-y-2">
-      <p className="flex items-center gap-2">
-        <span className="flex-1">
-          <b>Inicio:</b>{" "}
-          <span className="font-medium">
-            {match.horaInicio
-              ? formatDateTime(match.horaInicio)
-              : "Sin definir"}
-          </span>
-        </span>
-
-        <MatchStatusBadge estado={match.estado} />
-      </p>
-
-      <p><b>Formación:</b> {match.formacion}</p>
-      <p><b>Equipos:</b> {match.cantidadEquipos}</p>
-      <p><b>Suplentes:</b> {match.cantidadSuplentes}</p>
-      {adminUser && (
-        <div className="flex items-center gap-3 pt-3 border-t">
-          {adminUser.photoURL ? (
-            <UserAvatar
-              nombre={adminUser.nombre}
-              photoURL={adminUser.photoURL}
-              size={34}
-              className="w-10 h-10 rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-sm">
-              👤
-            </div>
-          )}
-
-          <div className="text-sm">
-            <p className="font-medium">
-              {adminUser.nombre || "Admin"}
-            </p>
-            <p className="text-gray-500 text-xs">
-              Admin del match
-            </p>
-          </div>
-        </div>
-      )}
-    </section>
+    <MatchInfoCard
+      match={match}
+      adminUser={adminUser}
+    />
 
     {/* =============== EDITAR MATCH =============== */}
 
-    {isAdmin && (match.estado !== "jugado" && match.estado !== "cancelado" && match.estado !== "cerrado") && (
-      <section className="border rounded p-4 space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Editar match</h2>
+    {isAdmin &&
+      !["jugado", "cancelado", "cerrado"].includes(match.estado) && (
+        <section className="border rounded p-4 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold">Editar match</h2>
 
-          {!editMode && (
-            <button
-              onClick={() => setEditMode(true)}
-              className="border px-3 py-1 rounded"
-            >
-              Editar
-            </button>
-          )}
-        </div>
-
-        {editMode && (
-          <div className="grid gap-4">
-            <input
-              type="number"
-              value={formData.cantidadEquipos}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  cantidadEquipos: Number(e.target.value),
-                })
-              }
-              className="border px-2 py-1 rounded"
-              placeholder="Cantidad de equipos"
-            />
-
-            <input
-              type="number"
-              value={formData.cantidadSuplentes}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  cantidadSuplentes: Number(e.target.value),
-                })
-              }
-              className="border px-2 py-1 rounded"
-              placeholder="Cantidad de suplentes"
-            />
-
-            <select
-              value={formData.formacion}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  formacion: e.target.value,
-                })
-              }
-              className="border px-2 py-1 rounded"
-            >
-              {Object.keys(formaciones).map((f) => (
-                <option key={f} value={f}>
-                  {f.replace("_", " ")}
-                </option>
-              ))}
-            </select>
-
-            <input
-              type="datetime-local"
-              value={formData.horaInicio}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  horaInicio: e.target.value,
-                })
-              }
-              className="border px-2 py-1 rounded"
-            />
-
-            <div className="flex gap-3">
-              <ActionButton
-                onClick={handleSave}
-                loading={isLoading("save-match")}
-                disabled={isLoading("save-match")}
-              >
-                Guardar
-              </ActionButton>
-
+            {!editMode && (
               <button
-                onClick={() => setEditMode(false)}
-                className="border px-4 py-2 rounded"
+                onClick={() => setEditMode(true)}
+                className="border px-3 py-1 rounded"
               >
-                Cancelar
+                Editar
               </button>
-            </div>
+            )}
           </div>
-        )}
-      </section>
+
+          <MatchEditForm
+            editMode={editMode}
+            setEditMode={setEditMode}
+            formData={formData}
+            setFormData={setFormData}
+            formaciones={formaciones}
+            onSave={handleSave}
+            loading={isLoading("save-match")}
+          />
+        </section>
     )}
 
     {/* ============ CUPOS POR POSICION ============ */}
 
-    <section>
-      <h2 className="text-xl font-semibold mb-4">
-        Cupos por posición
-      </h2>
-
-      <div className="grid grid-cols-2 gap-4">
-        {Object.entries(match.posicionesObjetivo).map(
-          ([pos, total]) => {
-            const ocupados = ocupadosPorPosicion[pos] || 0;
-
-            return (
-              <div
-                key={pos}
-                className="border rounded p-3 flex justify-between"
-              >
-                <span className="capitalize">{pos}</span>
-                <span>
-                  {ocupados} / {total}
-                </span>
-              </div>
-            );
-          }
-        )}
-      </div>
-    </section>
+    <MatchPositions
+      posiciones={match.posicionesObjetivo}
+      ocupados={ocupadosPorPosicion}
+    />
 
     {/* ================= TITULARES ================= */}
 
     <section>
-      <h2 className="text-xl font-semibold mb-4">Titulares</h2>
-
       {titulares.length === 0 ? (
-        <p className="text-gray-500">Todavía no hay titulares.</p>
+        <><h2 className="text-xl font-semibold mb-3">Titulares</h2><p className="text-gray-500">Todavía no hay titulares.</p></>
       ) : (
-        <div className="border rounded overflow-hidden">
-          <div className="grid grid-cols-5 bg-gray-100 px-3 py-2 text-sm font-semibold">
-            <span>Ranking</span>
-            <span>Nombre</span>
-            <span>Posición</span>
-            <span>Pago</span>
-            {isAdmin && <span></span>}
-          </div>
+        <PlayersTable
+          title="Titulares"
+          players={titulares}
+          columns="grid-cols-5"
+          highlightUserId={firebaseUser?.uid}
+          usersMap={usersMap}
+          renderHeader={() => (
+            <>
+              <span>Ranking</span>
+              <span>Nombre</span>
+              <span>Posición</span>
+              <span>Pago</span>
+              {isAdmin && <span></span>}
+            </>
+          )}
+          renderRow={(p, isMe) => (
+            <>
+              <span>{p.rankingTitular}</span>
 
-          {titulares.map((p) => {
-            const isMe = p.userId === firebaseUser?.uid;
+              <span className="flex items-center gap-2">
+                <UserAvatar
+                  nombre={usersMap[p.userId]?.nombre}
+                  photoURL={usersMap[p.userId]?.photoURL}
+                  size={28}
+                />
+                <span>
+                  {usersMap[p.userId]?.nombre ?? "—"}
+                  {isMe && (
+                    <span className="ml-1 text-xs text-blue-600">(vos)</span>
+                  )}
+                </span>
+              </span>
 
-            return (
-              <div
-                key={p.id}
-                className={`grid grid-cols-5 px-3 py-2 border-t text-sm ${
-                  isMe ? "bg-blue-100 font-semibold" : ""
-                }`}
+              <span className="capitalize">{p.posicionAsignada}</span>
+
+              <button
+                disabled={!isAdmin}
+                onClick={() => setPagoModal(p)}
+                className={`px-2 py-1 rounded text-xs font-semibold ${pagoColor(
+                  p.pagoEstado
+                )}`}
               >
-                <span>{p.rankingTitular}</span>
-                <span>
-                  <span className="flex items-center gap-2">
-                    <UserAvatar
-                      nombre={usersMap[p.userId]?.nombre}
-                      photoURL={usersMap[p.userId]?.photoURL}
-                      size={28}
-                    />
+                {p.pagoEstado}
+              </button>
 
-                    <span>
-                      {usersMap[p.userId]?.nombre ?? "—"}
-                      {isMe && (
-                        <span className="ml-1 text-xs text-blue-600">(vos)</span>
-                      )}
-                    </span>
-                  </span>
-                </span>
-                <span className="capitalize">
-                  {p.posicionAsignada}
-                </span>
-                <span>
-                  <button
-                    disabled={!isAdmin}
-                    onClick={() => setPagoModal(p)}
-                    className={`px-2 py-1 rounded text-xs font-semibold ${
-                      pagoColor(p.pagoEstado)
-                    }`}
-                  >
-                    {p.pagoEstado}
-                  </button>
-                </span>
-                {isAdmin && (
-                  <ActionButton
-                    round
-                    variant="danger"
-                    loading={isLoading("remove")}
-                    disabled={match.estado === "jugado"}
-                    onClick={() => handleEliminarJugador(p.id)}
-                  >
-                    ×
-                  </ActionButton>
-                )}
-              </div>
-            );
-          })}
-        </div>
+              {isAdmin && (
+                <ActionButton
+                  round
+                  variant="danger"
+                  loading={isLoading("remove")}
+                  disabled={match.estado === "jugado"}
+                  onClick={() => handleEliminarJugador(p.id)}
+                >
+                  ×
+                </ActionButton>
+              )}
+            </>
+          )}
+        />
       )}
 
       {match.estado === "verificando" && hayPagosPendientes && (
@@ -804,95 +657,87 @@ useEffect(() => {
           para cerrar el match.
         </p>
       )}
-
     </section>
 
     {/* ================= SUPLENTES ================= */}
 
     <section>
-      <h2 className="text-xl font-semibold mb-4">Suplentes</h2>
-
       {suplentes.length === 0 ? (
-        <p className="text-gray-500">Todavía no hay suplentes.</p>
+        <><h2 className="text-xl font-semibold mb-3">Suplentes</h2><p className="text-gray-500">Todavía no hay suplentes.</p></>
       ) : (
-        <div className="border rounded overflow-hidden">
-          <div className="grid grid-cols-4 bg-gray-100 px-3 py-2 text-sm font-semibold">
-            <span>Ranking</span>
-            <span>Nombre</span>
-            <span>Posición</span>
-            <span>Pago</span>
-          </div>
+        <PlayersTable
+          title="Suplentes"
+          players={suplentes}
+          columns="grid-cols-4"
+          highlightUserId={firebaseUser?.uid}
+          usersMap={usersMap}
+          renderHeader={() => (
+            <>
+              <span>Ranking</span>
+              <span>Nombre</span>
+              <span>Posición</span>
+              <span>Pago</span>
+            </>
+          )}
+          renderRow={(p, isMe) => (
+            <>
+              <span>{p.rankingSuplente}</span>
 
-          {suplentes.map((p) => {
-            const isMe = p.userId === firebaseUser?.uid;
+              <span className="flex items-center gap-2">
+                <UserAvatar
+                  nombre={usersMap[p.userId]?.nombre}
+                  photoURL={usersMap[p.userId]?.photoURL}
+                  size={28}
+                />
+                <span>
+                  {usersMap[p.userId]?.nombre ?? "—"}
+                  {isMe && (
+                    <span className="ml-1 text-xs text-orange-600">(vos)</span>
+                  )}
+                </span>
+              </span>
 
-            return (
-              <div
-                key={p.id}
-                className={`grid grid-cols-4 px-3 py-2 border-t text-sm ${
-                  isMe ? "bg-orange-100 font-semibold" : ""
+              <span className="text-xs text-gray-500">
+                {usersMap[p.userId]?.posicionesPreferidas?.join(", ")}
+              </span>
+
+              <button
+                disabled={!isAdmin}
+                onClick={() => setPagoModal(p)}
+                className={`px-2 py-1 rounded text-xs font-medium border ${
+                  pagoStyles[p.pagoEstado]
                 }`}
               >
-                <span>{p.rankingSuplente}</span>
-                <span>
-                  <span className="flex items-center gap-2">
-                    <UserAvatar
-                      nombre={usersMap[p.userId]?.nombre}
-                      photoURL={usersMap[p.userId]?.photoURL}
-                      size={28}
-                    />
-
-                    <span>
-                      {usersMap[p.userId]?.nombre ?? "—"}
-                      {isMe && (
-                        <span className="ml-1 text-xs text-orange-600">(vos)</span>
-                      )}
-                    </span>
-                  </span>
-                </span>
-                <span className="text-xs text-gray-500">
-                  {usersMap[p.userId]?.posicionesPreferidas?.join(", ")}
-                </span>
-                <button
-                  disabled={!isAdmin}
-                  onClick={() => setPagoModal(p)}
-                  className={`px-2 py-1 rounded text-xs font-medium border ${pagoStyles[p.pagoEstado]}`}
-                >
-                  {p.pagoEstado}
-                </button>
-              </div>
-            );
-          })}
-        </div>
+                {p.pagoEstado}
+              </button>
+            </>
+          )}
+        />
       )}
     </section>
 
     {/* ================= ELIMINADOS ================ */}
 
     <section>
-      <h2 className="text-xl font-semibold mb-4">
-        Eliminados
-      </h2>
-
       {eliminados.length === 0 ? (
-        <p className="text-gray-500">
-          No hay jugadores eliminados.
-        </p>
+        <><h2 className="text-xl font-semibold mb-3">Eliminados</h2><p className="text-gray-500">No hay jugadores eliminados.</p></>
       ) : (
-        <div className="border rounded overflow-hidden">
-          <div className="grid grid-cols-5 bg-gray-100 px-3 py-2 text-sm font-semibold">
-            <span>Nombre</span>
-            <span>Posiciones</span>
-            <span>Ranking</span>
-            <span>Pago</span>
-            <span></span>
-          </div>
-
-          {eliminados.map((p) => (
-            <div
-              key={p.id}
-              className="grid grid-cols-5 px-3 py-2 border-t text-sm items-center"
-            >
+        <PlayersTable
+          title="Eliminados"
+          players={eliminados}
+          columns="grid-cols-5"
+          usersMap={usersMap}
+          renderHeader={() => (
+            <>
+              <span>Nombre</span>
+              <span>Posiciones</span>
+              <span>Ranking</span>
+              <span>Pago</span>
+              {isAdmin && <span></span>}
+            </>
+          )}
+          renderRow={(p) => (
+            <>
               <span className="flex items-center gap-2">
                 <UserAvatar
                   nombre={usersMap[p.userId]?.nombre}
@@ -901,9 +746,11 @@ useEffect(() => {
                 />
                 <span>{usersMap[p.userId]?.nombre ?? "—"}</span>
               </span>
+
               <span className="text-xs text-gray-500">
                 {usersMap[p.userId]?.posicionesPreferidas?.join(", ")}
               </span>
+
               <span>—</span>
               <span className="capitalize">{p.pagoEstado}</span>
 
@@ -912,98 +759,36 @@ useEffect(() => {
                   round
                   variant="success"
                   loading={isLoading("insert")}
-                  disabled={match.estado === "cancelado" || match.estado === "cerrado"}
+                  disabled={
+                    match.estado === "cancelado" ||
+                    match.estado === "cerrado"
+                  }
                   onClick={() => handleReincorporarJugador(p.id)}
                 >
                   +
                 </ActionButton>
               )}
-            </div>
-          ))}
-        </div>
+            </>
+          )}
+        />
       )}
     </section>
 
     {/* ================== ACCIONES ================= */}
 
-    <section className="border-t pt-6">
-      <h2 className="text-xl font-semibold mb-3">Acciones</h2>
-
-      <div className="flex gap-3 pt-2 flex-wrap">
-        {/* JUGADOR */}
-        <ActionButton
-          onClick={handleToggleParticipation}
-          loading={isLoading("join") || isLoading("leave")}
-          disabled={isEliminado || accionesJugadorBloqueadas}
-          variant={isJoined ? "danger" : "success"}
-        >
-          {accionesJugadorBloqueadas
-            ? "No disponible"
-            : isJoined
-            ? "Desunirme"
-            : "Unirme"}
-        </ActionButton>
-
-        {/* ADMIN */}
-        {isAdmin && (
-          <>
-            {/* CANCELAR MATCH */}
-            <ActionButton
-              onClick={handleEliminarMatch}
-              disabled={match.estado === "cancelado" || match.estado === "jugado"}
-              loading={isLoading("cancel")}
-              variant="danger"
-            >
-              Cancelar juego
-            </ActionButton>
-
-            {/* CERRAR MATCH */}
-            {match.estado === "abierto" && (
-              <ActionButton
-                onClick={handleCerrarMatch}
-                loading={isLoading("close")}
-              >
-                Cerrar juego
-              </ActionButton>
-            )}
-
-            {/* CONFIRMAR CIERRE */}
-            {match.estado === "verificando" && (
-              <ActionButton
-                onClick={handleCerrarMatch}
-                loading={isLoading("close")}
-                disabled={hayPagosPendientes}
-                variant="success"
-              >
-                Confirmar cierre
-              </ActionButton>
-            )}
-
-            {/* REABRIR */}
-            {match.estado === "verificando" && (
-              <ActionButton
-                onClick={handleReabrirMatch}
-                loading={isLoading("reopen")}
-                variant="warning"
-              >
-                Reabrir juego
-              </ActionButton>
-            )}
-          </>
-        )}
-
-        {/* GENERAR EQUIPOS */}
-        {isAdmin && (match.estado === "cerrado" || match.estado === "jugado") && (
-          <ActionButton
-            onClick={() => setTeamsModalOpen(true)}
-            variant="success"
-          >
-            Ver equipos
-          </ActionButton>
-        )}
-
-      </div>
-    </section>
+    <MatchActions
+      isAdmin={isAdmin}
+      isJoined={isJoined}
+      isEliminado={isEliminado}
+      match={match}
+      hayPagosPendientes={hayPagosPendientes}
+      loadingJoinLeave={isLoading("join") || isLoading("leave")}
+      onJoin={handleToggleParticipation}
+      onCancel={handleEliminarMatch}
+      onClose={handleCerrarMatch}
+      onReopen={handleReabrirMatch}
+      onTeams={() => setTeamsModalOpen(true)}
+    />
 
     {/* ================ MODALES ================ */}
 

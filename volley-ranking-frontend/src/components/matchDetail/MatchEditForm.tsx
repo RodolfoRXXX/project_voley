@@ -1,3 +1,10 @@
+
+// -------------------
+// Edit de un Match
+// -------------------
+
+import { ActionButton } from "../ui/action/ActionButton";
+
 type MatchFormData = {
   cantidadEquipos: number;
   cantidadSuplentes: number;
@@ -26,79 +33,106 @@ export default function MatchEditForm({
 }: MatchEditFormProps) {
   if (!editMode) return null;
 
+  const inputBase =
+    "w-full border border-neutral-300 rounded px-3 py-2 text-sm text-neutral-900 " +
+    "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500";
+
   return (
-    <div className="grid gap-4">
-      <input
-        type="number"
-        value={formData.cantidadEquipos}
-        onChange={(e) =>
-          setFormData({
-            ...formData,
-            cantidadEquipos: Number(e.target.value),
-          })
-        }
-        className="border px-2 py-1 rounded"
-        placeholder="Cantidad de equipos"
-      />
+    <div className="grid gap-6 pt-4 border-t border-neutral-200">
+      {/* CAMPOS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs text-neutral-500 mb-1">
+            Cantidad de equipos
+          </label>
+          <input
+            type="number"
+            value={formData.cantidadEquipos}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                cantidadEquipos: Number(e.target.value),
+              })
+            }
+            className={inputBase}
+          />
+        </div>
 
-      <input
-        type="number"
-        value={formData.cantidadSuplentes}
-        onChange={(e) =>
-          setFormData({
-            ...formData,
-            cantidadSuplentes: Number(e.target.value),
-          })
-        }
-        className="border px-2 py-1 rounded"
-        placeholder="Cantidad de suplentes"
-      />
+        <div>
+          <label className="block text-xs text-neutral-500 mb-1">
+            Cantidad de suplentes
+          </label>
+          <input
+            type="number"
+            value={formData.cantidadSuplentes}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                cantidadSuplentes: Number(e.target.value),
+              })
+            }
+            className={inputBase}
+          />
+        </div>
 
-      <select
-        value={formData.formacion}
-        onChange={(e) =>
-          setFormData({
-            ...formData,
-            formacion: e.target.value,
-          })
-        }
-        className="border px-2 py-1 rounded"
-      >
-        {Object.keys(formaciones).map((f) => (
-          <option key={f} value={f}>
-            {f.replace("_", " ")}
-          </option>
-        ))}
-      </select>
+        <div>
+          <label className="block text-xs text-neutral-500 mb-1">
+            Formación
+          </label>
+          <select
+            value={formData.formacion}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                formacion: e.target.value,
+              })
+            }
+            className={inputBase}
+          >
+            {Object.keys(formaciones).map((f) => (
+              <option key={f} value={f}>
+                {f.replace("_", " ")}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      <input
-        type="datetime-local"
-        value={formData.horaInicio}
-        onChange={(e) =>
-          setFormData({
-            ...formData,
-            horaInicio: e.target.value,
-          })
-        }
-        className="border px-2 py-1 rounded"
-      />
+        <div>
+          <label className="block text-xs text-neutral-500 mb-1">
+            Fecha y hora
+          </label>
+          <input
+            type="datetime-local"
+            value={formData.horaInicio}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                horaInicio: e.target.value,
+              })
+            }
+            className={inputBase}
+          />
+        </div>
+      </div>
 
+      {/* ACCIONES */}
       <div className="flex gap-3">
-        <button
+        <ActionButton
           onClick={onSave}
-          disabled={loading}
-          className="border px-4 py-2 rounded"
+          loading={loading}
+          variant="primary"
         >
           Guardar
-        </button>
+        </ActionButton>
 
-        <button
+        <ActionButton
           onClick={() => setEditMode(false)}
-          className="border px-4 py-2 rounded"
+          variant="secondary"
         >
           Cancelar
-        </button>
+        </ActionButton>
       </div>
     </div>
   );
 }
+

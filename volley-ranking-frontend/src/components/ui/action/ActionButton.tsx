@@ -9,7 +9,9 @@ type Variant =
   | "success"
   | "warning"
   | "danger"
-  | "orange";
+  | "orange"
+  | "success_outline"
+  | "danger_outline";
 
 type ActionButtonProps = {
   children: React.ReactNode;
@@ -60,6 +62,12 @@ export function ActionButton({
 
     danger:
       "bg-red-600 text-white hover:bg-red-500 active:bg-red-700 focus-visible:ring-red-400",
+
+    danger_outline:
+      "border border-red-300 text-red-600 bg-transparent hover:bg-red-50",
+    
+    success_outline:
+      "border border-green-300 text-green-600 bg-transparent hover:bg-green-50",
 
     orange: 
       "bg-orange-500 text-white hover:bg-orange-600",

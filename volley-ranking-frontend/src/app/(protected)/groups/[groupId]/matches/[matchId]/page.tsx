@@ -33,6 +33,7 @@ import MatchPositions from "@/components/matchDetail/MatchPositions";
 import PlayersTable from "@/components/matchDetail/PlayersTable";
 import MatchActions from "@/components/matchDetail/MatchActions";
 import type { Match } from "@/types/match";
+import StatusPill from "@/components/ui/badges/StatusPill";
 
 /* =====================
    Firebase functions
@@ -89,6 +90,7 @@ const pagoStyles: Record<string, string> = {
   pendiente: "bg-yellow-100 text-yellow-700 border-yellow-400",
   pospuesto: "bg-blue-100 text-blue-700 border-blue-400",
 };
+
 
 /* =====================
    FUNCTION
@@ -531,7 +533,7 @@ useEffect(() => {
      Render
   ===================== */
   return (
-  <main className="max-w-4xl mx-auto mt-10 space-y-8">
+  <main className="max-w-4xl mx-auto mt-10 px-4 space-y-10">
 
     {/* ================== TITULO ================== */}
 
@@ -551,20 +553,32 @@ useEffect(() => {
 
     {isAdmin &&
       !["jugado", "cancelado", "cerrado"].includes(match.estado) && (
-        <section className="border rounded p-4 space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Editar match</h2>
+        <section
+          className="
+            bg-white
+            border border-neutral-200
+            px-4 py-4
+            space-y-4
+          "
+        >
+          {/* HEADER */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-medium text-neutral-900">
+              Editar match
+            </h2>
 
             {!editMode && (
-              <button
+              <ActionButton
                 onClick={() => setEditMode(true)}
-                className="border px-3 py-1 rounded"
+                variant="secondary"
+                compact
               >
                 Editar
-              </button>
+              </ActionButton>
             )}
           </div>
 
+          {/* FORM */}
           <MatchEditForm
             editMode={editMode}
             setEditMode={setEditMode}
@@ -593,22 +607,29 @@ useEffect(() => {
         <PlayersTable
           title="Titulares"
           players={titulares}
-          columns="grid-cols-5"
+          columns="
+            grid-cols-[1fr_48px_48px]
+            sm:grid-cols-[72px_1fr_128px_96px_60px]
+          "
           highlightUserId={firebaseUser?.uid}
           usersMap={usersMap}
           renderHeader={() => (
             <>
-              <span>Ranking</span>
+              <span className="hidden sm:block">Ranking</span>
               <span>Nombre</span>
-              <span>Posición</span>
-              <span>Pago</span>
-              {isAdmin && <span></span>}
+              <span className="hidden sm:block">Posición</span>
+              <span className="flex justify-center">Pago</span>
+              {isAdmin && <span />}
             </>
           )}
           renderRow={(p, isMe) => (
             <>
-              <span>{p.rankingTitular}</span>
+              {/* Ranking */}
+              <span className="flex justify-center text-sm text-neutral-500 hidden sm:block">
+                {p.rankingTitular}
+              </span>
 
+              {/* Nombre */}
               <span className="flex items-center gap-2">
                 <UserAvatar
                   nombre={usersMap[p.userId]?.nombre}
@@ -618,34 +639,61 @@ useEffect(() => {
                 <span>
                   {usersMap[p.userId]?.nombre ?? "—"}
                   {isMe && (
-                    <span className="ml-1 text-xs text-blue-600">(vos)</span>
+                    <span className="ml-1 text-xs text-orange-600">(vos)</span>
                   )}
                 </span>
               </span>
 
-              <span className="capitalize">{p.posicionAsignada}</span>
+              {/* Posición (oculta en mobile chico si querés) */}
+              <span className="capitalize hidden sm:block">
+                {p.posicionAsignada}
+              </span>
 
-              <button
-                disabled={!isAdmin}
-                onClick={() => setPagoModal(p)}
-                className={`px-2 py-1 rounded text-xs font-semibold ${pagoColor(
-                  p.pagoEstado
-                )}`}
-              >
-                {p.pagoEstado}
-              </button>
+              {/* Pago (desktop texto / mobile icono) */}
+              <div className="flex justify-center">
+                <StatusPill
+                  label={
+                    p.pagoEstado === "confirmado"
+                      ? "Pagado"
+                      : p.pagoEstado === "pospuesto"
+                      ? "Pospuesto"
+                      : "Pendiente"
+                  }
+                  variant={
+                    p.pagoEstado === "confirmado"
+                      ? "success"
+                      : p.pagoEstado === "pospuesto"
+                      ? "info"
+                      : "warning"
+                  }
+                  icon={
+                    p.pagoEstado === "confirmado"
+                      ? "✓"
+                      : p.pagoEstado === "pospuesto"
+                      ? "⏱"
+                      : "$"
+                  }
+                  onClick={() => setPagoModal(p)}
+                />
+              </div>
 
-              {isAdmin && (
+
+              {/* Acciones */}
+              <div className="flex justify-end">
+                {isAdmin ? (
                 <ActionButton
                   round
-                  variant="danger"
+                  variant="danger_outline"
                   loading={isLoading("remove")}
                   disabled={match.estado === "jugado"}
                   onClick={() => handleEliminarJugador(p.id)}
                 >
                   ×
                 </ActionButton>
-              )}
+                ) : (
+                  <span />
+                )}
+              </div>
             </>
           )}
         />
@@ -668,21 +716,29 @@ useEffect(() => {
         <PlayersTable
           title="Suplentes"
           players={suplentes}
-          columns="grid-cols-4"
+          columns="
+            grid-cols-[1fr_48px_48px]
+            sm:grid-cols-[72px_1fr_128px_96px_60px]
+          "
           highlightUserId={firebaseUser?.uid}
           usersMap={usersMap}
           renderHeader={() => (
             <>
-              <span>Ranking</span>
+              <span className="hidden sm:block">Ranking</span>
               <span>Nombre</span>
-              <span>Posición</span>
-              <span>Pago</span>
+              <span className="hidden sm:block">Posición</span>
+              <span className="flex justify-center">Pago</span>
+              {isAdmin && <span />}
             </>
           )}
           renderRow={(p, isMe) => (
             <>
-              <span>{p.rankingSuplente}</span>
+              {/* Ranking */}
+              <span className="flex justify-center text-sm text-neutral-500 hidden sm:block">
+                {p.rankingSuplente}
+              </span>
 
+              {/* Nombre */}
               <span className="flex items-center gap-2">
                 <UserAvatar
                   nombre={usersMap[p.userId]?.nombre}
@@ -697,19 +753,55 @@ useEffect(() => {
                 </span>
               </span>
 
-              <span className="text-xs text-gray-500">
+              {/* Posición (oculta en mobile chico si querés) */}
+              <span className="capitalize hidden sm:block text-xs text-gray-500">
                 {usersMap[p.userId]?.posicionesPreferidas?.join(", ")}
               </span>
 
-              <button
-                disabled={!isAdmin}
-                onClick={() => setPagoModal(p)}
-                className={`px-2 py-1 rounded text-xs font-medium border ${
-                  pagoStyles[p.pagoEstado]
-                }`}
-              >
-                {p.pagoEstado}
-              </button>
+              {/* Pago (desktop texto / mobile icono) */}
+              <div className="flex justify-center">
+                <StatusPill
+                  label={
+                    p.pagoEstado === "confirmado"
+                      ? "Pagado"
+                      : p.pagoEstado === "pospuesto"
+                      ? "Pospuesto"
+                      : "Pendiente"
+                  }
+                  variant={
+                    p.pagoEstado === "confirmado"
+                      ? "success"
+                      : p.pagoEstado === "pospuesto"
+                      ? "info"
+                      : "warning"
+                  }
+                  icon={
+                    p.pagoEstado === "confirmado"
+                      ? "✓"
+                      : p.pagoEstado === "pospuesto"
+                      ? "⏱"
+                      : "$"
+                  }
+                  onClick={() => setPagoModal(p)}
+                />
+              </div>
+
+              {/* Acciones */}
+              <div className="flex justify-end">
+                {isAdmin ? (
+                <ActionButton
+                  round
+                  variant="danger_outline"
+                  loading={isLoading("remove")}
+                  disabled={match.estado === "jugado"}
+                  onClick={() => handleEliminarJugador(p.id)}
+                >
+                  ×
+                </ActionButton>
+                ) : (
+                  <span />
+                )}
+              </div>
             </>
           )}
         />
@@ -725,39 +817,80 @@ useEffect(() => {
         <PlayersTable
           title="Eliminados"
           players={eliminados}
-          columns="grid-cols-5"
+          columns="
+            grid-cols-[1fr_48px_48px]
+            sm:grid-cols-[72px_1fr_128px_96px_60px]
+          "
+          highlightUserId={firebaseUser?.uid}
           usersMap={usersMap}
           renderHeader={() => (
             <>
+              <span className="hidden sm:block">Ranking</span>
               <span>Nombre</span>
-              <span>Posiciones</span>
-              <span>Ranking</span>
-              <span>Pago</span>
-              {isAdmin && <span></span>}
+              <span className="hidden sm:block">Posición</span>
+              <span className="flex justify-center">Pago</span>
+              {isAdmin && <span />}
             </>
           )}
-          renderRow={(p) => (
+          renderRow={(p, isMe) => (
             <>
+              {/* Ranking */}
+              <span className="flex justify-center text-sm text-neutral-500 hidden sm:block">
+                —
+              </span>
+
+              {/* Nombre */}
               <span className="flex items-center gap-2">
                 <UserAvatar
                   nombre={usersMap[p.userId]?.nombre}
                   photoURL={usersMap[p.userId]?.photoURL}
                   size={28}
                 />
-                <span>{usersMap[p.userId]?.nombre ?? "—"}</span>
+                <span>
+                  {usersMap[p.userId]?.nombre ?? "—"}
+                  {isMe && (
+                    <span className="ml-1 text-xs text-orange-600">(vos)</span>
+                  )}
+                </span>
               </span>
 
-              <span className="text-xs text-gray-500">
+              {/* Posición (oculta en mobile chico si querés) */}
+              <span className="capitalize hidden sm:block text-xs text-gray-500">
                 {usersMap[p.userId]?.posicionesPreferidas?.join(", ")}
               </span>
 
-              <span>—</span>
-              <span className="capitalize">{p.pagoEstado}</span>
-
-              {isAdmin && (
+              {/* Pago (desktop texto / mobile icono) */}
+              <div className="flex justify-center">
+                <StatusPill
+                  label={
+                    p.pagoEstado === "confirmado"
+                      ? "Pagado"
+                      : p.pagoEstado === "pospuesto"
+                      ? "Pospuesto"
+                      : "Pendiente"
+                  }
+                  variant={
+                    p.pagoEstado === "confirmado"
+                      ? "success"
+                      : p.pagoEstado === "pospuesto"
+                      ? "info"
+                      : "warning"
+                  }
+                  icon={
+                    p.pagoEstado === "confirmado"
+                      ? "✓"
+                      : p.pagoEstado === "pospuesto"
+                      ? "⏱"
+                      : "$"
+                  }
+                />
+              </div>
+              {/* Acciones */}
+              <div className="flex justify-end">
+                {isAdmin && (
                 <ActionButton
                   round
-                  variant="success"
+                  variant="success_outline"
                   loading={isLoading("insert")}
                   disabled={
                     match.estado === "cancelado" ||
@@ -768,6 +901,7 @@ useEffect(() => {
                   +
                 </ActionButton>
               )}
+              </div>
             </>
           )}
         />

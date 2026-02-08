@@ -1,3 +1,7 @@
+// -------------------
+// Acciones de un Match
+// -------------------
+
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { Match } from "@/types/match";
 
@@ -37,78 +41,105 @@ export default function MatchActions({
   onReopen,
   onTeams,
 }: MatchActionsProps) {
-  const accionesJugadorBloqueadas =
+  const jugadorBloqueado =
     isEliminado || match.estado !== "abierto";
 
-  return (
-    <section className="border-t pt-6">
-      <h2 className="text-xl font-semibold mb-3">Acciones</h2>
+  /* -----------------------
+   * BOTÓN JUGADOR (CTA)
+   * --------------------- */
+  const renderJugadorAction = () => (
+    <ActionButton
+      onClick={onJoin}
+      loading={loadingJoinLeave}
+      disabled={jugadorBloqueado}
+      variant={
+        jugadorBloqueado
+          ? "secondary"
+          : "orange" // naranja como en la card
+      }
+      compact
+    >
+      {jugadorBloqueado
+        ? "No disponible"
+        : isJoined
+        ? "− Salir"
+        : "+ Unirme"}
+    </ActionButton>
+  );
 
-      <div className="flex gap-3 flex-wrap">
-        {/* JUGADOR */}
+  /* -----------------------
+   * ACCIONES ADMIN
+   * --------------------- */
+  const renderAdminActions = () => {
+    if (!isAdmin) return null;
+
+    return (
+      <>
+        {/* Cancelar (peligrosa, sobria) */}
         <ActionButton
-          onClick={onJoin}
-          loading={loadingJoinLeave}
-          disabled={accionesJugadorBloqueadas}
-          variant={isJoined ? "danger" : "success"}
+          onClick={onCancel}
+          variant="danger_outline"
+          disabled={
+            match.estado === "cancelado" ||
+            match.estado === "jugado"
+          }
         >
-          {accionesJugadorBloqueadas
-            ? "No disponible"
-            : isJoined
-            ? "Desunirme"
-            : "Unirme"}
+          Cancelar
         </ActionButton>
 
-        {/* ADMIN */}
-        {isAdmin && (
+        {/* Abierto → cerrar */}
+        {match.estado === "abierto" && (
+          <ActionButton
+            onClick={onClose}
+            variant="primary"
+          >
+            Cerrar match
+          </ActionButton>
+        )}
+
+        {/* Verificando → confirmar / reabrir */}
+        {match.estado === "verificando" && (
           <>
             <ActionButton
-              onClick={onCancel}
-              variant="danger"
-              disabled={
-                match.estado === "cancelado" ||
-                match.estado === "jugado"
-              }
+              onClick={onClose}
+              disabled={hayPagosPendientes}
+              variant="success"
             >
-              Cancelar juego
+              Confirmar cierre
             </ActionButton>
 
-            {match.estado === "abierto" && (
-              <ActionButton onClick={onClose}>
-                Cerrar juego
-              </ActionButton>
-            )}
-
-            {match.estado === "verificando" && (
-              <ActionButton
-                onClick={onClose}
-                disabled={hayPagosPendientes}
-                variant="success"
-              >
-                Confirmar cierre
-              </ActionButton>
-            )}
-
-            {match.estado === "verificando" && (
-              <ActionButton
-                onClick={onReopen}
-                variant="warning"
-              >
-                Reabrir juego
-              </ActionButton>
-            )}
-
-            {(match.estado === "cerrado" ||
-              match.estado === "jugado") && (
-              <ActionButton
-                onClick={onTeams}
-                variant="success"
-              >
-                Ver equipos
-              </ActionButton>
-            )}
+            <ActionButton
+              onClick={onReopen}
+              variant="secondary"
+            >
+              Reabrir
+            </ActionButton>
           </>
         )}
+
+        {/* Cerrado / Jugado → ver equipos */}
+        {(match.estado === "cerrado" ||
+          match.estado === "jugado") && (
+          <ActionButton
+            onClick={onTeams}
+            variant="secondary"
+          >
+            Ver equipos
+          </ActionButton>
+        )}
+      </>
+    );
+  };
+
+  return (
+    <section className="border-t border-neutral-200 pt-5 space-y-3">
+      <h2 className="text-base font-medium text-neutral-900">
+        Acciones
+      </h2>
+
+      <div className="flex flex-wrap gap-2">
+        {renderJugadorAction()}
+        {renderAdminActions()}
       </div>
     </section>
   );

@@ -1,12 +1,13 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { app } from "@/lib/firebase";
-import PositionBadge from "./positionBadge";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import useToast from "@/components/ui/toast/useToast";
+import StatusPill from "../ui/status/StatusPill";
 
 type Props = {
   initial: string[];
@@ -22,6 +23,7 @@ export default function PreferredPositionsEditor({ initial }: Props) {
   const { showToast } = useToast();
 
   const functions = getFunctions(app);
+
   const updateFn = httpsCallable<
     { posiciones: string[] },
     { ok: true }
@@ -56,15 +58,18 @@ export default function PreferredPositionsEditor({ initial }: Props) {
     load();
   }, [showToast]);
 
-  const available = allPositions.filter(
-    (p) => !positions.includes(p)
-  );
+  const isSelected = (p: string) => positions.includes(p);
+  const indexOf = (p: string) => positions.indexOf(p);
 
-  const move = (from: number, to: number) => {
-    if (to < 0 || to >= positions.length) return;
-    const copy = [...positions];
-    [copy[from], copy[to]] = [copy[to], copy[from]];
-    setPositions(copy);
+  const togglePosition = (p: string) => {
+    if (isSelected(p)) {
+      setPositions(positions.filter((x) => x !== p));
+      return;
+    }
+
+    if (positions.length < 3) {
+      setPositions([...positions, p]);
+    }
   };
 
   const save = async () => {
@@ -85,15 +90,7 @@ export default function PreferredPositionsEditor({ initial }: Props) {
   }
 
   return (
-    <section
-      className="
-        bg-white
-        rounded-lg
-        border border-neutral-200
-        p-4
-        space-y-4
-      "
-    >
+    <section className="bg-white rounded-lg border border-neutral-200 p-4 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -103,7 +100,7 @@ export default function PreferredPositionsEditor({ initial }: Props) {
 
           {editing && (
             <p className="text-xs text-neutral-500 mt-0.5">
-              Ordená por prioridad (máx. 3)
+              Elegí hasta 3 y ordená por prioridad
             </p>
           )}
         </div>
@@ -115,39 +112,36 @@ export default function PreferredPositionsEditor({ initial }: Props) {
         )}
       </div>
 
-      {/* Lista */}
-      <div className="flex flex-col gap-2">
-        {positions.map((p, i) => (
-          <PositionBadge
-            key={`${p}-${i}`}
-            label={p}
-            index={i + 1}
-            editable={editing}
-            disabled={saving}
-            onRemove={
-              editing && positions.length > 1
-                ? () =>
-                    setPositions(
-                      positions.filter((_, idx) => idx !== i)
-                    )
-                : undefined
-            }
-            onMoveUp={editing ? () => move(i, i - 1) : undefined}
-            onMoveDown={editing ? () => move(i, i + 1) : undefined}
-          />
-        ))}
+      {/* Pills */}
+      <div className="flex flex-wrap gap-2">
+        {!editing &&
+          positions.map((p, i) => (
+            <StatusPill
+              key={p}
+              label={`${i + 1}. ${p}`}
+              variant="info"
+            />
+          ))}
 
-        {editing && positions.length < 3 && (
-          <PositionBadge
-            isPlaceholder
-            options={available}
-            disabled={saving}
-            onSelect={(value) => {
-              if (!value) return;
-              setPositions([...positions, value]);
-            }}
-          />
-        )}
+        {editing &&
+          allPositions.map((p) => {
+            const selected = isSelected(p);
+            const index = indexOf(p);
+            const disabled = !selected && positions.length >= 3;
+
+            return (
+              <StatusPill
+                key={p}
+                label={
+                  selected ? `${index + 1}. ${p}` : p
+                }
+                variant={selected ? "info" : "neutral"}
+                onClick={
+                  disabled ? undefined : () => togglePosition(p)
+                }
+              />
+            );
+          })}
       </div>
 
       {/* Acciones */}

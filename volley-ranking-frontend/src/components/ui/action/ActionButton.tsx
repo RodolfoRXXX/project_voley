@@ -21,6 +21,7 @@ type ActionButtonProps = {
   variant?: Variant;
   round?: boolean;
   compact?: boolean;
+  className?: string;
 };
 
 export function ActionButton({
@@ -31,6 +32,7 @@ export function ActionButton({
   variant = "default",
   round = false,
   compact = false,
+  className = "",
 }: ActionButtonProps) {
   const base =
     "inline-flex items-center justify-center gap-2 font-medium text-sm transition-all \
@@ -78,7 +80,7 @@ export function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled || loading}
-      className={`${base} ${sizes} ${variants[variant]}`}
+      className={`${base} ${sizes} ${variants[variant]} ${className}`}
     >
       {loading ? (
         <Spinner />

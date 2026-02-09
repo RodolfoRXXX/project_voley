@@ -112,25 +112,39 @@ export default function OnboardingForm() {
     <div className="space-y-6">
       {/* Rol */}
       <div>
-        <label className="block font-semibold mb-2">Rol</label>
-        <select
-          value={roles}
-          onChange={(e) => setRol(e.target.value as any)}
-          className="border p-2 rounded w-full"
-          disabled={loading}
-        >
-          <option value="player">Jugador</option>
-          <option value="admin">Administrador</option>
-        </select>
+        <label className="block font-semibold mb-2">
+          ¿Qué rol vas a tener?
+        </label>
+
+        <div className="grid grid-cols-2 gap-3">
+          <ActionButton
+            onClick={() => setRol("player")}
+            variant={roles === "player" ? "primary" : "secondary"}
+            disabled={loading}
+          >
+            ⚽ Jugador
+          </ActionButton>
+
+          <ActionButton
+            onClick={() => setRol("admin")}
+            variant={roles === "admin" ? "primary" : "secondary"}
+            disabled={loading}
+          >
+            🧑‍💼 Administrador
+          </ActionButton>
+        </div>
       </div>
 
       {/* Posiciones */}
       <div>
-        <label className="block font-semibold mb-2">
-          Posiciones preferidas (máx. 3)
+        <label className="block font-semibold mb-1">
+          Posiciones preferidas
         </label>
+        <p className="text-xs text-neutral-500 mb-3">
+          Elegí hasta 3 posiciones en orden
+        </p>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {allPositions.map((p) => {
             const selected = posiciones.includes(p);
 
@@ -139,10 +153,10 @@ export default function OnboardingForm() {
                 key={p}
                 onClick={() => togglePosicion(p)}
                 disabled={
-                  loading ||
-                  (!selected && posiciones.length >= 3)
+                  loading || (!selected && posiciones.length >= 3)
                 }
                 variant={selected ? "primary" : "secondary"}
+                className={selected ? "ring-2 ring-blue-300" : ""}
               >
                 {p}
               </ActionButton>
@@ -150,15 +164,19 @@ export default function OnboardingForm() {
           })}
         </div>
 
-        {posiciones.length === 3 && (
-          <p className="text-xs text-gray-500 mt-1">
-            Máximo de posiciones alcanzado
-          </p>
-        )}
+        <div className="mt-2 min-h-[16px]">
+          {posiciones.length === 3 && (
+            <p className="text-xs text-neutral-500">
+              Máximo de posiciones alcanzado
+            </p>
+          )}
+        </div>
       </div>
 
       {error && (
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+          {error}
+        </p>
       )}
 
       {/* Submit */}
@@ -167,8 +185,9 @@ export default function OnboardingForm() {
         loading={loading}
         disabled={posiciones.length === 0}
         variant="success"
+        className="w-full mt-2"
       >
-        Completar
+        Finalizar perfil
       </ActionButton>
     </div>
   );

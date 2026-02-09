@@ -18,8 +18,15 @@ type MatchActionsProps = {
   isEliminado: boolean;
   match: Match;
 
-  loadingJoinLeave?: boolean;
   hayPagosPendientes?: boolean;
+
+  loading?: {
+    join?: boolean;
+    leave?: boolean;
+    cancel?: boolean;
+    close?: boolean;
+    reopen?: boolean;
+  };
 
   onJoin: () => void;
   onCancel: () => void;
@@ -28,12 +35,13 @@ type MatchActionsProps = {
   onTeams: () => void;
 };
 
+
 export default function MatchActions({
   isAdmin,
   isJoined,
   isEliminado,
   match,
-  loadingJoinLeave,
+  loading,
   hayPagosPendientes,
   onJoin,
   onCancel,
@@ -50,7 +58,7 @@ export default function MatchActions({
   const renderJugadorAction = () => (
     <ActionButton
       onClick={onJoin}
-      loading={loadingJoinLeave}
+      loading={isJoined ? loading?.leave : loading?.join}
       disabled={jugadorBloqueado}
       variant={
         jugadorBloqueado
@@ -79,6 +87,7 @@ export default function MatchActions({
         <ActionButton
           onClick={onCancel}
           variant="danger_outline"
+          loading={loading?.cancel}
           disabled={
             match.estado === "cancelado" ||
             match.estado === "jugado"
@@ -92,6 +101,7 @@ export default function MatchActions({
           <ActionButton
             onClick={onClose}
             variant="primary"
+            loading={loading?.close}
           >
             Cerrar match
           </ActionButton>
@@ -104,12 +114,14 @@ export default function MatchActions({
               onClick={onClose}
               disabled={hayPagosPendientes}
               variant="success"
+              loading={loading?.close}
             >
               Confirmar cierre
             </ActionButton>
 
             <ActionButton
               onClick={onReopen}
+              loading={loading?.reopen}
               variant="secondary"
             >
               Reabrir

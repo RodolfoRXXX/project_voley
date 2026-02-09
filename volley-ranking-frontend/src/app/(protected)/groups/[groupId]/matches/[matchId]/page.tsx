@@ -515,6 +515,14 @@ useEffect(() => {
     );
   };
 
+  const actionLoading = {
+    join: isLoading("join"),
+    leave: isLoading("leave"),
+    cancel: isLoading("cancel"),
+    close: isLoading("close"),
+    reopen: isLoading("reopen"),
+  };
+
   /* =====================
      Render
   ===================== */
@@ -902,7 +910,13 @@ useEffect(() => {
       isEliminado={isEliminado}
       match={match}
       hayPagosPendientes={hayPagosPendientes}
-      loadingJoinLeave={isLoading("join") || isLoading("leave")}
+      loading={{
+        join: isLoading("join"),
+        leave: isLoading("leave"),
+        cancel: isLoading("cancel"),
+        close: isLoading("close"),
+        reopen: isLoading("reopen"),
+      }}
       onJoin={handleToggleParticipation}
       onCancel={handleEliminarMatch}
       onClose={handleCerrarMatch}

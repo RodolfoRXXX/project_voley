@@ -72,19 +72,6 @@ type Group = {
    Pagos Estilos
 ===================== */
 
-const pagoColor = (estado: string) => {
-  switch (estado) {
-    case "confirmado":
-      return "bg-green-600 text-white";
-    case "pendiente":
-      return "bg-yellow-400 text-black";
-    case "pospuesto":
-      return "bg-blue-500 text-white";
-    default:
-      return "bg-gray-300 text-black";
-  }
-};
-
 const pagoStyles: Record<string, string> = {
   confirmado: "bg-green-100 text-green-700 border-green-400",
   pendiente: "bg-yellow-100 text-yellow-700 border-yellow-400",
@@ -426,7 +413,6 @@ useEffect(() => {
 
   const hayPagosPendientes = titularesConPagoPendiente.length > 0;
 
-  const accionesJugadorBloqueadas =
   match.estado !== "abierto";
 
   /* =====================

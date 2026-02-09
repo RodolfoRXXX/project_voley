@@ -55,7 +55,7 @@ export default function MatchActions({
       variant={
         jugadorBloqueado
           ? "secondary"
-          : "orange" // naranja como en la card
+          : (isJoined ? "danger" : "orange")
       }
       compact
     >

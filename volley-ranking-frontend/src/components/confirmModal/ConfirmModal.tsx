@@ -1,5 +1,7 @@
 "use client";
 
+import { ActionButton } from "@/components/ui/action/ActionButton";
+
 type Props = {
   title?: string;
   message: string;
@@ -10,11 +12,11 @@ type Props = {
   onCancel: () => void;
 };
 
-const variantStyles = {
-  default: "bg-blue-600 text-white hover:bg-blue-700",
-  danger: "bg-red-600 text-white hover:bg-red-700",
-  warning: "bg-yellow-500 text-black hover:bg-yellow-600",
-  success: "bg-green-600 text-white hover:bg-green-700",
+const headerVariants = {
+  default: "text-blue-600",
+  danger: "text-red-600",
+  warning: "text-yellow-600",
+  success: "text-green-600",
 };
 
 export default function ConfirmModal({
@@ -27,28 +29,43 @@ export default function ConfirmModal({
   onCancel,
 }: Props) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-lg p-6 w-full max-w-sm space-y-4">
-        <h2 className="text-lg font-semibold">{title}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-sm bg-white rounded-xl border border-neutral-200 shadow-lg p-6 space-y-4">
+        <h2
+          className={`text-lg font-semibold ${
+            headerVariants[variant]
+          }`}
+        >
+          {title}
+        </h2>
 
-        <p className="text-gray-700">{message}</p>
+        <p className="text-sm text-neutral-600 leading-relaxed">
+          {message}
+        </p>
 
-        <div className="flex justify-end gap-3 pt-4">
-          <button
+        <div className="flex justify-end gap-2 pt-4">
+          <ActionButton
+            variant="secondary"
+            compact
             onClick={onCancel}
-            className="px-4 py-2 rounded border"
           >
             {cancelText}
-          </button>
+          </ActionButton>
 
-          <button
+          <ActionButton
+            variant={
+              variant === "danger"
+                ? "danger"
+                : variant === "success"
+                ? "success"
+                : variant === "warning"
+                ? "warning"
+                : "primary"
+            }
             onClick={onConfirm}
-            className={`px-4 py-2 rounded ${
-              variantStyles[variant]
-            }`}
           >
             {confirmText}
-          </button>
+          </ActionButton>
         </div>
       </div>
     </div>

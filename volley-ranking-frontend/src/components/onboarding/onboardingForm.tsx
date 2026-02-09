@@ -108,6 +108,11 @@ export default function OnboardingForm() {
     );
   }
 
+  const isSelected = (p: string) => posiciones.includes(p);
+
+  const indexOf = (p: string) =>
+    posiciones.findIndex((x) => x === p);
+
   return (
     <div className="space-y-6">
       {/* Rol */}
@@ -146,7 +151,8 @@ export default function OnboardingForm() {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {allPositions.map((p) => {
-            const selected = posiciones.includes(p);
+            const selected = isSelected(p);
+            const index = indexOf(p);
 
             return (
               <ActionButton
@@ -156,9 +162,18 @@ export default function OnboardingForm() {
                   loading || (!selected && posiciones.length >= 3)
                 }
                 variant={selected ? "primary" : "secondary"}
-                className={selected ? "ring-2 ring-blue-300" : ""}
+                compact
               >
-                {p}
+                {selected ? (
+                  <span className="flex items-center gap-2">
+                    <span className="text-xs font-bold opacity-80">
+                      {index + 1}.
+                    </span>
+                    <span>{p}</span>
+                  </span>
+                ) : (
+                  p
+                )}
               </ActionButton>
             );
           })}

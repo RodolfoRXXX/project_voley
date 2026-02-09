@@ -84,25 +84,30 @@ export default function TeamsModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg w-full max-w-3xl p-6 space-y-6">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4">
+      <div className="bg-white rounded-2xl w-full max-w-4xl p-6 space-y-6 shadow-xl">
 
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold">
-            Equipos
-          </h2>
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold text-neutral-900">
+              Equipos formados
+            </h2>
+            <p className="text-xs text-neutral-500">
+              Distribución automática de jugadores
+            </p>
+          </div>
 
           <button
             onClick={onClose}
-            className="text-gray-500 hover:underline text-sm"
+            className="text-sm font-medium text-neutral-500 hover:text-neutral-700 transition"
           >
             Cerrar
           </button>
         </div>
 
         {/* Equipos */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
           {teams?.equipos?.length ? (
             teams.equipos.map((e) => (
               <TeamColumn
@@ -114,7 +119,7 @@ export default function TeamsModal({
               />
             ))
           ) : (
-            <p className="text-gray-500 col-span-full text-center">
+            <p className="col-span-full text-center text-sm text-neutral-500 py-10">
               Todavía no hay equipos generados.
             </p>
           )}
@@ -122,7 +127,7 @@ export default function TeamsModal({
 
         {/* Acciones */}
         {isAdmin && (
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 pt-4 border-t border-neutral-200">
             <ActionButton
               onClick={handleGenerarEquipos}
               loading={loading}

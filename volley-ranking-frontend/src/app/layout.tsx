@@ -11,10 +11,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body>
+      <body className="h-screen overflow-hidden">
         <ToastProvider>
             <ConfirmProvider>
-              <div className="min-h-screen flex flex-col">
+              <div className="h-full flex flex-col">
                 {/* Header mobile */}
                 <Navbar />
                 <main className="flex-1 flex flex-col min-h-0">{children}</main>

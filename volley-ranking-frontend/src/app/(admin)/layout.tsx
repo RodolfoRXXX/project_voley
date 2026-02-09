@@ -39,7 +39,7 @@ export default function AdminLayout({
   const isAdmin = !!firebaseUser && userDoc?.roles === "admin";
 
   return (
-      <div className="flex flex-1 min-h-0 bg-[#F8FAFC]">
+      <div className="flex flex-1 min-h-0 h-full bg-[#F8FAFC]">
         {isAdmin && (
           <AppSidebar />
         )}

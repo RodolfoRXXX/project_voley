@@ -45,7 +45,7 @@ export default function AppSidebar() {
 
   return (
     <aside className="
-      hidden md:flex w-64 flex-col h-auto min-h-0
+      hidden md:flex w-64 flex-col h-full min-h-0
       bg-neutral-100 text-neutral-700
       border-r border-neutral-200
     ">

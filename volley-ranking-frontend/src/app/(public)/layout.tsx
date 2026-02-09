@@ -13,7 +13,7 @@ export default function PublicLayout({
   const isLoggedIn = !!firebaseUser;
 
   return (
-    <div className="flex flex-1 min-h-0 bg-[#F8FAFC]">
+    <div className="flex flex-1 min-h-0 h-full bg-[#F8FAFC]">
       {isLoggedIn && <AppSidebar />}
 
       <main className="flex-1 min-h-0 overflow-y-auto">

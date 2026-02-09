@@ -38,7 +38,7 @@ export default function AdminGroupsPage() {
   if (loading) return <p>Cargando grupos...</p>;
 
   return (
-    <main className="max-w-4xl mx-auto mt-10 space-y-6">
+    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Groups</h1>
         <Link

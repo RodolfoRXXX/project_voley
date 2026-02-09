@@ -87,22 +87,29 @@ export default function PreferredPositionsEditor({ initial }: Props) {
   return (
     <section
       className="
-        bg-neutral-50
+        bg-white
         rounded-lg
+        border border-neutral-200
         p-4
         space-y-4
       "
     >
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-700">
-          Posiciones preferidas
-        </h3>
+        <div>
+          <h3 className="text-sm font-semibold text-neutral-800">
+            Posiciones preferidas
+          </h3>
+
+          {editing && (
+            <p className="text-xs text-neutral-500 mt-0.5">
+              Ordená por prioridad (máx. 3)
+            </p>
+          )}
+        </div>
 
         {!editing && (
-          <ActionButton
-            onClick={() => setEditing(true)}
-          >
+          <ActionButton compact onClick={() => setEditing(true)}>
             Editar
           </ActionButton>
         )}
@@ -145,7 +152,7 @@ export default function PreferredPositionsEditor({ initial }: Props) {
 
       {/* Acciones */}
       {editing && (
-        <div className="flex gap-2 pt-2">
+        <div className="flex gap-2 pt-3">
           <ActionButton
             variant="success"
             onClick={save}
@@ -157,6 +164,7 @@ export default function PreferredPositionsEditor({ initial }: Props) {
 
           <ActionButton
             variant="secondary"
+            compact
             onClick={() => {
               setPositions(savedPositions);
               setEditing(false);

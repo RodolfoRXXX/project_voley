@@ -1,25 +1,32 @@
+
+// -------------------
+// Badge Pill
+// -------------------
+
 "use client";
 
-type StatusVariant =
+export type StatusVariant =
   | "warning"
   | "success"
   | "info"
   | "danger"
   | "neutral";
 
+type Size = "sm" | "md";
+
 type Props = {
   label: string;
   variant?: StatusVariant;
   icon?: string;
+  size?: Size;
   onClick?: () => void;
+  inline?: boolean;
+  responsive?: boolean;
 };
 
 const variants: Record<
   StatusVariant,
-  {
-    desktop: string;
-    mobile: string;
-  }
+  { desktop: string; mobile: string }
 > = {
   warning: {
     desktop: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
@@ -43,47 +50,57 @@ const variants: Record<
   },
 };
 
+const sizes: Record<Size, string> = {
+  sm: "text-xs px-2.5 py-0.5",
+  md: "text-sm px-3 py-1",
+};
+
 export default function StatusPill({
   label,
   variant = "neutral",
   icon = "•",
+  size = "sm",
   onClick,
+  inline = false,
+  responsive = false,
 }: Props) {
   const cfg = variants[variant];
 
   const base =
-    "inline-flex items-center justify-center transition rounded-full";
+    "items-center justify-center rounded-full font-medium transition";
+
+  const Wrapper = inline ? "span" : "div";
 
   return (
-    <div className="flex justify-center">
+    <Wrapper className={inline ? "" : "flex justify-center"}>
       {/* Desktop */}
       <button
         onClick={onClick}
         className={`
           ${base}
-          hidden sm:inline-flex
-          px-3 py-1
-          text-xs font-medium
+          ${responsive ? "hidden sm:inline-flex" : ""}
+          ${sizes[size]}
           ${cfg.desktop}
         `}
       >
         {label}
       </button>
 
-      {/* Mobile */}
-      <button
-        onClick={onClick}
-        className={`
-          ${base}
-          sm:hidden
-          h-7 w-7
-          text-xs
-          ${cfg.mobile}
-        `}
-        aria-label={label}
-      >
-        {icon}
-      </button>
-    </div>
+      {/* Mobile icon-only */}
+      {responsive && (
+        <button
+          onClick={onClick}
+          className={`
+            ${base}
+            inline-flex sm:hidden
+            h-7 w-7 text-xs
+            ${cfg.mobile}
+          `}
+          aria-label={label}
+        >
+          {icon}
+        </button>
+      )}
+    </Wrapper>
   );
 }

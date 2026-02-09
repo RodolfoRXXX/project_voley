@@ -40,7 +40,7 @@ export default function Navbar() {
 
   if (userDoc?.roles === "admin") {
     navItems.push({
-      label: "Administración",
+      label: "Gestión",
       href: "/admin/groups",
     });
   }

@@ -2,9 +2,10 @@
 "use client";
 
 import Link from "next/link";
-import MatchStatusBadge from "../matchCard/MatchStatusBadge";
-import PlayerStatusBadge from "./PlayerStatusBadge";
 import { formatDateTime } from "@/lib/date";
+import StatusPill from "../ui/status/StatusPill";
+import { matchStatusMap } from "@/components/ui/status/matchStatusMap";
+import { playerStatusMap } from "@/components/ui/status/playerStatusMap";
 
 type Props = {
   matchId: string;
@@ -43,6 +44,8 @@ export default function MatchHistoryCard({
 }: Props) {
   const isEliminado = participationEstado === "eliminado";
   const isCancelado = matchEstado === "cancelado";
+  const cfg = matchStatusMap[matchEstado];
+  const cfgP = playerStatusMap[participationEstado];
 
   return (
     <div
@@ -69,7 +72,12 @@ export default function MatchHistoryCard({
           )}
         </div>
 
-        <MatchStatusBadge estado={matchEstado} />
+        <StatusPill
+          label={cfg.label}
+          variant={cfg.variant}
+          icon={cfg.icon}
+          inline
+        />
       </div>
 
       {/* META */}
@@ -85,7 +93,12 @@ export default function MatchHistoryCard({
 
         <div className="flex items-center gap-2">
           <span className="font-medium">Rol:</span>
-          <PlayerStatusBadge estado={participationEstado} />
+          <StatusPill
+            label={cfgP.label}
+            variant={cfgP.variant}
+            size="sm"
+            inline
+          />
         </div>
       </div>
 

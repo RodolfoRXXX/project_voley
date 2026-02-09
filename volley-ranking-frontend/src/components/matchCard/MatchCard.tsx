@@ -14,10 +14,8 @@ import {
   doc,
 } from "firebase/firestore";
 import { db, app } from "@/lib/firebase";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import MatchStatusBadge from "./MatchStatusBadge";
 import { formatDateTime } from "@/lib/date";
 import { useAction } from "@/components/ui/action/useAction";
 import { ActionButton } from "../ui/action/ActionButton";
@@ -25,6 +23,8 @@ import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { useAuth } from "@/hooks/useAuth";
+import StatusPill from "../ui/status/StatusPill";
+import { matchStatusMap } from "@/components/ui/status/matchStatusMap";
 
 /* =====================
      FUNCTION
@@ -48,6 +48,7 @@ export default function MatchCard({
   const { showToast } = useToast();
   const { userDoc } = useAuth();
   const isOnboarded = !!userDoc?.onboarded;
+  const cfg = matchStatusMap[match.estado];
 
   const valores: number[] = Object.values(match.posicionesObjetivo || {});
   const titularesTotales = valores.reduce(
@@ -225,7 +226,12 @@ const puedeUnirse =
           </p>
         </div>
 
-        <MatchStatusBadge estado={match.estado} />
+        <StatusPill
+          label={cfg.label}
+          variant={cfg.variant}
+          icon={cfg.icon}
+          inline
+        />
       </div>
 
       {/* ADMIN */}

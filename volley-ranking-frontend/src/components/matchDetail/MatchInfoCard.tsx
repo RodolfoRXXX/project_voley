@@ -3,9 +3,10 @@
 // Info de un Match
 // -------------------
 
-import MatchStatusBadge from "@/components/matchCard/MatchStatusBadge";
 import { formatDateTime } from "@/lib/date";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
+import StatusPill from "../ui/status/StatusPill";
+import { matchStatusMap } from "@/components/ui/status/matchStatusMap";
 
 type MatchInfoCardProps = {
   match: {
@@ -25,6 +26,7 @@ export default function MatchInfoCard({
   match,
   adminUser,
 }: MatchInfoCardProps) {
+  const cfg = matchStatusMap[match.estado];
   return (
     <section className="space-y-6">
       {/* HEADER */}
@@ -40,7 +42,12 @@ export default function MatchInfoCard({
           </p>
         </div>
 
-        <MatchStatusBadge estado={match.estado} />
+        <StatusPill
+          label={cfg.label}
+          variant={cfg.variant}
+          icon={cfg.icon}
+          inline
+        />
       </div>
 
       {/* DATOS */}

@@ -33,7 +33,7 @@ import MatchPositions from "@/components/matchDetail/MatchPositions";
 import PlayersTable from "@/components/matchDetail/PlayersTable";
 import MatchActions from "@/components/matchDetail/MatchActions";
 import type { Match } from "@/types/match";
-import StatusPill from "@/components/ui/badges/StatusPill";
+import StatusPill from "@/components/ui/status/StatusPill";
 
 /* =====================
    Firebase functions
@@ -538,7 +538,6 @@ useEffect(() => {
     {/* ================== TITULO ================== */}
 
     <MatchHeader
-      match={match}
       group={group}
     />
 
@@ -673,6 +672,7 @@ useEffect(() => {
                       ? "⏱"
                       : "$"
                   }
+                  responsive
                   onClick={() => setPagoModal(p)}
                 />
               </div>

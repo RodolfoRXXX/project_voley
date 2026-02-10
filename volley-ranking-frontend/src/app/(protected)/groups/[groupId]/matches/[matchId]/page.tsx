@@ -203,18 +203,18 @@ export default function MatchDetailPage() {
   /* =====================
    Admin del match
 ===================== */
-useEffect(() => {
-  if (!match?.adminId) return;
+  useEffect(() => {
+    if (!match?.adminId) return;
 
-  const ref = doc(db, "users", match.adminId);
+    const ref = doc(db, "users", match.adminId);
 
-  const unsub = onSnapshot(ref, (snap) => {
-    if (!snap.exists()) return;
-    setAdminUser(snap.data());
-  });
+    const unsub = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) return;
+      setAdminUser(snap.data());
+    });
 
-  return () => unsub();
-}, [match?.adminId]);
+    return () => unsub();
+  }, [match?.adminId]);
 
   /* =====================
      Group load
@@ -293,7 +293,6 @@ useEffect(() => {
     );
   }
 };
-
 
   /* =====================
      nombre participations
@@ -776,6 +775,7 @@ useEffect(() => {
                       ? "⏱"
                       : "$"
                   }
+                  responsive
                   onClick={() => setPagoModal(p)}
                 />
               </div>
@@ -877,6 +877,7 @@ useEffect(() => {
                       ? "⏱"
                       : "$"
                   }
+                  responsive
                 />
               </div>
               {/* Acciones */}

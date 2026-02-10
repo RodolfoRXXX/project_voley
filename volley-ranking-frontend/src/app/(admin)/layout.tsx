@@ -6,6 +6,7 @@
 "use client";
 
 import AppSidebar from "@/components/layout/AppSidebar";
+import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -22,9 +23,9 @@ function AdminLayoutSkeleton() {
       <div className="hidden md:block w-64 border-r bg-white">
         <div className="p-4 space-y-3">
           {[...Array(6)].map((_, i) => (
-            <div
+            <Skeleton
               key={i}
-              className="h-10 bg-slate-100 rounded-md animate-pulse"
+              className="h-10 rounded-md"
             />
           ))}
         </div>
@@ -33,9 +34,9 @@ function AdminLayoutSkeleton() {
       {/* Main admin */}
       <main className="flex-1 min-h-0 overflow-y-auto">
         <div className="p-4 md:p-8 space-y-6">
-          <div className="h-6 w-56 bg-slate-200 rounded animate-pulse" />
-          <div className="h-32 bg-slate-100 rounded-lg animate-pulse" />
-          <div className="h-48 bg-slate-100 rounded-lg animate-pulse" />
+          <Skeleton className="h-6 w-56" />
+          <SkeletonSoft className="h-32 rounded-lg" />
+          <SkeletonSoft className="h-48 rounded-lg" />
         </div>
       </main>
 

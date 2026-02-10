@@ -10,6 +10,7 @@ import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Link from "next/link";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
+import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
 
 interface Group {
   id: string;
@@ -26,18 +27,19 @@ interface Group {
 
 function GroupsSkeleton() {
   return (
-    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 space-y-6 animate-pulse">
+    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 space-y-6">
+
       {/* Breadcrumb */}
-      <div className="h-4 w-40 bg-neutral-200 rounded" />
+      <SkeletonSoft className="h-4 w-40" />
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
-          <div className="h-5 w-32 bg-neutral-200 rounded" />
-          <div className="h-4 w-56 bg-neutral-100 rounded" />
+          <Skeleton className="h-5 w-32" />
+          <SkeletonSoft className="h-4 w-56" />
         </div>
 
-        <div className="h-9 w-28 bg-neutral-200 rounded-lg" />
+        <Skeleton className="h-9 w-28 rounded-lg" />
       </div>
 
       {/* Cards */}
@@ -48,21 +50,23 @@ function GroupsSkeleton() {
             className="rounded-xl border border-neutral-200 bg-white p-4 flex justify-between items-center"
           >
             <div className="space-y-2 w-full">
-              <div className="h-4 w-1/3 bg-neutral-200 rounded" />
-              <div className="h-3 w-2/3 bg-neutral-100 rounded" />
+              <Skeleton className="h-4 w-1/3" />
+              <SkeletonSoft className="h-3 w-2/3" />
+
               <div className="flex gap-4 pt-2">
-                <div className="h-3 w-20 bg-neutral-100 rounded" />
-                <div className="h-3 w-16 bg-neutral-100 rounded" />
+                <SkeletonSoft className="h-3 w-20" />
+                <SkeletonSoft className="h-3 w-16" />
               </div>
             </div>
 
             <div className="flex gap-2">
-              <div className="h-8 w-14 bg-neutral-200 rounded-lg" />
-              <div className="h-8 w-24 bg-neutral-200 rounded-lg" />
+              <Skeleton className="h-8 w-14 rounded-lg" />
+              <Skeleton className="h-8 w-24 rounded-lg" />
             </div>
           </div>
         ))}
       </div>
+
     </main>
   );
 }

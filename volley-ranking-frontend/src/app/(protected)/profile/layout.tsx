@@ -8,6 +8,7 @@
 import { ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { Skeleton } from "@/components/ui/skeleton/Skeleton";
 
 /* =====================
    SKELETON
@@ -16,9 +17,9 @@ import { useAuth } from "@/hooks/useAuth";
 function ProfileLayoutSkeleton() {
   return (
     <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
-      <div className="h-24 bg-slate-100 rounded-xl animate-pulse" />
-      <div className="h-40 bg-slate-100 rounded-xl animate-pulse" />
-      <div className="h-48 bg-slate-100 rounded-xl animate-pulse" />
+      <Skeleton className="h-24 rounded-xl" />
+      <Skeleton className="h-40 rounded-xl" />
+      <Skeleton className="h-48 rounded-xl" />
     </main>
   );
 }

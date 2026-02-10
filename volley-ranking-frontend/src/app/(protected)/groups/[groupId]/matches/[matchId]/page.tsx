@@ -34,6 +34,7 @@ import PlayersTable from "@/components/matchDetail/PlayersTable";
 import MatchActions from "@/components/matchDetail/MatchActions";
 import type { Match } from "@/types/match";
 import StatusPill from "@/components/ui/status/StatusPill";
+import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
 
 /* =====================
    Firebase functions
@@ -88,28 +89,29 @@ function MatchPageSkeleton() {
       
       {/* Header */}
       <div className="space-y-2">
-        <div className="h-4 w-24 bg-slate-200 rounded animate-pulse" />
-        <div className="h-8 w-2/3 bg-slate-200 rounded animate-pulse" />
+        <SkeletonSoft className="h-4 w-24" />
+        <Skeleton className="h-8 w-2/3" />
       </div>
 
       {/* Info cards */}
       <div className="grid sm:grid-cols-3 gap-4">
         {[...Array(3)].map((_, i) => (
-          <div
+          <SkeletonSoft
             key={i}
-            className="h-24 bg-slate-100 rounded-xl animate-pulse"
+            className="h-24 rounded-xl"
           />
         ))}
       </div>
 
       {/* Posiciones / cupos */}
       <div className="space-y-3">
-        <div className="h-5 w-40 bg-slate-200 rounded animate-pulse" />
+        <Skeleton className="h-5 w-40" />
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[...Array(4)].map((_, i) => (
-            <div
+            <SkeletonSoft
               key={i}
-              className="h-16 bg-slate-100 rounded-lg animate-pulse"
+              className="h-16 rounded-lg"
             />
           ))}
         </div>
@@ -117,12 +119,13 @@ function MatchPageSkeleton() {
 
       {/* Tabla jugadores */}
       <div className="space-y-3">
-        <div className="h-5 w-32 bg-slate-200 rounded animate-pulse" />
+        <Skeleton className="h-5 w-32" />
+
         <div className="space-y-2">
           {[...Array(6)].map((_, i) => (
-            <div
+            <SkeletonSoft
               key={i}
-              className="h-12 bg-slate-100 rounded-lg animate-pulse"
+              className="h-12 rounded-lg"
             />
           ))}
         </div>
@@ -130,8 +133,8 @@ function MatchPageSkeleton() {
 
       {/* Acciones */}
       <div className="flex gap-3">
-        <div className="h-10 w-32 bg-slate-200 rounded-full animate-pulse" />
-        <div className="h-10 w-32 bg-slate-200 rounded-full animate-pulse" />
+        <Skeleton className="h-10 w-32 rounded-full" />
+        <Skeleton className="h-10 w-32 rounded-full" />
       </div>
 
     </main>

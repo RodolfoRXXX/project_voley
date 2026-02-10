@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import OnboardingForm from "@/components/onboarding/onboardingForm";
+import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 
 /* =====================
    SKELETON
@@ -17,22 +18,22 @@ import OnboardingForm from "@/components/onboarding/onboardingForm";
 function OnboardingSkeleton() {
   return (
     <main className="min-h-[calc(100vh-64px)] flex items-start sm:items-center justify-center px-4 py-4">
-      <div className="w-full max-w-xl bg-white rounded-lg border border-neutral-200 animate-pulse">
+      <div className="w-full max-w-xl bg-white rounded-lg border border-neutral-200">
         {/* Header */}
         <div className="px-6 sm:px-8 pt-6 pb-4 border-b border-neutral-100 space-y-2">
-          <div className="h-5 w-48 bg-neutral-200 rounded" />
-          <div className="h-4 w-64 bg-neutral-100 rounded" />
+          <Skeleton className="h-5 w-48" />
+          <SkeletonSoft className="h-4 w-64" />
         </div>
 
         {/* Form */}
         <div className="px-6 sm:px-8 py-6 space-y-4">
-          <div className="h-4 w-24 bg-neutral-200 rounded" />
-          <div className="h-10 w-full bg-neutral-100 rounded" />
+          <Skeleton className="h-4 w-24" />
+          <SkeletonSoft className="h-10 w-full" />
 
-          <div className="h-4 w-32 bg-neutral-200 rounded" />
-          <div className="h-10 w-full bg-neutral-100 rounded" />
+          <Skeleton className="h-4 w-32" />
+          <SkeletonSoft className="h-10 w-full" />
 
-          <div className="h-10 w-32 bg-neutral-200 rounded-lg mt-4" />
+          <Skeleton className="h-10 w-32 rounded-lg mt-4" />
         </div>
       </div>
     </main>

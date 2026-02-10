@@ -9,6 +9,7 @@ import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useAuth } from "@/hooks/useAuth";
 import ProfileGame from "@/components/profile/profileGame";
 import ProfileMatches from "@/components/profile/ProfileMatches";
+import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 
 /* =====================
    SKELETON
@@ -20,21 +21,23 @@ function ProfilePageSkeleton() {
 
       {/* Header */}
       <div className="flex items-center gap-4">
-        <div className="h-20 w-20 rounded-full bg-slate-200 animate-pulse" />
+        <Skeleton className="h-20 w-20 rounded-full" />
+
         <div className="space-y-2 flex-1">
-          <div className="h-5 w-40 bg-slate-200 rounded animate-pulse" />
-          <div className="h-4 w-24 bg-slate-200 rounded animate-pulse" />
+          <Skeleton className="h-5 w-40" />
+          <SkeletonSoft className="h-4 w-24" />
         </div>
       </div>
 
       {/* Profile game */}
       <div className="bg-white border rounded-xl p-4 space-y-3">
-        <div className="h-5 w-32 bg-slate-200 rounded animate-pulse" />
+        <Skeleton className="h-5 w-32" />
+
         <div className="flex gap-2 flex-wrap">
           {[...Array(4)].map((_, i) => (
-            <div
+            <SkeletonSoft
               key={i}
-              className="h-8 w-20 bg-slate-100 rounded-full animate-pulse"
+              className="h-8 w-20 rounded-full"
             />
           ))}
         </div>
@@ -42,12 +45,13 @@ function ProfilePageSkeleton() {
 
       {/* Matches */}
       <div className="space-y-3">
-        <div className="h-5 w-40 bg-slate-200 rounded animate-pulse" />
+        <Skeleton className="h-5 w-40" />
+
         <div className="space-y-2">
           {[...Array(3)].map((_, i) => (
-            <div
+            <SkeletonSoft
               key={i}
-              className="h-16 bg-slate-100 rounded-xl animate-pulse"
+              className="h-16 rounded-xl"
             />
           ))}
         </div>

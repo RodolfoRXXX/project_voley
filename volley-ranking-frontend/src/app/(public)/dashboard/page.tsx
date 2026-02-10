@@ -10,6 +10,7 @@ import { collection, getDocs, query, where, Timestamp } from "firebase/firestore
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import MatchCard from "@/components/matchCard/MatchCard";
+import { Skeleton } from "@/components/ui/skeleton/Skeleton";
 
 type Match = {
   id: string;
@@ -76,7 +77,10 @@ export default function DashboardPage() {
     load();
   }, []);
 
-  // ⬇️ retornos CONDICIONALES van DESPUÉS de los hooks
+  /* =====================
+     SKELETON
+  ===================== */
+
   if (loading) {
     return (
       <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 space-y-6">
@@ -90,9 +94,9 @@ export default function DashboardPage() {
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
-            <div
+            <Skeleton
               key={i}
-              className="h-40 rounded-xl bg-slate-100 animate-pulse"
+              className="h-40 rounded-m"
             />
           ))}
         </div>

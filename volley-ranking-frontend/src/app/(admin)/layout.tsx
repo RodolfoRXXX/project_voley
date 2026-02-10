@@ -22,7 +22,7 @@ function AdminLayoutSkeleton() {
       {/* Sidebar admin */}
       <div className="hidden md:block w-64 border-r bg-white">
         <div className="p-4 space-y-3">
-          {[...Array(6)].map((_, i) => (
+          {[...Array(3)].map((_, i) => (
             <Skeleton
               key={i}
               className="h-10 rounded-md"
@@ -33,10 +33,10 @@ function AdminLayoutSkeleton() {
 
       {/* Main admin */}
       <main className="flex-1 min-h-0 overflow-y-auto">
-        <div className="p-4 md:p-8 space-y-6">
-          <Skeleton className="h-6 w-56" />
-          <SkeletonSoft className="h-32 rounded-lg" />
-          <SkeletonSoft className="h-48 rounded-lg" />
+        {/* ⬇️ IMPORTANTE: no definimos ancho */}
+        <div className="p-4 md:p-8">
+          <SkeletonSoft className="h-6 w-48 mb-6" />
+          <SkeletonSoft className="h-64 rounded-lg" />
         </div>
       </main>
 

@@ -26,6 +26,7 @@ type MatchActionsProps = {
   onClose: () => void;
   onReopen: () => void;
   onTeams: () => void;
+  onShare: () => void;
 };
 
 
@@ -41,6 +42,7 @@ export default function MatchActions({
   onClose,
   onReopen,
   onTeams,
+  onShare,
 }: MatchActionsProps) {
   const jugadorBloqueado =
     isEliminado || match.estado !== "abierto";
@@ -80,6 +82,14 @@ export default function MatchActions({
           Ver equipos
         </ActionButton>
       )}
+
+      <ActionButton
+        onClick={onShare}
+        variant="secondary"
+        compact
+      >
+        📲 Compartir
+      </ActionButton>
     </>
   );
 

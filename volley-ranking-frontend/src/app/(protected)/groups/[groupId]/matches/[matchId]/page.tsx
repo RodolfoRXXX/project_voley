@@ -576,6 +576,28 @@ export default function MatchDetailPage() {
   };
 
   /* =====================
+     Share on Whatsapp
+  ===================== */
+
+  const getMatchShareLink = () => {
+    if (!match) return "";
+
+    const url =
+      typeof window !== "undefined"
+        ? window.location.href
+        : "";
+
+    const message = `
+  ⚽️ ¡Sumate al partido!
+  📍 ${group?.nombre ?? "Grupo"}
+  🕒 ${match.horaInicio ? formatForDateTimeLocal(match.horaInicio) : ""}
+  👉 ${url}
+  `;
+
+    return `https://wa.me/?text=${encodeURIComponent(message)}`;
+  };
+
+  /* =====================
      Render
   ===================== */
   return (
@@ -976,6 +998,10 @@ export default function MatchDetailPage() {
       onClose={handleCerrarMatch}
       onReopen={handleReabrirMatch}
       onTeams={() => setTeamsModalOpen(true)}
+      onShare={() => {
+        const link = getMatchShareLink();
+        window.open(link, "_blank");
+      }}
     />
 
     {/* ================ MODALES ================ */}

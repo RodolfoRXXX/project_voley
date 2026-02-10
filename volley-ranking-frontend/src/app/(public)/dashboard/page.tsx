@@ -85,7 +85,7 @@ export default function DashboardPage() {
     return (
       <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 space-y-6">
         <h1 className="text-sm uppercase tracking-wide text-slate-400">
-          Dashboard
+          Tablero
         </h1>
 
         <h2 className="text-3xl font-bold text-neutral-800">
@@ -107,7 +107,7 @@ export default function DashboardPage() {
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 space-y-6">
       <h1 className="text-sm uppercase tracking-wide text-slate-400">
-        Dashboard
+        Tablero
       </h1>
 
       <h2 className="text-3xl font-bold text-neutral-800">

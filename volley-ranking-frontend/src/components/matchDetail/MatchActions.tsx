@@ -5,13 +5,6 @@
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { Match } from "@/types/match";
 
-export type MatchEstado =
-  | "abierto"
-  | "verificando"
-  | "cerrado"
-  | "jugado"
-  | "cancelado";
-
 type MatchActionsProps = {
   isAdmin: boolean;
   isJoined: boolean;
@@ -56,23 +49,38 @@ export default function MatchActions({
    * BOTÓN JUGADOR (CTA)
    * --------------------- */
   const renderJugadorAction = () => (
-    <ActionButton
-      onClick={onJoin}
-      loading={isJoined ? loading?.leave : loading?.join}
-      disabled={jugadorBloqueado}
-      variant={
-        jugadorBloqueado
-          ? "secondary"
-          : (isJoined ? "danger" : "orange")
-      }
-      compact
-    >
-      {jugadorBloqueado
-        ? "No disponible"
-        : isJoined
-        ? "− Salir"
-        : "+ Unirme"}
-    </ActionButton>
+    <>
+      <ActionButton
+        onClick={onJoin}
+        loading={isJoined ? loading?.leave : loading?.join}
+        disabled={jugadorBloqueado}
+        variant={
+          jugadorBloqueado
+            ? "secondary"
+            : isJoined
+            ? "danger"
+            : "orange"
+        }
+        compact
+      >
+        {jugadorBloqueado
+          ? "No disponible"
+          : isJoined
+          ? "− Salir"
+          : "+ Unirme"}
+      </ActionButton>
+
+      {(match.estado === "cerrado" ||
+        match.estado === "jugado") && (
+        <ActionButton
+          onClick={onTeams}
+          variant="secondary"
+          compact
+        >
+          Ver equipos
+        </ActionButton>
+      )}
+    </>
   );
 
   /* -----------------------
@@ -127,17 +135,6 @@ export default function MatchActions({
               Reabrir
             </ActionButton>
           </>
-        )}
-
-        {/* Cerrado / Jugado → ver equipos */}
-        {(match.estado === "cerrado" ||
-          match.estado === "jugado") && (
-          <ActionButton
-            onClick={onTeams}
-            variant="secondary"
-          >
-            Ver equipos
-          </ActionButton>
         )}
       </>
     );

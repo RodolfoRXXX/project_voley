@@ -1,3 +1,8 @@
+
+/* =====================
+  Create Group
+  ===================== */
+
 "use client";
 
 import { useState } from "react";
@@ -10,6 +15,7 @@ import { useAction } from "@/components/ui/action/useAction";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import FormField from "@/components/ui/form/FormField";
 import { inputClass } from "@/components/ui/form/utils";
+import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 
 export default function NewGroupPage() {
   const router = useRouter();
@@ -74,7 +80,16 @@ export default function NewGroupPage() {
      Render
   ===================== */
   return (
-    <main className="max-w-xl mx-auto mt-10 space-y-6">
+    <main className="max-w-xl mx-auto mt-10 space-y-8">
+
+      <AdminBreadcrumb
+        items={[
+          { label: "Gestión"},
+          { label: "Grupos", href: "/admin/groups" },
+          { label: "Nuevo grupo" },
+        ]}
+      />
+
       <h1 className="text-2xl font-bold">Nuevo grupo</h1>
 
       {/* NOMBRE */}
@@ -93,21 +108,26 @@ export default function NewGroupPage() {
 
       {/* DESCRIPCIÓN */}
       <FormField label="Descripción">
-        <input
+        <textarea
           value={descripcion}
           onChange={(e) => setDescripcion(e.target.value)}
-          className="border p-2 w-full rounded"
-          placeholder="Grupo recreativo, nivel intermedio..."
+          className="border rounded px-3 py-2 w-full text-sm"
+          rows={3}
         />
       </FormField>
 
       {/* ACTIVO */}
       <FormField label="Grupo activo">
-        <input
-          type="checkbox"
-          checked={activo}
-          onChange={(e) => setActivo(e.target.checked)}
-        />
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={activo}
+            onChange={(e) => setActivo(e.target.checked)}
+          />
+          <span className="text-gray-600">
+            El grupo podrá crear juegos
+          </span>
+        </label>
       </FormField>
 
       {/* BOTÓN UNIFICADO */}

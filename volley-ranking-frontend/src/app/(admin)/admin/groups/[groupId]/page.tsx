@@ -1,3 +1,8 @@
+
+// -------------------
+// Admin Group Detail
+// -------------------
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -17,6 +22,7 @@ import { useAction } from "@/components/ui/action/useAction";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import Link from "next/link";
 import { formatDateTime } from "@/lib/date";
+import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 
 const functions = getFunctions(app);
 const editGroup = httpsCallable(functions, "editGroup");
@@ -156,12 +162,26 @@ export default function AdminGroupPage() {
 
   return (
     <main className="max-w-3xl mx-auto mt-10 space-y-6">
+
+      <AdminBreadcrumb
+        items={[
+          { label: "Gestión"},
+          { label: "Grupos", href:"/admin/groups"},
+          { label: group.nombre},
+        ]}
+      />
+
       {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold">{group.nombre}</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-xl font-semibold text-neutral-900">
+            {group.nombre}
+          </h1>
+
           {group.descripcion && (
-            <p className="text-gray-600 mt-1">{group.descripcion}</p>
+            <p className="text-sm text-neutral-500">
+              {group.descripcion}
+            </p>
           )}
         </div>
 
@@ -171,31 +191,33 @@ export default function AdminGroupPage() {
               resetForm();
               setEditMode(true);
             }}
+            variant="secondary"
           >
-            Editar
+            Editar grupo
           </ActionButton>
         )}
       </div>
 
       {/* Estado */}
-      <section className="border rounded p-4">
-        <h2 className="text-xl font-semibold mb-3">
+      <section className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
+        <h2 className="text-sm font-semibold text-neutral-900">
           Estado del grupo
         </h2>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between">
           <span
-            className={`text-sm ${
+            className={`text-sm font-medium ${
               group.activo ? "text-green-600" : "text-red-600"
             }`}
           >
-            {group.activo ? "🟢 Activo" : "🔴 Inactivo"}
+            {group.activo ? "Activo" : "Inactivo"}
           </span>
 
           <ActionButton
             onClick={toggleActivo}
             loading={isLoading("toggle-activo")}
-            variant={group.activo ? "danger" : "success"}
+            variant={group.activo ? "danger_outline" : "success"}
+            compact
           >
             {group.activo ? "Desactivar" : "Reactivar"}
           </ActionButton>
@@ -204,39 +226,42 @@ export default function AdminGroupPage() {
 
       {/* Edit */}
       {editMode && (
-        <section className="border rounded p-4 space-y-4">
-          <label className="block">
-            Nombre
-            <input
-              value={formData.nombre}
-              onChange={(e) =>
-                setFormData({ ...formData, nombre: e.target.value })
-              }
-              className="border rounded px-2 py-1 w-full"
-            />
-          </label>
+        <section className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4">
+          <h2 className="text-sm font-semibold text-neutral-900">
+            Editar grupo
+          </h2>
 
-          <label className="block">
-            Descripción
-            <textarea
-              value={formData.descripcion}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  descripcion: e.target.value,
-                })
-              }
-              className="border rounded px-2 py-1 w-full"
-            />
-          </label>
+          <div className="space-y-3">
+            <label className="block text-sm">
+              <span className="text-neutral-700">Nombre</span>
+              <input
+                value={formData.nombre}
+                onChange={(e) =>
+                  setFormData({ ...formData, nombre: e.target.value })
+                }
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              />
+            </label>
 
-          <div className="flex gap-3">
+            <label className="block text-sm">
+              <span className="text-neutral-700">Descripción</span>
+              <textarea
+                value={formData.descripcion}
+                onChange={(e) =>
+                  setFormData({ ...formData, descripcion: e.target.value })
+                }
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              />
+            </label>
+          </div>
+
+          <div className="flex gap-3 pt-2">
             <ActionButton
               onClick={saveGroup}
               loading={isLoading("save-group")}
               variant="success"
             >
-              Guardar
+              Guardar cambios
             </ActionButton>
 
             <ActionButton
@@ -244,6 +269,7 @@ export default function AdminGroupPage() {
                 resetForm();
                 setEditMode(false);
               }}
+              variant="secondary"
             >
               Cancelar
             </ActionButton>
@@ -253,8 +279,10 @@ export default function AdminGroupPage() {
 
       {/* Matches */}
       <section>
-        <div className="flex justify-between items-start mb-4">
-          <h1 className="text-xl font-semibold">Matches</h1>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-neutral-900">
+            Juegos
+          </h2>
 
           <Link
             href={
@@ -265,33 +293,36 @@ export default function AdminGroupPage() {
             onClick={(e) => {
               if (!group.activo) e.preventDefault();
             }}
-            className={`px-4 py-2 rounded transition ${
-              group.activo
-                ? "bg-black text-white hover:bg-gray-800"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition
+              ${
+                group.activo
+                  ? "bg-neutral-900 text-white hover:bg-neutral-800"
+                  : "bg-neutral-200 text-neutral-400 cursor-not-allowed"
+              }
+            `}
           >
-            Crear match
+            Crear Juego
           </Link>
         </div>
 
         {matches.length === 0 ? (
           <p className="text-gray-500">
-            Todavía no hay matches en este group.
+            Todavía no hay juegos en este grupo.
           </p>
         ) : (
           <div className="space-y-3">
             {matches.map((m) => (
               <div
                 key={m.id}
-                className="border rounded p-4 flex justify-between"
+                className="rounded-xl border border-neutral-200 bg-white p-4 flex justify-between items-center"
               >
-                <div>
-                  <p className="font-semibold">
-                    {m.estado?.toUpperCase()}
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-neutral-900">
+                    Estado: {m.estado}
                   </p>
-                  <p className="text-sm">
-                    <span className="text-gray-600">Inicio: </span>
+
+                  <p className="text-sm text-neutral-500">
+                    Inicio:{" "}
                     {m.horaInicio
                       ? formatDateTime(m.horaInicio)
                       : "Sin definir"}
@@ -300,7 +331,7 @@ export default function AdminGroupPage() {
 
                 <Link
                   href={`/groups/${groupId}/matches/${m.id}`}
-                  className="text-blue-600 text-sm"
+                  className="text-sm font-medium text-blue-600 hover:underline"
                 >
                   Ver detalle →
                 </Link>

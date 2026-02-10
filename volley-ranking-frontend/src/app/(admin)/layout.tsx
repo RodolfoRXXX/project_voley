@@ -33,7 +33,11 @@ export default function AdminLayout({
   }, [firebaseUser, userDoc, loading, router]);
 
   if (loading || !firebaseUser || !userDoc) {
-    return <p className="p-6">Cargando...</p>;
+    return (
+      <div className="flex items-center justify-center h-full text-sm text-neutral-500">
+        Cargando panel de administración…
+      </div>
+    );
   }
 
   const isAdmin = !!firebaseUser && userDoc?.roles === "admin";
@@ -46,13 +50,7 @@ export default function AdminLayout({
   
         <main className="flex-1 min-h-0 overflow-y-auto">
           {/* Content */}
-          <div
-            className={
-              isAdmin
-                ? "p-4 md:p-8"
-                : "max-w-5xl mx-auto p-4 md:p-8"
-            }
-          >
+          <div className="p-4 md:p-8 max-w-none">
             {children}
           </div>
         </main>

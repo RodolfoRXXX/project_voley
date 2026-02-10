@@ -15,6 +15,8 @@ import { inputClass } from "@/components/ui/form/utils";
 import { useAction } from "@/components/ui/action/useAction";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
+import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
+import Link from "next/link";
 
 export default function NewMatchPage() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -97,81 +99,111 @@ export default function NewMatchPage() {
      RENDER
   ===================== */
   return (
-    <main className="max-w-xl mx-auto mt-10 space-y-6">
-      <h1 className="text-2xl font-bold">Nuevo match</h1>
+    <main className="max-w-xl mx-auto mt-10 space-y-8">
 
-      {/* Formación */}
-      <FormField
-        label="Formación"
-        required
-        error={!isFormacionValid ? "Seleccioná una formación" : undefined}
-      >
-        <select
-          value={formacion}
-          onChange={(e) => setFormacion(e.target.value)}
-          className={inputClass(isFormacionValid)}
+      <AdminBreadcrumb
+        items={[
+          { label: "Gestión" },
+          { label: "Grupos", href: "/admin/groups" },
+          { label: "Nuevo juego" },
+        ]}
+      />
+
+      <div className="flex items-start justify-between">
+        <div className="space-y-1">
+          <h1 className="text-xl font-semibold text-neutral-900">
+            Nuevo match
+          </h1>
+          <p className="text-sm text-neutral-500">
+            Configuración inicial del partido
+          </p>
+        </div>
+
+        <Link
+          href={`/admin/groups/${groupId}`}
+          className="text-sm text-neutral-600 hover:text-neutral-900 transition"
         >
-          <option value="">Seleccionar</option>
-          {formaciones.map((f) => (
-            <option key={f} value={f}>
-              {f}
-            </option>
-          ))}
-        </select>
-      </FormField>
+          ← Volver al grupo
+        </Link>
+      </div>
 
-      {/* Cantidad equipos */}
-      <FormField
-        label="Cantidad de equipos"
-        required
-        error={!isEquiposValid ? "Debe ser mayor a 0" : undefined}
-      >
-        <input
-          type="number"
-          min={1}
-          value={cantidadEquipos}
-          onChange={(e) => setCantidadEquipos(+e.target.value)}
-          className={inputClass(isEquiposValid)}
-        />
-      </FormField>
+      <section className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4">
+        
+        {/* Formación */}
+        <FormField
+          label="Formación"
+          required
+          error={!isFormacionValid ? "Seleccioná una formación" : undefined}
+        >
+          <select
+            value={formacion}
+            onChange={(e) => setFormacion(e.target.value)}
+            className={`${inputClass(isFormacionValid)} text-sm`}
+          >
+            <option value="">Seleccionar</option>
+            {formaciones.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+        </FormField>
 
-      {/* Cantidad suplentes */}
-      <FormField
-        label="Cantidad de suplentes"
-        error={!isSuplentesValid ? "Debe ser mayor o igual a 0" : undefined}
-      >
-        <input
-          type="number"
-          min={0}
-          value={cantidadSuplentes}
-          onChange={(e) => setCantidadSuplentes(+e.target.value)}
-          className={inputClass(isSuplentesValid)}
-        />
-      </FormField>
+        {/* Cantidad equipos */}
+        <FormField
+          label="Cantidad de equipos"
+          required
+          error={!isEquiposValid ? "Debe ser mayor a 0" : undefined}
+        >
+          <input
+            type="number"
+            min={1}
+            value={cantidadEquipos}
+            onChange={(e) => setCantidadEquipos(+e.target.value)}
+            className={`${inputClass(isEquiposValid)} text-sm`}
+          />
+        </FormField>
 
-      {/* Fecha y hora */}
-      <FormField
-        label="Fecha y hora de inicio"
-        required
-        error={!isHoraValid ? "Fecha y hora inválidas" : undefined}
-      >
-        <input
-          type="datetime-local"
-          value={horaInicio}
-          onChange={(e) => setHoraInicio(e.target.value)}
-          className={inputClass(isHoraValid)}
-        />
-      </FormField>
+        {/* Cantidad suplentes */}
+        <FormField
+          label="Cantidad de suplentes"
+          error={!isSuplentesValid ? "Debe ser mayor o igual a 0" : undefined}
+        >
+          <input
+            type="number"
+            min={0}
+            value={cantidadSuplentes}
+            onChange={(e) => setCantidadSuplentes(+e.target.value)}
+            className={inputClass(isSuplentesValid)}
+          />
+        </FormField>
+
+        {/* Fecha y hora */}
+        <FormField
+          label="Fecha y hora de inicio"
+          required
+          error={!isHoraValid ? "Fecha y hora inválidas" : undefined}
+        >
+          <input
+            type="datetime-local"
+            value={horaInicio}
+            onChange={(e) => setHoraInicio(e.target.value)}
+            className={inputClass(isHoraValid)}
+          />
+        </FormField>
+      </section>
 
       {/* Submit */}
-      <ActionButton
-        onClick={submit}
-        loading={isLoading("create-match")}
-        disabled={!isFormValid}
-        variant="success"
-      >
-        Crear match
-      </ActionButton>
+      <div className="pt-2">
+        <ActionButton
+          onClick={submit}
+          loading={isLoading("create-match")}
+          disabled={!isFormValid}
+          variant="success"
+        >
+          Crear juego
+        </ActionButton>
+      </div>
     </main>
   );
 }

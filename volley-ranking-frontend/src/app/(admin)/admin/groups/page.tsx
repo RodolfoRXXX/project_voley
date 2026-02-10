@@ -72,7 +72,7 @@ export default function AdminGroupsPage() {
       </div>
 
       {groups.length === 0 && (
-        <p className="text-gray-500">No hay groups creados.</p>
+        <p className="text-gray-500">No hay grupos creados.</p>
       )}
 
       <div className="grid gap-4">

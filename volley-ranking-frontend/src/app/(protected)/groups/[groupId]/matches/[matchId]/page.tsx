@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   doc,
@@ -556,7 +556,7 @@ export default function MatchDetailPage() {
           {/* HEADER */}
           <div className="flex items-center justify-between">
             <h2 className="text-base font-medium text-neutral-900">
-              Editar match
+              Editar juego
             </h2>
 
             {!editMode && (

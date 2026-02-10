@@ -112,7 +112,7 @@ export default function NewMatchPage() {
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <h1 className="text-xl font-semibold text-neutral-900">
-            Nuevo match
+            Nuevo juego
           </h1>
           <p className="text-sm text-neutral-500">
             Configuración inicial del partido

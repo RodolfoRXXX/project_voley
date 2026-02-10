@@ -88,7 +88,7 @@ export default function MatchInfoCard({
               {adminUser.nombre}
             </p>
             <p className="text-xs text-neutral-500">
-              Admin del match
+              Admin del grupo
             </p>
           </div>
         </div>

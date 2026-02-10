@@ -1,3 +1,8 @@
+
+// -------------------
+// Layout Public
+// -------------------
+
 "use client";
 
 import AppSidebar from "@/components/layout/AppSidebar";

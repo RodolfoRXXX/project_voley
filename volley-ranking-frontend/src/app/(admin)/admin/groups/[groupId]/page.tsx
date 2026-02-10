@@ -28,6 +28,63 @@ const functions = getFunctions(app);
 const editGroup = httpsCallable(functions, "editGroup");
 const toggleGroupActivo = httpsCallable(functions, "toggleGroupActivo");
 
+/* =====================
+   SKELETON
+===================== */
+
+function GroupDetailSkeleton() {
+  return (
+    <main className="max-w-3xl mx-auto mt-10 space-y-6 animate-pulse">
+      {/* Breadcrumb */}
+      <div className="h-4 w-56 bg-neutral-200 rounded" />
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          <div className="h-5 w-48 bg-neutral-200 rounded" />
+          <div className="h-4 w-64 bg-neutral-100 rounded" />
+        </div>
+
+        <div className="h-9 w-32 bg-neutral-200 rounded-lg" />
+      </div>
+
+      {/* Estado */}
+      <section className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4">
+        <div className="h-4 w-32 bg-neutral-200 rounded" />
+
+        <div className="flex items-center justify-between">
+          <div className="h-4 w-20 bg-neutral-100 rounded" />
+          <div className="h-8 w-28 bg-neutral-200 rounded-lg" />
+        </div>
+      </section>
+
+      {/* Matches */}
+      <section className="space-y-4">
+        <div className="flex justify-between items-center">
+          <div className="h-5 w-24 bg-neutral-200 rounded" />
+          <div className="h-9 w-28 bg-neutral-200 rounded-lg" />
+        </div>
+
+        <div className="space-y-3">
+          {[1, 2].map((i) => (
+            <div
+              key={i}
+              className="rounded-xl border border-neutral-200 bg-white p-4 flex justify-between items-center"
+            >
+              <div className="space-y-2">
+                <div className="h-4 w-32 bg-neutral-200 rounded" />
+                <div className="h-3 w-48 bg-neutral-100 rounded" />
+              </div>
+
+              <div className="h-4 w-20 bg-neutral-100 rounded" />
+            </div>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
+}
+
 export default function AdminGroupPage() {
   const { groupId } = useParams<{ groupId: string }>();
   const router = useRouter();
@@ -148,7 +205,7 @@ export default function AdminGroupPage() {
       }
     );
 
-  if (loading || loadingData) return <p>Cargando...</p>;
+  if (loading || loadingData) return <GroupDetailSkeleton />;
   if (!group) return null;
 
   const resetForm = () => {

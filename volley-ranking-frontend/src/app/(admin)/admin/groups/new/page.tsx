@@ -30,7 +30,12 @@ export default function NewGroupPage() {
   /* =====================
      Auth guard
   ===================== */
-  if (loading) return <p>Cargando...</p>;
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-40 text-sm text-neutral-500">
+        Verificando permisos…
+      </div>
+    );
 
   if (!firebaseUser || userDoc?.roles !== "admin") {
     router.replace("/");

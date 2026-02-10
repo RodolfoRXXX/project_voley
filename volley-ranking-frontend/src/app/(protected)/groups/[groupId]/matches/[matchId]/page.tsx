@@ -78,6 +78,65 @@ const pagoStyles: Record<string, string> = {
   pospuesto: "bg-blue-100 text-blue-700 border-blue-400",
 };
 
+/* =====================
+   SKELETON
+===================== */
+
+function MatchPageSkeleton() {
+  return (
+    <main className="max-w-4xl mx-auto mt-10 px-4 space-y-10">
+      
+      {/* Header */}
+      <div className="space-y-2">
+        <div className="h-4 w-24 bg-slate-200 rounded animate-pulse" />
+        <div className="h-8 w-2/3 bg-slate-200 rounded animate-pulse" />
+      </div>
+
+      {/* Info cards */}
+      <div className="grid sm:grid-cols-3 gap-4">
+        {[...Array(3)].map((_, i) => (
+          <div
+            key={i}
+            className="h-24 bg-slate-100 rounded-xl animate-pulse"
+          />
+        ))}
+      </div>
+
+      {/* Posiciones / cupos */}
+      <div className="space-y-3">
+        <div className="h-5 w-40 bg-slate-200 rounded animate-pulse" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[...Array(4)].map((_, i) => (
+            <div
+              key={i}
+              className="h-16 bg-slate-100 rounded-lg animate-pulse"
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Tabla jugadores */}
+      <div className="space-y-3">
+        <div className="h-5 w-32 bg-slate-200 rounded animate-pulse" />
+        <div className="space-y-2">
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="h-12 bg-slate-100 rounded-lg animate-pulse"
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Acciones */}
+      <div className="flex gap-3">
+        <div className="h-10 w-32 bg-slate-200 rounded-full animate-pulse" />
+        <div className="h-10 w-32 bg-slate-200 rounded-full animate-pulse" />
+      </div>
+
+    </main>
+  );
+}
 
 /* =====================
    FUNCTION
@@ -361,7 +420,8 @@ export default function MatchDetailPage() {
     );
   };
 
-  if (authLoading || !match) return <p>Cargando...</p>;
+  //if (authLoading || !match) return <p>Cargando...</p>;
+  if (authLoading || !match) return <MatchPageSkeleton />;
 
   /* =====================
     Cupos ocupados
@@ -411,8 +471,6 @@ export default function MatchDetailPage() {
   );
 
   const hayPagosPendientes = titularesConPagoPendiente.length > 0;
-
-  match.estado !== "abierto";
 
   /* =====================
     HANDLERS
@@ -512,14 +570,6 @@ export default function MatchDetailPage() {
         errorMessage: "No se pudo cancelar el juego",
       }
     );
-  };
-
-  const actionLoading = {
-    join: isLoading("join"),
-    leave: isLoading("leave"),
-    cancel: isLoading("cancel"),
-    close: isLoading("close"),
-    reopen: isLoading("reopen"),
   };
 
   /* =====================

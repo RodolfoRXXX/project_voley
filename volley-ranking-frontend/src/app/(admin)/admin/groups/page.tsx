@@ -20,6 +20,53 @@ interface Group {
   adminId: string;
 }
 
+/* =====================
+   SKELETON
+===================== */
+
+function GroupsSkeleton() {
+  return (
+    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 space-y-6 animate-pulse">
+      {/* Breadcrumb */}
+      <div className="h-4 w-40 bg-neutral-200 rounded" />
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          <div className="h-5 w-32 bg-neutral-200 rounded" />
+          <div className="h-4 w-56 bg-neutral-100 rounded" />
+        </div>
+
+        <div className="h-9 w-28 bg-neutral-200 rounded-lg" />
+      </div>
+
+      {/* Cards */}
+      <div className="grid gap-4">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="rounded-xl border border-neutral-200 bg-white p-4 flex justify-between items-center"
+          >
+            <div className="space-y-2 w-full">
+              <div className="h-4 w-1/3 bg-neutral-200 rounded" />
+              <div className="h-3 w-2/3 bg-neutral-100 rounded" />
+              <div className="flex gap-4 pt-2">
+                <div className="h-3 w-20 bg-neutral-100 rounded" />
+                <div className="h-3 w-16 bg-neutral-100 rounded" />
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <div className="h-8 w-14 bg-neutral-200 rounded-lg" />
+              <div className="h-8 w-24 bg-neutral-200 rounded-lg" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </main>
+  );
+}
+
 export default function AdminGroupsPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +88,7 @@ export default function AdminGroupsPage() {
     loadGroups();
   }, []);
 
-  if (loading) return <p>Cargando grupos...</p>;
+  if (loading) return <GroupsSkeleton />;
 
   return (
     <main className="max-w-4xl mx-auto mt-6 sm:mt-10 space-y-6">

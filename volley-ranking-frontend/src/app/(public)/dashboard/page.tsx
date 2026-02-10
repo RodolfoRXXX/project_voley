@@ -1,4 +1,7 @@
 
+// -------------------
+// Dashboard
+// -------------------
 
 "use client";
 
@@ -74,7 +77,28 @@ export default function DashboardPage() {
   }, []);
 
   // ⬇️ retornos CONDICIONALES van DESPUÉS de los hooks
-  if (loading) return <p>Cargando matches...</p>;
+  if (loading) {
+    return (
+      <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 space-y-6">
+        <h1 className="text-sm uppercase tracking-wide text-slate-400">
+          Dashboard
+        </h1>
+
+        <h2 className="text-3xl font-bold text-neutral-800">
+          Próximos partidos
+        </h2>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="h-40 rounded-xl bg-slate-100 animate-pulse"
+            />
+          ))}
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 space-y-6">

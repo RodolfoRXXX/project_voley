@@ -85,7 +85,7 @@ const pagoStyles: Record<string, string> = {
 
 function MatchPageSkeleton() {
   return (
-    <main className="max-w-4xl mx-auto mt-10 px-4 space-y-10">
+    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 px-4 space-y-10">
       
       {/* Header */}
       <div className="space-y-2">
@@ -527,10 +527,10 @@ export default function MatchDetailPage() {
       },
       {
         confirm: {
-          message: "¿Reabrir el juego? Volverá a estado abierto.",
+          message: "¿Reabrir el partido? Volverá a estado abierto.",
         },
-        successMessage: "Juego reabierto correctamente",
-        errorMessage: "No se pudo reabrir el juego",
+        successMessage: "Partido reabierto correctamente",
+        errorMessage: "No se pudo reabrir el partido",
       }
     );
   };
@@ -547,10 +547,10 @@ export default function MatchDetailPage() {
       },
       {
         confirm: {
-          message: "¿Desea cerrar el juego?",
+          message: "¿Desea cerrar el partido?",
         },
-        successMessage: "Juego cerrado correctamente",
-        errorMessage: "No se pudo cerrar el juego",
+        successMessage: "Partido cerrado correctamente",
+        errorMessage: "No se pudo cerrar el partido",
       }
     );
   };
@@ -567,10 +567,10 @@ export default function MatchDetailPage() {
       },
       {
         confirm: {
-          message: "¿Cancelar el juego? No se podrá volver a abrir.",
+          message: "¿Cancelar el partido? No se podrá volver a abrir.",
         },
-        successMessage: "Juego cancelado correctamente",
-        errorMessage: "No se pudo cancelar el juego",
+        successMessage: "Partido cancelado correctamente",
+        errorMessage: "No se pudo cancelar el partido",
       }
     );
   };
@@ -624,7 +624,7 @@ const handleShareMatch = () => {
      Render
   ===================== */
   return (
-  <main className="max-w-4xl mx-auto mt-10 px-4 space-y-10">
+  <main className="max-w-4xl mx-auto mt-6 sm:mt-10 px-4 space-y-10">
 
     {/* ================== TITULO ================== */}
 
@@ -654,7 +654,7 @@ const handleShareMatch = () => {
           {/* HEADER */}
           <div className="flex items-center justify-between">
             <h2 className="text-base font-medium text-neutral-900">
-              Editar juego
+              Editar partido
             </h2>
 
             {!editMode && (

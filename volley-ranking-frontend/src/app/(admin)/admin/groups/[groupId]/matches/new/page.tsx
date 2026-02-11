@@ -90,7 +90,7 @@ export default function NewMatchPage() {
     },
     {
       successMessage: "Match creado correctamente",
-      errorMessage: "Error al crear el Juego",
+      errorMessage: "Error al crear el partido",
     }
   );
 
@@ -99,20 +99,20 @@ export default function NewMatchPage() {
      RENDER
   ===================== */
   return (
-    <main className="max-w-xl mx-auto mt-10 space-y-8">
+    <main className="max-w-xl mx-auto mt-6 sm:mt-10 space-y-8">
 
       <AdminBreadcrumb
         items={[
           { label: "Gestión" },
           { label: "Grupos", href: "/admin/groups" },
-          { label: "Nuevo juego" },
+          { label: "Nuevo partido" },
         ]}
       />
 
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <h1 className="text-xl font-semibold text-neutral-900">
-            Nuevo juego
+            Nuevo partido
           </h1>
           <p className="text-sm text-neutral-500">
             Configuración inicial del partido
@@ -201,7 +201,7 @@ export default function NewMatchPage() {
           disabled={!isFormValid}
           variant="success"
         >
-          Crear juego
+          Crear partido
         </ActionButton>
       </div>
     </main>

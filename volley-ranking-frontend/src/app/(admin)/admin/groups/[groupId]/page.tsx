@@ -35,7 +35,7 @@ const toggleGroupActivo = httpsCallable(functions, "toggleGroupActivo");
 
 function GroupDetailSkeleton() {
   return (
-    <main className="max-w-3xl mx-auto mt-10 space-y-6">
+    <main className="max-w-3xl mx-auto mt-6 sm:mt-10 space-y-6">
 
       {/* Breadcrumb */}
       <SkeletonSoft className="h-4 w-56" />
@@ -221,7 +221,7 @@ export default function AdminGroupPage() {
   };
 
   return (
-    <main className="max-w-3xl mx-auto mt-10 space-y-6">
+    <main className="max-w-3xl mx-auto mt-6 sm:mt-10 space-y-6">
 
       <AdminBreadcrumb
         items={[
@@ -341,7 +341,7 @@ export default function AdminGroupPage() {
       <section>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-neutral-900">
-            Juegos
+            Partidos
           </h2>
 
           <Link
@@ -361,13 +361,13 @@ export default function AdminGroupPage() {
               }
             `}
           >
-            Crear Juego
+            Crear Partido
           </Link>
         </div>
 
         {matches.length === 0 ? (
           <p className="text-gray-500">
-            Todavía no hay juegos en este grupo.
+            Todavía no hay partidos en este grupo.
           </p>
         ) : (
           <div className="space-y-3">

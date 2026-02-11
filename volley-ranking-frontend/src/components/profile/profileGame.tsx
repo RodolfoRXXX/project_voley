@@ -19,7 +19,7 @@ export default function ProfileGame({ posicionesPreferidas }: Props) {
     >
       <h2 className="text-lg font-semibold flex items-center gap-2">
         <span className="text-base">🎮</span>
-        Perfil de juego
+        Perfil de partido
       </h2>
 
       <PreferredPositionsEditor

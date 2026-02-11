@@ -116,9 +116,9 @@ export default function AdminGroupsPage() {
 
         <Link
           href="/admin/groups/new"
-          className="px-4 py-2 rounded-lg text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-800 transition"
+          className="px-4 py-2 rounded-lg text-sm font-medium text-center bg-neutral-900 text-white hover:bg-neutral-800 transition"
         >
-          Crear group
+          Crear grupo
         </Link>
       </div>
 
@@ -157,7 +157,7 @@ export default function AdminGroupsPage() {
             <div className="flex gap-2">
               <Link
                 href={`/admin/groups/${group.id}`}
-                className="px-3 py-1.5 rounded-lg border text-sm hover:bg-neutral-50"
+                className="flex items-center px-3 py-1.5 rounded-lg border text-sm hover:bg-neutral-50"
               >
                 Ver
               </Link>
@@ -171,7 +171,7 @@ export default function AdminGroupsPage() {
                 onClick={(e) => {
                   if (!group.activo) e.preventDefault();
                 }}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition
+                className={`px-3 py-1.5 rounded-lg text-sm text-center font-medium transition
                   ${
                     group.activo
                       ? "bg-neutral-900 text-white hover:bg-neutral-800"
@@ -179,7 +179,7 @@ export default function AdminGroupsPage() {
                   }
                 `}
               >
-                Crear Juego
+                Crear Partido
               </Link>
             </div>
           </div>

@@ -304,7 +304,7 @@ async function eliminarMatch(matchId) {
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists) {
-      const err = new Error("El juego no existe");
+      const err = new Error("El partido no existe");
       err.code = "MATCH_NOT_FOUND";
       throw err;
     }

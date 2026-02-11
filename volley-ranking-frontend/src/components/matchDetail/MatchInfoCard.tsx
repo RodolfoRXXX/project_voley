@@ -51,7 +51,7 @@ export default function MatchInfoCard({
       </div>
 
       {/* DATOS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-sm">
         <div>
           <p className="text-neutral-500">Formación</p>
           <p className="font-medium text-neutral-900">
@@ -59,19 +59,22 @@ export default function MatchInfoCard({
           </p>
         </div>
 
-        <div>
-          <p className="text-neutral-500">Equipos</p>
-          <p className="font-medium text-neutral-900">
-            {match.cantidadEquipos}
-          </p>
-        </div>
+        <div className="grid grid-cols-2">
+          <div>
+            <p className="text-neutral-500">Equipos</p>
+            <p className="font-medium text-neutral-900">
+              {match.cantidadEquipos}
+            </p>
+          </div>
 
-        <div>
-          <p className="text-neutral-500">Suplentes</p>
-          <p className="font-medium text-neutral-900">
-            {match.cantidadSuplentes}
-          </p>
+          <div>
+            <p className="text-neutral-500">Suplentes</p>
+            <p className="font-medium text-neutral-900">
+              {match.cantidadSuplentes}
+            </p>
+          </div>
         </div>
+        
       </div>
 
       {/* ADMIN */}

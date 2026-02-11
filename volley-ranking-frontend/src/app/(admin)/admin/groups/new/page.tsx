@@ -85,7 +85,7 @@ export default function NewGroupPage() {
      Render
   ===================== */
   return (
-    <main className="max-w-xl mx-auto mt-10 space-y-8">
+    <main className="max-w-xl mx-auto mt-6 sm:mt-10 space-y-8">
 
       <AdminBreadcrumb
         items={[
@@ -130,7 +130,7 @@ export default function NewGroupPage() {
             onChange={(e) => setActivo(e.target.checked)}
           />
           <span className="text-gray-600">
-            El grupo podrá crear juegos
+            El grupo podrá crear partidos
           </span>
         </label>
       </FormField>

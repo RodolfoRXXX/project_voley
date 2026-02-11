@@ -83,13 +83,17 @@ export default function MatchActions({
         </ActionButton>
       )}
 
-      <ActionButton
-        onClick={onShare}
-        variant="secondary"
-        compact
-      >
-        📲 Compartir
-      </ActionButton>
+      {(match.estado === "abierto" ||
+        match.estado === "verificando" || 
+        match.estado === "cerrado" ) && (
+        <ActionButton
+          onClick={onShare}
+          variant="secondary"
+          compact
+        >
+          📲 Compartir
+        </ActionButton>
+      )}
     </>
   );
 

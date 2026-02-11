@@ -579,23 +579,46 @@ export default function MatchDetailPage() {
      Share on Whatsapp
   ===================== */
 
-  const getMatchShareLink = () => {
-    if (!match) return "";
+  const formatMatchDate = (date: string | Date) => {
+    const d = new Date(date);
 
-    const url =
-      typeof window !== "undefined"
-        ? window.location.href
-        : "";
+    const fecha = d.toLocaleDateString("es-AR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
 
-    const message = `
-  ⚽️ ¡Sumate al partido!
-  📍 ${group?.nombre ?? "Grupo"}
-  🕒 ${match.horaInicio ? formatForDateTimeLocal(match.horaInicio) : ""}
-  👉 ${url}
+    const hora = d.toLocaleTimeString("es-AR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    return `${fecha} · ${hora} hs`;
+  };
+
+  const getMatchShareLink = (): string | null => {
+  if (!match) return null;
+
+  const url = window.location.href;
+
+  const text = `
+    ¡Sumate al partido!
+    ${group?.nombre ?? "Grupo"}
+    ${match.horaInicio ? formatMatchDate(match.horaInicio) : ""}
+    ${url}
   `;
 
-    return `https://wa.me/?text=${encodeURIComponent(message)}`;
-  };
+  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+};
+
+
+const handleShareMatch = () => {
+  const link = getMatchShareLink();
+  if (!link) return;
+
+  window.open(link, "_blank");
+};
+
 
   /* =====================
      Render
@@ -998,10 +1021,7 @@ export default function MatchDetailPage() {
       onClose={handleCerrarMatch}
       onReopen={handleReabrirMatch}
       onTeams={() => setTeamsModalOpen(true)}
-      onShare={() => {
-        const link = getMatchShareLink();
-        window.open(link, "_blank");
-      }}
+      onShare={handleShareMatch}
     />
 
     {/* ================ MODALES ================ */}

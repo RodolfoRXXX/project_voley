@@ -1,3 +1,8 @@
+
+// -------------------
+// Teams View
+// -------------------
+
 import UserAvatar from "../ui/avatar/UserAvatar";
 
 

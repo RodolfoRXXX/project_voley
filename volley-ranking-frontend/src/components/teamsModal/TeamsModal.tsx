@@ -1,4 +1,7 @@
 
+// -------------------
+// Detail team
+// -------------------
 
 "use client";
 
@@ -16,6 +19,7 @@ import TeamColumn from "./TeamColumn";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
+import { formatTeamsForShare } from "../utils/shareTeams";
 
 const functions = getFunctions(app);
 const generarEquiposFn = httpsCallable(functions, "generarEquipos");
@@ -83,6 +87,20 @@ export default function TeamsModal({
 
   if (!open) return null;
 
+  const handleShareTeams = () => {
+    if (!teams?.equipos?.length) return;
+
+    const text = formatTeamsForShare({
+      teams: teams.equipos,
+      usersMap,
+      participations,
+    });
+
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
+  };
+
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl w-full max-w-4xl p-6 space-y-6 shadow-xl">
@@ -126,8 +144,19 @@ export default function TeamsModal({
         </div>
 
         {/* Acciones */}
-        {isAdmin && (
-          <div className="flex justify-end gap-3 pt-4 border-t border-neutral-200">
+        <div className="flex flex-wrap justify-end gap-3 pt-4 border-t border-neutral-200">
+          <ActionButton
+            onClick={handleShareTeams}
+            variant="secondary"
+            disabled={!teams?.equipos?.length}
+            compact
+          >
+            <span className="flex items-center gap-2">
+              📱 Compartir equipos
+            </span>
+          </ActionButton>
+
+          {isAdmin && (
             <ActionButton
               onClick={handleGenerarEquipos}
               loading={loading}
@@ -140,8 +169,9 @@ export default function TeamsModal({
                 ? "Regenerar equipos"
                 : "Generar equipos"}
             </ActionButton>
-          </div>
-        )}
+          )}
+        </div>
+
       </div>
     </div>
   );

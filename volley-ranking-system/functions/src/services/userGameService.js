@@ -57,9 +57,21 @@ async function updatePreferredPositions(userId, posiciones) {
     );
   }
 
+  const actuales = snap.data().posicionesPreferidas || [];
+  const mismasPosiciones =
+    Array.isArray(actuales) &&
+    actuales.length === posiciones.length &&
+    actuales.every((p, idx) => p === posiciones[idx]);
+
+  if (mismasPosiciones) {
+    return false;
+  }
+
   await userRef.update({
     posicionesPreferidas: posiciones,
   });
+
+  return true;
 }
 
 module.exports = {

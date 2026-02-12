@@ -32,7 +32,20 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
 
-  await actualizarGrupo(groupId, cambios);
+  let updated = false;
 
-  return { ok: true };
+  try {
+    updated = await actualizarGrupo(groupId, cambios);
+  } catch (err) {
+    if (err.message === "GROUP_NOT_FOUND") {
+      throw new functions.https.HttpsError(
+        "not-found",
+        "El grupo ya no existe"
+      );
+    }
+
+    throw err;
+  }
+
+  return { ok: true, updated };
 });

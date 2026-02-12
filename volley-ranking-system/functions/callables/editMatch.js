@@ -83,8 +83,10 @@ module.exports = functions.https.onCall(async (data, context) => {
   /* =====================
      Update
   ===================== */
+  let updated = false;
+
   try {
-    await actualizarMatch(matchId, cambios);
+    updated = await actualizarMatch(matchId, cambios);
   } catch (err) {
     if (err.message === "MATCH_NOT_FOUND") {
       throw new functions.https.HttpsError(
@@ -106,5 +108,5 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
 
-  return { ok: true };
+  return { ok: true, updated };
 });

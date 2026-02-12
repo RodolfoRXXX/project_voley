@@ -9,7 +9,7 @@ const admin = require("firebase-admin");
 const db = admin.firestore();
 
 module.exports = functions.pubsub
-  .schedule("every 15 minutes")
+  .schedule("every 60 minutes")
   .timeZone("America/Argentina/Buenos_Aires")
   .onRun(async () => {
     const now = admin.firestore.Timestamp.now();

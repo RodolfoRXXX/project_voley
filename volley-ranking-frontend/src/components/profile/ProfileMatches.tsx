@@ -57,7 +57,10 @@ export default function ProfileMatches() {
       new Set(participations.map((p) => p.matchId))
     );
 
-    if (matchIds.length === 0) return;
+    if (matchIds.length === 0) {
+      setMatchesMap({});
+      return;
+    }
 
     const unsubs = matchIds.map((matchId) =>
       onSnapshot(doc(db, "matches", matchId), (snap) => {
@@ -85,7 +88,10 @@ export default function ProfileMatches() {
       )
     );
 
-    if (groupIds.length === 0) return;
+    if (groupIds.length === 0) {
+      setGroupsMap({});
+      return;
+    }
 
     const unsubs = groupIds.map((groupId) =>
       onSnapshot(doc(db, "groups", groupId), (snap) => {

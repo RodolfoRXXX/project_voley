@@ -361,7 +361,10 @@ export default function MatchDetailPage() {
   ===================== */
 
   useEffect(() => {
-    if (participations.length === 0) return;
+    if (participations.length === 0) {
+      setUsersMap({});
+      return;
+    }
 
     const userIds = Array.from(
       new Set(participations.map((p) => p.userId))

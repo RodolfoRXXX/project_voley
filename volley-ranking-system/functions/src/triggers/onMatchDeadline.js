@@ -9,7 +9,7 @@ const admin = require("firebase-admin");
 const db = admin.firestore();
 
 module.exports = functions.pubsub
-  .schedule("every 5 minutes")
+  .schedule("every 15 minutes")
   .timeZone("America/Argentina/Buenos_Aires")
   .onRun(async () => {
     const now = admin.firestore.Timestamp.now();
@@ -26,6 +26,11 @@ module.exports = functions.pubsub
       return null; // aborta el run entero
     }
 
+    if (matchesSnap.empty) {
+      console.log("ℹ️ No hay matches para pasar a verificando");
+      return null;
+    }
+
     for (const doc of matchesSnap.docs) {
       const matchRef = doc.ref;
 
@@ -36,6 +41,7 @@ module.exports = functions.pubsub
 
         const stage = match.deadlineStage ?? 1;
         if (stage > 3) continue;
+        if (match.estado !== "abierto") continue;
 
         await db.runTransaction(async (tx) => {
           const snap = await tx.get(matchRef);

@@ -9,7 +9,7 @@ const admin = require("firebase-admin");
 const db = admin.firestore();
 
 module.exports = functions.pubsub
-  .schedule("every 5 minutes")
+  .schedule("every 15 minutes")
   .timeZone("America/Argentina/Buenos_Aires")
   .onRun(async () => {
     const now = admin.firestore.Timestamp.now();
@@ -20,8 +20,19 @@ module.exports = functions.pubsub
       .where("horaInicio", "<=", now)
       .get();
 
+    if (matchesSnap.empty) {
+      console.log("ℹ️ No hay matches para procesar en cierre");
+      return null;
+    }
+
     for (const doc of matchesSnap.docs) {
       const matchRef = doc.ref;
+      const match = doc.data();
+
+      if (match.lock === true) continue;
+      if (!["cerrado", "abierto", "verificando"].includes(match.estado)) {
+        continue;
+      }
 
       try {
         await db.runTransaction(async (tx) => {
@@ -107,4 +118,3 @@ module.exports = functions.pubsub
 
     return null;
   });
-

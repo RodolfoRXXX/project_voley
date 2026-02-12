@@ -164,8 +164,17 @@ export default function AdminGroupPage() {
   /* =====================
      Actions
   ===================== */
-  const saveGroup = () =>
-    run(
+  const saveGroup = () => {
+    const hasChanges =
+      group?.nombre !== formData.nombre ||
+      (group?.descripcion || "") !== formData.descripcion;
+
+    if (!hasChanges) {
+      setEditMode(false);
+      return;
+    }
+
+    return run(
       "save-group",
       async () => {
         await editGroup({
@@ -187,6 +196,7 @@ export default function AdminGroupPage() {
         errorMessage: "No se pudo guardar el grupo",
       }
     );
+  };
 
   const toggleActivo = () =>
     run(

@@ -58,6 +58,9 @@ export default function PreferredPositionsEditor({ initial }: Props) {
     load();
   }, [showToast]);
 
+  const samePositions = (a: string[], b: string[]) =>
+    a.length === b.length && a.every((value, i) => value === b[i]);
+
   const isSelected = (p: string) => positions.includes(p);
   const indexOf = (p: string) => positions.indexOf(p);
 
@@ -74,11 +77,21 @@ export default function PreferredPositionsEditor({ initial }: Props) {
 
   const save = async () => {
     if (positions.length < 1) return;
+
+    if (samePositions(positions, savedPositions)) {
+      setEditing(false);
+      return;
+    }
+
     setSaving(true);
-    await updateFn({ posiciones: positions });
-    setSavedPositions(positions);
-    setEditing(false);
-    setSaving(false);
+
+    try {
+      await updateFn({ posiciones: positions });
+      setSavedPositions(positions);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loadingCatalog) {

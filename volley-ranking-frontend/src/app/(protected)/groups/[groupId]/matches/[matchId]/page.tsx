@@ -387,6 +387,23 @@ export default function MatchDetailPage() {
   const handleSave = () => {
     if (!match) return;
 
+    const horaInicioActual =
+      match.horaInicio instanceof Date
+        ? match.horaInicio.getTime()
+        : null;
+    const horaInicioNueva = new Date(formData.horaInicio).getTime();
+
+    const hasChanges =
+      match.cantidadEquipos !== formData.cantidadEquipos ||
+      match.cantidadSuplentes !== formData.cantidadSuplentes ||
+      match.formacion !== formData.formacion ||
+      horaInicioActual !== horaInicioNueva;
+
+    if (!hasChanges) {
+      setEditMode(false);
+      return;
+    }
+
     run(
       "save-match",
       async () => {
@@ -396,8 +413,7 @@ export default function MatchDetailPage() {
         );
 
         const fn = httpsCallable(functions, "editMatch");
-        const date = new Date(formData.horaInicio);
-        const horaInicioMillis = date.getTime();
+        const horaInicioMillis = horaInicioNueva;
 
         await fn({
           matchId: match.id,

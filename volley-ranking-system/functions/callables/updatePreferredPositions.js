@@ -16,11 +16,11 @@ module.exports = functions.https.onCall(
 
     const { posiciones } = data;
 
-    await updatePreferredPositions(
+    const updated = await updatePreferredPositions(
       context.auth.uid,
       posiciones
     );
 
-    return { ok: true };
+    return { ok: true, updated };
   }
 );

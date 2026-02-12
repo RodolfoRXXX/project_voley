@@ -79,6 +79,7 @@ async function crearMatch({
 
 async function actualizarMatch(matchId, cambios) {
   const ref = db.collection("matches").doc(matchId);
+  let updated = false;
 
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
@@ -92,10 +93,49 @@ async function actualizarMatch(matchId, cambios) {
       throw new Error("MATCH_NOT_EDITABLE");
     }
 
-    tx.update(ref, cambios);
+    const cambiosReales = {};
+
+    Object.entries(cambios).forEach(([key, nextValue]) => {
+      const currentValue = match[key];
+
+      if (
+        currentValue &&
+        nextValue &&
+        typeof currentValue?.toMillis === "function" &&
+        typeof nextValue?.toMillis === "function"
+      ) {
+        if (currentValue.toMillis() !== nextValue.toMillis()) {
+          cambiosReales[key] = nextValue;
+        }
+        return;
+      }
+
+      if (
+        key === "posicionesObjetivo" &&
+        JSON.stringify(currentValue || {}) ===
+          JSON.stringify(nextValue || {})
+      ) {
+        return;
+      }
+
+      if (currentValue !== nextValue) {
+        cambiosReales[key] = nextValue;
+      }
+    });
+
+    if (Object.keys(cambiosReales).length === 0) {
+      return;
+    }
+
+    tx.update(ref, cambiosReales);
+    updated = true;
   });
 
-  await recalcularRanking(matchId);
+  if (updated) {
+    await recalcularRanking(matchId);
+  }
+
+  return updated;
 }
 
 /* =========================

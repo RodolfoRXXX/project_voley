@@ -127,8 +127,22 @@ async function actualizarMatch(matchId, cambios) {
       return;
     }
 
+    /* =========================
+      Recalcular deadline si cambia horaInicio
+    ========================= */
+
+    if (cambiosReales.horaInicio) {
+      const stageActual = match.deadlineStage ?? 1;
+
+      cambiosReales.nextDeadlineAt = calcularDeadline(
+        cambiosReales.horaInicio,
+        stageActual
+      );
+    }
+
     tx.update(ref, cambiosReales);
     updated = true;
+
   });
 
   if (updated) {

@@ -52,7 +52,6 @@ module.exports = functions.pubsub
             tx.update(matchRef, {
               estado: "eliminado",
               lock: true,
-              nextDeadlineAt: null,
             });
             return;
           }

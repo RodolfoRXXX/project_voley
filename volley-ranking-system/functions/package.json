@@ -11,6 +11,7 @@
   "description": "",
   "dependencies": {
     "firebase-admin": "^11.11.1",
-    "firebase-functions": "^4.4.1"
+    "firebase-functions": "^4.4.1",
+    "nodemailer": "^8.0.1"
   }
 }

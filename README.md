@@ -453,3 +453,8 @@ No se recalcula nada
 No se suma compromiso
 
 Estado final
+
+Para verificar los secrets guardados de las credenciales de google para el correo
+
+firebase functions:secrets:access GMAIL_USER
+firebase functions:secrets:access GMAIL_PASS

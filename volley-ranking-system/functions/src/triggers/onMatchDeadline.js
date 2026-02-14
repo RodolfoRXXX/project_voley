@@ -11,22 +11,25 @@ if (!admin.apps.length) {
 }
 
 const nodemailer = require("nodemailer");
-const { defineSecret } = require("firebase-functions/params");
 
 const db = admin.firestore();
 
-const gmailUser = defineSecret("GMAIL_USER");
-const gmailPass = defineSecret("GMAIL_PASS");
-
-
-module.exports = functions.pubsub
+module.exports = functions
+  .runWith({
+    secrets: ["GMAIL_USER", "GMAIL_PASS"],
+  })
+  .pubsub
   .schedule("every 30 minutes")
   .timeZone("America/Argentina/Buenos_Aires")
-  .onRun(
-    {
-      secrets: [gmailUser, gmailPass],
-    },
-    async () => {
+  .onRun(async () => {
+    const gmailUser = process.env.GMAIL_USER;
+    const gmailPass = process.env.GMAIL_PASS;
+
+    if (!gmailUser || !gmailPass) {
+      console.error("Faltan secrets GMAIL_USER/GMAIL_PASS");
+      return null;
+    }
+
     const now = admin.firestore.Timestamp.now();
 
     const matchesSnap = await db
@@ -38,12 +41,12 @@ module.exports = functions.pubsub
       const transporter = nodemailer.createTransport({
         service: "gmail",
         auth: {
-          user: gmailUser.value(),
-          pass: gmailPass.value(),
+          user: gmailUser,
+          pass: gmailPass,
         },
       });
 
-      console.log("GMAIL USER:", gmailUser.value());
+      console.log("GMAIL USER:", gmailUser);
 
     if (matchesSnap.empty) {
       console.log("No hay matches para actualizar");

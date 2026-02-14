@@ -341,8 +341,7 @@ async function cerrarMatch(matchId) {
 
     tx.update(matchRef, {
       estado: "cerrado",
-      lock: true,
-      nextDeadlineAt: null,
+      lock: true
     });
   });
 }
@@ -380,7 +379,6 @@ async function eliminarMatch(matchId) {
     tx.update(ref, {
       estado: "cancelado",
       lock: true,
-      nextDeadlineAt: null,
     });
   });
 }

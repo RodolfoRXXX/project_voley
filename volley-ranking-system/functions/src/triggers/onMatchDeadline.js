@@ -88,7 +88,7 @@ module.exports = functions
           tx.update(matchRef, {
             deadlineStage: nextStage,
             nextDeadlineAt: nextDeadline,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            estado: "verificando"
           });
 
           shouldSendMail = true;

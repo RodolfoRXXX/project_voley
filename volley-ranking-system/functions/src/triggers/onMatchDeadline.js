@@ -85,11 +85,16 @@ module.exports = functions
             horaMs - hoursBefore * 60 * 60 * 1000
           );
 
-          tx.update(matchRef, {
+          const updates = {
             deadlineStage: nextStage,
             nextDeadlineAt: nextDeadline,
-            estado: "verificando"
-          });
+          };
+
+          if (match.estado === "abierto") {
+            updates.estado = "verificando";
+          }
+
+          tx.update(matchRef, updates);
 
           shouldSendMail = true;
         });

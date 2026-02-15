@@ -50,7 +50,7 @@ module.exports = functions.pubsub
 
           if (match.estado === "abierto" || match.estado === "verificando") {
             tx.update(matchRef, {
-              estado: "eliminado",
+              estado: "cancelado",
               lock: true,
             });
             return;

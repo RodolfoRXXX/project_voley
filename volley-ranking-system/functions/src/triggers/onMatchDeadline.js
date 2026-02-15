@@ -59,6 +59,7 @@ module.exports = functions
       let shouldSendMail = false;
       let nextStage;
       let adminId;
+      let groupId;
 
       try {
         await db.runTransaction(async (tx) => {
@@ -74,6 +75,7 @@ module.exports = functions
 
           nextStage = stage + 1;
           adminId = match.adminId;
+          groupId = match.groupId;
 
           const horaMs = match.horaInicio.toDate().getTime();
 
@@ -109,7 +111,7 @@ module.exports = functions
 
           const groupSnap = await db
             .collection("groups")
-            .doc(match.groupId)
+            .doc(groupId)
             .get();
 
           const groupName = groupSnap.exists

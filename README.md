@@ -458,3 +458,41 @@ Para verificar los secrets guardados de las credenciales de google para el corre
 
 firebase functions:secrets:access GMAIL_USER
 firebase functions:secrets:access GMAIL_PASS
+
+## Nota sobre deprecación de `functions.config()` (marzo 2026)
+
+Si ves este error al usar Firebase CLI:
+
+`DEPRECATION NOTICE: Action required before March 2026`
+
+no corresponde a este proyecto (ya usa `secrets` + `process.env` para correo),
+sino a comandos legacy como `firebase functions:config:*`.
+
+En este repo **no usar** `functions:config:set/get/unset`.
+Si querés actualizar la contraseña de Gmail, este comando legacy va a fallar:
+
+```bash
+firebase functions:config:set gmail.pass="TU_APP_PASSWORD"
+```
+
+Debés actualizar el secret con:
+
+```bash
+firebase functions:secrets:set GMAIL_PASS
+firebase deploy --only functions
+```
+
+Para setear usuario + contraseña desde cero:
+
+```bash
+firebase functions:secrets:set GMAIL_USER
+firebase functions:secrets:set GMAIL_PASS
+firebase deploy --only functions
+```
+
+Verificación rápida:
+
+```bash
+firebase functions:secrets:access GMAIL_USER
+firebase functions:secrets:access GMAIL_PASS
+```

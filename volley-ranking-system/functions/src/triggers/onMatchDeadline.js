@@ -34,7 +34,7 @@ module.exports = functions
 
     const matchesSnap = await db
       .collection("matches")
-      .where("estado", "in", ["abierto", "verificado"])
+      .where("estado", "in", ["abierto", "verificando"])
       .where("nextDeadlineAt", "<=", now)
       .get();
 

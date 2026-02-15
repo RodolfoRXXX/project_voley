@@ -107,15 +107,73 @@ module.exports = functions
             .doc(adminId)
             .get();
 
+          const groupSnap = await db
+            .collection("groups")
+            .doc(match.groupId)
+            .get();
+
+          const groupName = groupSnap.exists
+            ? groupSnap.data().nombre || "tu grupo"
+            : "tu grupo";
+
+          // --------------------------------------------------------------------------------------------
+
+          // ESTO HAY QUE ACTUALIZARLO CON EL DOMINIO DEL SITIO
+          const matchUrl = `https://tudominio.com/matches/${doc.id}`;
+
+          // --------------------------------------------------------------------------------------------
+
           if (userSnap.exists) {
-            const adminUser = userSnap.data();
+            const adminUser = userSnap.data()
 
             if (adminUser.email) {
               await transporter.sendMail({
-                from: gmailUser,
+                from: `"Volley Ranking" <${gmailUser}>`,
                 to: adminUser.email,
-                subject: "⚠️ Deadline alcanzado",
-                text: `El match ${doc.id} alcanzó el deadline stage ${nextStage}.`,
+                subject: `⏰ Deadline ${nextStage} – Partido en ${groupName}`,
+                text: `Se alcanzó el Deadline ${nextStage} del partido en ${groupName}. Revisalo aquí: ${matchUrl}`,
+                html: `
+                <div style="font-family: Arial, sans-serif; background:#f4f6f8; padding:30px;">
+                  <div style="max-width:600px; margin:0 auto; background:white; border-radius:10px; padding:30px;">
+                    
+                    <h2 style="color:#1e3a8a; margin-bottom:10px;">
+                      ⏰ Deadline ${nextStage} alcanzado
+                    </h2>
+
+                    <p style="font-size:16px; color:#333;">
+                      El partido del grupo 
+                      <strong>${groupName}</strong> 
+                      alcanzó el <strong>Deadline ${nextStage}</strong>.
+                    </p>
+
+                    <p style="font-size:15px; color:#555;">
+                      Es importante que revises el estado del match y tomes acción si es necesario.
+                    </p>
+
+                    <div style="text-align:center; margin:30px 0;">
+                      <a href="${matchUrl}" 
+                        style="
+                          background:#2563eb;
+                          color:white;
+                          padding:12px 24px;
+                          text-decoration:none;
+                          border-radius:6px;
+                          font-weight:bold;
+                          display:inline-block;
+                        ">
+                        Ver partido
+                      </a>
+                    </div>
+
+                    <hr style="border:none; border-top:1px solid #eee; margin:30px 0;" />
+
+                    <p style="font-size:12px; color:#888; text-align:center;">
+                      Este es un mensaje automático de Volley Ranking.
+                    </p>
+
+                  </div>
+                </div>
+                `,
               });
 
               console.log(

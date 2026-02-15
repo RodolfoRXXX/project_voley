@@ -25,6 +25,7 @@ type Match = {
 
 export default function DashboardPage() {
   const { firebaseUser } = useAuth();
+  const estadosPermitidos = ["abierto", "verificando", "cerrado", "cancelado"];
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,15 +36,18 @@ export default function DashboardPage() {
     const load = async () => {
       const q = query(
         collection(db, "matches"),
-        where("estado", "!=", "jugado")
+        where("estado", "in", estadosPermitidos)
       );
 
       const snap = await getDocs(q);
 
+      const ahora = Timestamp.now();
+
       const loadedMatches: Match[] = snap.docs.map((d) => ({
         id: d.id,
         ...(d.data() as Omit<Match, "id">),
-      }));
+      }))
+        .filter((match) => match.horaInicio.toMillis() > ahora.toMillis());
 
       loadedMatches.sort(
         (a, b) => a.horaInicio.toMillis() - b.horaInicio.toMillis()

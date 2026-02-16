@@ -79,9 +79,15 @@ module.exports = functions
 
           const horaMs = match.horaInicio.toDate().getTime();
 
-          let hoursBefore;
-          if (nextStage === 2) hoursBefore = 2;
-          if (nextStage === 3) hoursBefore = 1;
+          const hoursByStage = {
+            1: 3,
+            2: 2,
+            3: 1,
+          };
+
+          const hoursBefore = hoursByStage[nextStage];
+
+          if (!hoursBefore) return;
 
           const nextDeadline = admin.firestore.Timestamp.fromMillis(
             horaMs - hoursBefore * 60 * 60 * 1000

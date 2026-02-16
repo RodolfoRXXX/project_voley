@@ -73,6 +73,7 @@ module.exports = functions
       );
 
       let shouldSendMail = false;
+      let horaInicio;
       let nextStage;
       let adminId;
       let groupId;
@@ -108,13 +109,14 @@ module.exports = functions
           nextStage = stage + 1;
           adminId = match.adminId;
           groupId = match.groupId;
+          horaInicio = match.horaInicio;
 
           const horaMs = match.horaInicio.toDate().getTime();
 
           const hoursByStage = {
-            1: 3,
-            2: 2,
-            3: 1,
+            1: 2,
+            2: 1,
+            3: 0,
           };
 
           const hoursBefore = hoursByStage[nextStage];
@@ -164,6 +166,33 @@ module.exports = functions
 
           const matchUrl = `https://tudominio.com/matches/${doc.id}`;
 
+          // 📅 Formatear fecha legible
+          let fechaFormateada = "";
+
+          if (horaInicio) {
+            const fecha = horaInicio.toDate();
+
+            fechaFormateada = new Intl.DateTimeFormat("es-AR", {
+              timeZone: "America/Argentina/Buenos_Aires",
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            }).format(fecha) + " hs";
+          }
+
+          // ⏳ Mensaje dinámico según stage
+          let mensajeDeadline = "";
+
+          if (nextStage === 3) {
+            mensajeDeadline = "Falta menos de 1 hora para el partido.";
+          } else if (nextStage === 2) {
+            mensajeDeadline = "Faltan menos de 2 horas para el partido.";
+          } else if (nextStage === 1) {
+            mensajeDeadline = "Faltan menos de 3 horas para el partido.";
+          }
+
           if (userSnap.exists) {
             const adminUser = userSnap.data()
 
@@ -171,7 +200,7 @@ module.exports = functions
               await transporter.sendMail({
                 from: `"Volley Ranking" <${gmailUser}>`,
                 to: adminUser.email,
-                subject: `⏰ Deadline ${nextStage} – Partido en ${groupName}`,
+                subject: `Partido en ${groupName} – ${fechaFormateada}`,
                 text: `Se alcanzó el Deadline ${nextStage} del partido en ${groupName}. Revisalo aquí: ${matchUrl}`,
                 html: `
                 <div style="font-family: Arial, sans-serif; background:#f4f6f8; padding:30px;">
@@ -184,7 +213,11 @@ module.exports = functions
                     <p style="font-size:16px; color:#333;">
                       El partido del grupo 
                       <strong>${groupName}</strong> 
-                      alcanzó el <strong>Deadline ${nextStage}</strong>.
+                      comienza el <strong>${fechaFormateada}</strong>.
+                    </p>
+
+                    <p style="font-size:16px; color:#333; margin-top:10px;">
+                      <strong>${mensajeDeadline}</strong>
                     </p>
 
                     <p style="font-size:15px; color:#555;">

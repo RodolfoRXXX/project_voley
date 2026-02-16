@@ -18,7 +18,13 @@ const db = getFirestore();
 const { recalcularRanking } = require("./rankingService");
 
 function calcularDeadline(horaInicio, stage = 1) {
-  const horas = stage === 1 ? 3 : stage === 2 ? 2 : 1;
+  const horasPorStage = {
+    0: 3,
+    1: 2,
+    2: 1,
+  };
+
+  const horas = horasPorStage[stage] ?? 1;
 
   return Timestamp.fromMillis(
     horaInicio.toMillis() - horas * 60 * 60 * 1000
@@ -47,7 +53,7 @@ async function crearMatch({
   }
 
   // 🕒 DEADLINE INICIAL
-  const deadlineStage = 1;
+  const deadlineStage = 0;
   const nextDeadlineAt = calcularDeadline(horaInicio, deadlineStage);
 
   await db.collection("matches").doc(matchId).set({

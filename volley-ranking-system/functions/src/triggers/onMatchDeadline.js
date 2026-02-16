@@ -1,4 +1,3 @@
-
 // -------------------
 // TRIGGER QUE GESTIONA EL CIERRE POR DEADLINE
 // -------------------
@@ -32,21 +31,24 @@ module.exports = functions
 
     const now = admin.firestore.Timestamp.now();
 
+    // 🕒 LOG HORA REAL DEL CRON
+    console.log("🕒 CRON ejecutándose en (UTC):", now.toDate().toISOString());
+
     const matchesSnap = await db
       .collection("matches")
       .where("estado", "in", ["abierto", "verificando"])
       .where("nextDeadlineAt", "<=", now)
       .get();
 
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: gmailUser,
-          pass: gmailPass,
-        },
-      });
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: gmailUser,
+        pass: gmailPass,
+      },
+    });
 
-      console.log("GMAIL USER:", gmailUser);
+    console.log("GMAIL USER:", gmailUser);
 
     if (matchesSnap.empty) {
       console.log("No hay matches para actualizar");
@@ -55,6 +57,20 @@ module.exports = functions
 
     for (const doc of matchesSnap.docs) {
       const matchRef = doc.ref;
+
+      // 🔎 LOG PREVIO A TRANSACCIÓN
+      console.log("--------------------------------------------------");
+      console.log("Procesando match:", doc.id);
+
+      const rawData = doc.data();
+      console.log(
+        "Estado:",
+        rawData.estado,
+        "| deadlineStage:",
+        rawData.deadlineStage,
+        "| nextDeadlineAt:",
+        rawData.nextDeadlineAt?.toDate()?.toISOString()
+      );
 
       let shouldSendMail = false;
       let nextStage;
@@ -68,6 +84,22 @@ module.exports = functions
 
           const match = snap.data();
           if (match.lock === true) return;
+
+          // 🛑 VALIDACIÓN EXTRA DE SEGURIDAD
+          if (!match.nextDeadlineAt) {
+            console.log("⛔ No tiene nextDeadlineAt");
+            return;
+          }
+
+          if (match.nextDeadlineAt.toMillis() > now.toMillis()) {
+            console.log(
+              "⏭ Saltado porque todavía no venció:",
+              match.nextDeadlineAt.toDate().toISOString(),
+              ">",
+              now.toDate().toISOString()
+            );
+            return;
+          }
 
           const stage = match.deadlineStage ?? 1;
           if (stage >= 3) return;
@@ -91,6 +123,12 @@ module.exports = functions
 
           const nextDeadline = admin.firestore.Timestamp.fromMillis(
             horaMs - hoursBefore * 60 * 60 * 1000
+          );
+
+          // 🔎 LOG NUEVO DEADLINE CALCULADO
+          console.log(
+            "➡ Nuevo deadline calculado:",
+            nextDeadline.toDate().toISOString()
           );
 
           const updates = {
@@ -124,12 +162,7 @@ module.exports = functions
             ? groupSnap.data().nombre || "tu grupo"
             : "tu grupo";
 
-          // --------------------------------------------------------------------------------------------
-
-          // ESTO HAY QUE ACTUALIZARLO CON EL DOMINIO DEL SITIO
           const matchUrl = `https://tudominio.com/matches/${doc.id}`;
-
-          // --------------------------------------------------------------------------------------------
 
           if (userSnap.exists) {
             const adminUser = userSnap.data()
@@ -184,19 +217,14 @@ module.exports = functions
                 `,
               });
 
-              console.log(
-                `📧 Mail enviado a ${adminUser.email}`
-              );
+              console.log(`📧 Mail enviado a ${adminUser.email}`);
             }
           }
         }
 
         console.log(`⏰ Match ${doc.id} → stage ${nextStage}`);
       } catch (err) {
-        console.error(
-          `Error procesando match ${doc.id}`,
-          err
-        );
+        console.error(`Error procesando match ${doc.id}`, err);
       }
     }
 

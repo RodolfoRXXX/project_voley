@@ -17,7 +17,7 @@ module.exports = functions.pubsub
     const matchesSnap = await db
       .collection("matches")
       .where("estado", "in", ["cerrado", "abierto", "verificando"])
-      .where("horaInicio", "<=", now)
+      .where("horaInicio", ">=", now)
       .get();
 
     if (matchesSnap.empty) {

@@ -249,6 +249,7 @@ async function reabrirMatch(matchId) {
 
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
+
     if (!snap.exists) {
       const err = new Error("El partido no existe");
       err.code = "MATCH_NOT_FOUND";
@@ -272,13 +273,9 @@ async function reabrirMatch(matchId) {
       throw err;
     }
 
-    const currentStage = match.deadlineStage ?? 1;
-    const nextStage = Math.min(currentStage + 1, 3);
-
+    // ✅ Solo reabrir, sin tocar deadlines
     tx.update(ref, {
       estado: "abierto",
-      deadlineStage: nextStage,
-      nextDeadlineAt: calcularDeadline(match.horaInicio, nextStage),
       lock: false,
     });
   });

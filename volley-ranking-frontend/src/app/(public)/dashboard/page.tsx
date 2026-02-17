@@ -6,7 +6,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where, Timestamp } from "firebase/firestore";
+import { collection, getDocs, onSnapshot, query, where, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import MatchCard from "@/components/matchCard/MatchCard";
@@ -33,14 +33,12 @@ export default function DashboardPage() {
 
   // 🔑 HOOKS SIEMPRE ARRIBA, SIN IF
   useEffect(() => {
-    const load = async () => {
-      const q = query(
-        collection(db, "matches"),
-        where("estado", "in", estadosPermitidos)
-      );
+    const q = query(
+      collection(db, "matches"),
+      where("estado", "in", estadosPermitidos)
+    );
 
-      const snap = await getDocs(q);
-
+    const unsub = onSnapshot(q, async (snap) => {
       const ahora = Timestamp.now();
 
       const loadedMatches: Match[] = snap.docs.map((d) => ({
@@ -59,26 +57,29 @@ export default function DashboardPage() {
         new Set(loadedMatches.map((m) => m.groupId))
       );
 
-      if (groupIds.length > 0) {
-        const qGroups = query(
-          collection(db, "groups"),
-          where("__name__", "in", groupIds)
-        );
-
-        const snapGroups = await getDocs(qGroups);
-
-        const map: Record<string, string> = {};
-        snapGroups.docs.forEach((d) => {
-          map[d.id] = d.data().nombre;
-        });
-
-        setGroupsMap(map);
+      if (groupIds.length === 0) {
+        setGroupsMap({});
+        setLoading(false);
+        return;
       }
 
-      setLoading(false);
-    };
+      const qGroups = query(
+        collection(db, "groups"),
+        where("__name__", "in", groupIds)
+      );
 
-    load();
+      const snapGroups = await getDocs(qGroups);
+
+      const map: Record<string, string> = {};
+      snapGroups.docs.forEach((d) => {
+        map[d.id] = d.data().nombre;
+      });
+
+      setGroupsMap(map);
+      setLoading(false);
+    });
+
+    return () => unsub();
   }, []);
 
   /* =====================

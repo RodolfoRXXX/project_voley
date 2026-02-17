@@ -105,11 +105,14 @@ export default function PagoModal({
             Estado actual
           </p>
 
-          <div
-            className={`rounded-lg px-4 py-3 text-sm text-center font-semibold ${pagoStyles[participation.pagoEstado]}`}
-          >
-            {participation.pagoEstado}
+          <div className="flex justify-center">
+            <div
+              className={`px-4 py-2 rounded-full text-sm font-semibold shadow-sm ${pagoStyles[participation.pagoEstado]}`}
+            >
+              {participation.pagoEstado.toUpperCase()}
+            </div>
           </div>
+
         </div>
 
         {/* Acciones */}
@@ -119,16 +122,16 @@ export default function PagoModal({
               Cambiar estado
             </p>
 
-            <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
               {["confirmado", "pendiente", "pospuesto"]
                 .filter((e) => e !== participation.pagoEstado)
                 .map((estado) => {
                   const variant =
                     estado === "confirmado"
-                      ? "success"
+                      ? "success_outline"
                       : estado === "pendiente"
                       ? "warning"
-                      : "orange";
+                      : "secondary";
 
                   return (
                     <ActionButton
@@ -138,11 +141,10 @@ export default function PagoModal({
                       }
                       variant={variant}
                       compact
-                      className="w-full"
                       loading={loadingEstado === estado}
                       disabled={loadingEstado !== null}
                     >
-                      Marcar como {estado}
+                      {estado}
                     </ActionButton>
                   );
                 })}

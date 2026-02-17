@@ -6,6 +6,8 @@
 "use client";
 
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
+import { ActionButton } from "@/components/ui/action/ActionButton";
+import { useState } from "react";
 
 type PagoModalProps = {
   open: boolean;
@@ -33,8 +35,21 @@ export default function PagoModal({
 }: PagoModalProps) {
   if (!open || !participation) return null;
 
+  const [loadingEstado, setLoadingEstado] = useState<string | null>(null);
   const puedeEditar =
     isAdmin && (matchEstado === "abierto" || matchEstado === "verificando");
+
+    const handleUpdate = async (
+      participationId: string,
+      estado: "confirmado" | "pendiente" | "pospuesto"
+    ) => {
+      try {
+        setLoadingEstado(estado);
+        await onUpdatePago(participationId, estado);
+      } finally {
+        setLoadingEstado(null);
+      }
+    };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4">
@@ -107,18 +122,32 @@ export default function PagoModal({
             <div className="space-y-2">
               {["confirmado", "pendiente", "pospuesto"]
                 .filter((e) => e !== participation.pagoEstado)
-                .map((estado) => (
-                  <button
-                    key={estado}
-                    onClick={() =>
-                      onUpdatePago(participation.id, estado as any)
-                    }
-                    className={`w-full rounded-lg px-4 py-2 text-sm font-medium transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 ${pagoStyles[estado]}`}
-                  >
-                    Marcar como {estado}
-                  </button>
-                ))}
+                .map((estado) => {
+                  const variant =
+                    estado === "confirmado"
+                      ? "success"
+                      : estado === "pendiente"
+                      ? "warning"
+                      : "orange";
+
+                  return (
+                    <ActionButton
+                      key={estado}
+                      onClick={() =>
+                        handleUpdate(participation.id, estado as any)
+                      }
+                      variant={variant}
+                      compact
+                      className="w-full"
+                      loading={loadingEstado === estado}
+                      disabled={loadingEstado !== null}
+                    >
+                      Marcar como {estado}
+                    </ActionButton>
+                  );
+                })}
             </div>
+
           </div>
         )}
 

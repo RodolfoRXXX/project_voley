@@ -221,7 +221,7 @@ module.exports = functions
                     </p>
 
                     <p style="font-size:15px; color:#555;">
-                      Es importante que revises el estado del match y tomes acción si es necesario.
+                      Es importante que revises el estado del partido y tomes acción si es necesario.
                     </p>
 
                     <div style="text-align:center; margin:30px 0;">

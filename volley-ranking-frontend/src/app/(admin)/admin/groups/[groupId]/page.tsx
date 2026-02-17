@@ -14,6 +14,7 @@ import {
   query,
   where,
   getDocs,
+  orderBy,
 } from "firebase/firestore";
 import { db, app } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
@@ -138,7 +139,8 @@ export default function AdminGroupPage() {
 
         const q = query(
           collection(db, "matches"),
-          where("groupId", "==", groupId)
+          where("groupId", "==", groupId),
+          orderBy("horaInicio", "desc") // 👈 más recientes primero
         );
 
         const snapMatches = await getDocs(q);

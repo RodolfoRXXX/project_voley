@@ -22,6 +22,7 @@ export default function Navbar() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
+      setOpen(false);
     } catch (err) {
       handleAuthPopupError(err, showToast);
     }

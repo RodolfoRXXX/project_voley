@@ -106,6 +106,7 @@ module.exports = functions.firestore
           matchId: after.matchId,
           posicionLiberada: before.posicionAsignada,
           postDeadline,
+          manageLock: false,
         });
 
         await recalcularRanking(after.matchId);

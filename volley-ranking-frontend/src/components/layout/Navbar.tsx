@@ -60,7 +60,7 @@ export default function Navbar() {
             md:absolute md:left-1/2 md:-translate-x-1/2
           "
         >
-          🏐 GroupVolley
+          🏐 Proyecto Voley
         </Link>
 
         {/* RIGHT */}

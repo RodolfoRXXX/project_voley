@@ -436,8 +436,8 @@ export default function MatchDetailPage() {
         setEditMode(false);
       },
       {
-        successMessage: "Match actualizado correctamente",
-        errorMessage: "No se pudo guardar el match",
+        successMessage: "Partido actualizado correctamente",
+        errorMessage: "No se pudo guardar el partido",
       }
     );
   };
@@ -812,7 +812,7 @@ const handleShareMatch = () => {
       {match.estado === "verificando" && hayPagosPendientes && (
         <p className="mt-2 text-sm text-red-600">
           Todos los titulares deben tener un pago confirmado o pospuesto
-          para cerrar el match.
+          para cerrar el partido.
         </p>
       )}
     </section>

@@ -125,7 +125,7 @@ export default function MatchActions({
             variant="primary"
             loading={loading?.close}
           >
-            Cerrar match
+            Cerrar partido
           </ActionButton>
         )}
 
@@ -156,10 +156,6 @@ export default function MatchActions({
 
   return (
     <section className="border-t border-neutral-200 pt-5 space-y-3">
-      <h2 className="text-base font-medium text-neutral-900">
-        Acciones
-      </h2>
-
       <div className="flex flex-wrap gap-2">
         {renderJugadorAction()}
         {renderAdminActions()}

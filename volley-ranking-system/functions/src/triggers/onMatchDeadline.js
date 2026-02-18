@@ -15,7 +15,7 @@ const db = admin.firestore();
 
 module.exports = functions
   .runWith({
-    secrets: ["GMAIL_USER", "GMAIL_PASS"],
+    secrets: ["GMAIL_USER", "GMAIL_PASS", "WEB_APP_URL"],
   })
   .pubsub
   .schedule("every 30 minutes")
@@ -23,6 +23,10 @@ module.exports = functions
   .onRun(async () => {
     const gmailUser = process.env.GMAIL_USER;
     const gmailPass = process.env.GMAIL_PASS;
+    const webAppUrl = (process.env.WEB_APP_URL || "https://tudominio.com").replace(
+      /\/+$/,
+      ""
+    );
 
     if (!gmailUser || !gmailPass) {
       console.error("Faltan secrets GMAIL_USER/GMAIL_PASS");
@@ -164,7 +168,13 @@ module.exports = functions
             ? groupSnap.data().nombre || "tu grupo"
             : "tu grupo";
 
-          const matchUrl = `https://tudominio.com/matches/${doc.id}`;
+          if (webAppUrl === "https://tudominio.com") {
+            console.warn(
+              "⚠ WEB_APP_URL no configurada. Se usará dominio placeholder para links de email."
+            );
+          }
+
+          const matchUrl = `${webAppUrl}/groups/${groupId}/matches/${doc.id}`;
 
           // 📅 Formatear fecha legible
           let fechaFormateada = "";

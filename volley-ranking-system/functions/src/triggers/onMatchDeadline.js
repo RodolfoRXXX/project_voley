@@ -88,7 +88,14 @@ module.exports = functions
           if (!snap.exists) return;
 
           const match = snap.data();
-          if (match.lock === true) return;
+          if (match.lock === true) {
+            // Si el match está en estado no terminal y quedó bloqueado por un flujo previo,
+            // liberamos para permitir que próximos procesos avancen.
+            if (["abierto", "verificando"].includes(match.estado)) {
+              tx.update(matchRef, { lock: false });
+            }
+            return;
+          }
 
           // 🛑 VALIDACIÓN EXTRA DE SEGURIDAD
           if (!match.nextDeadlineAt) {

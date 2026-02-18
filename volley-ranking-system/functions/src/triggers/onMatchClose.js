@@ -83,7 +83,7 @@ module.exports = functions.firestore
         // ✅ CIERRE REAL (pagos OK + cupos completos)
         tx.update(matchRef, {
           estado: "cerrado",
-          lock: true,
+          lock: false,
         });
 
         console.log(`✅ Match ${matchId} cerrado automáticamente`);

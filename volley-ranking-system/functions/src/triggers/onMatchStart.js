@@ -51,7 +51,7 @@ module.exports = functions.pubsub
           if (match.estado === "abierto" || match.estado === "verificando") {
             tx.update(matchRef, {
               estado: "cancelado",
-              lock: true,
+              lock: false,
             });
             return;
           }
@@ -62,7 +62,6 @@ module.exports = functions.pubsub
              EFECTOS DE MATCH JUGADO
           ========================= */
 
-          tx.update(matchRef, { lock: true });
 
           const groupRef = db.collection("groups").doc(match.groupId);
           const groupSnap = await tx.get(groupRef);
@@ -106,6 +105,7 @@ module.exports = functions.pubsub
 
           tx.update(matchRef, {
             estado: "jugado",
+            lock: false,
           });
         });
 

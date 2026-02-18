@@ -12,6 +12,7 @@ async function reemplazarTitular({
   matchId,
   posicionLiberada,
   postDeadline = false,
+  manageLock = true,
 }) {
   if (!matchId || !posicionLiberada) {
     console.log("❌ reemplazarTitular: parámetros inválidos");
@@ -26,12 +27,14 @@ async function reemplazarTitular({
 
     const match = matchSnap.data();
 
-    if (match.lock) {
+    if (manageLock && match.lock) {
       console.log("🔒 Reemplazo en curso");
       return;
     }
 
-    tx.update(matchRef, { lock: true });
+    if (manageLock) {
+      tx.update(matchRef, { lock: true });
+    }
 
     const suplentesSnap = await tx.get(
       db.collection("participations")
@@ -41,6 +44,9 @@ async function reemplazarTitular({
     );
 
     if (suplentesSnap.empty) {
+      if (manageLock) {
+        tx.update(matchRef, { lock: false });
+      }
       console.log("⚠️ No hay suplentes disponibles");
       return;
     }
@@ -59,7 +65,9 @@ async function reemplazarTitular({
     }
 
     if (!suplenteElegido) {
-      tx.update(matchRef, { lock: false });
+      if (manageLock) {
+        tx.update(matchRef, { lock: false });
+      }
       console.log(
         `⚠️ Ningún suplente cubre la posición ${posicionLiberada}`
       );
@@ -80,7 +88,9 @@ async function reemplazarTitular({
       updates
     );
 
-    tx.update(matchRef, { lock: false });
+    if (manageLock) {
+      tx.update(matchRef, { lock: false });
+    }
 
     console.log(
       `✅ Suplente ${suplenteElegido.userId} promovido a titular en ${posicionLiberada}`
@@ -91,4 +101,3 @@ async function reemplazarTitular({
 module.exports = {
   reemplazarTitular,
 };
-

@@ -59,9 +59,8 @@ module.exports = functions.pubsub
           if (match.estado !== "cerrado") return;
 
           /* =========================
-             EFECTOS DE MATCH JUGADO
+            EFECTOS DE MATCH JUGADO
           ========================= */
-
 
           const groupRef = db.collection("groups").doc(match.groupId);
           const groupSnap = await tx.get(groupRef);
@@ -70,12 +69,16 @@ module.exports = functions.pubsub
           const partidosTotales =
             groupSnap.data().partidosTotales || 0;
 
+          // 🔹 Traer participaciones
           const participationsSnap = await tx.get(
             db
               .collection("participations")
               .where("matchId", "==", matchRef.id)
               .where("estado", "==", "titular")
           );
+
+          // 🔹 PRIMERO: leer todos los stats
+          const statsData = [];
 
           for (const pDoc of participationsSnap.docs) {
             const p = pDoc.data();
@@ -87,13 +90,21 @@ module.exports = functions.pubsub
 
             const statSnap = await tx.get(statRef);
 
+            statsData.push({
+              ref: statRef,
+              partidosJugados: (statSnap.data()?.partidosJugados || 0) + 1,
+              userId: p.userId,
+            });
+          }
+
+          // 🔹 SEGUNDO: hacer todos los writes
+          for (const stat of statsData) {
             tx.set(
-              statRef,
+              stat.ref,
               {
                 groupId: match.groupId,
-                userId: p.userId,
-                partidosJugados:
-                  (statSnap.data()?.partidosJugados || 0) + 1,
+                userId: stat.userId,
+                partidosJugados: stat.partidosJugados,
               },
               { merge: true }
             );
@@ -107,6 +118,7 @@ module.exports = functions.pubsub
             estado: "jugado",
             lock: false,
           });
+
         });
 
         console.log(`🏐 Match ${doc.id} procesado`);

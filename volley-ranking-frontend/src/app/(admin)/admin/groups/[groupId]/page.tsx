@@ -130,6 +130,12 @@ export default function AdminGroupPage() {
         }
 
         const data = snap.data();
+
+        if (data.adminId !== firebaseUser?.uid) {
+          router.replace("/admin/groups");
+          return;
+        }
+
         setGroup({ id: snap.id, ...data });
 
         setFormData({
@@ -161,7 +167,7 @@ export default function AdminGroupPage() {
     };
 
     load();
-  }, [groupId, router]);
+  }, [firebaseUser?.uid, groupId, router]);
 
   /* =====================
      Actions

@@ -1,8 +1,11 @@
 // Modificar estado de pago
 
 const functions = require("firebase-functions/v1");
-const { db } = require("../src/firebase");
 const { actualizarPago } = require("../src/services/adminMatchService");
+const {
+  assertIsAdmin,
+  assertParticipationMatchAdmin,
+} = require("../src/services/adminAccessService");
 
 module.exports = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -21,18 +24,8 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
 
-  // 👉 validación admin
-  const userSnap = await db
-    .collection("users")
-    .doc(context.auth.uid)
-    .get();
-
-  if (!userSnap.exists || userSnap.data().roles !== "admin") {
-    throw new functions.https.HttpsError(
-      "permission-denied",
-      "admin no validado"
-    );
-  }
+  await assertIsAdmin(context.auth.uid);
+  await assertParticipationMatchAdmin(participationId, context.auth.uid);
 
   try {
     await actualizarPago(participationId, estado);

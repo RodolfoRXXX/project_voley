@@ -85,7 +85,10 @@ export default function ProtectedLayout({
         <AppSidebar />
       )}
 
-      <main className="flex-1 min-h-0 overflow-y-auto">
+      <main
+        id="protected-scroll-container"
+        className="flex-1 min-h-0 overflow-y-auto"
+      >
         {/* Content */}
         <div
           className={

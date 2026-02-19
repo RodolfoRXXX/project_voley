@@ -10,7 +10,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
+    <html lang="es" data-theme="light">
       <body className="h-screen overflow-hidden">
         <ToastProvider>
             <ConfirmProvider>

@@ -807,7 +807,10 @@ const handleShareMatch = () => {
                   round
                   variant="danger_outline"
                   loading={isLoading("remove")}
-                  disabled={match.estado === "jugado"}
+                  disabled={
+                    match.estado === "jugado" ||
+                    match.estado === "cancelado"
+                  }
                   onClick={() => handleEliminarJugador(p.id)}
                 >
                   ×
@@ -916,7 +919,10 @@ const handleShareMatch = () => {
                   round
                   variant="danger_outline"
                   loading={isLoading("remove")}
-                  disabled={match.estado === "jugado"}
+                  disabled={
+                    match.estado === "jugado" ||
+                    match.estado === "cancelado"
+                  }
                   onClick={() => handleEliminarJugador(p.id)}
                 >
                   ×
@@ -1018,7 +1024,8 @@ const handleShareMatch = () => {
                   loading={isLoading("insert")}
                   disabled={
                     match.estado === "cancelado" ||
-                    match.estado === "cerrado"
+                    match.estado === "cerrado" ||
+                    match.estado === "jugado"
                   }
                   onClick={() => handleReincorporarJugador(p.id)}
                 >

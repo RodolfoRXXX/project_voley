@@ -107,9 +107,9 @@ export default function PagoModal({
 
           <div className="flex justify-center">
             <div
-              className={`px-4 py-2 rounded-full text-sm font-semibold shadow-sm ${pagoStyles[participation.pagoEstado]}`}
+              className={`px-4 py-2 rounded-full capitalize text-sm font-semibold shadow-sm ${pagoStyles[participation.pagoEstado]}`}
             >
-              {participation.pagoEstado.toUpperCase()}
+              {participation.pagoEstado}
             </div>
           </div>
 
@@ -128,7 +128,7 @@ export default function PagoModal({
                 .map((estado) => {
                   const variant =
                     estado === "confirmado"
-                      ? "success_outline"
+                      ? "success"
                       : estado === "pendiente"
                       ? "warning"
                       : "secondary";

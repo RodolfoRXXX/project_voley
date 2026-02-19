@@ -765,7 +765,7 @@ const handleShareMatch = () => {
                 <StatusPill
                   label={
                     p.pagoEstado === "confirmado"
-                      ? "Pagado"
+                      ? "Confirmado"
                       : p.pagoEstado === "pospuesto"
                       ? "Pospuesto"
                       : "Pendiente"
@@ -875,7 +875,7 @@ const handleShareMatch = () => {
                 <StatusPill
                   label={
                     p.pagoEstado === "confirmado"
-                      ? "Pagado"
+                      ? "Confirmado"
                       : p.pagoEstado === "pospuesto"
                       ? "Pospuesto"
                       : "Pendiente"
@@ -977,7 +977,7 @@ const handleShareMatch = () => {
                 <StatusPill
                   label={
                     p.pagoEstado === "confirmado"
-                      ? "Pagado"
+                      ? "Confirmado"
                       : p.pagoEstado === "pospuesto"
                       ? "Pospuesto"
                       : "Pendiente"

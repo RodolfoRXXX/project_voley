@@ -37,7 +37,7 @@ export function ActionButton({
   const base =
     "inline-flex items-center justify-center gap-2 font-medium text-sm transition-all \
      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 \
-     disabled:opacity-50 disabled:pointer-events-none";
+     capitalize disabled:opacity-50 disabled:pointer-events-none";
 
   const sizes = round
   ? "h-10 w-10 rounded-full"

@@ -131,7 +131,7 @@ export default function PagoModal({
                       ? "success"
                       : estado === "pendiente"
                       ? "warning"
-                      : "secondary";
+                      : "primary";
 
                   return (
                     <ActionButton

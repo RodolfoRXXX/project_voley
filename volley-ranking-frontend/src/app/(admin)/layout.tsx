@@ -17,10 +17,10 @@ import { useEffect } from "react";
 
 function AdminLayoutSkeleton() {
   return (
-    <div className="flex flex-1 min-h-0 h-full bg-[#F8FAFC]">
+    <div className="flex flex-1 min-h-0 h-full bg-[var(--background)] transition-colors">
 
       {/* Sidebar admin */}
-      <div className="hidden md:block w-64 border-r bg-white">
+      <div className="hidden md:block w-64 border-r border-[var(--border)] bg-[var(--surface)] transition-colors">
         <div className="p-4 space-y-3">
           {[...Array(3)].map((_, i) => (
             <Skeleton
@@ -78,7 +78,7 @@ export default function AdminLayout({
   const isAdmin = !!firebaseUser && userDoc?.roles === "admin";
 
   return (
-      <div className="flex flex-1 min-h-0 h-full bg-[#F8FAFC]">
+      <div className="flex flex-1 min-h-0 h-full bg-[var(--background)] transition-colors">
         {isAdmin && (
           <AppSidebar />
         )}

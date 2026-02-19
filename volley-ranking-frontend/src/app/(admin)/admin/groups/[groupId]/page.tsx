@@ -117,7 +117,7 @@ export default function AdminGroupPage() {
      Load data
   ===================== */
   useEffect(() => {
-    if (!groupId) return;
+    if (loading || !firebaseUser?.uid || !groupId) return;
 
     const load = async () => {
       try {
@@ -167,7 +167,7 @@ export default function AdminGroupPage() {
     };
 
     load();
-  }, [firebaseUser?.uid, groupId, router]);
+  }, [firebaseUser?.uid, groupId, loading, router]);
 
   /* =====================
      Actions

@@ -20,6 +20,46 @@ html[data-theme="dark"] {
   --text-muted: #9ca3af;
 }
 
+html[data-theme="dark"] :where(.bg-white) {
+  background-color: var(--surface) !important;
+}
+
+html[data-theme="dark"] :where(.bg-neutral-50, .bg-neutral-100, .bg-neutral-200, .bg-gray-100) {
+  background-color: var(--surface-muted) !important;
+}
+
+html[data-theme="dark"] :where(.border, .border-neutral-200, .border-gray-200) {
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] :where(.text-black, .text-neutral-900, .text-gray-900, .text-gray-800, .text-slate-800) {
+  color: var(--foreground) !important;
+}
+
+html[data-theme="dark"] :where(
+  .text-gray-700,
+  .text-gray-600,
+  .text-gray-500,
+  .text-gray-400,
+  .text-slate-600,
+  .text-slate-500,
+  .text-slate-400
+) {
+  color: var(--text-muted) !important;
+}
+
+html[data-theme="dark"] :where(.hover\:text-black:hover) {
+  color: var(--foreground) !important;
+}
+
+html[data-theme="dark"] :where(.hover\:bg-gray-200:hover, .hover\:bg-gray-100:hover, .hover\:bg-neutral-100:hover) {
+  background-color: var(--surface-muted) !important;
+}
+
+html[data-theme="dark"] :where(.shadow-sm, .shadow, .shadow-lg, .shadow-xl) {
+  --tw-shadow-color: rgb(2 6 23 / 0.5);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

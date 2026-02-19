@@ -32,7 +32,10 @@ function ProtectedLayoutSkeleton() {
       </div>
 
       {/* Main */}
-      <main className="flex-1 min-h-0 overflow-y-auto">
+      <main
+        id="protected-scroll-container"
+        className="flex-1 min-h-0 overflow-y-auto"
+      >
         <div className="p-4 md:p-6 space-y-4">
           <Skeleton className="h-6 w-40" />
           <SkeletonSoft className="h-4 w-64" />
@@ -82,7 +85,10 @@ export default function ProtectedLayout({
         <AppSidebar />
       )}
 
-      <main className="flex-1 min-h-0 overflow-y-auto">
+      <main
+        id="protected-scroll-container"
+        className="flex-1 min-h-0 overflow-y-auto"
+      >
         {/* Content */}
         <div
           className={

@@ -132,7 +132,12 @@ module.exports = functions
 
           const hoursBefore = hoursByStage[nextStage];
 
-          if (!hoursBefore) return;
+          if (typeof hoursBefore !== "number") {
+            console.log("⛔ Stage sin configuración de horas:", nextStage);
+            return;
+          }
+
+          if (hoursBefore == null) return;
 
           const nextDeadline = admin.firestore.Timestamp.fromMillis(
             horaMs - hoursBefore * 60 * 60 * 1000

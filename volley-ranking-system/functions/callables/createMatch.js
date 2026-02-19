@@ -2,6 +2,7 @@
 
 const functions = require("firebase-functions/v1");
 const { crearMatch } = require("../src/services/adminMatchService");
+const { assertIsAdmin, assertGroupAdmin } = require("../src/services/adminAccessService");
 const formaciones = require("../src/config/formaciones");
 
 const {
@@ -34,21 +35,16 @@ module.exports = functions.https.onCall(async (data, context) => {
   } = data;
 
   const db = getFirestore();
-  const groupSnap = await db.collection("groups").doc(data.groupId).get();
+  await assertIsAdmin(context.auth.uid);
+  const group = await assertGroupAdmin(groupId, context.auth.uid);
 
-  if (!groupSnap.exists) {
-    throw new functions.https.HttpsError(
-      "not-found",
-      "Grupo no existe"
-    );
-  }
-
-  if (!groupSnap.data().activo) {
+  if (!group.activo) {
     throw new functions.https.HttpsError(
       "failed-precondition",
       "El grupo está desactivado"
     );
   }
+
 
   if (!formaciones[formacion]) {
     throw new functions.https.HttpsError(

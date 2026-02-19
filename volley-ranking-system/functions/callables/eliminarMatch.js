@@ -2,6 +2,7 @@
 
 const functions = require("firebase-functions/v1");
 const { eliminarMatch } = require("../src/services/adminMatchService");
+const { assertIsAdmin, assertMatchAdmin } = require("../src/services/adminAccessService");
 
 module.exports = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -18,6 +19,9 @@ module.exports = functions.https.onCall(async (data, context) => {
       "matchId requerido"
     );
   }
+
+  await assertIsAdmin(context.auth.uid);
+  await assertMatchAdmin(matchId, context.auth.uid);
 
   try {
     await eliminarMatch(matchId);

@@ -2,6 +2,7 @@
 
 const functions = require("firebase-functions/v1");
 const { actualizarGrupo } = require("../src/services/adminGroupService");
+const { assertIsAdmin, assertGroupAdmin } = require("../src/services/adminAccessService");
 
 module.exports = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -31,6 +32,9 @@ module.exports = functions.https.onCall(async (data, context) => {
       "No hay cambios para aplicar"
     );
   }
+
+  await assertIsAdmin(context.auth.uid);
+  await assertGroupAdmin(groupId, context.auth.uid);
 
   let updated = false;
 

@@ -3,6 +3,7 @@
 const functions = require("firebase-functions/v1");
 const { actualizarMatch } = require("../src/services/adminMatchService");
 const formaciones = require("../src/config/formaciones");
+const { assertIsAdmin, assertMatchAdmin } = require("../src/services/adminAccessService");
 
 const {
   Timestamp,
@@ -79,6 +80,9 @@ module.exports = functions.https.onCall(async (data, context) => {
   } else {
     cambios.horaInicio = Timestamp.fromMillis(horaInicioMillis);
   }
+
+  await assertIsAdmin(context.auth.uid);
+  await assertMatchAdmin(matchId, context.auth.uid);
 
   /* =====================
      Update

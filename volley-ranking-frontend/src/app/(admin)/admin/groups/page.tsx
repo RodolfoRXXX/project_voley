@@ -6,8 +6,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
@@ -72,12 +73,19 @@ function GroupsSkeleton() {
 }
 
 export default function AdminGroupsPage() {
+  const { firebaseUser, loading: authLoading } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading || !firebaseUser) return;
+
     const loadGroups = async () => {
-      const q = query(collection(db, "groups"), orderBy("createdAt", "desc"));
+      const q = query(
+        collection(db, "groups"),
+        where("adminId", "==", firebaseUser.uid),
+        orderBy("createdAt", "desc")
+      );
       const snap = await getDocs(q);
 
       const data: Group[] = snap.docs.map((doc) => ({
@@ -90,9 +98,9 @@ export default function AdminGroupsPage() {
     };
 
     loadGroups();
-  }, []);
+  }, [authLoading, firebaseUser]);
 
-  if (loading) return <GroupsSkeleton />;
+  if (authLoading || loading) return <GroupsSkeleton />;
 
   return (
     <main className="max-w-4xl mx-auto mt-6 sm:mt-10 space-y-6">

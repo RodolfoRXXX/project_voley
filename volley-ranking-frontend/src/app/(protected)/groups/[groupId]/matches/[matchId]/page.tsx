@@ -193,6 +193,16 @@ export default function MatchDetailPage() {
     }
   }, [firebaseUser, authLoading, router]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+
+    const protectedScroll = document.getElementById(
+      "protected-scroll-container"
+    );
+
+    protectedScroll?.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
+
   /* =====================
      Load formaciones
   ===================== */

@@ -173,6 +173,8 @@ export default function MatchDetailPage() {
   });
 
   const isAdmin = userDoc?.roles === "admin";
+  const isMatchAdmin =
+    !!firebaseUser?.uid && isAdmin && firebaseUser.uid === match?.adminId;
 
   const updatePagoEstado = async (
     participationId: string,
@@ -660,7 +662,7 @@ const handleShareMatch = () => {
 
     {/* =============== EDITAR MATCH =============== */}
 
-    {isAdmin &&
+    {isMatchAdmin &&
       !["jugado", "cancelado", "cerrado"].includes(match.estado) && (
         <section
           className="
@@ -728,7 +730,7 @@ const handleShareMatch = () => {
               <span>Nombre</span>
               <span className="hidden sm:block">Posición</span>
               <span className="flex justify-center">Pago</span>
-              {isAdmin && <span />}
+              {isMatchAdmin && <span />}
             </>
           )}
           renderRow={(p, isMe) => (
@@ -790,7 +792,7 @@ const handleShareMatch = () => {
 
               {/* Acciones */}
               <div className="flex justify-end">
-                {isAdmin ? (
+                {isMatchAdmin ? (
                 <ActionButton
                   round
                   variant="danger_outline"
@@ -838,7 +840,7 @@ const handleShareMatch = () => {
               <span>Nombre</span>
               <span className="hidden sm:block">Posición</span>
               <span className="flex justify-center">Pago</span>
-              {isAdmin && <span />}
+              {isMatchAdmin && <span />}
             </>
           )}
           renderRow={(p, isMe) => (
@@ -899,7 +901,7 @@ const handleShareMatch = () => {
 
               {/* Acciones */}
               <div className="flex justify-end">
-                {isAdmin ? (
+                {isMatchAdmin ? (
                 <ActionButton
                   round
                   variant="danger_outline"
@@ -940,7 +942,7 @@ const handleShareMatch = () => {
               <span>Nombre</span>
               <span className="hidden sm:block">Posición</span>
               <span className="flex justify-center">Pago</span>
-              {isAdmin && <span />}
+              {isMatchAdmin && <span />}
             </>
           )}
           renderRow={(p, isMe) => (
@@ -999,7 +1001,7 @@ const handleShareMatch = () => {
               </div>
               {/* Acciones */}
               <div className="flex justify-end">
-                {isAdmin && (
+                {isMatchAdmin && (
                 <ActionButton
                   round
                   variant="success_outline"
@@ -1023,7 +1025,7 @@ const handleShareMatch = () => {
     {/* ================== ACCIONES ================= */}
 
     <MatchActions
-      isAdmin={isAdmin}
+      isAdmin={isMatchAdmin}
       isJoined={isJoined}
       isEliminado={isEliminado}
       match={match}
@@ -1050,7 +1052,7 @@ const handleShareMatch = () => {
       onClose={() => setPagoModal(null)}
       participation={pagoModal}
       user={usersMap[pagoModal?.userId]}
-      isAdmin={isAdmin}
+      isAdmin={isMatchAdmin}
       matchEstado={match.estado}
       pagoStyles={pagoStyles}
       onUpdatePago={updatePagoEstado}
@@ -1067,7 +1069,7 @@ const handleShareMatch = () => {
           { position: p.posicionAsignada || "" }
         ])
       )}
-      isAdmin={isAdmin}
+      isAdmin={isMatchAdmin}
       matchEstado={match.estado} 
     />
 

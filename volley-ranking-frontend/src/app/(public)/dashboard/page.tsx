@@ -93,7 +93,7 @@ export default function DashboardPage() {
           Tablero
         </h1>
 
-        <h2 className="text-3xl font-bold text-neutral-800">
+        <h2 className="text-3xl font-bold text-neutral-800 dark:text-[var(--foreground)]">
           Próximos partidos
         </h2>
 
@@ -115,7 +115,7 @@ export default function DashboardPage() {
         Tablero
       </h1>
 
-      <h2 className="text-3xl font-bold text-neutral-800">
+      <h2 className="text-3xl font-bold text-neutral-800 dark:text-[var(--foreground)]">
         Próximos partidos
       </h2>
 

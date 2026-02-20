@@ -211,17 +211,19 @@ const puedeUnirse =
         flex flex-col
         bg-white
         border border-neutral-200
+        rounded-2xl
         px-4 py-4
         h-full
+        shadow-sm
       "
     >
       {/* HEADER */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <p className="text-m font-medium text-neutral-900 leading-tight">
+          <p className="text-m font-medium text-neutral-900 dark:text-[var(--foreground)] leading-tight">
             {groupNombre ?? "—"}
           </p>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-neutral-500 dark:text-[var(--text-muted)]">
             Formación {match.formacion}
           </p>
         </div>
@@ -236,7 +238,7 @@ const puedeUnirse =
 
       {/* ADMIN */}
       {adminUser && (
-        <div className="flex items-center gap-2 mt-3 text-sm text-neutral-600">
+        <div className="flex items-center gap-2 mt-3 text-sm text-neutral-600 dark:text-[var(--text-muted)]">
           <UserAvatar
             nombre={adminUser.nombre}
             photoURL={adminUser.photoURL}
@@ -249,7 +251,7 @@ const puedeUnirse =
       )}
 
       {/* INFO */}
-      <div className="mt-4 space-y-1 text-sm text-neutral-700">
+      <div className="mt-4 space-y-1 text-sm text-neutral-700 dark:text-neutral-300">
         <p>{formatDateTime(match.horaInicio)}</p>
         <p className="text-sm text-neutral-500">
           Titulares {titulares}/{titularesTotales} · Suplentes {suplentes}/{suplentesTotales}
@@ -284,7 +286,7 @@ const puedeUnirse =
                 if (!requireOnboarding()) return;
                 router.push(`/groups/${match.groupId}/matches/${match.id}`);
               }}
-              className="text-sm text-neutral-500 hover:text-neutral-800"
+              className="text-sm text-neutral-500 dark:text-[var(--text-muted)] hover:text-neutral-800 dark:hover:text-[var(--foreground)]"
             >
               Ver detalle →
             </button>

@@ -16,11 +16,13 @@ export default function MatchPositions({
       className="
         bg-white
         border border-neutral-200
+        rounded-xl
         px-4 py-4
         space-y-4
+        dark:bg-[var(--surface)] dark:border-[var(--border)]
       "
     >
-      <h2 className="text-base font-medium text-neutral-900">
+      <h2 className="text-base font-medium text-neutral-900 dark:text-[var(--foreground)]">
         Cupos por posición
       </h2>
 
@@ -36,14 +38,14 @@ export default function MatchPositions({
                 border border-neutral-200
                 px-3 py-2
                 text-sm
-                text-neutral-700
+                text-neutral-700 dark:text-neutral-300
               "
             >
               <span className="capitalize">
                 {pos}
               </span>
 
-              <span className="text-neutral-500">
+              <span className="text-neutral-500 dark:text-neutral-200">
                 {used} / {total}
               </span>
             </div>

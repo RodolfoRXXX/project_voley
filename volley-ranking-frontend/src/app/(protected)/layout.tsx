@@ -36,7 +36,7 @@ function ProtectedLayoutSkeleton() {
         id="protected-scroll-container"
         className="flex-1 min-h-0 overflow-y-auto"
       >
-        <div className="p-4 md:p-6 space-y-4">
+        <div className="p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:p-6 space-y-4">
           <Skeleton className="h-6 w-40" />
           <SkeletonSoft className="h-4 w-64" />
           <SkeletonSoft className="h-32 rounded-xl" />
@@ -93,8 +93,8 @@ export default function ProtectedLayout({
         <div
           className={
             isLoggedIn
-              ? "p-4 md:p-6"
-              : "max-w-5xl mx-auto p-4 md:p-8"
+              ? "p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:p-6"
+              : "max-w-5xl mx-auto p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:p-8"
           }
         >
           {children}

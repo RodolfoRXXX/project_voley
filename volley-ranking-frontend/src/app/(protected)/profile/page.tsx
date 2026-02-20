@@ -67,7 +67,7 @@ export default function ProfilePage() {
   if (loading || !userDoc) return <ProfilePageSkeleton />;
 
   return (
-    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 space-y-8">
+    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 pb-12 space-y-8">
 
       {/* Profile Header */}
       <ProfileHeader user={userDoc} />

@@ -99,7 +99,7 @@ export default function NewMatchPage() {
      RENDER
   ===================== */
   return (
-    <main className="max-w-xl mx-auto mt-6 sm:mt-10 space-y-8">
+    <main className="max-w-xl mx-auto mt-6 sm:mt-10 pb-12 space-y-8">
 
       <AdminBreadcrumb
         items={[

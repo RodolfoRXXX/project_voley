@@ -110,7 +110,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 space-y-6">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
       <h1 className="text-sm uppercase tracking-wide text-slate-400">
         Tablero
       </h1>

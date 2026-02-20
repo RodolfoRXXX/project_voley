@@ -239,7 +239,7 @@ export default function AdminGroupPage() {
   };
 
   return (
-    <main className="max-w-3xl mx-auto mt-6 sm:mt-10 space-y-6">
+    <main className="max-w-3xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">
 
       <AdminBreadcrumb
         items={[

@@ -12,11 +12,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "../ui/avatar/UserAvatar";
+import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 
 export default function AppSidebar() {
   const pathname = usePathname();
   const { userDoc } = useAuth();
   const router = useRouter();
+  const { confirm } = useConfirm();
 
   const isAdmin = userDoc?.roles === "admin";
 
@@ -39,9 +41,18 @@ export default function AppSidebar() {
   }
 
   const logout = async () => {
-        await signOut(auth);
-        router.replace("/dashboard");
-    };
+    const ok = await confirm({
+      message: "¿Seguro que querés cerrar sesión?",
+      confirmText: "Cerrar sesión",
+      cancelText: "Cancelar",
+      variant: "warning",
+    });
+
+    if (!ok) return;
+
+    await signOut(auth);
+    router.replace("/dashboard");
+  };
 
   return (
     <aside className="

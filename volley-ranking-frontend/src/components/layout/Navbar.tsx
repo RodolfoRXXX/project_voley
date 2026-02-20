@@ -9,11 +9,13 @@ import UserAvatar from "../ui/avatar/UserAvatar";
 import { usePathname, useRouter } from "next/navigation";
 import useToast from "@/components/ui/toast/useToast";
 import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
+import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 
 export default function Navbar() {
   const { firebaseUser, userDoc, loading } = useAuth();
   const router = useRouter();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window === "undefined") {
@@ -52,6 +54,15 @@ export default function Navbar() {
   };
 
   const logout = async () => {
+    const ok = await confirm({
+      message: "¿Seguro que querés cerrar sesión?",
+      confirmText: "Cerrar sesión",
+      cancelText: "Cancelar",
+      variant: "warning",
+    });
+
+    if (!ok) return;
+
     await signOut(auth);
     setOpen(false);
     router.replace("/dashboard");

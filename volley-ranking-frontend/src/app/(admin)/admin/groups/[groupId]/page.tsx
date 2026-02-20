@@ -221,6 +221,14 @@ export default function AdminGroupPage() {
         });
       },
       {
+        confirm: {
+          message: group.activo
+            ? "¿Seguro que querés desactivar este grupo?"
+            : "¿Seguro que querés reactivar este grupo?",
+          confirmText: group.activo ? "Desactivar" : "Reactivar",
+          cancelText: "Cancelar",
+          variant: group.activo ? "danger" : "success",
+        },
         successMessage: "Estado actualizado",
         errorMessage: "No se pudo actualizar el estado",
       }

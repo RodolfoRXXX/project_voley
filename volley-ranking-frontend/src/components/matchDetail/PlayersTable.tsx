@@ -54,7 +54,7 @@ export default function PlayersTable<T extends Player>({
               px-3 py-2
               text-xs font-medium
               text-neutral-500 dark:text-[var(--text-muted)]
-              border-b border-neutral-200
+              border-b border-neutral-200 dark:border-[var(--border)]
             `}
           >
             {renderHeader()}
@@ -72,11 +72,11 @@ export default function PlayersTable<T extends Player>({
                   px-3 py-3
                   text-sm
                   items-center
-                  border-b border-neutral-100
+                  border-b border-neutral-100 dark:border-[var(--border)]
                   transition
                   ${
                     isMe
-                      ? "bg-blue-50/70 dark:bg-slate-800/60 font-medium"
+                      ? "bg-blue-50/70 dark:bg-slate-800/60 dark:text-[var(--foreground)] font-medium"
                       : "hover:bg-neutral-50 dark:hover:bg-slate-800/60"
                   }
                 `}

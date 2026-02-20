@@ -60,7 +60,7 @@ export function ActionButton({
       "bg-green-600 text-white hover:bg-green-700 active:bg-green-800 focus-visible:ring-green-400",
 
     warning:
-      "bg-yellow-400 text-black hover:bg-yellow-300 active:bg-yellow-500 focus-visible:ring-yellow-300",
+      "bg-yellow-400 text-black hover:bg-yellow-500 active:bg-yellow-500 focus-visible:ring-yellow-300",
 
     danger:
       "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 focus-visible:ring-red-400",

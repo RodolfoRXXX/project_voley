@@ -76,7 +76,7 @@ export default function PlayersTable<T extends Player>({
                   transition
                   ${
                     isMe
-                      ? "bg-blue-50/70 dark:bg-slate-800/70 font-medium"
+                      ? "bg-blue-50/70 dark:bg-slate-800/60 font-medium"
                       : "hover:bg-neutral-50 dark:hover:bg-slate-800/60"
                   }
                 `}

@@ -34,7 +34,7 @@ function AdminLayoutSkeleton() {
       {/* Main admin */}
       <main className="flex-1 min-h-0 overflow-y-auto">
         {/* ⬇️ IMPORTANTE: no definimos ancho */}
-        <div className="p-4 md:p-8">
+        <div className="p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:p-8">
           <SkeletonSoft className="h-6 w-48 mb-6" />
           <SkeletonSoft className="h-64 rounded-lg" />
         </div>
@@ -85,7 +85,7 @@ export default function AdminLayout({
   
         <main className="flex-1 min-h-0 overflow-y-auto">
           {/* Content */}
-          <div className="p-4 md:p-8 max-w-none">
+          <div className="p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:p-8 max-w-none">
             {children}
           </div>
         </main>

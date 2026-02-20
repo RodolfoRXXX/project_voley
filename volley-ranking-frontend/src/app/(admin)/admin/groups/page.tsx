@@ -165,7 +165,7 @@ export default function AdminGroupsPage() {
             <div className="flex gap-2">
               <Link
                 href={`/admin/groups/${group.id}`}
-                className="flex items-center px-3 py-1.5 rounded-lg border text-sm hover:bg-neutral-50"
+                className="flex items-center px-3 py-1.5 rounded-lg border text-sm text-neutral-700 dark:text-[var(--foreground)] hover:bg-neutral-50 dark:hover:bg-slate-800/60 transition-colors"
               >
                 Ver
               </Link>

@@ -72,7 +72,7 @@ export function ActionButton({
       "border border-green-300 text-green-600 bg-transparent hover:bg-green-50",
 
     orange: 
-      "bg-orange-500 text-white hover:bg-orange-600",
+      "bg-orange-500 text-white hover:bg-orange-400",
   };
 
   return (

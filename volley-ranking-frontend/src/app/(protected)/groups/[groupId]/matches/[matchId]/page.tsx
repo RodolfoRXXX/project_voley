@@ -628,468 +628,465 @@ export default function MatchDetailPage() {
   };
 
   const getMatchShareLink = (): string | null => {
-  if (!match) return null;
+    if (!match) return null;
 
-  const url = window.location.href;
+    const url = window.location.href;
 
-  const text = `
-    ¡Sumate al partido!
-    ${group?.nombre ?? "Grupo"}
-    ${match.horaInicio ? formatMatchDate(match.horaInicio) : ""}
-    ${url}
-  `;
+    const text = `
+      ¡Sumate al partido!
+      ${group?.nombre ?? "Grupo"}
+      ${match.horaInicio ? formatMatchDate(match.horaInicio) : ""}
+      ${url}
+    `;
 
-  return `https://wa.me/?text=${encodeURIComponent(text)}`;
-};
+    return `https://wa.me/?text=${encodeURIComponent(text)}`;
+  };
 
+  const handleShareMatch = () => {
+    const link = getMatchShareLink();
+    if (!link) return;
 
-const handleShareMatch = () => {
-  const link = getMatchShareLink();
-  if (!link) return;
-
-  window.open(link, "_blank");
-};
-
+    window.open(link, "_blank");
+  };
 
   /* =====================
      Render
   ===================== */
   return (
-  <main className="max-w-4xl mx-auto mt-6 sm:mt-10 px-4 pb-24 sm:pb-12 space-y-10">
+    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 px-4 pb-24 sm:pb-12 space-y-10">
 
-    {/* ================== TITULO ================== */}
+      {/* ================== TITULO ================== */}
 
-    <MatchHeader
-      group={group}
-    />
+      <MatchHeader
+        group={group}
+      />
 
-    {/* ================= DETALLES ================= */}
+      {/* ================= DETALLES ================= */}
 
-    <MatchInfoCard
-      match={match}
-      adminUser={adminUser}
-    />
+      <MatchInfoCard
+        match={match}
+        adminUser={adminUser}
+      />
 
-    {/* =============== EDITAR MATCH =============== */}
+      {/* =============== EDITAR MATCH =============== */}
 
-    {isMatchAdmin &&
-      !["jugado", "cancelado", "cerrado"].includes(match.estado) && (
-        <section
-          className="
-            bg-white
-            border border-neutral-200
-            px-4 py-4
-            space-y-4
-          "
-        >
-          {/* HEADER */}
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-medium text-neutral-900">
-              Editar partido
-            </h2>
+      {isMatchAdmin &&
+        !["jugado", "cancelado", "cerrado"].includes(match.estado) && (
+          <section
+            className="
+              bg-white
+              border border-neutral-200
+              px-4 py-4
+              space-y-4
+            "
+          >
+            {/* HEADER */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-medium text-neutral-900">
+                Editar partido
+              </h2>
 
-            {!editMode && (
-              <ActionButton
-                onClick={() => setEditMode(true)}
-                variant="secondary"
-                compact
-              >
-                Editar
-              </ActionButton>
-            )}
-          </div>
-
-          {/* FORM */}
-          <MatchEditForm
-            editMode={editMode}
-            setEditMode={setEditMode}
-            formData={formData}
-            setFormData={setFormData}
-            formaciones={formaciones}
-            onSave={handleSave}
-            loading={isLoading("save-match")}
-          />
-        </section>
-    )}
-
-    {/* ============ CUPOS POR POSICION ============ */}
-
-    <MatchPositions
-      posiciones={match.posicionesObjetivo}
-      ocupados={ocupadosPorPosicion}
-    />
-
-    {/* ================= TITULARES ================= */}
-
-    <section>
-      {titulares.length === 0 ? (
-        <><h2 className="text-xl font-semibold mb-3">Titulares</h2><p className="text-gray-500">Todavía no hay titulares.</p></>
-      ) : (
-        <PlayersTable
-          title="Titulares"
-          players={titulares}
-          columns="
-            grid-cols-[1fr_48px_48px]
-            sm:grid-cols-[72px_1fr_128px_96px_60px]
-          "
-          highlightUserId={firebaseUser?.uid}
-          usersMap={usersMap}
-          renderHeader={() => (
-            <>
-              <span className="hidden sm:block">Ranking</span>
-              <span>Nombre</span>
-              <span className="hidden sm:block">Posición</span>
-              <span className="flex justify-center">Pago</span>
-              {isMatchAdmin && <span />}
-            </>
-          )}
-          renderRow={(p, isMe) => (
-            <>
-              {/* Ranking */}
-              <span className="flex justify-center text-sm text-neutral-500 hidden sm:block">
-                {p.rankingTitular}
-              </span>
-
-              {/* Nombre */}
-              <span className="flex items-center gap-2">
-                <UserAvatar
-                  nombre={usersMap[p.userId]?.nombre}
-                  photoURL={usersMap[p.userId]?.photoURL}
-                  size={28}
-                />
-                <span>
-                  {usersMap[p.userId]?.nombre ?? "—"}
-                  {isMe && (
-                    <span className="ml-1 text-xs text-orange-600">(vos)</span>
-                  )}
-                </span>
-              </span>
-
-              {/* Posición (oculta en mobile chico si querés) */}
-              <span className="capitalize hidden sm:block">
-                {p.posicionAsignada}
-              </span>
-
-              {/* Pago (desktop texto / mobile icono) */}
-              <div className="flex justify-center">
-                <StatusPill
-                  label={
-                    p.pagoEstado === "confirmado"
-                      ? "Confirmado"
-                      : p.pagoEstado === "pospuesto"
-                      ? "Pospuesto"
-                      : "Pendiente"
-                  }
-                  variant={
-                    p.pagoEstado === "confirmado"
-                      ? "success"
-                      : p.pagoEstado === "pospuesto"
-                      ? "info"
-                      : "warning"
-                  }
-                  icon={
-                    p.pagoEstado === "confirmado"
-                      ? "✓"
-                      : p.pagoEstado === "pospuesto"
-                      ? "⏱"
-                      : "$"
-                  }
-                  responsive
-                  onClick={() => setPagoModal(p)}
-                />
-              </div>
-
-
-              {/* Acciones */}
-              <div className="flex justify-end">
-                {isMatchAdmin ? (
+              {!editMode && (
                 <ActionButton
-                  round
-                  variant="danger_outline"
-                  loading={isLoading("remove")}
-                  disabled={
-                    match.estado === "jugado" ||
-                    match.estado === "cancelado"
-                  }
-                  onClick={() => handleEliminarJugador(p.id)}
+                  onClick={() => setEditMode(true)}
+                  variant="secondary"
+                  compact
                 >
-                  ×
-                </ActionButton>
-                ) : (
-                  <span />
-                )}
-              </div>
-            </>
-          )}
-        />
-      )}
-
-      {match.estado === "verificando" && hayPagosPendientes && (
-        <p className="mt-2 text-sm text-red-600">
-          Todos los titulares deben tener un pago confirmado o pospuesto
-          para cerrar el partido.
-        </p>
-      )}
-    </section>
-
-    {/* ================= SUPLENTES ================= */}
-
-    <section>
-      {suplentes.length === 0 ? (
-        <><h2 className="text-xl font-semibold mb-3">Suplentes</h2><p className="text-gray-500">Todavía no hay suplentes.</p></>
-      ) : (
-        <PlayersTable
-          title="Suplentes"
-          players={suplentes}
-          columns="
-            grid-cols-[1fr_48px_48px]
-            sm:grid-cols-[72px_1fr_128px_96px_60px]
-          "
-          highlightUserId={firebaseUser?.uid}
-          usersMap={usersMap}
-          renderHeader={() => (
-            <>
-              <span className="hidden sm:block">Ranking</span>
-              <span>Nombre</span>
-              <span className="hidden sm:block">Posición</span>
-              <span className="flex justify-center">Pago</span>
-              {isMatchAdmin && <span />}
-            </>
-          )}
-          renderRow={(p, isMe) => (
-            <>
-              {/* Ranking */}
-              <span className="flex justify-center text-sm text-neutral-500 hidden sm:block">
-                {p.rankingSuplente}
-              </span>
-
-              {/* Nombre */}
-              <span className="flex items-center gap-2">
-                <UserAvatar
-                  nombre={usersMap[p.userId]?.nombre}
-                  photoURL={usersMap[p.userId]?.photoURL}
-                  size={28}
-                />
-                <span>
-                  {usersMap[p.userId]?.nombre ?? "—"}
-                  {isMe && (
-                    <span className="ml-1 text-xs text-orange-600">(vos)</span>
-                  )}
-                </span>
-              </span>
-
-              {/* Posición (oculta en mobile chico si querés) */}
-              <span className="capitalize hidden sm:block text-xs text-gray-500">
-                {usersMap[p.userId]?.posicionesPreferidas?.join(", ")}
-              </span>
-
-              {/* Pago (desktop texto / mobile icono) */}
-              <div className="flex justify-center">
-                <StatusPill
-                  label={
-                    p.pagoEstado === "confirmado"
-                      ? "Confirmado"
-                      : p.pagoEstado === "pospuesto"
-                      ? "Pospuesto"
-                      : "Pendiente"
-                  }
-                  variant={
-                    p.pagoEstado === "confirmado"
-                      ? "success"
-                      : p.pagoEstado === "pospuesto"
-                      ? "info"
-                      : "warning"
-                  }
-                  icon={
-                    p.pagoEstado === "confirmado"
-                      ? "✓"
-                      : p.pagoEstado === "pospuesto"
-                      ? "⏱"
-                      : "$"
-                  }
-                  responsive
-                  onClick={() => setPagoModal(p)}
-                />
-              </div>
-
-              {/* Acciones */}
-              <div className="flex justify-end">
-                {isMatchAdmin ? (
-                <ActionButton
-                  round
-                  variant="danger_outline"
-                  loading={isLoading("remove")}
-                  disabled={
-                    match.estado === "jugado" ||
-                    match.estado === "cancelado"
-                  }
-                  onClick={() => handleEliminarJugador(p.id)}
-                >
-                  ×
-                </ActionButton>
-                ) : (
-                  <span />
-                )}
-              </div>
-            </>
-          )}
-        />
-      )}
-    </section>
-
-    {/* ================= ELIMINADOS ================ */}
-
-    <section>
-      {eliminados.length === 0 ? (
-        <><h2 className="text-xl font-semibold mb-3">Eliminados</h2><p className="text-gray-500">No hay jugadores eliminados.</p></>
-      ) : (
-        <PlayersTable
-          title="Eliminados"
-          players={eliminados}
-          columns="
-            grid-cols-[1fr_48px_48px]
-            sm:grid-cols-[72px_1fr_128px_96px_60px]
-          "
-          highlightUserId={firebaseUser?.uid}
-          usersMap={usersMap}
-          renderHeader={() => (
-            <>
-              <span className="hidden sm:block">Ranking</span>
-              <span>Nombre</span>
-              <span className="hidden sm:block">Posición</span>
-              <span className="flex justify-center">Pago</span>
-              {isMatchAdmin && <span />}
-            </>
-          )}
-          renderRow={(p, isMe) => (
-            <>
-              {/* Ranking */}
-              <span className="flex justify-center text-sm text-neutral-500 hidden sm:block">
-                —
-              </span>
-
-              {/* Nombre */}
-              <span className="flex items-center gap-2">
-                <UserAvatar
-                  nombre={usersMap[p.userId]?.nombre}
-                  photoURL={usersMap[p.userId]?.photoURL}
-                  size={28}
-                />
-                <span>
-                  {usersMap[p.userId]?.nombre ?? "—"}
-                  {isMe && (
-                    <span className="ml-1 text-xs text-orange-600">(vos)</span>
-                  )}
-                </span>
-              </span>
-
-              {/* Posición (oculta en mobile chico si querés) */}
-              <span className="capitalize hidden sm:block text-xs text-gray-500">
-                {usersMap[p.userId]?.posicionesPreferidas?.join(", ")}
-              </span>
-
-              {/* Pago (desktop texto / mobile icono) */}
-              <div className="flex justify-center">
-                <StatusPill
-                  label={
-                    p.pagoEstado === "confirmado"
-                      ? "Confirmado"
-                      : p.pagoEstado === "pospuesto"
-                      ? "Pospuesto"
-                      : "Pendiente"
-                  }
-                  variant={
-                    p.pagoEstado === "confirmado"
-                      ? "success"
-                      : p.pagoEstado === "pospuesto"
-                      ? "info"
-                      : "warning"
-                  }
-                  icon={
-                    p.pagoEstado === "confirmado"
-                      ? "✓"
-                      : p.pagoEstado === "pospuesto"
-                      ? "⏱"
-                      : "$"
-                  }
-                  responsive
-                />
-              </div>
-              {/* Acciones */}
-              <div className="flex justify-end">
-                {isMatchAdmin && (
-                <ActionButton
-                  round
-                  variant="success_outline"
-                  loading={isLoading("insert")}
-                  disabled={
-                    match.estado === "cancelado" ||
-                    match.estado === "cerrado" ||
-                    match.estado === "jugado"
-                  }
-                  onClick={() => handleReincorporarJugador(p.id)}
-                >
-                  +
+                  Editar
                 </ActionButton>
               )}
-              </div>
-            </>
-          )}
-        />
+            </div>
+
+            {/* FORM */}
+            <MatchEditForm
+              editMode={editMode}
+              setEditMode={setEditMode}
+              formData={formData}
+              setFormData={setFormData}
+              formaciones={formaciones}
+              onSave={handleSave}
+              loading={isLoading("save-match")}
+            />
+          </section>
       )}
-    </section>
 
-    {/* ================== ACCIONES ================= */}
+      {/* ============ CUPOS POR POSICION ============ */}
 
-    <MatchActions
-      isAdmin={isMatchAdmin}
-      isJoined={isJoined}
-      isEliminado={isEliminado}
-      match={match}
-      hayPagosPendientes={hayPagosPendientes}
-      loading={{
-        join: isLoading("join"),
-        leave: isLoading("leave"),
-        cancel: isLoading("cancel"),
-        close: isLoading("close"),
-        reopen: isLoading("reopen"),
-      }}
-      onJoin={handleToggleParticipation}
-      onCancel={handleEliminarMatch}
-      onClose={handleCerrarMatch}
-      onReopen={handleReabrirMatch}
-      onTeams={() => setTeamsModalOpen(true)}
-      onShare={handleShareMatch}
-    />
+      <MatchPositions
+        posiciones={match.posicionesObjetivo}
+        ocupados={ocupadosPorPosicion}
+      />
 
-    {/* ================ MODALES ================ */}
+      {/* ================= TITULARES ================= */}
 
-    <PagoModal
-      open={!!pagoModal}
-      onClose={() => setPagoModal(null)}
-      participation={pagoModal}
-      user={usersMap[pagoModal?.userId]}
-      isAdmin={isMatchAdmin}
-      matchEstado={match.estado}
-      pagoStyles={pagoStyles}
-      onUpdatePago={updatePagoEstado}
-    />
+      <section>
+        {titulares.length === 0 ? (
+          <><h2 className="text-xl font-semibold mb-3">Titulares</h2><p className="text-gray-500">Todavía no hay titulares.</p></>
+        ) : (
+          <PlayersTable
+            title="Titulares"
+            players={titulares}
+            columns="
+              grid-cols-[1fr_48px_48px]
+              sm:grid-cols-[72px_1fr_128px_96px_60px]
+            "
+            highlightUserId={firebaseUser?.uid}
+            usersMap={usersMap}
+            renderHeader={() => (
+              <>
+                <span className="hidden sm:block">Ranking</span>
+                <span>Nombre</span>
+                <span className="hidden sm:block">Posición</span>
+                <span className="flex justify-center">Pago</span>
+                {isMatchAdmin && <span />}
+              </>
+            )}
+            renderRow={(p, isMe) => (
+              <>
+                {/* Ranking */}
+                <span className="flex justify-center text-sm text-neutral-500 hidden sm:block">
+                  {p.rankingTitular}
+                </span>
 
-    <TeamsModal
-      open={teamsModalOpen}
-      onClose={() => setTeamsModalOpen(false)}
-      matchId={matchId}
-      usersMap={usersMap}
-      participations={Object.fromEntries(
-        participations.map((p) => [
-          p.userId,
-          { position: p.posicionAsignada || "" }
-        ])
-      )}
-      isAdmin={isMatchAdmin}
-      matchEstado={match.estado} 
-    />
+                {/* Nombre */}
+                <span className="flex items-center gap-2">
+                  <UserAvatar
+                    nombre={usersMap[p.userId]?.nombre}
+                    photoURL={usersMap[p.userId]?.photoURL}
+                    size={28}
+                  />
+                  <span>
+                    {usersMap[p.userId]?.nombre ?? "—"}
+                    {isMe && (
+                      <span className="ml-1 text-xs text-orange-600">(vos)</span>
+                    )}
+                  </span>
+                </span>
 
-  </main>
-);
+                {/* Posición (oculta en mobile chico si querés) */}
+                <span className="capitalize hidden sm:block">
+                  {p.posicionAsignada}
+                </span>
+
+                {/* Pago (desktop texto / mobile icono) */}
+                <div className="flex justify-center">
+                  <StatusPill
+                    label={
+                      p.pagoEstado === "confirmado"
+                        ? "Confirmado"
+                        : p.pagoEstado === "pospuesto"
+                        ? "Pospuesto"
+                        : "Pendiente"
+                    }
+                    variant={
+                      p.pagoEstado === "confirmado"
+                        ? "success"
+                        : p.pagoEstado === "pospuesto"
+                        ? "info"
+                        : "warning"
+                    }
+                    icon={
+                      p.pagoEstado === "confirmado"
+                        ? "✓"
+                        : p.pagoEstado === "pospuesto"
+                        ? "⏱"
+                        : "$"
+                    }
+                    responsive
+                    onClick={() => setPagoModal(p)}
+                  />
+                </div>
+
+                {/* Acciones */}
+                <div className="flex justify-end">
+                  {isMatchAdmin ? (
+                  <ActionButton
+                    round
+                    variant="danger_outline"
+                    loading={isLoading("remove")}
+                    disabled={
+                      match.estado === "jugado" ||
+                      match.estado === "cancelado"
+                    }
+                    onClick={() => handleEliminarJugador(p.id)}
+                  >
+                    ×
+                  </ActionButton>
+                  ) : (
+                    <span />
+                  )}
+                </div>
+              </>
+            )}
+          />
+        )}
+
+        {match.estado === "verificando" && hayPagosPendientes && (
+          <p className="mt-2 text-sm text-red-600">
+            Todos los titulares deben tener un pago confirmado o pospuesto
+            para cerrar el partido.
+          </p>
+        )}
+      </section>
+
+      {/* ================= SUPLENTES ================= */}
+
+      <section>
+        {suplentes.length === 0 ? (
+          <><h2 className="text-xl font-semibold mb-3">Suplentes</h2><p className="text-gray-500">Todavía no hay suplentes.</p></>
+        ) : (
+          <PlayersTable
+            title="Suplentes"
+            players={suplentes}
+            columns="
+              grid-cols-[1fr_48px_48px]
+              sm:grid-cols-[72px_1fr_128px_96px_60px]
+            "
+            highlightUserId={firebaseUser?.uid}
+            usersMap={usersMap}
+            renderHeader={() => (
+              <>
+                <span className="hidden sm:block">Ranking</span>
+                <span>Nombre</span>
+                <span className="hidden sm:block">Posición</span>
+                <span className="flex justify-center">Pago</span>
+                {isMatchAdmin && <span />}
+              </>
+            )}
+            renderRow={(p, isMe) => (
+              <>
+                {/* Ranking */}
+                <span className="flex justify-center text-sm text-neutral-500 hidden sm:block">
+                  {p.rankingSuplente}
+                </span>
+
+                {/* Nombre */}
+                <span className="flex items-center gap-2">
+                  <UserAvatar
+                    nombre={usersMap[p.userId]?.nombre}
+                    photoURL={usersMap[p.userId]?.photoURL}
+                    size={28}
+                  />
+                  <span>
+                    {usersMap[p.userId]?.nombre ?? "—"}
+                    {isMe && (
+                      <span className="ml-1 text-xs text-orange-600">(vos)</span>
+                    )}
+                  </span>
+                </span>
+
+                {/* Posición (oculta en mobile chico si querés) */}
+                <span className="capitalize hidden sm:block text-xs text-gray-500">
+                  {usersMap[p.userId]?.posicionesPreferidas?.join(", ")}
+                </span>
+
+                {/* Pago (desktop texto / mobile icono) */}
+                <div className="flex justify-center">
+                  <StatusPill
+                    label={
+                      p.pagoEstado === "confirmado"
+                        ? "Confirmado"
+                        : p.pagoEstado === "pospuesto"
+                        ? "Pospuesto"
+                        : "Pendiente"
+                    }
+                    variant={
+                      p.pagoEstado === "confirmado"
+                        ? "success"
+                        : p.pagoEstado === "pospuesto"
+                        ? "info"
+                        : "warning"
+                    }
+                    icon={
+                      p.pagoEstado === "confirmado"
+                        ? "✓"
+                        : p.pagoEstado === "pospuesto"
+                        ? "⏱"
+                        : "$"
+                    }
+                    responsive
+                    onClick={() => setPagoModal(p)}
+                  />
+                </div>
+
+                {/* Acciones */}
+                <div className="flex justify-end">
+                  {isMatchAdmin ? (
+                  <ActionButton
+                    round
+                    variant="danger_outline"
+                    loading={isLoading("remove")}
+                    disabled={
+                      match.estado === "jugado" ||
+                      match.estado === "cancelado"
+                    }
+                    onClick={() => handleEliminarJugador(p.id)}
+                  >
+                    ×
+                  </ActionButton>
+                  ) : (
+                    <span />
+                  )}
+                </div>
+              </>
+            )}
+          />
+        )}
+      </section>
+
+      {/* ================= ELIMINADOS ================ */}
+
+      <section>
+        {eliminados.length === 0 ? (
+          <><h2 className="text-xl font-semibold mb-3">Eliminados</h2><p className="text-gray-500">No hay jugadores eliminados.</p></>
+        ) : (
+          <PlayersTable
+            title="Eliminados"
+            players={eliminados}
+            columns="
+              grid-cols-[1fr_48px_48px]
+              sm:grid-cols-[72px_1fr_128px_96px_60px]
+            "
+            highlightUserId={firebaseUser?.uid}
+            usersMap={usersMap}
+            renderHeader={() => (
+              <>
+                <span className="hidden sm:block">Ranking</span>
+                <span>Nombre</span>
+                <span className="hidden sm:block">Posición</span>
+                <span className="flex justify-center">Pago</span>
+                {isMatchAdmin && <span />}
+              </>
+            )}
+            renderRow={(p, isMe) => (
+              <>
+                {/* Ranking */}
+                <span className="flex justify-center text-sm text-neutral-500 hidden sm:block">
+                  —
+                </span>
+
+                {/* Nombre */}
+                <span className="flex items-center gap-2">
+                  <UserAvatar
+                    nombre={usersMap[p.userId]?.nombre}
+                    photoURL={usersMap[p.userId]?.photoURL}
+                    size={28}
+                  />
+                  <span>
+                    {usersMap[p.userId]?.nombre ?? "—"}
+                    {isMe && (
+                      <span className="ml-1 text-xs text-orange-600">(vos)</span>
+                    )}
+                  </span>
+                </span>
+
+                {/* Posición (oculta en mobile chico si querés) */}
+                <span className="capitalize hidden sm:block text-xs text-gray-500">
+                  {usersMap[p.userId]?.posicionesPreferidas?.join(", ")}
+                </span>
+
+                {/* Pago (desktop texto / mobile icono) */}
+                <div className="flex justify-center">
+                  <StatusPill
+                    label={
+                      p.pagoEstado === "confirmado"
+                        ? "Confirmado"
+                        : p.pagoEstado === "pospuesto"
+                        ? "Pospuesto"
+                        : "Pendiente"
+                    }
+                    variant={
+                      p.pagoEstado === "confirmado"
+                        ? "success"
+                        : p.pagoEstado === "pospuesto"
+                        ? "info"
+                        : "warning"
+                    }
+                    icon={
+                      p.pagoEstado === "confirmado"
+                        ? "✓"
+                        : p.pagoEstado === "pospuesto"
+                        ? "⏱"
+                        : "$"
+                    }
+                    responsive
+                  />
+                </div>
+                {/* Acciones */}
+                <div className="flex justify-end">
+                  {isMatchAdmin && (
+                  <ActionButton
+                    round
+                    variant="success_outline"
+                    loading={isLoading("insert")}
+                    disabled={
+                      match.estado === "cancelado" ||
+                      match.estado === "cerrado" ||
+                      match.estado === "jugado"
+                    }
+                    onClick={() => handleReincorporarJugador(p.id)}
+                  >
+                    +
+                  </ActionButton>
+                )}
+                </div>
+              </>
+            )}
+          />
+        )}
+      </section>
+
+      {/* ================== ACCIONES ================= */}
+
+      <MatchActions
+        isAdmin={isMatchAdmin}
+        isJoined={isJoined}
+        isEliminado={isEliminado}
+        match={match}
+        hayPagosPendientes={hayPagosPendientes}
+        loading={{
+          join: isLoading("join"),
+          leave: isLoading("leave"),
+          cancel: isLoading("cancel"),
+          close: isLoading("close"),
+          reopen: isLoading("reopen"),
+        }}
+        onJoin={handleToggleParticipation}
+        onCancel={handleEliminarMatch}
+        onClose={handleCerrarMatch}
+        onReopen={handleReabrirMatch}
+        onTeams={() => setTeamsModalOpen(true)}
+        onShare={handleShareMatch}
+      />
+
+      {/* ================ MODALES ================ */}
+
+      <PagoModal
+        open={!!pagoModal}
+        onClose={() => setPagoModal(null)}
+        participation={pagoModal}
+        user={usersMap[pagoModal?.userId]}
+        isAdmin={isMatchAdmin}
+        matchEstado={match.estado}
+        pagoStyles={pagoStyles}
+        onUpdatePago={updatePagoEstado}
+      />
+
+      <TeamsModal
+        open={teamsModalOpen}
+        onClose={() => setTeamsModalOpen(false)}
+        matchId={matchId}
+        usersMap={usersMap}
+        participations={Object.fromEntries(
+          participations.map((p) => [
+            p.userId,
+            { position: p.posicionAsignada || "" }
+          ])
+        )}
+        isAdmin={isMatchAdmin}
+        matchEstado={match.estado} 
+      />
+
+    </main>
+  );
 }

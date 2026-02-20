@@ -96,23 +96,23 @@ export default function PreferredPositionsEditor({ initial }: Props) {
 
   if (loadingCatalog) {
     return (
-      <div className="text-sm text-gray-500">
+      <div className="text-sm text-gray-500 dark:text-[var(--text-muted)]">
         Cargando posiciones…
       </div>
     );
   }
 
   return (
-    <section className="bg-white rounded-lg border border-neutral-200 p-4 space-y-4">
+    <section className="bg-white rounded-lg border border-neutral-200 p-4 space-y-4 dark:bg-[var(--surface)] dark:border-[var(--border)]">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-neutral-800">
+          <h3 className="text-sm font-semibold text-neutral-800 dark:text-[var(--foreground)]">
             Posiciones preferidas
           </h3>
 
           {editing && (
-            <p className="text-xs text-neutral-500 mt-0.5">
+            <p className="text-xs text-neutral-500 mt-0.5 dark:text-[var(--text-muted)]">
               Elegí hasta 3 y ordená por prioridad
             </p>
           )}

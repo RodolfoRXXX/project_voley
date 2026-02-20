@@ -46,13 +46,13 @@ export default function AppSidebar() {
   return (
     <aside className="
       hidden md:flex w-64 flex-col h-full min-h-0
-      bg-neutral-100 text-neutral-700
-      border-r border-neutral-200
+      bg-[var(--surface)] text-[var(--foreground)]
+      border-r border-[var(--border)]
     ">
 
       {/* Logo */}
       <div className="px-6 py-5">
-        <p className="text-xs uppercase tracking-wide text-slate-400">
+        <p className="text-xs uppercase tracking-wide text-[var(--text-muted)]">
           Navegación
         </p>
       </div>
@@ -69,7 +69,7 @@ export default function AppSidebar() {
                 ${
                   isActive
                     ? "bg-orange-500/10 text-orange-600"
-                    : "hover:bg-neutral-200/60 text-neutral-600"
+                    : "hover:bg-[var(--surface-muted)] text-[var(--text-muted)] hover:text-[var(--foreground)]"
                 }
               `}
             >
@@ -80,9 +80,9 @@ export default function AppSidebar() {
       </nav>
 
       {/* User section */}
-      <div className="border-t border-neutral-200 p-4">
+      <div className="border-t border-[var(--border)] p-4">
 
-        <div className="flex items-center mb-3 px-3 gap-3 text-sm text-slate-600">
+        <div className="flex items-center mb-3 px-3 gap-3 text-sm text-[var(--text-muted)]">
             {userDoc?.photoURL ? (
             <UserAvatar
                 nombre={userDoc?.nombre}
@@ -100,14 +100,14 @@ export default function AppSidebar() {
             <p className="font-medium">
                 {userDoc?.nombre || "Admin"}
             </p>
-            <p className="text-gray-400 text-xs">
+            <p className="text-[var(--text-muted)] text-xs">
                 {userDoc?.roles || "Player"}
             </p>
             </div>
         </div>
 
         <button
-          className="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-600 hover:bg-orange-500/10 hover:text-orange-600 transition-colors"
+          className="w-full rounded-lg px-3 py-2 text-left text-sm text-[var(--text-muted)] hover:bg-orange-500/10 hover:text-orange-600 transition-colors"
           onClick={logout}
         >
           Cerrar sesión

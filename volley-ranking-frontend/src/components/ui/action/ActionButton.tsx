@@ -48,31 +48,31 @@ export function ActionButton({
 
   const variants: Record<Variant, string> = {
     default:
-      "bg-gray-800 text-white hover:bg-gray-700 active:bg-gray-900 focus-visible:ring-gray-400",
+      "bg-gray-800 text-white hover:bg-gray-900 active:bg-black focus-visible:ring-gray-400",
 
     primary:
-      "bg-blue-600 text-white hover:bg-blue-500 active:bg-blue-700 focus-visible:ring-blue-400",
+      "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 focus-visible:ring-blue-400",
 
     secondary:
       "bg-gray-100 text-gray-800 border border-gray-200 hover:bg-gray-200 active:bg-gray-300 focus-visible:ring-gray-300",
 
     success:
-      "bg-green-600 text-white hover:bg-green-500 active:bg-green-700 focus-visible:ring-green-400",
+      "bg-green-600 text-white hover:bg-green-700 active:bg-green-800 focus-visible:ring-green-400",
 
     warning:
       "bg-yellow-400 text-black hover:bg-yellow-300 active:bg-yellow-500 focus-visible:ring-yellow-300",
 
     danger:
-      "bg-red-600 text-white hover:bg-red-500 active:bg-red-700 focus-visible:ring-red-400",
+      "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 focus-visible:ring-red-400",
 
     danger_outline:
-      "border border-red-300 text-red-600 bg-transparent hover:bg-red-50",
+      "border border-red-300 text-red-600 bg-transparent hover:bg-red-100 dark:hover:bg-red-900/30",
     
     success_outline:
-      "border border-green-300 text-green-600 bg-transparent hover:bg-green-50",
+      "border border-green-300 text-green-600 bg-transparent hover:bg-green-100 dark:hover:bg-green-900/30",
 
     orange: 
-      "bg-orange-500 text-white hover:bg-orange-600",
+      "bg-orange-500 text-white hover:bg-orange-700 active:bg-orange-800",
   };
 
   return (

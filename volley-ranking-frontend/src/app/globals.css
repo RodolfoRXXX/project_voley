@@ -32,11 +32,15 @@ html[data-theme="dark"] :where(.border, .border-neutral-200, .border-gray-200) {
   border-color: var(--border) !important;
 }
 
-html[data-theme="dark"] :where(.text-black, .text-neutral-900, .text-gray-900, .text-gray-800, .text-slate-800) {
+html[data-theme="dark"] :where(.text-black, .text-neutral-900, .text-neutral-800, .text-gray-900, .text-gray-800, .text-slate-800) {
   color: var(--foreground) !important;
 }
 
 html[data-theme="dark"] :where(
+  .text-neutral-700,
+  .text-neutral-600,
+  .text-neutral-500,
+  .text-neutral-400,
   .text-gray-700,
   .text-gray-600,
   .text-gray-500,
@@ -52,7 +56,7 @@ html[data-theme="dark"] :where(.hover\:text-black:hover) {
   color: var(--foreground) !important;
 }
 
-html[data-theme="dark"] :where(.hover\:bg-gray-200:hover, .hover\:bg-gray-100:hover, .hover\:bg-neutral-100:hover) {
+html[data-theme="dark"] :where(.hover\:bg-gray-200:hover, .hover\:bg-gray-100:hover, .hover\:bg-neutral-100:hover, .hover\:bg-neutral-50:hover) {
   background-color: var(--surface-muted) !important;
 }
 
@@ -72,11 +76,15 @@ html[data-theme="dark"] :where(.border, .border-neutral-200, .border-gray-200) {
   border-color: var(--border) !important;
 }
 
-html[data-theme="dark"] :where(.text-black, .text-neutral-900, .text-gray-900, .text-gray-800, .text-slate-800) {
+html[data-theme="dark"] :where(.text-black, .text-neutral-900, .text-neutral-800, .text-gray-900, .text-gray-800, .text-slate-800) {
   color: var(--foreground) !important;
 }
 
 html[data-theme="dark"] :where(
+  .text-neutral-700,
+  .text-neutral-600,
+  .text-neutral-500,
+  .text-neutral-400,
   .text-gray-700,
   .text-gray-600,
   .text-gray-500,
@@ -92,7 +100,7 @@ html[data-theme="dark"] :where(.hover\:text-black:hover) {
   color: var(--foreground) !important;
 }
 
-html[data-theme="dark"] :where(.hover\:bg-gray-200:hover, .hover\:bg-gray-100:hover, .hover\:bg-neutral-100:hover) {
+html[data-theme="dark"] :where(.hover\:bg-gray-200:hover, .hover\:bg-gray-100:hover, .hover\:bg-neutral-100:hover, .hover\:bg-neutral-50:hover) {
   background-color: var(--surface-muted) !important;
 }
 
@@ -103,4 +111,9 @@ html[data-theme="dark"] :where(.shadow-sm, .shadow, .shadow-lg, .shadow-xl) {
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+
+html[data-theme="dark"] input[type="datetime-local"] {
+  color-scheme: dark;
 }

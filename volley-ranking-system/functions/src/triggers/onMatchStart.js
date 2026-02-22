@@ -79,6 +79,7 @@ module.exports = functions.pubsub
 
           // 🔹 PRIMERO: leer todos los stats
           const statsData = [];
+          const userCommitmentData = [];
 
           for (const pDoc of participationsSnap.docs) {
             const p = pDoc.data();
@@ -89,11 +90,19 @@ module.exports = functions.pubsub
               .doc(`${match.groupId}_${p.userId}`);
 
             const statSnap = await tx.get(statRef);
+            const userRef = db.collection("users").doc(p.userId);
+            const userSnap = await tx.get(userRef);
 
             statsData.push({
               ref: statRef,
               partidosJugados: (statSnap.data()?.partidosJugados || 0) + 1,
               userId: p.userId,
+            });
+
+            userCommitmentData.push({
+              ref: userRef,
+              estadoCompromiso:
+                (userSnap.data()?.estadoCompromiso || 0) + 1,
             });
           }
 
@@ -105,6 +114,16 @@ module.exports = functions.pubsub
                 groupId: match.groupId,
                 userId: stat.userId,
                 partidosJugados: stat.partidosJugados,
+              },
+              { merge: true }
+            );
+          }
+
+          for (const user of userCommitmentData) {
+            tx.set(
+              user.ref,
+              {
+                estadoCompromiso: user.estadoCompromiso,
               },
               { merge: true }
             );

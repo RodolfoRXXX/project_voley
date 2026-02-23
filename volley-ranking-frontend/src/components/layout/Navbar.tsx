@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -17,30 +19,35 @@ export default function Navbar() {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [open, setOpen] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    if (typeof window === "undefined") {
-      return "light";
-    }
+
+  // 🔥 FIX SSR/HYDRATION
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [mounted, setMounted] = useState(false);
+
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setMounted(true);
 
     const savedTheme = localStorage.getItem("theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-    if (savedTheme === "dark" || savedTheme === "light") {
-      return savedTheme;
-    }
+    const initialTheme =
+      savedTheme === "dark" || savedTheme === "light"
+        ? savedTheme
+        : prefersDark
+        ? "dark"
+        : "light";
 
-    return prefersDark ? "dark" : "light";
-  });
-  const pathname = usePathname();
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    localStorage.setItem("theme", theme);
-  }, [theme]);
+    setTheme(initialTheme);
+    document.documentElement.dataset.theme = initialTheme;
+  }, []);
 
   const toggleTheme = () => {
     const nextTheme = theme === "light" ? "dark" : "light";
     setTheme(nextTheme);
+    document.documentElement.dataset.theme = nextTheme;
+    localStorage.setItem("theme", nextTheme);
   };
 
   const login = async () => {
@@ -83,31 +90,27 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50 bg-[var(--nav-bg)] border-b border-[var(--border)] shadow-sm transition-colors">
       <div className="relative max-w-7xl mx-auto px-4 py-3 flex items-center">
-  
-        {/* LEFT spacer */}
         <div className="hidden md:block w-64" />
 
-        {/* Logo */}
         <Link
           href="/dashboard"
-          className="
-            font-bold text-lg text-[var(--foreground)]
-            md:absolute md:left-1/2 md:-translate-x-1/2
-          "
+          className="font-bold text-lg text-[var(--foreground)] md:absolute md:left-1/2 md:-translate-x-1/2"
         >
           🏐 Proyecto Voley
         </Link>
 
-        {/* RIGHT */}
+        {/* DESKTOP */}
         <div className="ml-auto hidden md:flex items-center gap-3">
-          <button
-            onClick={toggleTheme}
-            className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--foreground)] transition-colors"
-            aria-label="Cambiar tema"
-            title={`Cambiar a modo ${theme === "light" ? "dark" : "light"}`}
-          >
-            {theme === "light" ? "🌙" : "☀️"}
-          </button>
+          {mounted && (
+            <button
+              onClick={toggleTheme}
+              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--foreground)] transition-colors"
+              aria-label="Cambiar tema"
+              title={`Cambiar a modo ${theme === "light" ? "dark" : "light"}`}
+            >
+              {theme === "light" ? "🌙" : "☀️"}
+            </button>
+          )}
 
           {!loading && !firebaseUser && (
             <button
@@ -141,7 +144,7 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* MOBILE */}
+        {/* MOBILE MENU BUTTON */}
         <div className="ml-auto md:hidden flex items-center gap-2">
           <button
             onClick={() => setOpen(!open)}
@@ -152,21 +155,20 @@ export default function Navbar() {
         </div>
       </div>
 
-
       {/* MOBILE DRAWER */}
       {open && (
         <div className="md:hidden border-t border-[var(--border)] bg-[var(--surface)] transition-colors">
-
           <div className="px-4 pt-3">
-            <button
-              onClick={toggleTheme}
-              className="rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs text-[var(--text-muted)]"
-            >
-              {theme === "light" ? "🌙 Activar dark" : "☀️ Activar light"}
-            </button>
+            {mounted && (
+              <button
+                onClick={toggleTheme}
+                className="rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs text-[var(--text-muted)]"
+              >
+                {theme === "light" ? "🌙 Activar dark" : "☀️ Activar light"}
+              </button>
+            )}
           </div>
 
-          {/* USER INFO */}
           {firebaseUser && (
             <div className="px-4 py-4 flex items-center gap-3">
               <UserAvatar
@@ -174,7 +176,6 @@ export default function Navbar() {
                 photoURL={firebaseUser.photoURL || ""}
                 size={40}
               />
-
               <div className="text-sm">
                 <p className="font-medium text-[var(--foreground)]">
                   {firebaseUser.displayName}
@@ -186,12 +187,10 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* SEPARATOR */}
           {firebaseUser && (
-          <div className="border-t border-[var(--border)] my-1" />
+            <div className="border-t border-[var(--border)] my-1" />
           )}
 
-          {/* NAV LINKS */}
           {firebaseUser && (
             <nav className="px-2 space-y-1 border-b border-[var(--border)] py-2">
               {navItems.map((item) => {
@@ -202,13 +201,11 @@ export default function Navbar() {
                     key={item.href}
                     href={item.href}
                     onClick={() => setOpen(false)}
-                    className={`block rounded-lg px-4 py-2 text-sm font-medium transition-colors
-                      ${
-                        isActive
-                          ? "bg-orange-500/10 text-orange-600"
-                          : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
-                      }
-                    `}
+                    className={`block rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                      isActive
+                        ? "bg-orange-500/10 text-orange-600"
+                        : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+                    }`}
                   >
                     {item.label}
                   </Link>
@@ -217,7 +214,6 @@ export default function Navbar() {
             </nav>
           )}
 
-          {/* FOOTER */}
           <div className="p-2">
             {firebaseUser ? (
               <button
@@ -237,7 +233,6 @@ export default function Navbar() {
           </div>
         </div>
       )}
-
     </nav>
   );
 }

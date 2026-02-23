@@ -89,7 +89,7 @@ export default function NewMatchPage() {
       router.replace(`/admin/groups/${groupId}`);
     },
     {
-      successMessage: "Match creado correctamente",
+      successMessage: "Partido creado correctamente",
       errorMessage: "Error al crear el partido",
     }
   );

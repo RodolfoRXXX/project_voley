@@ -1,8 +1,6 @@
-
-
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -12,6 +10,8 @@ import { usePathname, useRouter } from "next/navigation";
 import useToast from "@/components/ui/toast/useToast";
 import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
+import ThemeSwitch from "@/components/layout/ThemeSwitch";
+import { useThemeMode } from "@/hooks/useThemeMode";
 
 export default function Navbar() {
   const { firebaseUser, userDoc, loading } = useAuth();
@@ -19,36 +19,9 @@ export default function Navbar() {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [open, setOpen] = useState(false);
-
-  // 🔥 FIX SSR/HYDRATION
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [mounted, setMounted] = useState(false);
+  const { theme, themeLabel, toggleTheme } = useThemeMode();
 
   const pathname = usePathname();
-
-  useEffect(() => {
-    setMounted(true);
-
-    const savedTheme = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-    const initialTheme =
-      savedTheme === "dark" || savedTheme === "light"
-        ? savedTheme
-        : prefersDark
-        ? "dark"
-        : "light";
-
-    setTheme(initialTheme);
-    document.documentElement.dataset.theme = initialTheme;
-  }, []);
-
-  const toggleTheme = () => {
-    const nextTheme = theme === "light" ? "dark" : "light";
-    setTheme(nextTheme);
-    document.documentElement.dataset.theme = nextTheme;
-    localStorage.setItem("theme", nextTheme);
-  };
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
@@ -88,41 +61,6 @@ export default function Navbar() {
     });
   }
 
-  const themeLabel = theme === "light" ? "Modo light" : "Modo dark";
-
-  const ThemeSwitch = ({ className = "" }: { className?: string }) => (
-    <button
-      onClick={toggleTheme}
-      className={`relative inline-flex h-8 w-16 items-center rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 ${
-        theme === "light"
-          ? "border-neutral-300 bg-white"
-          : "border-slate-600 bg-slate-900"
-      } ${className}`}
-      aria-label="Cambiar tema"
-      title={`Cambiar a modo ${theme === "light" ? "dark" : "light"}`}
-      role="switch"
-      aria-checked={theme === "dark"}
-    >
-      <span
-        className={`absolute text-sm transition-all ${
-          theme === "light" ? "right-2 text-amber-500" : "left-2 text-slate-400"
-        }`}
-        aria-hidden
-      >
-        {theme === "light" ? "☀️" : "🌙"}
-      </span>
-
-      <span
-        className={`absolute top-1 h-6 w-6 rounded-full shadow-sm transition-all ${
-          theme === "light"
-            ? "left-1 bg-neutral-200"
-            : "left-[calc(100%-1.75rem)] bg-slate-700"
-        }`}
-        aria-hidden
-      />
-    </button>
-  );
-
   return (
     <nav className="sticky top-0 z-50 bg-[var(--nav-bg)] border-b border-[var(--border)] shadow-sm transition-colors">
       <div className="relative max-w-7xl mx-auto px-4 py-3 flex items-center">
@@ -137,8 +75,6 @@ export default function Navbar() {
 
         {/* DESKTOP */}
         <div className="ml-auto hidden md:flex items-center gap-3">
-          {mounted && <ThemeSwitch />}
-
           {!loading && !firebaseUser && (
             <button
               onClick={login}
@@ -186,12 +122,10 @@ export default function Navbar() {
       {open && (
         <div className="md:hidden border-t border-[var(--border)] bg-[var(--surface)] transition-colors">
           <div className="px-4 pt-3">
-            {mounted && (
-              <div className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2">
-                <span className="text-sm font-medium text-[var(--foreground)]">{themeLabel}</span>
-                <ThemeSwitch />
-              </div>
-            )}
+            <div className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2">
+              <span className="text-sm font-medium text-[var(--foreground)]">{themeLabel}</span>
+              <ThemeSwitch theme={theme} onToggle={toggleTheme} />
+            </div>
           </div>
 
           {firebaseUser && (
@@ -212,9 +146,7 @@ export default function Navbar() {
             </div>
           )}
 
-          {firebaseUser && (
-            <div className="border-t border-[var(--border)] my-1" />
-          )}
+          {firebaseUser && <div className="border-t border-[var(--border)] my-1" />}
 
           {firebaseUser && (
             <nav className="px-2 space-y-1 border-b border-[var(--border)] py-2">

@@ -63,11 +63,15 @@ export default function NewGroupPage() {
     return run(
       "create-group",
       async () => {
+        const ownerId = firebaseUser.uid;
         const docRef = await addDoc(collection(db, "groups"), {
           nombre: nombre.trim(),
           descripcion: descripcion.trim(),
           activo,
-          adminId: firebaseUser.uid,
+          adminId: ownerId,
+          admins: [{ userId: ownerId, role: "owner", order: 0 }],
+          ownerId,
+          adminIds: [ownerId],
           createdAt: serverTimestamp(),
           partidosTotales: 0,
         });

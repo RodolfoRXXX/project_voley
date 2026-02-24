@@ -30,6 +30,15 @@ const functions = getFunctions(app);
 const editGroup = httpsCallable(functions, "editGroup");
 const toggleGroupActivo = httpsCallable(functions, "toggleGroupActivo");
 
+const canAdminGroup = (group: any, uid?: string) => {
+  if (!uid) return false;
+  if (Array.isArray(group?.adminIds)) {
+    return group.adminIds.includes(uid);
+  }
+  return group?.adminId === uid;
+};
+
+
 /* =====================
    SKELETON
 ===================== */
@@ -131,7 +140,7 @@ export default function AdminGroupPage() {
 
         const data = snap.data();
 
-        if (data.adminId !== firebaseUser?.uid) {
+        if (!canAdminGroup(data, firebaseUser?.uid)) {
           router.replace("/admin/groups");
           return;
         }

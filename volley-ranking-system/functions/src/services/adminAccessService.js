@@ -1,5 +1,9 @@
 const functions = require("firebase-functions/v1");
 const { db } = require("../firebase");
+const {
+  isGroupAdmin,
+  isGroupOwner,
+} = require("./groupAdminsService");
 
 async function assertIsAdmin(uid) {
   const userSnap = await db.collection("users").doc(uid).get();
@@ -21,10 +25,29 @@ async function assertGroupAdmin(groupId, uid) {
 
   const group = groupSnap.data();
 
-  if (String(group.adminId) !== String(uid)) {
+  if (!isGroupAdmin(group, uid)) {
     throw new functions.https.HttpsError(
       "permission-denied",
       "No tenés permisos sobre este grupo"
+    );
+  }
+
+  return group;
+}
+
+async function assertGroupOwner(groupId, uid) {
+  const groupSnap = await db.collection("groups").doc(groupId).get();
+
+  if (!groupSnap.exists) {
+    throw new functions.https.HttpsError("not-found", "El grupo no existe");
+  }
+
+  const group = groupSnap.data();
+
+  if (!isGroupOwner(group, uid)) {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "Solo el owner puede realizar esta acción"
     );
   }
 
@@ -42,12 +65,11 @@ async function assertMatchAdmin(matchId, uid) {
 
   let isAllowed = false;
 
-  if (match.adminId) {
-    isAllowed = String(match.adminId) === String(uid);
-  } else if (match.groupId) {
-    // Compatibilidad: matches viejos pueden no tener adminId cargado.
+  if (match.groupId) {
     await assertGroupAdmin(match.groupId, uid);
     isAllowed = true;
+  } else if (match.adminId) {
+    isAllowed = String(match.adminId) === String(uid);
   }
 
   if (!isAllowed) {
@@ -82,6 +104,7 @@ async function assertParticipationMatchAdmin(participationId, uid) {
 module.exports = {
   assertIsAdmin,
   assertGroupAdmin,
+  assertGroupOwner,
   assertMatchAdmin,
   assertParticipationMatchAdmin,
 };

@@ -25,3 +25,7 @@ exports.eliminarMatch = require("./callables/eliminarMatch");
 exports.updatePreferredPositions = require("./callables/updatePreferredPositions");
 exports.getValidPositions = require("./callables/getValidPositions");
 exports.generarEquipos = require("./callables/generarEquipos");
+exports.addGroupAdmin = require("./callables/addGroupAdmin");
+exports.removeGroupAdmin = require("./callables/removeGroupAdmin");
+exports.reorderGroupAdmins = require("./callables/reorderGroupAdmins");
+exports.transferGroupOwnership = require("./callables/transferGroupOwnership");

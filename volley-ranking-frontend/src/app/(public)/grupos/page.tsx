@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -14,12 +15,14 @@ type PublicGroup = {
     name: string;
     email?: string | null;
   } | null;
+  memberIds?: string[];
 };
 
 export default function GruposPage() {
   const { firebaseUser } = useAuth();
   const [groups, setGroups] = useState<PublicGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const endpoint = useMemo(() => {
@@ -42,8 +45,8 @@ export default function GruposPage() {
 
         const json = await res.json();
         setGroups(json.groups || []);
-      } catch (err: any) {
-        setError(err?.message || "No se pudieron cargar los grupos");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "No se pudieron cargar los grupos");
       } finally {
         setLoading(false);
       }
@@ -51,6 +54,39 @@ export default function GruposPage() {
 
     load();
   }, [endpoint, firebaseUser]);
+
+  const joinGroup = async (groupId: string) => {
+    if (!firebaseUser) {
+      setError("Debes iniciar sesión para unirte a un grupo");
+      return;
+    }
+
+    setError(null);
+    setJoiningGroupId(groupId);
+
+    try {
+      const token = await firebaseUser.getIdToken();
+      const res = await fetch(`/api/groups/${groupId}/join`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload?.error || "No se pudo unir al grupo");
+
+      setGroups((prev) =>
+        prev.map((group) =>
+          group.id === groupId ? { ...group, memberIds: payload.memberIds || group.memberIds } : group
+        )
+      );
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "No se pudo unir al grupo");
+    } finally {
+      setJoiningGroupId(null);
+    }
+  };
 
   return (
     <main className="max-w-6xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
@@ -85,6 +121,23 @@ export default function GruposPage() {
               <p>Partidos: <b>{group.totalMatches}</b></p>
               <p>Owner: <b>{group.owner?.name || "No disponible"}</b></p>
               {group.owner?.email && <p>Email: {group.owner.email}</p>}
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                onClick={() => joinGroup(group.id)}
+                disabled={joiningGroupId === group.id}
+                className="px-3 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {joiningGroupId === group.id ? "Uniéndote..." : "Unirme"}
+              </button>
+
+              <Link
+                href={`/grupos/${group.id}`}
+                className="px-3 py-2 rounded-lg text-sm font-medium border border-neutral-300 text-neutral-800 hover:bg-neutral-50"
+              >
+                Ver detalle
+              </Link>
             </div>
           </article>
         ))}

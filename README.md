@@ -47,6 +47,38 @@ group {
 📌 El group acumula historia
 📌 partidosTotales se incrementa automáticamente (Evento 8)
 
+// ----- ACTUALIZACION -----
+
+// GROUP
+- Los grupos ahora tienen integrantes
+- El grupo cuando se genera puede ser público o privado
+     - Público: se ve en el listado de grupos general
+     - Privado: NO se ve en el listado de grupo general salvo que seas integrante
+
+    joinApproval: true/false - Indica si el grupo necesita confirmación de un admin para aceptar a un integrante nuevo
+               - Público: true: confirmción de un admin / false: un integrante se une directamente
+               - Privado: el admin te agrega directamente y al integrante le llega el mail de aviso del grupo al que fue agregado
+
+- Detalle de grupo
+  - (Public) - Solo informativo(no permite modificaciones)
+    - Información del grupo
+      - Player: Ve los admins del grupo
+      - Admin: Ve los admins del grupo y hay un botón que le permite ser admin del grupo(pero debe esperar confirmación del owner)
+    - Partidos creados
+    - Integrantes
+  
+  - (protected) - Aqui se pueden hacer cambios
+    - Información del grupo
+      - Admin: Solo el owner puede editar el listado de admins
+      - Partidos creados - permite crear más
+      - Integrantes - permite aceptar integrantes o agregar nuevos
+
+// MATCH
+- Un match puede ser:
+    - group_only: solo los integrantes del grupo pueden verlo y unirse
+    - public: cualquiera, sea integrante o no del grupo puede unirse
+
+
 📅 MATCH
 
 Es un evento puntual.
@@ -455,9 +487,6 @@ No se suma compromiso
 Estado final
 
 Para verificar los secrets guardados de las credenciales de google para el correo
-
-firebase functions:secrets:access GMAIL_USER
-firebase functions:secrets:access GMAIL_PASS
 
 ## Nota sobre deprecación de `functions.config()` (marzo 2026)
 

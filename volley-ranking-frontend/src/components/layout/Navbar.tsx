@@ -88,6 +88,41 @@ export default function Navbar() {
     });
   }
 
+  const themeLabel = theme === "light" ? "Modo light" : "Modo dark";
+
+  const ThemeSwitch = ({ className = "" }: { className?: string }) => (
+    <button
+      onClick={toggleTheme}
+      className={`relative inline-flex h-8 w-16 items-center rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 ${
+        theme === "light"
+          ? "border-neutral-300 bg-white"
+          : "border-slate-600 bg-slate-900"
+      } ${className}`}
+      aria-label="Cambiar tema"
+      title={`Cambiar a modo ${theme === "light" ? "dark" : "light"}`}
+      role="switch"
+      aria-checked={theme === "dark"}
+    >
+      <span
+        className={`absolute text-sm transition-all ${
+          theme === "light" ? "right-2 text-amber-500" : "left-2 text-slate-400"
+        }`}
+        aria-hidden
+      >
+        {theme === "light" ? "☀️" : "🌙"}
+      </span>
+
+      <span
+        className={`absolute top-1 h-6 w-6 rounded-full shadow-sm transition-all ${
+          theme === "light"
+            ? "left-1 bg-neutral-200"
+            : "left-[calc(100%-1.75rem)] bg-slate-700"
+        }`}
+        aria-hidden
+      />
+    </button>
+  );
+
   return (
     <nav className="sticky top-0 z-50 bg-[var(--nav-bg)] border-b border-[var(--border)] shadow-sm transition-colors">
       <div className="relative max-w-7xl mx-auto px-4 py-3 flex items-center">
@@ -102,16 +137,7 @@ export default function Navbar() {
 
         {/* DESKTOP */}
         <div className="ml-auto hidden md:flex items-center gap-3">
-          {mounted && (
-            <button
-              onClick={toggleTheme}
-              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--foreground)] transition-colors"
-              aria-label="Cambiar tema"
-              title={`Cambiar a modo ${theme === "light" ? "dark" : "light"}`}
-            >
-              {theme === "light" ? "🌙" : "☀️"}
-            </button>
-          )}
+          {mounted && <ThemeSwitch />}
 
           {!loading && !firebaseUser && (
             <button
@@ -161,12 +187,10 @@ export default function Navbar() {
         <div className="md:hidden border-t border-[var(--border)] bg-[var(--surface)] transition-colors">
           <div className="px-4 pt-3">
             {mounted && (
-              <button
-                onClick={toggleTheme}
-                className="rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs text-[var(--text-muted)]"
-              >
-                {theme === "light" ? "🌙 Activar dark" : "☀️ Activar light"}
-              </button>
+              <div className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2">
+                <span className="text-sm font-medium text-[var(--foreground)]">{themeLabel}</span>
+                <ThemeSwitch />
+              </div>
             )}
           </div>
 

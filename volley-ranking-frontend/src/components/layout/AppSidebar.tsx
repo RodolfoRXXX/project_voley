@@ -1,4 +1,3 @@
-
 // -------------------
 // SIDEBAR
 // -------------------
@@ -13,12 +12,15 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "../ui/avatar/UserAvatar";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
+import ThemeSwitch from "@/components/layout/ThemeSwitch";
+import { useThemeMode } from "@/hooks/useThemeMode";
 
 export default function AppSidebar() {
   const pathname = usePathname();
   const { userDoc } = useAuth();
   const router = useRouter();
   const { confirm } = useConfirm();
+  const { theme, themeLabel, toggleTheme } = useThemeMode();
 
   const isAdmin = userDoc?.roles === "admin";
 
@@ -93,6 +95,13 @@ export default function AppSidebar() {
           );
         })}
       </nav>
+
+      <div className="px-4 pb-3">
+        <div className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2">
+          <span className="text-sm font-medium text-[var(--foreground)]">{themeLabel}</span>
+          <ThemeSwitch theme={theme} onToggle={toggleTheme} />
+        </div>
+      </div>
 
       {/* User section */}
       <div className="border-t border-[var(--border)] p-4">

@@ -16,21 +16,16 @@ type PublicGroup = {
   } | null;
 };
 
-function getGroupsEndpoint() {
-  const rawBase = process.env.NEXT_PUBLIC_FUNCTIONS_BASE_URL?.replace(/\/$/, "");
-  if (!rawBase) return "/api/groups/public";
-
-  const functionsApiBaseUrl = rawBase.endsWith("/api") ? rawBase : `${rawBase}/api`;
-  return `${functionsApiBaseUrl}/groups/public`;
-}
-
 export default function GruposPage() {
   const { firebaseUser } = useAuth();
   const [groups, setGroups] = useState<PublicGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const endpoint = useMemo(getGroupsEndpoint, []);
+  const endpoint = useMemo(() => {
+    const base = process.env.NEXT_PUBLIC_FUNCTIONS_BASE_URL?.replace(/\/$/, "");
+    return base ? `${base}/api/groups/public` : "/api/groups/public";
+  }, []);
 
   useEffect(() => {
     const load = async () => {

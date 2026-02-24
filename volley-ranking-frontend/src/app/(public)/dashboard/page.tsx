@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton/Skeleton";
 type Match = {
   id: string;
   groupId: string;
+  visibility?: "group_only" | "public";
   estado: string;
   formacion: string;
   horaInicio: Timestamp;
@@ -24,7 +25,7 @@ type Match = {
 };
 
 export default function DashboardPage() {
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, userDoc } = useAuth();
   const estadosPermitidos = ["abierto", "verificando", "cerrado", "cancelado"];
 
   const [matches, setMatches] = useState<Match[]>([]);
@@ -47,15 +48,7 @@ export default function DashboardPage() {
       }))
         .filter((match) => match.horaInicio.toMillis() > ahora.toMillis());
 
-      loadedMatches.sort(
-        (a, b) => a.horaInicio.toMillis() - b.horaInicio.toMillis()
-      );
-
-      setMatches(loadedMatches);
-
-      const groupIds = Array.from(
-        new Set(loadedMatches.map((m) => m.groupId))
-      );
+      const groupIds = Array.from(new Set(loadedMatches.map((m) => m.groupId)));
 
       if (groupIds.length === 0) {
         setGroupsMap({});
@@ -71,16 +64,33 @@ export default function DashboardPage() {
       const snapGroups = await getDocs(qGroups);
 
       const map: Record<string, string> = {};
+      const allowedGroupIds = new Set<string>();
+
       snapGroups.docs.forEach((d) => {
-        map[d.id] = d.data().nombre;
+        const group = d.data();
+        map[d.id] = group.nombre;
+
+        const isGroupAdmin =
+          Array.isArray(group.adminIds) && firebaseUser?.uid
+            ? group.adminIds.includes(firebaseUser.uid)
+            : group.adminId === firebaseUser?.uid;
+
+        if (isGroupAdmin || userDoc?.roles === "admin") {
+          allowedGroupIds.add(d.id);
+        }
       });
 
+      const filteredMatches = loadedMatches
+        .filter((match) => match.visibility === "public" || allowedGroupIds.has(match.groupId))
+        .sort((a, b) => a.horaInicio.toMillis() - b.horaInicio.toMillis());
+
+      setMatches(filteredMatches);
       setGroupsMap(map);
       setLoading(false);
     });
 
     return () => unsub();
-  }, []);
+  }, [firebaseUser?.uid, userDoc?.roles]);
 
   /* =====================
      SKELETON

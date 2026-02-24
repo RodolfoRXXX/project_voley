@@ -44,6 +44,7 @@ async function crearMatch({
   formacion,
   posicionesBase,
   cantidadSuplentes,
+  visibility = "group_only",
 }) {
   const posicionesObjetivo = {};
 
@@ -67,6 +68,7 @@ async function crearMatch({
     formacion,
     posicionesObjetivo,
     cantidadSuplentes,
+    visibility,
 
     // ⏱️ DEADLINES
     deadlineStage,

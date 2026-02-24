@@ -28,6 +28,7 @@ export default function NewMatchPage() {
   const [cantidadEquipos, setCantidadEquipos] = useState(2);
   const [cantidadSuplentes, setCantidadSuplentes] = useState(5);
   const [horaInicio, setHoraInicio] = useState("");
+  const [visibility, setVisibility] = useState<"group_only" | "public">("group_only");
   const { run, isLoading } = useAction();
 
   /* =====================
@@ -83,6 +84,7 @@ export default function NewMatchPage() {
         formacion,
         cantidadEquipos,
         cantidadSuplentes,
+        visibility,
         horaInicioMillis: new Date(horaInicio).getTime(),
       });
 
@@ -179,6 +181,20 @@ export default function NewMatchPage() {
         </FormField>
 
         {/* Fecha y hora */}
+        <FormField
+          label="Visibilidad del partido"
+          required
+        >
+          <select
+            value={visibility}
+            onChange={(e) => setVisibility(e.target.value as "group_only" | "public")}
+            className={`${inputClass(true)} text-sm`}
+          >
+            <option value="group_only">Solo grupo</option>
+            <option value="public">Público</option>
+          </select>
+        </FormField>
+
         <FormField
           label="Fecha y hora de inicio"
           required

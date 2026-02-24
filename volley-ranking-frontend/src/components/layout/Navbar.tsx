@@ -77,6 +77,7 @@ export default function Navbar() {
 
   const navItems = [
     { label: "Inicio", href: "/dashboard" },
+    { label: "Grupos", href: "/grupos" },
     { label: "Perfil", href: "/profile" },
   ];
 

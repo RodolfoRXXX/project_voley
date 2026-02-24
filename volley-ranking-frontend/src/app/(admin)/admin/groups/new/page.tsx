@@ -26,6 +26,8 @@ export default function NewGroupPage() {
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [activo, setActivo] = useState(true);
+  const [visibility, setVisibility] = useState<"public" | "private">("private");
+  const [joinApproval, setJoinApproval] = useState(true);
 
   /* =====================
      Auth guard
@@ -72,6 +74,8 @@ export default function NewGroupPage() {
           admins: [{ userId: ownerId, role: "owner", order: 0 }],
           ownerId,
           adminIds: [ownerId],
+          visibility,
+          joinApproval,
           createdAt: serverTimestamp(),
           partidosTotales: 0,
         });
@@ -135,6 +139,30 @@ export default function NewGroupPage() {
           />
           <span className="text-gray-600">
             El grupo podrá crear partidos
+          </span>
+        </label>
+      </FormField>
+
+      <FormField label="Visibilidad">
+        <select
+          value={visibility}
+          onChange={(e) => setVisibility(e.target.value as "public" | "private")}
+          className="border rounded px-3 py-2 w-full text-sm"
+        >
+          <option value="private">Privado</option>
+          <option value="public">Público</option>
+        </select>
+      </FormField>
+
+      <FormField label="Aprobación de ingreso">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={joinApproval}
+            onChange={(e) => setJoinApproval(e.target.checked)}
+          />
+          <span className="text-gray-600">
+            Requerir aprobación del admin para ingresar al grupo
           </span>
         </label>
       </FormField>

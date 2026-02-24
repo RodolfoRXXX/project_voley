@@ -32,6 +32,7 @@ module.exports = functions.https.onCall(async (data, context) => {
     cantidadEquipos,
     formacion,
     cantidadSuplentes,
+    visibility = "group_only",
   } = data;
 
   const db = getFirestore();
@@ -45,6 +46,14 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
 
+
+
+  if (!["group_only", "public"].includes(visibility)) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "visibility inválida"
+    );
+  }
 
   if (!formaciones[formacion]) {
     throw new functions.https.HttpsError(
@@ -92,6 +101,7 @@ module.exports = functions.https.onCall(async (data, context) => {
     formacion,
     posicionesBase: formaciones[formacion],
     cantidadSuplentes,
+    visibility,
     jugadores: [],
   });
 

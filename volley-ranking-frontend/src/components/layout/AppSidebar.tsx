@@ -28,6 +28,10 @@ export default function AppSidebar() {
       href: "/dashboard"
     },
     {
+      label: "Grupos",
+      href: "/grupos"
+    },
+    {
       label: "Perfil",
       href: "/profile"
     },

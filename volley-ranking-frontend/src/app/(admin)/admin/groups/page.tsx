@@ -19,7 +19,12 @@ interface Group {
   descripcion: string;
   activo: boolean;
   partidosTotales: number;
-  adminId: string;
+  createdAt?: {
+    seconds: number;
+  };
+  adminId?: string;
+  ownerId?: string;
+  adminIds?: string[];
 }
 
 /* =====================
@@ -81,17 +86,37 @@ export default function AdminGroupsPage() {
     if (authLoading || !firebaseUser) return;
 
     const loadGroups = async () => {
-      const q = query(
-        collection(db, "groups"),
-        where("adminId", "==", firebaseUser.uid),
-        orderBy("createdAt", "desc")
-      );
-      const snap = await getDocs(q);
+      const groupsRef = collection(db, "groups");
+      const [multiAdminSnap, legacySnap] = await Promise.all([
+        getDocs(
+          query(
+            groupsRef,
+            where("adminIds", "array-contains", firebaseUser.uid),
+            orderBy("createdAt", "desc")
+          )
+        ),
+        getDocs(
+          query(
+            groupsRef,
+            where("adminId", "==", firebaseUser.uid),
+            orderBy("createdAt", "desc")
+          )
+        ),
+      ]);
 
-      const data: Group[] = snap.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Group, "id">),
-      }));
+      const merged = new Map<string, Group>();
+      [...multiAdminSnap.docs, ...legacySnap.docs].forEach((groupDoc) => {
+        merged.set(groupDoc.id, {
+          id: groupDoc.id,
+          ...(groupDoc.data() as Omit<Group, "id">),
+        });
+      });
+
+      const data = Array.from(merged.values()).sort((a, b) => {
+        const aTime = a.createdAt?.seconds ?? 0;
+        const bTime = b.createdAt?.seconds ?? 0;
+        return bTime - aTime;
+      });
 
       setGroups(data);
       setLoading(false);

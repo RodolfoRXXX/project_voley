@@ -57,9 +57,11 @@ function cleanStringArray(value) {
 }
 
 function getGroupAdminIds(group = {}) {
-  const adminIds = cleanStringArray(group.adminIds);
-  if (adminIds.length > 0) return adminIds;
-  return cleanStringArray(group.admins?.map((admin) => admin?.userId));
+  const normalizedAdminIds = cleanStringArray(group.adminIds);
+  const adminIdsFromList = cleanStringArray(group.admins?.map((admin) => admin?.userId));
+  const ownerFallbackIds = cleanStringArray([group.ownerId, group.adminId]);
+
+  return Array.from(new Set([...normalizedAdminIds, ...adminIdsFromList, ...ownerFallbackIds]));
 }
 
 function canManageGroup(group = {}, authContext) {
@@ -130,7 +132,8 @@ async function handleGroupDetail(req, res, authContext, groupId) {
 
   const memberIds = cleanStringArray(group.memberIds);
   const adminIds = getGroupAdminIds(group);
-  const isGroupMember = !!authContext.uid && memberIds.includes(authContext.uid);
+  const isGroupMember =
+    !!authContext.uid && (memberIds.includes(authContext.uid) || adminIds.includes(authContext.uid));
 
   if (!authContext.isSystemAdmin && !isGroupMember) {
     res.status(403).json({ error: "Debes ser integrante del grupo para ver el detalle" });

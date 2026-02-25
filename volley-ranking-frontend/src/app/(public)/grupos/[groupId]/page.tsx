@@ -46,7 +46,7 @@ type GroupDetail = {
 
 export default function GrupoPublicDetailPage() {
   const { groupId } = useParams<{ groupId: string }>();
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, loading: authLoading } = useAuth();
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [matches, setMatches] = useState<GroupMatch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,22 +54,37 @@ export default function GrupoPublicDetailPage() {
   const [actingKey, setActingKey] = useState<string | null>(null);
 
   const loadGroup = useCallback(async () => {
-    if (!groupId) return;
+    if (!groupId || authLoading) return;
 
     try {
       setError(null);
-      const authHeaders = firebaseUser
-        ? { Authorization: `Bearer ${await firebaseUser.getIdToken()}` }
-        : undefined;
 
-      const res = await fetch(`/api/groups/${groupId}/public`, {
+      const getHeaders = async (forceRefresh = false) => {
+        if (!firebaseUser) return undefined;
+        const token = await firebaseUser.getIdToken(forceRefresh);
+        return { Authorization: `Bearer ${token}` };
+      };
+
+      let res = await fetch(`/api/groups/${groupId}/public`, {
         method: "GET",
-        headers: authHeaders,
+        headers: await getHeaders(),
       });
 
-      const payload = (await readJsonSafely(res)) as
+      let payload = (await readJsonSafely(res)) as
         | { error?: string; group?: GroupDetail | null; matches?: GroupMatch[] }
         | null;
+
+      if (res.status === 403 && firebaseUser) {
+        res = await fetch(`/api/groups/${groupId}/public`, {
+          method: "GET",
+          headers: await getHeaders(true),
+        });
+
+        payload = (await readJsonSafely(res)) as
+          | { error?: string; group?: GroupDetail | null; matches?: GroupMatch[] }
+          | null;
+      }
+
       if (!res.ok) throw new Error(payload?.error || "No se pudo cargar el grupo");
 
       setGroup(payload?.group || null);
@@ -79,7 +94,7 @@ export default function GrupoPublicDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [groupId, firebaseUser]);
+  }, [groupId, firebaseUser, authLoading]);
 
   useEffect(() => {
     loadGroup();

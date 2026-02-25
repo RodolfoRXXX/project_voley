@@ -18,6 +18,7 @@ type PublicGroup = {
     photoURL?: string | null;
   } | null;
   memberIds?: string[];
+  adminIds?: string[];
   pendingRequestIds?: string[];
 };
 
@@ -62,9 +63,16 @@ export default function GruposPage() {
 
   const getJoinState = (group: PublicGroup): JoinState => {
     if (!firebaseUser?.uid) return "none";
-    if (group.memberIds?.includes(firebaseUser.uid)) return "member";
+    if (group.memberIds?.includes(firebaseUser.uid) || group.adminIds?.includes(firebaseUser.uid)) {
+      return "member";
+    }
     if (group.pendingRequestIds?.includes(firebaseUser.uid)) return "pending";
     return "none";
+  };
+
+  const canViewDetail = (group: PublicGroup) => {
+    if (!firebaseUser?.uid) return false;
+    return !!group.memberIds?.includes(firebaseUser.uid) || !!group.adminIds?.includes(firebaseUser.uid);
   };
 
   const joinGroup = async (groupId: string) => {
@@ -174,12 +182,22 @@ export default function GruposPage() {
                   {buttonConfig.label}
                 </ActionButton>
 
-                <Link
-                  href={`/grupos/${group.id}`}
-                  className="px-3 py-2 rounded-lg text-sm font-medium border border-neutral-300 text-neutral-800 hover:bg-neutral-50"
-                >
-                  Ver detalle
-                </Link>
+                {canViewDetail(group) ? (
+                  <Link
+                    href={`/grupos/${group.id}`}
+                    className="text-sm font-medium text-blue-700 underline underline-offset-2 hover:text-blue-800"
+                  >
+                    Ver detalle
+                  </Link>
+                ) : (
+                  <span
+                    className="text-sm font-medium text-neutral-400 cursor-not-allowed"
+                    aria-disabled="true"
+                    title="Solo integrantes del grupo pueden ver el detalle"
+                  >
+                    Ver detalle
+                  </span>
+                )}
               </div>
             </article>
           );

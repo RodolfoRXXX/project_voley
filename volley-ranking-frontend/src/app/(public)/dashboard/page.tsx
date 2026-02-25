@@ -71,9 +71,9 @@ export default function DashboardPage() {
         map[d.id] = group.nombre;
 
         const isGroupAdmin =
-          Array.isArray(group.adminIds) && firebaseUser?.uid
+          Array.isArray(group.adminIds) && !!firebaseUser?.uid
             ? group.adminIds.includes(firebaseUser.uid)
-            : group.adminId === firebaseUser?.uid;
+            : false;
 
         const isGroupMember =
           Array.isArray(group.memberIds) && firebaseUser?.uid

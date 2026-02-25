@@ -7,13 +7,20 @@ function normalizeGroupAdmins(group = {}) {
       const userId = String(item?.userId || "").trim();
       if (!userId || seen.has(userId)) continue;
       seen.add(userId);
-      deduped.push({
+      const normalizedAdmin = {
         userId,
         role: item?.role === "owner" ? "owner" : "admin",
         order: Number.isInteger(item?.order) ? item.order : deduped.length,
-        addedAt: item?.addedAt,
-        addedBy: item?.addedBy,
-      });
+      };
+
+      if (item?.addedAt !== undefined) {
+        normalizedAdmin.addedAt = item.addedAt;
+      }
+      if (item?.addedBy !== undefined) {
+        normalizedAdmin.addedBy = item.addedBy;
+      }
+
+      deduped.push(normalizedAdmin);
     }
 
     deduped.sort((a, b) => a.order - b.order);

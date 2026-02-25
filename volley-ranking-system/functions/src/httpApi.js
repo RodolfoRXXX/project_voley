@@ -130,7 +130,8 @@ async function handleGroupDetail(req, res, authContext, groupId) {
 
   const memberIds = cleanStringArray(group.memberIds);
   const adminIds = getGroupAdminIds(group);
-  const isGroupMember = !!authContext.uid && memberIds.includes(authContext.uid);
+  const isGroupMember =
+    !!authContext.uid && (memberIds.includes(authContext.uid) || adminIds.includes(authContext.uid));
 
   if (!authContext.isSystemAdmin && !isGroupMember) {
     res.status(403).json({ error: "Debes ser integrante del grupo para ver el detalle" });

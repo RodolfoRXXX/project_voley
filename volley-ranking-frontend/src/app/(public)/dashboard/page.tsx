@@ -75,7 +75,12 @@ export default function DashboardPage() {
             ? group.adminIds.includes(firebaseUser.uid)
             : group.adminId === firebaseUser?.uid;
 
-        if (isGroupAdmin || userDoc?.roles === "admin") {
+        const isGroupMember =
+          Array.isArray(group.memberIds) && firebaseUser?.uid
+            ? group.memberIds.includes(firebaseUser.uid)
+            : false;
+
+        if (isGroupAdmin || isGroupMember || userDoc?.roles === "admin") {
           allowedGroupIds.add(d.id);
         }
       });

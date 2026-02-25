@@ -41,7 +41,30 @@ async function mapUser(userId) {
     id: userId,
     name: user?.nombre || "Sin nombre",
     email: user?.email || null,
+    photoURL: user?.photoURL || null,
+    positions: Array.isArray(user?.posicionesPreferidas) ? user.posicionesPreferidas : [],
   };
+}
+
+function sortMembersByName(members = []) {
+  return [...members].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+}
+
+function cleanStringArray(value) {
+  if (!Array.isArray(value)) return [];
+  return Array.from(new Set(value.map((item) => String(item))));
+}
+
+function getGroupAdminIds(group = {}) {
+  const adminIds = cleanStringArray(group.adminIds);
+  if (adminIds.length > 0) return adminIds;
+  return cleanStringArray(group.admins?.map((admin) => admin?.userId));
+}
+
+function canManageGroup(group = {}, authContext) {
+  if (authContext?.isSystemAdmin) return true;
+  if (!authContext?.uid) return false;
+  return getGroupAdminIds(group).includes(authContext.uid);
 }
 
 async function buildGroupPayload(groupDoc) {
@@ -61,8 +84,12 @@ async function buildGroupPayload(groupDoc) {
     description: group?.descripcion || "",
     visibility: group?.visibility === "public" ? "public" : "private",
     joinApproval: group?.joinApproval ?? true,
+    active: group?.activo !== false,
     totalMatches: matchesCountSnap.data().count || 0,
     owner,
+    memberIds: cleanStringArray(group?.memberIds),
+    adminIds: getGroupAdminIds(group),
+    pendingRequestIds: cleanStringArray(group?.pendingRequestIds),
   };
 }
 
@@ -81,8 +108,8 @@ async function getPublicGroupOrAdmin(groupId, authContext) {
 async function handleListPublicGroups(req, res, authContext) {
   const groupsRef = db.collection("groups");
   const snap = authContext.isSystemAdmin
-    ? await groupsRef.get()
-    : await groupsRef.where("visibility", "==", "public").get();
+    ? await groupsRef.where("activo", "==", true).get()
+    : await groupsRef.where("visibility", "==", "public").where("activo", "==", true).get();
 
   const groups = await Promise.all(snap.docs.map(buildGroupPayload));
   res.status(200).json({ groups });
@@ -96,8 +123,24 @@ async function handleGroupDetail(req, res, authContext, groupId) {
     return;
   }
 
-  const memberIds = Array.isArray(group.memberIds) ? group.memberIds : [];
-  const members = (await Promise.all(memberIds.map((id) => mapUser(String(id))))).filter(Boolean);
+  const memberIds = cleanStringArray(group.memberIds);
+  const adminIds = getGroupAdminIds(group);
+  const pendingRequestIds = cleanStringArray(group.pendingRequestIds).filter(
+    (id) => !memberIds.includes(id)
+  );
+
+  const members = (await Promise.all(memberIds.map((id) => mapUser(String(id)))))
+    .filter(Boolean)
+    .map((member) => ({ ...member, isAdmin: adminIds.includes(member.id) }));
+
+  const admins = sortMembersByName(members.filter((member) => member.isAdmin));
+  const players = sortMembersByName(members.filter((member) => !member.isAdmin));
+
+  const pendingRequests = sortMembersByName(
+    (await Promise.all(pendingRequestIds.map((id) => mapUser(String(id))))).filter(Boolean)
+  );
+
+  const canManageMembers = canManageGroup(group, authContext);
 
   const matchesSnap = await db
     .collection("matches")
@@ -127,8 +170,12 @@ async function handleGroupDetail(req, res, authContext, groupId) {
       description: group?.descripcion || "",
       visibility: group?.visibility === "public" ? "public" : "private",
       joinApproval: group?.joinApproval ?? true,
-      members,
+      members: [...admins, ...players],
+      pendingRequests,
       memberIds,
+      adminIds,
+      pendingRequestIds,
+      canManageMembers,
     },
     matches,
   });
@@ -146,10 +193,91 @@ async function handleJoinGroup(req, res, authContext, groupId) {
     return;
   }
 
-  const uniqueMemberIds = Array.from(new Set([...(group.memberIds || []), authContext.uid]));
-  await db.collection("groups").doc(groupId).update({ memberIds: uniqueMemberIds });
+  const memberIds = cleanStringArray(group.memberIds);
+  const pendingRequestIds = cleanStringArray(group.pendingRequestIds);
 
-  res.status(200).json({ ok: true, memberIds: uniqueMemberIds });
+  const isMember = memberIds.includes(authContext.uid);
+  const isPending = pendingRequestIds.includes(authContext.uid);
+
+  const nextMemberIds = memberIds.filter((id) => id !== authContext.uid);
+  const nextPendingRequestIds = pendingRequestIds.filter((id) => id !== authContext.uid);
+
+  let membershipStatus = "none";
+
+  if (isMember) {
+    membershipStatus = "none";
+  } else if (group.joinApproval ?? true) {
+    if (isPending) {
+      membershipStatus = "none";
+    } else {
+      nextPendingRequestIds.push(authContext.uid);
+      membershipStatus = "pending";
+    }
+  } else {
+    nextMemberIds.push(authContext.uid);
+    membershipStatus = "member";
+  }
+
+  await db.collection("groups").doc(groupId).update({
+    memberIds: Array.from(new Set(nextMemberIds)),
+    pendingRequestIds: Array.from(new Set(nextPendingRequestIds)),
+  });
+
+  res.status(200).json({
+    ok: true,
+    memberIds: Array.from(new Set(nextMemberIds)),
+    pendingRequestIds: Array.from(new Set(nextPendingRequestIds)),
+    membershipStatus,
+  });
+}
+
+async function handleGroupMemberRemoval(req, res, authContext, groupId, userId) {
+  const group = await getPublicGroupOrAdmin(groupId, authContext);
+  if (!group) {
+    res.status(404).json({ error: "Grupo no encontrado" });
+    return;
+  }
+
+  if (!canManageGroup(group, authContext)) {
+    res.status(403).json({ error: "No tienes permisos para gestionar integrantes" });
+    return;
+  }
+
+  const memberIds = cleanStringArray(group.memberIds).filter((id) => id !== String(userId));
+
+  await db.collection("groups").doc(groupId).update({ memberIds });
+  res.status(200).json({ ok: true, memberIds });
+}
+
+async function handleJoinRequestAction(req, res, authContext, groupId, userId, action) {
+  const group = await getPublicGroupOrAdmin(groupId, authContext);
+  if (!group) {
+    res.status(404).json({ error: "Grupo no encontrado" });
+    return;
+  }
+
+  if (!canManageGroup(group, authContext)) {
+    res.status(403).json({ error: "No tienes permisos para gestionar solicitudes" });
+    return;
+  }
+
+  const memberIds = cleanStringArray(group.memberIds);
+  const pendingRequestIds = cleanStringArray(group.pendingRequestIds).filter((id) => id !== String(userId));
+
+  if (action === "approve" && !memberIds.includes(String(userId))) {
+    memberIds.push(String(userId));
+  }
+
+  await db.collection("groups").doc(groupId).update({
+    memberIds: Array.from(new Set(memberIds)),
+    pendingRequestIds,
+  });
+
+  res.status(200).json({
+    ok: true,
+    memberIds: Array.from(new Set(memberIds)),
+    pendingRequestIds,
+  });
 }
 
 module.exports = functions.https.onRequest(async (req, res) => {
@@ -178,6 +306,24 @@ module.exports = functions.https.onRequest(async (req, res) => {
   const joinMatch = req.path.match(/^\/groups\/([^/]+)\/join$/);
   if (req.method === "POST" && joinMatch) {
     await handleJoinGroup(req, res, authContext, joinMatch[1]);
+    return;
+  }
+
+  const removeMemberMatch = req.path.match(/^\/groups\/([^/]+)\/members\/([^/]+)\/remove$/);
+  if (req.method === "POST" && removeMemberMatch) {
+    await handleGroupMemberRemoval(req, res, authContext, removeMemberMatch[1], removeMemberMatch[2]);
+    return;
+  }
+
+  const approveJoinRequestMatch = req.path.match(/^\/groups\/([^/]+)\/requests\/([^/]+)\/approve$/);
+  if (req.method === "POST" && approveJoinRequestMatch) {
+    await handleJoinRequestAction(req, res, authContext, approveJoinRequestMatch[1], approveJoinRequestMatch[2], "approve");
+    return;
+  }
+
+  const rejectJoinRequestMatch = req.path.match(/^\/groups\/([^/]+)\/requests\/([^/]+)\/reject$/);
+  if (req.method === "POST" && rejectJoinRequestMatch) {
+    await handleJoinRequestAction(req, res, authContext, rejectJoinRequestMatch[1], rejectJoinRequestMatch[2], "reject");
     return;
   }
 

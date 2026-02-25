@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import UserAvatar from "@/components/ui/avatar/UserAvatar";
+import { ActionButton } from "@/components/ui/action/ActionButton";
 
 type PublicGroup = {
   id: string;
@@ -13,10 +15,13 @@ type PublicGroup = {
   totalMatches: number;
   owner: {
     name: string;
-    email?: string | null;
+    photoURL?: string | null;
   } | null;
   memberIds?: string[];
+  pendingRequestIds?: string[];
 };
+
+type JoinState = "none" | "member" | "pending";
 
 export default function GruposPage() {
   const { firebaseUser } = useAuth();
@@ -55,6 +60,13 @@ export default function GruposPage() {
     load();
   }, [endpoint, firebaseUser]);
 
+  const getJoinState = (group: PublicGroup): JoinState => {
+    if (!firebaseUser?.uid) return "none";
+    if (group.memberIds?.includes(firebaseUser.uid)) return "member";
+    if (group.pendingRequestIds?.includes(firebaseUser.uid)) return "pending";
+    return "none";
+  };
+
   const joinGroup = async (groupId: string) => {
     if (!firebaseUser) {
       setError("Debes iniciar sesión para unirte a un grupo");
@@ -74,18 +86,31 @@ export default function GruposPage() {
       });
 
       const payload = await res.json();
-      if (!res.ok) throw new Error(payload?.error || "No se pudo unir al grupo");
+      if (!res.ok) throw new Error(payload?.error || "No se pudo actualizar la membresía");
 
       setGroups((prev) =>
         prev.map((group) =>
-          group.id === groupId ? { ...group, memberIds: payload.memberIds || group.memberIds } : group
+          group.id === groupId
+            ? {
+                ...group,
+                memberIds: payload.memberIds || group.memberIds || [],
+                pendingRequestIds: payload.pendingRequestIds || group.pendingRequestIds || [],
+              }
+            : group
         )
       );
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "No se pudo unir al grupo");
+      setError(err instanceof Error ? err.message : "No se pudo actualizar la membresía");
     } finally {
       setJoiningGroupId(null);
     }
+  };
+
+  const getButtonConfig = (group: PublicGroup) => {
+    const state = getJoinState(group);
+    if (state === "member") return { label: "- Salir", variant: "danger_outline" as const };
+    if (state === "pending") return { label: "Pendiente", variant: "warning" as const };
+    return { label: "+ Agregarme", variant: "success" as const };
   };
 
   return (
@@ -101,46 +126,64 @@ export default function GruposPage() {
       )}
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {groups.map((group) => (
-          <article key={group.id} className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`text-xs px-2 py-1 rounded-full ${group.visibility === "public" ? "bg-green-100 text-green-700" : "bg-neutral-200 text-neutral-700"}`}>
-                {group.visibility === "public" ? "Público" : "Privado"}
-              </span>
-              {group.joinApproval && (
-                <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700">Aprobación requerida</span>
-              )}
-            </div>
+        {groups.map((group) => {
+          const buttonConfig = getButtonConfig(group);
 
-            <div>
-              <h3 className="text-lg font-semibold text-neutral-900">{group.name}</h3>
-              <p className="text-sm text-neutral-600 mt-1">{group.description || "Sin descripción"}</p>
-            </div>
+          return (
+            <article key={group.id} className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`text-xs px-2 py-1 rounded-full ${group.visibility === "public" ? "bg-green-100 text-green-700" : "bg-neutral-200 text-neutral-700"}`}>
+                  {group.visibility === "public" ? "Público" : "Privado"}
+                </span>
+                {group.joinApproval && (
+                  <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700">Aprobación requerida</span>
+                )}
+              </div>
 
-            <div className="text-sm text-neutral-600 space-y-1">
-              <p>Partidos: <b>{group.totalMatches}</b></p>
-              <p>Owner: <b>{group.owner?.name || "No disponible"}</b></p>
-              {group.owner?.email && <p>Email: {group.owner.email}</p>}
-            </div>
+              <div>
+                <h3 className="text-lg font-semibold text-neutral-900">{group.name}</h3>
+                <p className="text-sm text-neutral-600 mt-1">{group.description || "Sin descripción"}</p>
+              </div>
 
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                onClick={() => joinGroup(group.id)}
-                disabled={joiningGroupId === group.id}
-                className="px-3 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
-              >
-                {joiningGroupId === group.id ? "Uniéndote..." : "Unirme"}
-              </button>
+              <div className="text-sm text-neutral-600 space-y-1">
+                <p>
+                  Partidos: <b>{group.totalMatches}</b>
+                </p>
+              </div>
 
-              <Link
-                href={`/grupos/${group.id}`}
-                className="px-3 py-2 rounded-lg text-sm font-medium border border-neutral-300 text-neutral-800 hover:bg-neutral-50"
-              >
-                Ver detalle
-              </Link>
-            </div>
-          </article>
-        ))}
+              <div className="flex items-center gap-3 pt-3 border-t border-neutral-200">
+                <UserAvatar
+                  nombre={group.owner?.name}
+                  photoURL={group.owner?.photoURL}
+                  size={36}
+                />
+
+                <div>
+                  <p className="text-sm font-medium text-neutral-900">{group.owner?.name || "No disponible"}</p>
+                  <p className="text-xs text-neutral-500">Admin principal</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 pt-2">
+                <ActionButton
+                  onClick={() => joinGroup(group.id)}
+                  loading={joiningGroupId === group.id}
+                  variant={buttonConfig.variant}
+                  compact
+                >
+                  {buttonConfig.label}
+                </ActionButton>
+
+                <Link
+                  href={`/grupos/${group.id}`}
+                  className="px-3 py-2 rounded-lg text-sm font-medium border border-neutral-300 text-neutral-800 hover:bg-neutral-50"
+                >
+                  Ver detalle
+                </Link>
+              </div>
+            </article>
+          );
+        })}
       </section>
     </main>
   );

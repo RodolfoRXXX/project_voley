@@ -1,14 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import UserAvatar from "@/components/ui/avatar/UserAvatar";
+import { ActionButton } from "@/components/ui/action/ActionButton";
 
 type GroupMember = {
   id: string;
   name: string;
   email?: string | null;
+  photoURL?: string | null;
+  positions?: string[];
+  isAdmin?: boolean;
 };
 
 type GroupMatch = {
@@ -26,6 +31,11 @@ type GroupDetail = {
   visibility: "public" | "private";
   joinApproval: boolean;
   members: GroupMember[];
+  pendingRequests: GroupMember[];
+  memberIds: string[];
+  pendingRequestIds: string[];
+  adminIds: string[];
+  canManageMembers: boolean;
 };
 
 export default function GrupoPublicDetailPage() {
@@ -35,32 +45,133 @@ export default function GrupoPublicDetailPage() {
   const [matches, setMatches] = useState<GroupMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actingKey, setActingKey] = useState<string | null>(null);
+
+  const loadGroup = useCallback(async () => {
+    if (!groupId) return;
+
+    try {
+      setError(null);
+      const authHeaders = firebaseUser
+        ? { Authorization: `Bearer ${await firebaseUser.getIdToken()}` }
+        : undefined;
+
+      const res = await fetch(`/api/groups/${groupId}/public`, {
+        method: "GET",
+        headers: authHeaders,
+      });
+
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload?.error || "No se pudo cargar el grupo");
+
+      setGroup(payload.group || null);
+      setMatches(payload.matches || []);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "No se pudo cargar el grupo");
+    } finally {
+      setLoading(false);
+    }
+  }, [groupId, firebaseUser]);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        let token: string | null = null;
-        if (firebaseUser) token = await firebaseUser.getIdToken();
+    loadGroup();
+  }, [loadGroup]);
 
-        const res = await fetch(`/api/groups/${groupId}/public`, {
-          method: "GET",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
+  const postWithAuth = async (url: string) => {
+    if (!firebaseUser) throw new Error("Debes iniciar sesión para realizar esta acción");
 
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload?.error || "No se pudo cargar el grupo");
+    const token = await firebaseUser.getIdToken();
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-        setGroup(payload.group || null);
-        setMatches(payload.matches || []);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "No se pudo cargar el grupo");
-      } finally {
-        setLoading(false);
-      }
-    };
+    const payload = await res.json();
+    if (!res.ok) {
+      throw new Error(payload?.error || "No se pudo completar la acción");
+    }
 
-    if (groupId) load();
-  }, [firebaseUser, groupId]);
+    return payload;
+  };
+
+  const removeMember = async (userId: string) => {
+    try {
+      setActingKey(`remove-${userId}`);
+      await postWithAuth(`/api/groups/${groupId}/members/${userId}/remove`);
+      await loadGroup();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "No se pudo eliminar el integrante");
+    } finally {
+      setActingKey(null);
+    }
+  };
+
+  const resolveRequest = async (userId: string, action: "approve" | "reject") => {
+    try {
+      setActingKey(`${action}-${userId}`);
+      await postWithAuth(`/api/groups/${groupId}/requests/${userId}/${action}`);
+      await loadGroup();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "No se pudo actualizar la solicitud");
+    } finally {
+      setActingKey(null);
+    }
+  };
+
+  const renderMember = (member: GroupMember, isPending = false) => (
+    <li key={`${isPending ? "pending" : "member"}-${member.id}`} className="rounded-xl border border-neutral-200 p-3 text-sm flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
+        <div>
+          <p className="font-medium text-neutral-900">{member.name}</p>
+          <p className="text-xs text-neutral-500">
+            {member.positions?.length ? member.positions.join(" · ") : "Sin posiciones cargadas"}
+          </p>
+        </div>
+      </div>
+
+      {group?.canManageMembers && (
+        <div className="flex items-center gap-2">
+          {isPending ? (
+            <>
+              <ActionButton
+                onClick={() => resolveRequest(member.id, "approve")}
+                loading={actingKey === `approve-${member.id}`}
+                variant="success_outline"
+                compact
+              >
+                Aceptar
+              </ActionButton>
+              <ActionButton
+                onClick={() => resolveRequest(member.id, "reject")}
+                loading={actingKey === `reject-${member.id}`}
+                variant="danger_outline"
+                compact
+              >
+                Eliminar
+              </ActionButton>
+            </>
+          ) : (
+            !member.isAdmin && (
+              <ActionButton
+                onClick={() => removeMember(member.id)}
+                loading={actingKey === `remove-${member.id}`}
+                variant="danger_outline"
+                compact
+              >
+                Eliminar
+              </ActionButton>
+            )
+          )}
+        </div>
+      )}
+    </li>
+  );
+
+  const adminMembers = group?.members.filter((member) => member.isAdmin) || [];
+  const playerMembers = group?.members.filter((member) => !member.isAdmin) || [];
 
   return (
     <main className="max-w-4xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
@@ -105,19 +216,34 @@ export default function GrupoPublicDetailPage() {
             )}
           </section>
 
-          <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm space-y-3">
+          <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm space-y-4">
             <h2 className="text-lg font-semibold text-neutral-900">Integrantes</h2>
+
+            {group.pendingRequests.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-amber-700">Solicitudes de ingreso</p>
+                <ul className="space-y-2">{group.pendingRequests.map((member) => renderMember(member, true))}</ul>
+              </div>
+            )}
+
             {group.members.length === 0 ? (
               <p className="text-sm text-neutral-500">Aún no hay integrantes en este grupo.</p>
             ) : (
-              <ul className="space-y-2">
-                {group.members.map((member) => (
-                  <li key={member.id} className="rounded-xl border border-neutral-200 p-3 text-sm">
-                    <p className="font-medium text-neutral-900">{member.name}</p>
-                    {member.email && <p className="text-neutral-600">{member.email}</p>}
-                  </li>
-                ))}
-              </ul>
+              <div className="space-y-3">
+                {adminMembers.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-neutral-700">Admins</p>
+                    <ul className="space-y-2">{adminMembers.map((member) => renderMember(member))}</ul>
+                  </div>
+                )}
+
+                {playerMembers.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-neutral-700">Jugadores</p>
+                    <ul className="space-y-2">{playerMembers.map((member) => renderMember(member))}</ul>
+                  </div>
+                )}
+              </div>
             )}
           </section>
         </>

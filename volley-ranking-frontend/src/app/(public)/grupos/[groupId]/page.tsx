@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { ActionButton } from "@/components/ui/action/ActionButton";
+import { readJsonSafely } from "@/lib/http/readJsonSafely";
 
 type GroupMember = {
   id: string;
@@ -66,11 +67,13 @@ export default function GrupoPublicDetailPage() {
         headers: authHeaders,
       });
 
-      const payload = await res.json();
+      const payload = (await readJsonSafely(res)) as
+        | { error?: string; group?: GroupDetail | null; matches?: GroupMatch[] }
+        | null;
       if (!res.ok) throw new Error(payload?.error || "No se pudo cargar el grupo");
 
-      setGroup(payload.group || null);
-      setMatches(payload.matches || []);
+      setGroup(payload?.group || null);
+      setMatches(payload?.matches || []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "No se pudo cargar el grupo");
     } finally {
@@ -93,7 +96,7 @@ export default function GrupoPublicDetailPage() {
       },
     });
 
-    const payload = await res.json();
+    const payload = (await readJsonSafely(res)) as { error?: string } | null;
     if (!res.ok) {
       throw new Error(payload?.error || "No se pudo completar la acción");
     }

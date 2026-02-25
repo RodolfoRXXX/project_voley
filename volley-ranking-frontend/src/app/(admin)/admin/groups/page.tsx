@@ -22,7 +22,6 @@ interface Group {
   createdAt?: {
     seconds: number;
   };
-  adminId?: string;
   ownerId?: string;
   adminIds?: string[];
 }
@@ -87,32 +86,20 @@ export default function AdminGroupsPage() {
 
     const loadGroups = async () => {
       const groupsRef = collection(db, "groups");
-      const [multiAdminSnap, legacySnap] = await Promise.all([
-        getDocs(
-          query(
-            groupsRef,
-            where("adminIds", "array-contains", firebaseUser.uid),
-            orderBy("createdAt", "desc")
-          )
-        ),
-        getDocs(
-          query(
-            groupsRef,
-            where("adminId", "==", firebaseUser.uid),
-            orderBy("createdAt", "desc")
-          )
-        ),
-      ]);
+      const multiAdminSnap = await getDocs(
+        query(
+          groupsRef,
+          where("adminIds", "array-contains", firebaseUser.uid),
+          orderBy("createdAt", "desc")
+        )
+      );
 
-      const merged = new Map<string, Group>();
-      [...multiAdminSnap.docs, ...legacySnap.docs].forEach((groupDoc) => {
-        merged.set(groupDoc.id, {
+      const data = multiAdminSnap.docs
+        .map((groupDoc) => ({
           id: groupDoc.id,
           ...(groupDoc.data() as Omit<Group, "id">),
-        });
-      });
-
-      const data = Array.from(merged.values()).sort((a, b) => {
+        }))
+        .sort((a, b) => {
         const aTime = a.createdAt?.seconds ?? 0;
         const bTime = b.createdAt?.seconds ?? 0;
         return bTime - aTime;

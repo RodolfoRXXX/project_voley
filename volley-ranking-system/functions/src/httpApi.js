@@ -29,7 +29,7 @@ function ownerIdFromGroup(group = {}) {
     if (owner?.userId) return String(owner.userId);
   }
 
-  return group.ownerId || group.adminId || null;
+  return group.ownerId || null;
 }
 
 async function mapUser(userId) {
@@ -59,7 +59,7 @@ function cleanStringArray(value) {
 function getGroupAdminIds(group = {}) {
   const normalizedAdminIds = cleanStringArray(group.adminIds);
   const adminIdsFromList = cleanStringArray(group.admins?.map((admin) => admin?.userId));
-  const ownerFallbackIds = cleanStringArray([group.ownerId, group.adminId]);
+  const ownerFallbackIds = cleanStringArray([group.ownerId]);
 
   return Array.from(new Set([...normalizedAdminIds, ...adminIdsFromList, ...ownerFallbackIds]));
 }

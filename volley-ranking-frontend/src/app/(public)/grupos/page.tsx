@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { ActionButton } from "@/components/ui/action/ActionButton";
+import { db } from "@/lib/firebase";
 
 type PublicGroup = {
   id: string;
@@ -60,6 +62,33 @@ export default function GruposPage() {
 
     load();
   }, [endpoint, firebaseUser]);
+
+
+  useEffect(() => {
+    if (groups.length === 0) return;
+
+    const q = query(collection(db, "groups"), where("visibility", "==", "public"), where("activo", "==", true));
+
+    const unsub = onSnapshot(q, (snap) => {
+      const liveMap = new Map(snap.docs.map((doc) => [doc.id, doc.data()]));
+
+      setGroups((prev) =>
+        prev.map((group) => {
+          const live = liveMap.get(group.id);
+          if (!live) return group;
+
+          return {
+            ...group,
+            memberIds: Array.isArray(live.memberIds) ? live.memberIds : [],
+            adminIds: Array.isArray(live.adminIds) ? live.adminIds : [],
+            pendingRequestIds: Array.isArray(live.pendingRequestIds) ? live.pendingRequestIds : [],
+          };
+        })
+      );
+    });
+
+    return () => unsub();
+  }, [groups.length]);
 
   const getJoinState = (group: PublicGroup): JoinState => {
     if (!firebaseUser?.uid) return "none";

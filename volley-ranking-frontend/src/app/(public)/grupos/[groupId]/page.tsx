@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { readJsonSafely } from "@/lib/http/readJsonSafely";
+import useToast from "@/components/ui/toast/useToast";
 
 type GroupMember = {
   id: string;
@@ -52,6 +53,7 @@ export default function GrupoPublicDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actingKey, setActingKey] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const loadGroup = useCallback(async () => {
     if (!groupId || authLoading) return;
@@ -173,7 +175,12 @@ export default function GrupoPublicDetailPage() {
       await postWithAuth(`/api/groups/${groupId}/admins/${userId}/remove`);
       await loadGroup();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "No se pudo eliminar al administrador");
+      const message = err instanceof Error ? err.message : "No se pudo eliminar al administrador";
+      if (message.toLowerCase().includes("único owner") || message.toLowerCase().includes("unico owner")) {
+        showToast({ type: "error", message });
+      } else {
+        setError(message);
+      }
     } finally {
       setActingKey(null);
     }

@@ -38,15 +38,6 @@ function normalizeGroupAdmins(group = {}) {
     };
   }
 
-  if (group.adminId) {
-    const ownerId = String(group.adminId);
-    return {
-      admins: [{ userId: ownerId, role: "owner", order: 0 }],
-      ownerId,
-      adminIds: [ownerId],
-    };
-  }
-
   return {
     admins: [],
     ownerId: null,

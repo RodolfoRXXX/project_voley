@@ -67,7 +67,6 @@ type Group = {
   id: string;
   nombre: string;
   descripcion?: string;
-  adminId?: string;
   ownerId?: string;
   adminIds?: string[];
 };
@@ -178,7 +177,7 @@ export default function MatchDetailPage() {
   const isAdmin = userDoc?.roles === "admin";
   const isGroupAdmin =
     !!firebaseUser?.uid &&
-    (group?.adminIds?.includes(firebaseUser.uid) || group?.adminId === firebaseUser.uid);
+    group?.adminIds?.includes(firebaseUser.uid);
   const isMatchAdmin =
     !!firebaseUser?.uid && isAdmin && (firebaseUser.uid === match?.adminId || isGroupAdmin);
 
@@ -309,7 +308,6 @@ export default function MatchDetailPage() {
           id: snap.id,
           nombre: snap.data().nombre,
           descripcion: snap.data().descripcion,
-          adminId: snap.data().adminId,
           ownerId: snap.data().ownerId,
           adminIds: snap.data().adminIds || [],
         });

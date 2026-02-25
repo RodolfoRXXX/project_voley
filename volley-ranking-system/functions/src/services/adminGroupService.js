@@ -19,7 +19,6 @@ async function crearGrupo({
   await db.collection("groups").doc(groupId).set({
     nombre,
     descripcion,
-    adminId,
     ownerId: adminId,
     adminIds: [adminId],
     admins: [{ userId: adminId, role: "owner", order: 0 }],

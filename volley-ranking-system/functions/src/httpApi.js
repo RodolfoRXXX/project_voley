@@ -57,9 +57,11 @@ function cleanStringArray(value) {
 }
 
 function getGroupAdminIds(group = {}) {
-  const adminIds = cleanStringArray(group.adminIds);
-  if (adminIds.length > 0) return adminIds;
-  return cleanStringArray(group.admins?.map((admin) => admin?.userId));
+  const normalizedAdminIds = cleanStringArray(group.adminIds);
+  const adminIdsFromList = cleanStringArray(group.admins?.map((admin) => admin?.userId));
+  const ownerFallbackIds = cleanStringArray([group.ownerId, group.adminId]);
+
+  return Array.from(new Set([...normalizedAdminIds, ...adminIdsFromList, ...ownerFallbackIds]));
 }
 
 function canManageGroup(group = {}, authContext) {

@@ -1,5 +1,6 @@
 const functions = require("firebase-functions/v1");
 const { admin, db } = require("./firebase");
+const { normalizeGroupAdmins } = require("./services/groupAdminsService");
 
 function getBearerToken(authHeader = "") {
   if (!authHeader.startsWith("Bearer ")) return null;
@@ -62,9 +63,13 @@ function getGroupAdminIds(group = {}) {
 }
 
 function canManageGroup(group = {}, authContext) {
-  if (authContext?.isSystemAdmin) return true;
   if (!authContext?.uid) return false;
   return getGroupAdminIds(group).includes(authContext.uid);
+}
+
+function canManageGroupAsOwner(group = {}, authContext) {
+  if (!authContext?.uid) return false;
+  return normalizeGroupAdmins(group).ownerId === String(authContext.uid);
 }
 
 async function buildGroupPayload(groupDoc) {
@@ -128,6 +133,9 @@ async function handleGroupDetail(req, res, authContext, groupId) {
   const pendingRequestIds = cleanStringArray(group.pendingRequestIds).filter(
     (id) => !memberIds.includes(id)
   );
+  const pendingAdminRequestIds = cleanStringArray(group.pendingAdminRequestIds).filter(
+    (id) => !adminIds.includes(id)
+  );
 
   const members = (await Promise.all(memberIds.map((id) => mapUser(String(id)))))
     .filter(Boolean)
@@ -139,8 +147,14 @@ async function handleGroupDetail(req, res, authContext, groupId) {
   const pendingRequests = sortMembersByName(
     (await Promise.all(pendingRequestIds.map((id) => mapUser(String(id))))).filter(Boolean)
   );
+  const pendingAdminRequests = sortMembersByName(
+    (await Promise.all(pendingAdminRequestIds.map((id) => mapUser(String(id))))).filter(Boolean)
+  );
 
   const canManageMembers = canManageGroup(group, authContext);
+  const isGroupAdmin = !!authContext.uid && adminIds.includes(authContext.uid);
+  const isGroupOwner = canManageGroupAsOwner(group, authContext);
+  const canRequestAdminRole = !!authContext.uid && authContext.isSystemAdmin && !isGroupAdmin;
 
   const matchesSnap = await db
     .collection("matches")
@@ -174,8 +188,13 @@ async function handleGroupDetail(req, res, authContext, groupId) {
       pendingRequests,
       memberIds,
       adminIds,
+      ownerId: normalizeGroupAdmins(group).ownerId,
       pendingRequestIds,
+      pendingAdminRequestIds,
       canManageMembers,
+      canManageAdmins: isGroupOwner,
+      canRequestAdminRole,
+      pendingAdminRequests,
     },
     matches,
   });
@@ -280,6 +299,159 @@ async function handleJoinRequestAction(req, res, authContext, groupId, userId, a
   });
 }
 
+async function handleAdminApplication(req, res, authContext, groupId) {
+  if (!authContext.uid || !authContext.isSystemAdmin) {
+    res.status(403).json({ error: "Solo un admin puede postularse como admin del grupo" });
+    return;
+  }
+
+  const group = await getPublicGroupOrAdmin(groupId, authContext);
+  if (!group) {
+    res.status(404).json({ error: "Grupo no encontrado" });
+    return;
+  }
+
+  const adminIds = getGroupAdminIds(group);
+  if (adminIds.includes(authContext.uid)) {
+    res.status(400).json({ error: "Ya eres admin de este grupo" });
+    return;
+  }
+
+  const pendingAdminRequestIds = cleanStringArray(group.pendingAdminRequestIds);
+  if (!pendingAdminRequestIds.includes(authContext.uid)) {
+    pendingAdminRequestIds.push(authContext.uid);
+  }
+
+  await db.collection("groups").doc(groupId).update({
+    pendingAdminRequestIds: Array.from(new Set(pendingAdminRequestIds)),
+  });
+
+  res.status(200).json({ ok: true, pendingAdminRequestIds: Array.from(new Set(pendingAdminRequestIds)) });
+}
+
+async function handleAdminRequestAction(req, res, authContext, groupId, userId, action) {
+  const groupRef = db.collection("groups").doc(groupId);
+
+  await db.runTransaction(async (tx) => {
+    const groupSnap = await tx.get(groupRef);
+    if (!groupSnap.exists) {
+      throw new Error("not-found");
+    }
+
+    const group = groupSnap.data();
+
+    if (!canManageGroupAsOwner(group, authContext)) {
+      throw new Error("forbidden");
+    }
+
+    const normalized = normalizeGroupAdmins(group);
+    const pendingAdminRequestIds = cleanStringArray(group.pendingAdminRequestIds).filter(
+      (id) => id !== String(userId)
+    );
+
+    const nextAdmins = [...normalized.admins];
+
+    if (action === "approve" && !normalized.adminIds.includes(String(userId))) {
+      nextAdmins.push({
+        userId: String(userId),
+        role: "admin",
+        order: nextAdmins.length,
+      });
+    }
+
+    const admins = nextAdmins.map((item, index) => ({
+      ...item,
+      role: index === 0 ? "owner" : "admin",
+      order: index,
+    }));
+
+    tx.update(groupRef, {
+      admins,
+      ownerId: admins[0]?.userId || null,
+      adminIds: admins.map((a) => a.userId),
+      pendingAdminRequestIds,
+    });
+  }).catch((err) => {
+    if (err.message === "not-found") {
+      res.status(404).json({ error: "Grupo no encontrado" });
+      return;
+    }
+    if (err.message === "forbidden") {
+      res.status(403).json({ error: "Solo el owner puede gestionar solicitudes de administrador" });
+      return;
+    }
+    throw err;
+  });
+
+  if (!res.headersSent) {
+    res.status(200).json({ ok: true });
+  }
+}
+
+async function handleAdminRemoval(req, res, authContext, groupId, userId) {
+  const groupRef = db.collection("groups").doc(groupId);
+
+  await db.runTransaction(async (tx) => {
+    const groupSnap = await tx.get(groupRef);
+    if (!groupSnap.exists) {
+      throw new Error("not-found");
+    }
+
+    const group = groupSnap.data();
+    if (!canManageGroupAsOwner(group, authContext)) {
+      throw new Error("forbidden");
+    }
+
+    const normalized = normalizeGroupAdmins(group);
+    if (!normalized.adminIds.includes(String(userId))) {
+      throw new Error("not-admin");
+    }
+
+    const filtered = normalized.admins.filter((item) => item.userId !== String(userId));
+
+    if (filtered.length === 0) {
+      throw new Error("last-owner");
+    }
+
+    const admins = filtered.map((item, index) => ({
+      ...item,
+      role: index === 0 ? "owner" : "admin",
+      order: index,
+    }));
+
+    tx.update(groupRef, {
+      admins,
+      ownerId: admins[0].userId,
+      adminIds: admins.map((a) => a.userId),
+      pendingAdminRequestIds: cleanStringArray(group.pendingAdminRequestIds).filter(
+        (id) => id !== String(userId)
+      ),
+    });
+  }).catch((err) => {
+    if (err.message === "not-found") {
+      res.status(404).json({ error: "Grupo no encontrado" });
+      return;
+    }
+    if (err.message === "forbidden") {
+      res.status(403).json({ error: "Solo el owner puede eliminar administradores" });
+      return;
+    }
+    if (err.message === "not-admin") {
+      res.status(404).json({ error: "El usuario no es admin del grupo" });
+      return;
+    }
+    if (err.message === "last-owner") {
+      res.status(400).json({ error: "No puedes eliminar al único owner del grupo" });
+      return;
+    }
+    throw err;
+  });
+
+  if (!res.headersSent) {
+    res.status(200).json({ ok: true });
+  }
+}
+
 module.exports = functions.https.onRequest(async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
   res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -324,6 +496,30 @@ module.exports = functions.https.onRequest(async (req, res) => {
   const rejectJoinRequestMatch = req.path.match(/^\/groups\/([^/]+)\/requests\/([^/]+)\/reject$/);
   if (req.method === "POST" && rejectJoinRequestMatch) {
     await handleJoinRequestAction(req, res, authContext, rejectJoinRequestMatch[1], rejectJoinRequestMatch[2], "reject");
+    return;
+  }
+
+  const adminApplicationMatch = req.path.match(/^\/groups\/([^/]+)\/admin-request$/);
+  if (req.method === "POST" && adminApplicationMatch) {
+    await handleAdminApplication(req, res, authContext, adminApplicationMatch[1]);
+    return;
+  }
+
+  const approveAdminRequestMatch = req.path.match(/^\/groups\/([^/]+)\/admin-requests\/([^/]+)\/approve$/);
+  if (req.method === "POST" && approveAdminRequestMatch) {
+    await handleAdminRequestAction(req, res, authContext, approveAdminRequestMatch[1], approveAdminRequestMatch[2], "approve");
+    return;
+  }
+
+  const rejectAdminRequestMatch = req.path.match(/^\/groups\/([^/]+)\/admin-requests\/([^/]+)\/reject$/);
+  if (req.method === "POST" && rejectAdminRequestMatch) {
+    await handleAdminRequestAction(req, res, authContext, rejectAdminRequestMatch[1], rejectAdminRequestMatch[2], "reject");
+    return;
+  }
+
+  const removeAdminMatch = req.path.match(/^\/groups\/([^/]+)\/admins\/([^/]+)\/remove$/);
+  if (req.method === "POST" && removeAdminMatch) {
+    await handleAdminRemoval(req, res, authContext, removeAdminMatch[1], removeAdminMatch[2]);
     return;
   }
 

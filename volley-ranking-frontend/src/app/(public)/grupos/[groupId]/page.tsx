@@ -32,10 +32,15 @@ type GroupDetail = {
   joinApproval: boolean;
   members: GroupMember[];
   pendingRequests: GroupMember[];
+  pendingAdminRequests: GroupMember[];
   memberIds: string[];
   pendingRequestIds: string[];
+  pendingAdminRequestIds: string[];
   adminIds: string[];
+  ownerId: string | null;
   canManageMembers: boolean;
+  canManageAdmins: boolean;
+  canRequestAdminRole: boolean;
 };
 
 export default function GrupoPublicDetailPage() {
@@ -120,6 +125,42 @@ export default function GrupoPublicDetailPage() {
     }
   };
 
+  const resolveAdminRequest = async (userId: string, action: "approve" | "reject") => {
+    try {
+      setActingKey(`admin-${action}-${userId}`);
+      await postWithAuth(`/api/groups/${groupId}/admin-requests/${userId}/${action}`);
+      await loadGroup();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "No se pudo actualizar la solicitud de administrador");
+    } finally {
+      setActingKey(null);
+    }
+  };
+
+  const requestAdminRole = async () => {
+    try {
+      setActingKey("request-admin-role");
+      await postWithAuth(`/api/groups/${groupId}/admin-request`);
+      await loadGroup();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "No se pudo enviar la postulación");
+    } finally {
+      setActingKey(null);
+    }
+  };
+
+  const removeAdmin = async (userId: string) => {
+    try {
+      setActingKey(`remove-admin-${userId}`);
+      await postWithAuth(`/api/groups/${groupId}/admins/${userId}/remove`);
+      await loadGroup();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "No se pudo eliminar al administrador");
+    } finally {
+      setActingKey(null);
+    }
+  };
+
   const renderMember = (member: GroupMember, isPending = false) => (
     <li key={`${isPending ? "pending" : "member"}-${member.id}`} className="rounded-xl border border-neutral-200 p-3 text-sm flex items-center justify-between gap-3">
       <div className="flex items-center gap-3">
@@ -153,18 +194,16 @@ export default function GrupoPublicDetailPage() {
                 Eliminar
               </ActionButton>
             </>
-          ) : (
-            !member.isAdmin && (
-              <ActionButton
-                onClick={() => removeMember(member.id)}
-                loading={actingKey === `remove-${member.id}`}
-                variant="danger_outline"
-                compact
-              >
-                Eliminar
-              </ActionButton>
-            )
-          )}
+          ) : !member.isAdmin ? (
+            <ActionButton
+              onClick={() => removeMember(member.id)}
+              loading={actingKey === `remove-${member.id}`}
+              variant="danger_outline"
+              compact
+            >
+              Eliminar
+            </ActionButton>
+          ) : null}
         </div>
       )}
     </li>
@@ -187,6 +226,16 @@ export default function GrupoPublicDetailPage() {
           <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm space-y-2">
             <h1 className="text-2xl font-bold text-neutral-900">{group.name}</h1>
             <p className="text-neutral-600">{group.description || "Sin descripción"}</p>
+            {group.canRequestAdminRole && (
+              <ActionButton
+                onClick={requestAdminRole}
+                loading={actingKey === "request-admin-role"}
+                variant="warning"
+                compact
+              >
+                Postularme como administrador
+              </ActionButton>
+            )}
             <div className="flex flex-wrap gap-2 text-sm">
               <span className={`px-2 py-1 rounded-full ${group.visibility === "public" ? "bg-green-100 text-green-700" : "bg-neutral-200 text-neutral-700"}`}>
                 {group.visibility === "public" ? "Público" : "Privado"}
@@ -219,6 +268,46 @@ export default function GrupoPublicDetailPage() {
           <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm space-y-4">
             <h2 className="text-lg font-semibold text-neutral-900">Integrantes</h2>
 
+            {group.pendingAdminRequests.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-amber-700">Solicitud de administrador</p>
+                <ul className="space-y-2">
+                  {group.pendingAdminRequests.map((member) => (
+                    <li key={`admin-pending-${member.id}`} className="rounded-xl border border-neutral-200 p-3 text-sm flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
+                        <div>
+                          <p className="font-medium text-neutral-900">{member.name}</p>
+                          <p className="text-xs text-neutral-500">Postulación pendiente</p>
+                        </div>
+                      </div>
+
+                      {group.canManageAdmins && (
+                        <div className="flex items-center gap-2">
+                          <ActionButton
+                            onClick={() => resolveAdminRequest(member.id, "approve")}
+                            loading={actingKey === `admin-approve-${member.id}`}
+                            variant="success_outline"
+                            compact
+                          >
+                            Aceptar
+                          </ActionButton>
+                          <ActionButton
+                            onClick={() => resolveAdminRequest(member.id, "reject")}
+                            loading={actingKey === `admin-reject-${member.id}`}
+                            variant="danger_outline"
+                            compact
+                          >
+                            Eliminar
+                          </ActionButton>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {group.pendingRequests.length > 0 && (
               <div className="space-y-2">
                 <p className="text-sm font-medium text-amber-700">Solicitudes de ingreso</p>
@@ -233,7 +322,32 @@ export default function GrupoPublicDetailPage() {
                 {adminMembers.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-neutral-700">Admins</p>
-                    <ul className="space-y-2">{adminMembers.map((member) => renderMember(member))}</ul>
+                    <ul className="space-y-2">
+                      {adminMembers.map((member) => (
+                        <li key={`admin-${member.id}`} className="rounded-xl border border-neutral-200 p-3 text-sm flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
+                            <div>
+                              <p className="font-medium text-neutral-900">{member.name}</p>
+                              <p className="text-xs text-neutral-500">
+                                {group.ownerId === member.id ? "Owner" : "Administrador"}
+                              </p>
+                            </div>
+                          </div>
+
+                          {group.canManageAdmins && (
+                            <ActionButton
+                              onClick={() => removeAdmin(member.id)}
+                              loading={actingKey === `remove-admin-${member.id}`}
+                              variant="danger_outline"
+                              compact
+                            >
+                              Eliminar
+                            </ActionButton>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
 

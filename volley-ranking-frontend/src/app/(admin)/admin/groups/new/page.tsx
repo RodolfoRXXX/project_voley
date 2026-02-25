@@ -71,6 +71,7 @@ export default function NewGroupPage() {
           descripcion: descripcion.trim(),
           activo,
           adminId: ownerId,
+          memberIds: [ownerId],
           admins: [{ userId: ownerId, role: "owner", order: 0 }],
           ownerId,
           adminIds: [ownerId],

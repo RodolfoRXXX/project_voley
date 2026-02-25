@@ -348,7 +348,7 @@ export default function GrupoPublicDetailPage() {
                             <div>
                               <p className="font-medium text-neutral-900">{member.name}</p>
                               <p className="text-xs text-neutral-500">
-                                {group.ownerId === member.id ? "Owner" : "Administrador"}
+                                {member.positions?.length ? member.positions.join(" · ") : "Sin posiciones cargadas"}
                               </p>
                             </div>
                           </div>

@@ -173,20 +173,17 @@ async function handleGroupDetail(req, res, authContext, groupId) {
     .orderBy("horaInicio", "desc")
     .get();
 
-  const matches = matchesSnap.docs
-    .map((doc) => {
-      const match = doc.data();
-      if (!authContext.isSystemAdmin && match?.visibility !== "public") return null;
+  const matches = matchesSnap.docs.map((doc) => {
+    const match = doc.data();
 
-      return {
-        id: doc.id,
-        title: match?.titulo || "Partido",
-        visibility: match?.visibility || "group_only",
-        startsAt: match?.horaInicio?.toDate?.()?.toISOString?.() || null,
-        status: match?.estado || null,
-      };
-    })
-    .filter(Boolean);
+    return {
+      id: doc.id,
+      title: match?.titulo || "Partido",
+      visibility: match?.visibility || "group_only",
+      startsAt: match?.horaInicio?.toDate?.()?.toISOString?.() || null,
+      status: match?.estado || null,
+    };
+  });
 
   res.status(200).json({
     group: {

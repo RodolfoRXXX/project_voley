@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { readJsonSafely } from "@/lib/http/readJsonSafely";
 
 export async function GET(req: NextRequest) {
   const base = process.env.NEXT_PUBLIC_FUNCTIONS_BASE_URL?.replace(/\/$/, "");
@@ -18,6 +19,10 @@ export async function GET(req: NextRequest) {
     cache: "no-store",
   });
 
-  const payload = await upstream.json();
-  return NextResponse.json(payload, { status: upstream.status });
+  const payload = await readJsonSafely(upstream);
+  const fallbackPayload = upstream.ok
+    ? { ok: true }
+    : { error: "El servicio devolvió una respuesta vacía" };
+
+  return NextResponse.json(payload ?? fallbackPayload, { status: upstream.status });
 }

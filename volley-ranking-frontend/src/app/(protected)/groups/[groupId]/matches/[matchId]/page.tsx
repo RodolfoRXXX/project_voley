@@ -177,7 +177,7 @@ export default function MatchDetailPage() {
   const isAdmin = userDoc?.roles === "admin";
   const isGroupAdmin =
     !!firebaseUser?.uid &&
-    group?.adminIds?.includes(firebaseUser.uid);
+    !!group?.adminIds?.includes(firebaseUser.uid);
   const isMatchAdmin =
     !!firebaseUser?.uid && isAdmin && (firebaseUser.uid === match?.adminId || isGroupAdmin);
 

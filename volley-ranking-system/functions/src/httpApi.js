@@ -130,6 +130,13 @@ async function handleGroupDetail(req, res, authContext, groupId) {
 
   const memberIds = cleanStringArray(group.memberIds);
   const adminIds = getGroupAdminIds(group);
+  const isGroupMember = !!authContext.uid && memberIds.includes(authContext.uid);
+
+  if (!authContext.isSystemAdmin && !isGroupMember) {
+    res.status(403).json({ error: "Debes ser integrante del grupo para ver el detalle" });
+    return;
+  }
+
   const pendingRequestIds = cleanStringArray(group.pendingRequestIds).filter(
     (id) => !memberIds.includes(id)
   );
@@ -154,7 +161,8 @@ async function handleGroupDetail(req, res, authContext, groupId) {
   const canManageMembers = canManageGroup(group, authContext);
   const isGroupAdmin = !!authContext.uid && adminIds.includes(authContext.uid);
   const isGroupOwner = canManageGroupAsOwner(group, authContext);
-  const canRequestAdminRole = !!authContext.uid && authContext.isSystemAdmin && !isGroupAdmin;
+  const canRequestAdminRole =
+    !!authContext.uid && authContext.isSystemAdmin && isGroupMember && !isGroupAdmin;
 
   const matchesSnap = await db
     .collection("matches")
@@ -214,17 +222,39 @@ async function handleJoinGroup(req, res, authContext, groupId) {
 
   const memberIds = cleanStringArray(group.memberIds);
   const pendingRequestIds = cleanStringArray(group.pendingRequestIds);
+  const normalizedAdmins = normalizeGroupAdmins(group);
+  const pendingAdminRequestIds = cleanStringArray(group.pendingAdminRequestIds);
 
   const isMember = memberIds.includes(authContext.uid);
   const isPending = pendingRequestIds.includes(authContext.uid);
+  const isAdmin = normalizedAdmins.adminIds.includes(authContext.uid);
+  const isOwner = normalizedAdmins.ownerId === authContext.uid;
 
   const nextMemberIds = memberIds.filter((id) => id !== authContext.uid);
   const nextPendingRequestIds = pendingRequestIds.filter((id) => id !== authContext.uid);
 
   let membershipStatus = "none";
 
+  let nextAdmins = normalizedAdmins.admins.map((item) => ({ ...item }));
+
   if (isMember) {
+    if (isOwner && normalizedAdmins.adminIds.length <= 1) {
+      res.status(400).json({
+        error:
+          "El owner no puede abandonar el grupo si es el único admin. Asigna otro admin para que tome su lugar.",
+      });
+      return;
+    }
+
     membershipStatus = "none";
+
+    const nextPendingAdminIds = pendingAdminRequestIds.filter((id) => id !== authContext.uid);
+    pendingAdminRequestIds.length = 0;
+    pendingAdminRequestIds.push(...nextPendingAdminIds);
+
+    if (isAdmin) {
+      nextAdmins = nextAdmins.filter((item) => item.userId !== authContext.uid);
+    }
   } else if (group.joinApproval ?? true) {
     if (isPending) {
       membershipStatus = "none";
@@ -237,15 +267,26 @@ async function handleJoinGroup(req, res, authContext, groupId) {
     membershipStatus = "member";
   }
 
+  const normalizedNextAdmins = nextAdmins.map((item, index) => ({
+    ...item,
+    role: index === 0 ? "owner" : "admin",
+    order: index,
+  }));
+
   await db.collection("groups").doc(groupId).update({
     memberIds: Array.from(new Set(nextMemberIds)),
     pendingRequestIds: Array.from(new Set(nextPendingRequestIds)),
+    admins: normalizedNextAdmins,
+    ownerId: normalizedNextAdmins[0]?.userId || null,
+    adminIds: normalizedNextAdmins.map((item) => item.userId),
+    pendingAdminRequestIds: Array.from(new Set(pendingAdminRequestIds)),
   });
 
   res.status(200).json({
     ok: true,
     memberIds: Array.from(new Set(nextMemberIds)),
     pendingRequestIds: Array.from(new Set(nextPendingRequestIds)),
+    adminIds: normalizedNextAdmins.map((item) => item.userId),
     membershipStatus,
   });
 }
@@ -312,8 +353,14 @@ async function handleAdminApplication(req, res, authContext, groupId) {
   }
 
   const adminIds = getGroupAdminIds(group);
+  const memberIds = cleanStringArray(group.memberIds);
   if (adminIds.includes(authContext.uid)) {
     res.status(400).json({ error: "Ya eres admin de este grupo" });
+    return;
+  }
+
+  if (!memberIds.includes(authContext.uid)) {
+    res.status(403).json({ error: "Debes ser integrante del grupo para postularte como admin" });
     return;
   }
 

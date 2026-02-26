@@ -68,8 +68,6 @@ async function assertMatchAdmin(matchId, uid) {
   if (match.groupId) {
     await assertGroupAdmin(match.groupId, uid);
     isAllowed = true;
-  } else if (match.adminId) {
-    isAllowed = String(match.adminId) === String(uid);
   }
 
   if (!isAllowed) {

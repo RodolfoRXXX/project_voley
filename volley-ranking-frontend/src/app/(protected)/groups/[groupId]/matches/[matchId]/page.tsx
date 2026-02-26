@@ -322,17 +322,18 @@ export default function MatchDetailPage() {
         const userData = snap.exists() ? snap.data() : null;
         setGroupAdminProfiles((prev) => {
           const others = prev.filter((item) => item.userId !== admin.userId);
-          const next = [
-            ...others,
-            {
-              userId: admin.userId,
-              role: admin.role === "owner" ? "owner" : "admin",
-              order: admin.order ?? 0,
-              nombre: userData?.nombre || "Sin nombre",
-              photoURL: userData?.photoURL || null,
-            },
-          ];
+          const normalizedRole: GroupAdmin["role"] =
+            admin.role === "owner" ? "owner" : "admin";
 
+          const nextAdmin: GroupAdminProfile = {
+            userId: admin.userId,
+            role: normalizedRole,
+            order: admin.order ?? 0,
+            nombre: userData?.nombre || "Sin nombre",
+            photoURL: userData?.photoURL || null,
+          };
+
+          const next: GroupAdminProfile[] = [...others, nextAdmin];
           return next.sort((a, b) => a.order - b.order);
         });
       })

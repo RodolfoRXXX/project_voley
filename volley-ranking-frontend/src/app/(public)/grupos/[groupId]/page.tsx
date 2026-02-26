@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { doc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { readJsonSafely } from "@/lib/http/readJsonSafely";
 import useToast from "@/components/ui/toast/useToast";
+import { db } from "@/lib/firebase";
 
 type GroupMember = {
   id: string;
@@ -102,6 +104,36 @@ export default function GrupoPublicDetailPage() {
     loadGroup();
   }, [loadGroup]);
 
+  useEffect(() => {
+    if (!groupId || authLoading || !group?.canManageMembers) return;
+
+    const ref = doc(db, "groups", groupId);
+    const unsub = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      const livePendingIds = Array.isArray(data.pendingRequestIds) ? data.pendingRequestIds : [];
+      const livePendingAdminIds = Array.isArray(data.pendingAdminRequestIds)
+        ? data.pendingAdminRequestIds
+        : [];
+
+      const currentPendingIds = group.pendingRequestIds || [];
+      const currentPendingAdminIds = group.pendingAdminRequestIds || [];
+
+      const pendingChanged =
+        livePendingIds.length !== currentPendingIds.length ||
+        livePendingIds.some((id: string, index: number) => id !== currentPendingIds[index]);
+      const pendingAdminChanged =
+        livePendingAdminIds.length !== currentPendingAdminIds.length ||
+        livePendingAdminIds.some((id: string, index: number) => id !== currentPendingAdminIds[index]);
+
+      if (pendingChanged || pendingAdminChanged) {
+        loadGroup();
+      }
+    });
+
+    return () => unsub();
+  }, [authLoading, group, groupId, loadGroup]);
+
   const postWithAuth = async (url: string) => {
     if (!firebaseUser) throw new Error("Debes iniciar sesión para realizar esta acción");
 
@@ -176,7 +208,12 @@ export default function GrupoPublicDetailPage() {
       await loadGroup();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "No se pudo eliminar al administrador";
-      if (message.toLowerCase().includes("único owner") || message.toLowerCase().includes("unico owner")) {
+      if (
+        message.includes("Hay un solo administrador") ||
+        message.includes("No puedes eliminar al único admin del grupo") ||
+        message.toLowerCase().includes("único owner") ||
+        message.toLowerCase().includes("unico owner")
+      ) {
         showToast({ type: "error", message });
       } else {
         setError(message);

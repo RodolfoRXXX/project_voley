@@ -95,7 +95,6 @@ module.exports = functions.https.onCall(async (data, context) => {
   await crearMatch({
     matchId,
     groupId,
-    adminId: context.auth.uid,
     horaInicio: horaInicioTs, // ✅
     cantidadEquipos,
     formacion,

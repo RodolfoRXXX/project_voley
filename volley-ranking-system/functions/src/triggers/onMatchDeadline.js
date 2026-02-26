@@ -79,7 +79,6 @@ module.exports = functions
       let shouldSendMail = false;
       let horaInicio;
       let nextStage;
-      let adminId;
       let groupId;
 
       try {
@@ -118,7 +117,6 @@ module.exports = functions
           if (!match.horaInicio) return;
 
           nextStage = stage + 1;
-          adminId = match.adminId;
           groupId = match.groupId;
           horaInicio = match.horaInicio;
 
@@ -165,19 +163,32 @@ module.exports = functions
 
         // -------- DESPUÉS DEL COMMIT --------
 
-        if (shouldSendMail && adminId) {
-          const userSnap = await db
-            .collection("users")
-            .doc(adminId)
-            .get();
-
+        if (shouldSendMail && groupId) {
           const groupSnap = await db
             .collection("groups")
             .doc(groupId)
             .get();
 
+          const groupData = groupSnap.exists ? groupSnap.data() : null;
+          const orderedAdmins = Array.isArray(groupData?.admins)
+            ? [...groupData.admins].sort((a, b) => (a?.order ?? 999) - (b?.order ?? 999))
+            : [];
+          const notificationAdminId =
+            orderedAdmins[0]?.userId ||
+            groupData?.ownerId ||
+            (Array.isArray(groupData?.adminIds) ? groupData.adminIds[0] : null);
+
+          if (!notificationAdminId) {
+            continue;
+          }
+
+          const userSnap = await db
+            .collection("users")
+            .doc(notificationAdminId)
+            .get();
+
           const groupName = groupSnap.exists
-            ? groupSnap.data().nombre || "tu grupo"
+            ? groupData?.nombre || "tu grupo"
             : "tu grupo";
 
           if (webAppUrl === "https://tudominio.com") {

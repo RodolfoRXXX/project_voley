@@ -38,7 +38,6 @@ function calcularDeadline(horaInicio, stage = 1) {
 async function crearMatch({
   matchId,
   groupId,
-  adminId,
   horaInicio,
   cantidadEquipos,
   formacion,
@@ -59,8 +58,7 @@ async function crearMatch({
 
   await db.collection("matches").doc(matchId).set({
     groupId,
-    adminId,
-
+  
     estado: "abierto",
 
     horaInicio,

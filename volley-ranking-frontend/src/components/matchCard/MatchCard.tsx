@@ -11,7 +11,6 @@ import {
   onSnapshot,
   query,
   where,
-  doc,
 } from "firebase/firestore";
 import { db, app } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
@@ -21,7 +20,6 @@ import { useAction } from "@/components/ui/action/useAction";
 import { ActionButton } from "../ui/action/ActionButton";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
-import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { useAuth } from "@/hooks/useAuth";
 import StatusPill from "../ui/status/StatusPill";
 import { matchStatusMap } from "@/components/ui/status/matchStatusMap";
@@ -44,7 +42,6 @@ export default function MatchCard({
   const { run, isLoading } = useAction();
   const router = useRouter();
   const [miParticipacion, setMiParticipacion] = useState<any | null>(null);
-  const [adminUser, setAdminUser] = useState<any | null>(null);
   const { showToast } = useToast();
   const { userDoc } = useAuth();
   const isOnboarded = !!userDoc?.onboarded;
@@ -112,21 +109,6 @@ const puedeUnirse =
     return () => unsubscribe();
   }, [match.id, userId]);
 
-  /* =====================
-   Admin del match
-  ===================== */
-  useEffect(() => {
-    if (!match?.adminId) return;
-
-    const ref = doc(db, "users", match.adminId);
-
-    const unsub = onSnapshot(ref, (snap) => {
-      if (!snap.exists()) return;
-      setAdminUser(snap.data());
-    });
-
-    return () => unsub();
-  }, [match.adminId]);
 
   /* =====================
      Redirect Onboarding
@@ -235,20 +217,6 @@ const puedeUnirse =
           inline
         />
       </div>
-
-      {/* ADMIN */}
-      {adminUser && (
-        <div className="flex items-center gap-2 mt-3 text-sm text-neutral-600 dark:text-[var(--text-muted)]">
-          <UserAvatar
-            nombre={adminUser.nombre}
-            photoURL={adminUser.photoURL}
-            size={22}
-          />
-          <span>
-            Admin <b className="font-medium">{adminUser.nombre}</b>
-          </span>
-        </div>
-      )}
 
       {/* INFO */}
       <div className="mt-4 space-y-1 text-sm text-neutral-700 dark:text-neutral-300">

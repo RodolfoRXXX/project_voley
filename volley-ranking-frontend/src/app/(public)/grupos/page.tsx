@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { db } from "@/lib/firebase";
+import useToast from "@/components/ui/toast/useToast";
 
 type PublicGroup = {
   id: string;
@@ -32,6 +33,7 @@ export default function GruposPage() {
   const [loading, setLoading] = useState(true);
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const endpoint = useMemo(() => {
     const base = process.env.NEXT_PUBLIC_FUNCTIONS_BASE_URL?.replace(/\/$/, "");
@@ -137,7 +139,12 @@ export default function GruposPage() {
         )
       );
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "No se pudo actualizar la membresía");
+      const message = err instanceof Error ? err.message : "No se pudo actualizar la membresía";
+      if (message.includes("Hay un solo administrador")) {
+        showToast({ type: "error", message });
+      } else {
+        setError(message);
+      }
     } finally {
       setJoiningGroupId(null);
     }
@@ -168,23 +175,25 @@ export default function GruposPage() {
 
           return (
             <article key={group.id} className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`text-xs px-2 py-1 rounded-full ${group.visibility === "public" ? "bg-green-100 text-green-700" : "bg-neutral-200 text-neutral-700"}`}>
-                  {group.visibility === "public" ? "Público" : "Privado"}
-                </span>
-                {group.joinApproval && (
-                  <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700">Aprobación requerida</span>
-                )}
-              </div>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-neutral-900">{group.name}</h3>
+                  <p className="text-sm text-neutral-600 mt-1">{group.description || "Sin descripción"}</p>
+                </div>
 
-              <div>
-                <h3 className="text-lg font-semibold text-neutral-900">{group.name}</h3>
-                <p className="text-sm text-neutral-600 mt-1">{group.description || "Sin descripción"}</p>
+                <div className="flex flex-col items-end gap-2">
+                  <span className={`text-xs px-2 py-1 rounded-full ${group.visibility === "public" ? "bg-green-100 text-green-700" : "bg-neutral-200 text-neutral-700"}`}>
+                    {group.visibility === "public" ? "Público" : "Privado"}
+                  </span>
+                  {group.joinApproval && (
+                    <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700">Aprobación requerida</span>
+                  )}
+                </div>
               </div>
 
               <div className="text-sm text-neutral-600 space-y-1">
                 <p>
-                  Partidos: <b>{group.totalMatches}</b>
+                  Partidos: <b>{group.totalMatches}</b> · Integrantes: <b>{group.memberIds?.length || 0}</b>
                 </p>
               </div>
 

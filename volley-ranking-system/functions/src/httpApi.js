@@ -241,7 +241,7 @@ async function handleJoinGroup(req, res, authContext, groupId) {
     if (isOwner && normalizedAdmins.adminIds.length <= 1) {
       res.status(400).json({
         error:
-          "El owner no puede abandonar el grupo si es el único admin. Asigna otro admin para que tome su lugar.",
+          "Hay un solo administrador. Asigna otro para que tome su lugar.",
       });
       return;
     }
@@ -488,7 +488,7 @@ async function handleAdminRemoval(req, res, authContext, groupId, userId) {
       return;
     }
     if (err.message === "last-owner") {
-      res.status(400).json({ error: "No puedes eliminar al único owner del grupo" });
+      res.status(400).json({ error: "No puedes eliminar al único admin del grupo" });
       return;
     }
     throw err;

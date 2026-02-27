@@ -10,6 +10,7 @@ import { ActionButton } from "@/components/ui/action/ActionButton";
 import { readJsonSafely } from "@/lib/http/readJsonSafely";
 import useToast from "@/components/ui/toast/useToast";
 import { db } from "@/lib/firebase";
+import StatusPill from "@/components/ui/status/StatusPill";
 
 type GroupMember = {
   id: string;
@@ -326,24 +327,18 @@ export default function GrupoPublicDetailPage() {
 
               {/* BADGES DERECHA */}
               <div className="flex flex-col items-end gap-2">
-                <span
-                  className={`text-xs px-3 py-1 rounded-full whitespace-nowrap ${
-                    group.visibility === "public"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-neutral-200 text-neutral-700"
-                  }`}
-                >
-                  {group.visibility === "public" ? "Público" : "Privado"}
-                </span>
+                <StatusPill
+                  label={group.visibility === "public" ? "Público" : "Privado"}
+                  variant={group.visibility === "public" ? "info" : "neutral"}
+                  inline
+                />
 
-                {group.joinApproval ? (
-                  <span className="text-xs px-3 py-1 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">
-                    Requiere aprobación del owner
-                  </span>
-                ) : (
-                  <span className="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">
-                    Entrada libre
-                  </span>
+                {group.joinApproval && (
+                  <StatusPill
+                    label="Requiere aprobación"
+                    variant="warning"
+                    inline
+                  />
                 )}
               </div>
 
@@ -393,7 +388,14 @@ export default function GrupoPublicDetailPage() {
 
                     <p className="text-neutral-500 text-xs">
                       {match.startsAt
-                        ? new Date(match.startsAt).toLocaleString("es-AR")
+                        ? new Date(match.startsAt).toLocaleString("es-AR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                          })
                         : "Sin fecha"}
                     </p>
 

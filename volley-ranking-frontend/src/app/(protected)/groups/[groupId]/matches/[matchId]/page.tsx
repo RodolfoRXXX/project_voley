@@ -111,7 +111,7 @@ function MatchPageSkeleton() {
         {[...Array(3)].map((_, i) => (
           <SkeletonSoft
             key={i}
-            className="h-24 rounded-xl"
+            className="h-24"
           />
         ))}
       </div>
@@ -124,7 +124,7 @@ function MatchPageSkeleton() {
           {[...Array(4)].map((_, i) => (
             <SkeletonSoft
               key={i}
-              className="h-16 rounded-lg"
+              className="h-16"
             />
           ))}
         </div>
@@ -138,7 +138,7 @@ function MatchPageSkeleton() {
           {[...Array(6)].map((_, i) => (
             <SkeletonSoft
               key={i}
-              className="h-12 rounded-lg"
+              className="h-12"
             />
           ))}
         </div>

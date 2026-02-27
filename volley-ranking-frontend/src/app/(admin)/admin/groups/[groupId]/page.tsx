@@ -335,7 +335,7 @@ export default function AdminGroupPage() {
             Visibilidad: <span className="font-medium text-neutral-900">{group.visibility === "public" ? "Público" : "Privado"}</span>
           </p>
           <p className="text-neutral-600">
-            Ingreso: <span className="font-medium text-neutral-900">{group.joinApproval ? "Requiere aprobación del owner" : "Entrada libre"}</span>
+            Ingreso: <span className="font-medium text-neutral-900">{group.joinApproval ? "Requiere aprobación" : "Entrada libre"}</span>
           </p>
         </div>
       </section>
@@ -399,7 +399,7 @@ export default function AdminGroupPage() {
                 }
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
               >
-                <option value="approval_required">Requiere aprobación del owner</option>
+                <option value="approval_required">Requiere aprobación</option>
                 <option value="free">Entrada libre</option>
               </select>
             </label>

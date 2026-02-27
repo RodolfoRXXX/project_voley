@@ -16,7 +16,6 @@ export default function MatchPositions({
       className="
         bg-white
         border border-neutral-200
-        rounded-xl
         px-4 py-4
         space-y-4
         dark:bg-[var(--surface)] dark:border-[var(--border)]

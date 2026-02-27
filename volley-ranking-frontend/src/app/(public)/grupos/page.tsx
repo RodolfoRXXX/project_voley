@@ -14,6 +14,7 @@ import { ActionButton } from "@/components/ui/action/ActionButton";
 import { db } from "@/lib/firebase";
 import useToast from "@/components/ui/toast/useToast";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
+import StatusPill from "@/components/ui/status/StatusPill";
 
 /* =====================
    TYPES
@@ -54,7 +55,7 @@ function GroupsSkeleton() {
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4"
+            className="border border-neutral-200 bg-white p-4 space-y-4"
           >
             <div className="space-y-2">
               <Skeleton className="h-4 w-1/3" />
@@ -285,7 +286,7 @@ export default function GruposPage() {
               const buttonConfig = getButtonConfig(group);
 
               return (
-                <div key={group.id} className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col h-full">
+                <div key={group.id} className="rounded-md border border-neutral-200 bg-white p-4 flex flex-col h-full">
                   {/* HEADER (crece libremente) */}
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1">
@@ -298,14 +299,17 @@ export default function GruposPage() {
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
-                      <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 whitespace-nowrap">
-                        Público
-                      </span>
-
+                      <StatusPill
+                        label={group.visibility === "public" ? "Público" : "Privado"}
+                        variant={group.visibility === "public" ? "info" : "neutral"}
+                        inline
+                      />
                       {group.joinApproval && (
-                        <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">
-                          Aprobación requerida
-                        </span>
+                        <StatusPill
+                          label="Requiere aprobación"
+                          variant="warning"
+                          inline
+                        />
                       )}
                     </div>
                   </div>
@@ -396,14 +400,17 @@ export default function GruposPage() {
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
-                      <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 whitespace-nowrap">
-                        Público
-                      </span>
-
+                      <StatusPill
+                        label={group.visibility === "public" ? "Público" : "Privado"}
+                        variant={group.visibility === "public" ? "info" : "neutral"}
+                        inline
+                      />
                       {group.joinApproval && (
-                        <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">
-                          Aprobación requerida
-                        </span>
+                        <StatusPill
+                          label="Requiere aprobación"
+                          variant="warning"
+                          inline
+                        />
                       )}
                     </div>
                   </div>

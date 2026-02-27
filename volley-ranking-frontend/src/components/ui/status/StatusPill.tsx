@@ -67,7 +67,7 @@ export default function StatusPill({
   const cfg = variants[variant];
 
   const base =
-    "items-center justify-center rounded-full font-medium transition";
+    "items-center justify-center rounded-full font-medium transition whitespace-nowrap";
 
   const Wrapper = inline ? "span" : "div";
 

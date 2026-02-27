@@ -13,9 +13,9 @@ export default function ProfileHeader({ user }: Props) {
     <section
       className="
         bg-white
-        rounded-xl
+        rounded-md
         p-6
-        shadow-sm
+        border border-neutral-200
         flex flex-col sm:flex-row
         items-center sm:items-start
         gap-6

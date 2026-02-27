@@ -11,9 +11,9 @@ export default function ProfileGame({ posicionesPreferidas }: Props) {
     <section
       className="
         bg-white
-        rounded-xl
+        border border-neutral-200
+        rounded-md
         p-6
-        shadow-sm
         space-y-4
       "
     >

@@ -193,10 +193,10 @@ const puedeUnirse =
         flex flex-col
         bg-white
         border border-neutral-200
-        rounded-2xl
+        rounded-md
         px-4 py-4
         h-full
-        shadow-sm
+        shadow-xs
       "
     >
       {/* HEADER */}

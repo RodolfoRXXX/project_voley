@@ -46,7 +46,7 @@ export default function PlayersTable<T extends Player>({
           No hay jugadores.
         </p>
       ) : (
-        <div className="bg-white border border-neutral-200 rounded-md overflow-hidden dark:bg-[var(--surface)] dark:border-[var(--border)]">
+        <div className="bg-white border border-neutral-200 overflow-hidden dark:bg-[var(--surface)] dark:border-[var(--border)]">
           {/* HEADER (solo desktop) */}
           <div
             className={`

@@ -243,7 +243,7 @@ export default function GruposPage() {
   const getButtonConfig = (group: PublicGroup) => {
     const state = getJoinState(group);
     if (state === "member")
-      return { label: "- Salir", variant: "danger_outline" as const };
+      return { label: "- Salir del grupo", variant: "danger_outline" as const };
     if (state === "pending")
       return { label: "Pendiente", variant: "warning" as const };
     return { label: "+ Agregarme", variant: "success" as const };
@@ -285,12 +285,8 @@ export default function GruposPage() {
               const buttonConfig = getButtonConfig(group);
 
               return (
-                <div
-                  key={group.id}
-                  className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4"
-                >
-                  {/* --- Card Content (igual que antes) --- */}
-
+                <div key={group.id} className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col h-full">
+                  {/* HEADER (crece libremente) */}
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1">
                       <h2 className="text-base font-semibold text-neutral-900">
@@ -314,47 +310,56 @@ export default function GruposPage() {
                     </div>
                   </div>
 
-                  <div className="flex gap-4 text-xs text-neutral-500">
-                    <span>
-                      Partidos: <b>{group.totalMatches}</b>
-                    </span>
-                    <span>
-                      Integrantes: <b>{group.memberIds?.length || 0}</b>
-                    </span>
-                  </div>
+                  {/* 👇 TODO ESTO SE PEGA AL FONDO */}
+                  <div className="mt-auto pt-4 space-y-4">
 
-                  <div className="flex items-center gap-3 pt-3 border-t">
-                    <UserAvatar
-                      nombre={group.owner?.name}
-                      photoURL={group.owner?.photoURL}
-                      size={36}
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-neutral-900">
-                        {group.owner?.name || "No disponible"}
-                      </p>
-                      <p className="text-xs text-neutral-500">
-                        Admin principal
-                      </p>
+                    <div className="flex gap-4 text-xs text-neutral-500">
+                      <span>
+                        Partidos: <b>{group.totalMatches}</b>
+                      </span>
+                      <span>
+                        Integrantes: <b>{group.memberIds?.length || 0}</b>
+                      </span>
                     </div>
-                  </div>
 
-                  <div className="flex items-center justify-between pt-2">
-                    <ActionButton
-                      onClick={() => joinGroup(group.id)}
-                      loading={joiningGroupId === group.id}
-                      variant={buttonConfig.variant}
-                      compact
-                    >
-                      {buttonConfig.label}
-                    </ActionButton>
+                    <div className="flex items-center gap-3 pt-3 border-t">
+                      <UserAvatar
+                        nombre={group.owner?.name}
+                        photoURL={group.owner?.photoURL}
+                        size={36}
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-neutral-900">
+                          {group.owner?.name || "No disponible"}
+                        </p>
+                        <p className="text-xs text-neutral-500">
+                          Admin principal
+                        </p>
+                      </div>
+                    </div>
 
-                    <Link
-                      href={`/grupos/${group.id}`}
-                      className="text-sm text-neutral-500 hover:text-neutral-800 transition-colors"
-                    >
-                      Ver detalle →
-                    </Link>
+                    <div className="flex items-center justify-between pt-2">
+                      <ActionButton
+                        onClick={() => joinGroup(group.id)}
+                        loading={joiningGroupId === group.id}
+                        variant={buttonConfig.variant}
+                        compact
+                      >
+                        {buttonConfig.label}
+                      </ActionButton>
+
+                      <Link
+                        href={`/grupos/${group.id}`}
+                        className={`text-sm transition-colors ${
+                          canViewDetail(group)
+                            ? "text-neutral-500 hover:text-neutral-800"
+                            : "text-neutral-300 pointer-events-none"
+                        }`}
+                      >
+                        Ver detalle →
+                      </Link>
+                    </div>
+
                   </div>
                 </div>
               );
@@ -378,12 +383,8 @@ export default function GruposPage() {
               const buttonConfig = getButtonConfig(group);
 
               return (
-                <div
-                  key={group.id}
-                  className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4"
-                >
-                  {/* mismo contenido de card */}
-                  
+                <div key={group.id} className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col h-full">
+                  {/* HEADER (crece libremente) */}
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1">
                       <h2 className="text-base font-semibold text-neutral-900">
@@ -407,53 +408,56 @@ export default function GruposPage() {
                     </div>
                   </div>
 
-                  <div className="flex gap-4 text-xs text-neutral-500">
-                    <span>
-                      Partidos: <b>{group.totalMatches}</b>
-                    </span>
-                    <span>
-                      Integrantes: <b>{group.memberIds?.length || 0}</b>
-                    </span>
-                  </div>
+                  {/* 👇 TODO ESTO SE PEGA AL FONDO */}
+                  <div className="mt-auto pt-4 space-y-4">
 
-                  <div className="flex items-center gap-3 pt-3 border-t">
-                    <UserAvatar
-                      nombre={group.owner?.name}
-                      photoURL={group.owner?.photoURL}
-                      size={36}
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-neutral-900">
-                        {group.owner?.name || "No disponible"}
-                      </p>
-                      <p className="text-xs text-neutral-500">
-                        Admin principal
-                      </p>
+                    <div className="flex gap-4 text-xs text-neutral-500">
+                      <span>
+                        Partidos: <b>{group.totalMatches}</b>
+                      </span>
+                      <span>
+                        Integrantes: <b>{group.memberIds?.length || 0}</b>
+                      </span>
                     </div>
-                  </div>
 
-                  <div className="flex items-center justify-between pt-2">
-                    <ActionButton
-                      onClick={() => joinGroup(group.id)}
-                      loading={joiningGroupId === group.id}
-                      variant={buttonConfig.variant}
-                      compact
-                    >
-                      {buttonConfig.label}
-                    </ActionButton>
+                    <div className="flex items-center gap-3 pt-3 border-t">
+                      <UserAvatar
+                        nombre={group.owner?.name}
+                        photoURL={group.owner?.photoURL}
+                        size={36}
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-neutral-900">
+                          {group.owner?.name || "No disponible"}
+                        </p>
+                        <p className="text-xs text-neutral-500">
+                          Admin principal
+                        </p>
+                      </div>
+                    </div>
 
-                    {canViewDetail(group) ? (
+                    <div className="flex items-center justify-between pt-2">
+                      <ActionButton
+                        onClick={() => joinGroup(group.id)}
+                        loading={joiningGroupId === group.id}
+                        variant={buttonConfig.variant}
+                        compact
+                      >
+                        {buttonConfig.label}
+                      </ActionButton>
+
                       <Link
                         href={`/grupos/${group.id}`}
-                        className="text-sm text-neutral-500 hover:text-neutral-800 transition-colors"
+                        className={`text-sm transition-colors ${
+                          canViewDetail(group)
+                            ? "text-neutral-500 hover:text-neutral-800"
+                            : "text-neutral-300 pointer-events-none"
+                        }`}
                       >
                         Ver detalle →
                       </Link>
-                    ) : (
-                      <span className="text-sm text-neutral-400 cursor-not-allowed">
-                        Ver detalle →
-                      </span>
-                    )}
+                    </div>
+
                   </div>
                 </div>
               );
@@ -461,7 +465,6 @@ export default function GruposPage() {
           </div>
         </section>
       )}
-
     </main>
   );
 }

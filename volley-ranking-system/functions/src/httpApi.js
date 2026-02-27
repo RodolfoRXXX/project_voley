@@ -365,7 +365,24 @@ async function handleAdminApplication(req, res, authContext, groupId) {
   }
 
   const pendingAdminRequestIds = cleanStringArray(group.pendingAdminRequestIds);
-  if (!pendingAdminRequestIds.includes(authContext.uid)) {
+  const isPending = pendingAdminRequestIds.includes(authContext.uid);
+
+  if (isPending) {
+    const nextPendingAdminRequestIds = pendingAdminRequestIds.filter((id) => id !== authContext.uid);
+
+    await db.collection("groups").doc(groupId).update({
+      pendingAdminRequestIds: Array.from(new Set(nextPendingAdminRequestIds)),
+    });
+
+    res.status(200).json({
+      ok: true,
+      status: "removed",
+      pendingAdminRequestIds: Array.from(new Set(nextPendingAdminRequestIds)),
+    });
+    return;
+  }
+
+  if (!isPending) {
     pendingAdminRequestIds.push(authContext.uid);
   }
 
@@ -373,7 +390,11 @@ async function handleAdminApplication(req, res, authContext, groupId) {
     pendingAdminRequestIds: Array.from(new Set(pendingAdminRequestIds)),
   });
 
-  res.status(200).json({ ok: true, pendingAdminRequestIds: Array.from(new Set(pendingAdminRequestIds)) });
+  res.status(200).json({
+    ok: true,
+    status: "pending",
+    pendingAdminRequestIds: Array.from(new Set(pendingAdminRequestIds)),
+  });
 }
 
 async function handleAdminRequestAction(req, res, authContext, groupId, userId, action) {

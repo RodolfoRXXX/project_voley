@@ -22,6 +22,7 @@ type MatchInfoCardProps = {
     formacion: string;
     cantidadEquipos: number;
     cantidadSuplentes: number;
+    visibility?: "group_only" | "public";
   };
   groupAdmins?: GroupAdminProfile[];
 };
@@ -63,7 +64,7 @@ export default function MatchInfoCard({
           </p>
         </div>
 
-        <div className="grid grid-cols-2">
+        <div className="grid grid-cols-3 gap-3">
           <div>
             <p className="text-neutral-500">Equipos</p>
             <p className="font-medium text-neutral-900">
@@ -75,6 +76,13 @@ export default function MatchInfoCard({
             <p className="text-neutral-500">Suplentes</p>
             <p className="font-medium text-neutral-900">
               {match.cantidadSuplentes}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-neutral-500">Visibilidad</p>
+            <p className="font-medium text-neutral-900">
+              {match.visibility === "public" ? "Público" : "Solo grupo"}
             </p>
           </div>
         </div>

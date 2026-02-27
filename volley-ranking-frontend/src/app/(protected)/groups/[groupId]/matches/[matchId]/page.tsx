@@ -183,6 +183,7 @@ export default function MatchDetailPage() {
     cantidadSuplentes: 0,
     formacion: "",
     horaInicio: "",
+    visibility: "group_only" as "group_only" | "public",
   });
 
   const isAdmin = userDoc?.roles === "admin";
@@ -271,6 +272,7 @@ export default function MatchDetailPage() {
         cantidadSuplentes: data.cantidadSuplentes,
         posicionesObjetivo: data.posicionesObjetivo,
         groupId: data.groupId,
+        visibility: data.visibility === "public" ? "public" : "group_only",
         horaInicio: data.horaInicio?.toDate
           ? data.horaInicio.toDate()
           : null,
@@ -282,6 +284,7 @@ export default function MatchDetailPage() {
         horaInicio: data.horaInicio
           ? formatForDateTimeLocal(data.horaInicio)
           : "",
+        visibility: data.visibility === "public" ? "public" : "group_only",
       });
     });
 
@@ -445,7 +448,8 @@ export default function MatchDetailPage() {
       match.cantidadEquipos !== formData.cantidadEquipos ||
       match.cantidadSuplentes !== formData.cantidadSuplentes ||
       match.formacion !== formData.formacion ||
-      horaInicioActual !== horaInicioNueva;
+      horaInicioActual !== horaInicioNueva ||
+      (match.visibility || "group_only") !== formData.visibility;
 
     if (!hasChanges) {
       setEditMode(false);
@@ -469,6 +473,7 @@ export default function MatchDetailPage() {
           cantidadSuplentes: formData.cantidadSuplentes,
           formacion: formData.formacion,
           horaInicioMillis,
+          visibility: formData.visibility,
         });
 
         setMatch({
@@ -476,6 +481,7 @@ export default function MatchDetailPage() {
           ...formData,
           posicionesObjetivo,
           horaInicio: new Date(formData.horaInicio),
+          visibility: formData.visibility,
         });
 
         setEditMode(false);

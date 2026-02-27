@@ -111,6 +111,8 @@ export default function AdminGroupPage() {
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
+    visibility: "private" as "public" | "private",
+    joinApproval: true,
   });
 
   /* =====================
@@ -150,6 +152,8 @@ export default function AdminGroupPage() {
         setFormData({
           nombre: data.nombre,
           descripcion: data.descripcion || "",
+          visibility: data.visibility === "public" ? "public" : "private",
+          joinApproval: data.joinApproval ?? true,
         });
 
         const q = query(
@@ -184,7 +188,9 @@ export default function AdminGroupPage() {
   const saveGroup = () => {
     const hasChanges =
       group?.nombre !== formData.nombre ||
-      (group?.descripcion || "") !== formData.descripcion;
+      (group?.descripcion || "") !== formData.descripcion ||
+      (group?.visibility === "public" ? "public" : "private") !== formData.visibility ||
+      (group?.joinApproval ?? true) !== formData.joinApproval;
 
     if (!hasChanges) {
       setEditMode(false);
@@ -198,12 +204,16 @@ export default function AdminGroupPage() {
           groupId,
           nombre: formData.nombre,
           descripcion: formData.descripcion,
+          visibility: formData.visibility,
+          joinApproval: formData.joinApproval,
         });
 
         setGroup({
           ...group,
           nombre: formData.nombre,
           descripcion: formData.descripcion,
+          visibility: formData.visibility,
+          joinApproval: formData.joinApproval,
         });
 
         setEditMode(false);
@@ -252,6 +262,8 @@ export default function AdminGroupPage() {
     setFormData({
       nombre: group.nombre,
       descripcion: group.descripcion || "",
+      visibility: group.visibility === "public" ? "public" : "private",
+      joinApproval: group.joinApproval ?? true,
     });
   };
 
@@ -317,6 +329,15 @@ export default function AdminGroupPage() {
             {group.activo ? "Desactivar" : "Reactivar"}
           </ActionButton>
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          <p className="text-neutral-600">
+            Visibilidad: <span className="font-medium text-neutral-900">{group.visibility === "public" ? "Público" : "Privado"}</span>
+          </p>
+          <p className="text-neutral-600">
+            Ingreso: <span className="font-medium text-neutral-900">{group.joinApproval ? "Requiere aprobación del owner" : "Entrada libre"}</span>
+          </p>
+        </div>
       </section>
 
       {/* Edit */}
@@ -347,6 +368,40 @@ export default function AdminGroupPage() {
                 }
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
               />
+            </label>
+
+            <label className="block text-sm">
+              <span className="text-neutral-700">Visibilidad</span>
+              <select
+                value={formData.visibility}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    visibility: e.target.value as "public" | "private",
+                  })
+                }
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              >
+                <option value="private">Privado</option>
+                <option value="public">Público</option>
+              </select>
+            </label>
+
+            <label className="block text-sm">
+              <span className="text-neutral-700">Ingreso al grupo</span>
+              <select
+                value={formData.joinApproval ? "approval_required" : "free"}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    joinApproval: e.target.value === "approval_required",
+                  })
+                }
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              >
+                <option value="approval_required">Requiere aprobación del owner</option>
+                <option value="free">Entrada libre</option>
+              </select>
             </label>
           </div>
 

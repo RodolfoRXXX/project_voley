@@ -10,6 +10,7 @@ type MatchFormData = {
   cantidadSuplentes: number;
   formacion: string;
   horaInicio: string;
+  visibility: "group_only" | "public";
 };
 
 type MatchEditFormProps = {
@@ -112,6 +113,25 @@ export default function MatchEditForm({
             }
             className={inputBase}
           />
+        </div>
+
+        <div>
+          <label className="block text-xs text-neutral-500 mb-1">
+            Visibilidad
+          </label>
+          <select
+            value={formData.visibility}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                visibility: e.target.value as "group_only" | "public",
+              })
+            }
+            className={inputBase}
+          >
+            <option value="group_only">Solo grupo</option>
+            <option value="public">Público</option>
+          </select>
         </div>
       </div>
 

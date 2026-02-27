@@ -273,6 +273,8 @@ export default function GrupoPublicDetailPage() {
 
   const adminMembers = group?.members.filter((member) => member.isAdmin) || [];
   const playerMembers = group?.members.filter((member) => !member.isAdmin) || [];
+  const isAdminRequestPending =
+    !!firebaseUser?.uid && !!group?.pendingAdminRequestIds?.includes(firebaseUser.uid);
 
   return (
     <main className="max-w-4xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
@@ -312,9 +314,11 @@ export default function GrupoPublicDetailPage() {
                     <ActionButton
                       onClick={requestAdminRole}
                       loading={actingKey === "request-admin-role"}
-                      variant="warning"
+                      variant={isAdminRequestPending ? "secondary" : "warning"}
                     >
-                      Postularme como administrador
+                      {isAdminRequestPending
+                        ? "Solicitud pendiente (clic para cancelar)"
+                        : "Postularme como administrador"}
                     </ActionButton>
                   </div>
                 )}
@@ -332,9 +336,13 @@ export default function GrupoPublicDetailPage() {
                   {group.visibility === "public" ? "Público" : "Privado"}
                 </span>
 
-                {group.joinApproval && (
+                {group.joinApproval ? (
                   <span className="text-xs px-3 py-1 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">
-                    Aprobación requerida
+                    Requiere aprobación del owner
+                  </span>
+                ) : (
+                  <span className="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">
+                    Entrada libre
                   </span>
                 )}
               </div>
@@ -387,6 +395,10 @@ export default function GrupoPublicDetailPage() {
                       {match.startsAt
                         ? new Date(match.startsAt).toLocaleString("es-AR")
                         : "Sin fecha"}
+                    </p>
+
+                    <p className="text-neutral-500 text-xs">
+                      Visibilidad: {match.visibility === "public" ? "Público" : "Solo grupo"}
                     </p>
 
                     <div className="pt-2">

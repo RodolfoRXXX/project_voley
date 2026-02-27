@@ -210,12 +210,30 @@ const puedeUnirse =
           </p>
         </div>
 
-        <StatusPill
-          label={cfg.label}
-          variant={cfg.variant}
-          icon={cfg.icon}
-          inline
-        />
+        <div className="flex flex-col items-end gap-2">
+  <StatusPill
+    label={cfg.label}
+    variant={cfg.variant}
+    icon={cfg.icon}
+    inline
+  />
+
+  {match.visibility && (
+    <StatusPill
+      label={
+        match.visibility === "public"
+          ? "Público"
+          : "Solo grupo"
+      }
+      variant={
+        match.visibility === "public"
+          ? "info"
+          : "success"
+      }
+      inline
+    />
+  )}
+</div>
       </div>
 
       {/* INFO */}

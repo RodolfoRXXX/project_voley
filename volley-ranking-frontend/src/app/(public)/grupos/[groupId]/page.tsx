@@ -285,49 +285,125 @@ export default function GrupoPublicDetailPage() {
 
       {!loading && !error && group && (
         <>
-          <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm space-y-2">
-            <h1 className="text-2xl font-bold text-neutral-900">{group.name}</h1>
-            <p className="text-neutral-600">{group.description || "Sin descripción"}</p>
-            {group.canRequestAdminRole && (
-              <ActionButton
-                onClick={requestAdminRole}
-                loading={actingKey === "request-admin-role"}
-                variant="warning"
-                compact
-              >
-                Postularme como administrador
-              </ActionButton>
-            )}
-            <div className="flex flex-wrap gap-2 text-sm">
-              <span className={`px-2 py-1 rounded-full ${group.visibility === "public" ? "bg-green-100 text-green-700" : "bg-neutral-200 text-neutral-700"}`}>
-                {group.visibility === "public" ? "Público" : "Privado"}
-              </span>
-              {group.joinApproval && (
-                <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700">Aprobación requerida</span>
-              )}
+          {/* ================= HEADER ================= */}
+
+          <section
+            className="
+              bg-white
+              border border-neutral-200
+              px-5 py-5
+              space-y-4
+            "
+          >
+            <div className="flex items-start justify-between gap-4">
+
+              {/* IZQUIERDA */}
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold text-neutral-900">
+                  {group.name}
+                </h1>
+
+                <p className="text-neutral-600 max-w-2xl">
+                  {group.description || "Sin descripción"}
+                </p>
+
+                {group.canRequestAdminRole && (
+                  <div className="pt-2">
+                    <ActionButton
+                      onClick={requestAdminRole}
+                      loading={actingKey === "request-admin-role"}
+                      variant="warning"
+                    >
+                      Postularme como administrador
+                    </ActionButton>
+                  </div>
+                )}
+              </div>
+
+              {/* BADGES DERECHA */}
+              <div className="flex flex-col items-end gap-2">
+                <span
+                  className={`text-xs px-3 py-1 rounded-full whitespace-nowrap ${
+                    group.visibility === "public"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-neutral-200 text-neutral-700"
+                  }`}
+                >
+                  {group.visibility === "public" ? "Público" : "Privado"}
+                </span>
+
+                {group.joinApproval && (
+                  <span className="text-xs px-3 py-1 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">
+                    Aprobación requerida
+                  </span>
+                )}
+              </div>
+
             </div>
           </section>
 
-          <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm space-y-3">
-            <h2 className="text-lg font-semibold text-neutral-900">Partidos del grupo</h2>
+          {/* ================= PARTIDOS ================= */}
+
+          <section
+            className="
+              bg-white
+              border border-neutral-200
+              px-5 py-5
+              space-y-4
+            "
+          >
+            <h2 className="text-base font-medium text-neutral-900">
+              Partidos del grupo
+            </h2>
+
             {matches.length === 0 ? (
-              <p className="text-sm text-neutral-500">No hay partidos para mostrar.</p>
+              <p className="text-sm text-neutral-500">
+                No hay partidos para mostrar.
+              </p>
             ) : (
-              <ul className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {matches.map((match) => (
-                  <li key={match.id} className="rounded-xl border border-neutral-200 p-3 text-sm">
-                    <p className="font-medium text-neutral-900">{match.title}</p>
-                    <p className="text-neutral-600">Estado: {match.status || "—"}</p>
-                    <p className="text-neutral-600">
-                      Inicio: {match.startsAt ? new Date(match.startsAt).toLocaleString("es-AR") : "Sin fecha"}
+                  <div
+                    key={match.id}
+                    className="
+                      rounded-xl
+                      border border-neutral-200
+                      p-4
+                      text-sm
+                      space-y-2
+                      hover:shadow-sm
+                      transition
+                    "
+                  >
+                    <p className="font-medium text-neutral-900">
+                      {match.title}
                     </p>
-                  </li>
+
+                    <p className="text-neutral-600 text-xs">
+                      Estado: {match.status || "—"}
+                    </p>
+
+                    <p className="text-neutral-500 text-xs">
+                      {match.startsAt
+                        ? new Date(match.startsAt).toLocaleString("es-AR")
+                        : "Sin fecha"}
+                    </p>
+
+                    <div className="pt-2">
+                      <Link
+                        href={`/groups/${group.id}/matches/${match.id}`}
+                        className="text-xs text-neutral-600 hover:text-neutral-900"
+                      >
+                        Ver partido →
+                      </Link>
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </section>
 
-          <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm space-y-4">
+          <section className="border border-neutral-200 bg-white p-5 shadow-sm space-y-4">
             <h2 className="text-lg font-semibold text-neutral-900">Integrantes</h2>
 
             {group.pendingAdminRequests.length > 0 && (

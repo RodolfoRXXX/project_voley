@@ -309,6 +309,97 @@ async function handleGroupMemberRemoval(req, res, authContext, groupId, userId) 
   res.status(200).json({ ok: true, memberIds });
 }
 
+async function handleGroupMemberSearch(req, res, authContext, groupId) {
+  const group = await getPublicGroupOrAdmin(groupId, authContext);
+  if (!group) {
+    res.status(404).json({ error: "Grupo no encontrado" });
+    return;
+  }
+
+  if (!canManageGroup(group, authContext)) {
+    res.status(403).json({ error: "No tienes permisos para gestionar integrantes" });
+    return;
+  }
+
+  const rawQuery = String(req.query?.q || "").trim();
+  if (rawQuery.length < 2) {
+    res.status(200).json({ users: [] });
+    return;
+  }
+
+  const queryVariants = Array.from(new Set([
+    rawQuery,
+    rawQuery.toLowerCase(),
+    rawQuery.charAt(0).toUpperCase() + rawQuery.slice(1).toLowerCase(),
+  ]));
+
+  const currentMemberIds = new Set(cleanStringArray(group.memberIds));
+  const usersMap = new Map();
+
+  for (const term of queryVariants) {
+    if (!term) continue;
+
+    const usersSnap = await db
+      .collection("users")
+      .orderBy("nombre")
+      .startAt(term)
+      .endAt(`${term}\uf8ff`)
+      .limit(12)
+      .get();
+
+    usersSnap.docs.forEach((userDoc) => {
+      if (currentMemberIds.has(userDoc.id)) return;
+
+      const user = userDoc.data();
+      usersMap.set(userDoc.id, {
+        id: userDoc.id,
+        name: user?.nombre || "Sin nombre",
+        email: user?.email || null,
+        photoURL: user?.photoURL || null,
+        positions: Array.isArray(user?.posicionesPreferidas) ? user.posicionesPreferidas : [],
+      });
+    });
+  }
+
+  const users = sortMembersByName(Array.from(usersMap.values())).slice(0, 12);
+  res.status(200).json({ users });
+}
+
+async function handleGroupMemberAdd(req, res, authContext, groupId, userId) {
+  const group = await getPublicGroupOrAdmin(groupId, authContext);
+  if (!group) {
+    res.status(404).json({ error: "Grupo no encontrado" });
+    return;
+  }
+
+  if (!canManageGroup(group, authContext)) {
+    res.status(403).json({ error: "No tienes permisos para gestionar integrantes" });
+    return;
+  }
+
+  const userSnap = await db.collection("users").doc(String(userId)).get();
+  if (!userSnap.exists) {
+    res.status(404).json({ error: "Usuario no encontrado" });
+    return;
+  }
+
+  const memberIds = cleanStringArray(group.memberIds);
+  if (!memberIds.includes(String(userId))) {
+    memberIds.push(String(userId));
+  }
+
+  const pendingRequestIds = cleanStringArray(group.pendingRequestIds).filter(
+    (id) => id !== String(userId)
+  );
+
+  await db.collection("groups").doc(groupId).update({
+    memberIds: Array.from(new Set(memberIds)),
+    pendingRequestIds: Array.from(new Set(pendingRequestIds)),
+  });
+
+  res.status(200).json({ ok: true, memberIds: Array.from(new Set(memberIds)) });
+}
+
 async function handleJoinRequestAction(req, res, authContext, groupId, userId, action) {
   const group = await getPublicGroupOrAdmin(groupId, authContext);
   if (!group) {
@@ -552,6 +643,18 @@ module.exports = functions.https.onRequest(async (req, res) => {
   const removeMemberMatch = req.path.match(/^\/groups\/([^/]+)\/members\/([^/]+)\/remove$/);
   if (req.method === "POST" && removeMemberMatch) {
     await handleGroupMemberRemoval(req, res, authContext, removeMemberMatch[1], removeMemberMatch[2]);
+    return;
+  }
+
+  const searchMembersMatch = req.path.match(/^\/groups\/([^/]+)\/members\/search$/);
+  if (req.method === "GET" && searchMembersMatch) {
+    await handleGroupMemberSearch(req, res, authContext, searchMembersMatch[1]);
+    return;
+  }
+
+  const addMemberMatch = req.path.match(/^\/groups\/([^/]+)\/members\/([^/]+)\/add$/);
+  if (req.method === "POST" && addMemberMatch) {
+    await handleGroupMemberAdd(req, res, authContext, addMemberMatch[1], addMemberMatch[2]);
     return;
   }
 

@@ -11,6 +11,8 @@ import { readJsonSafely } from "@/lib/http/readJsonSafely";
 import useToast from "@/components/ui/toast/useToast";
 import { db } from "@/lib/firebase";
 import StatusPill from "@/components/ui/status/StatusPill";
+import AddMemberModal from "@/components/addMemberModal/AddMemberModal";
+import { SearchableMember } from "@/components/addMemberModal/AddMemberModal.types";
 
 type GroupMember = {
   id: string;
@@ -56,6 +58,7 @@ export default function GrupoPublicDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actingKey, setActingKey] = useState<string | null>(null);
+  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const { showToast } = useToast();
 
   const loadGroup = useCallback(async () => {
@@ -161,6 +164,44 @@ export default function GrupoPublicDetailPage() {
       await loadGroup();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "No se pudo eliminar el integrante");
+    } finally {
+      setActingKey(null);
+    }
+  };
+
+  const searchUsersToAdd = async (query: string) => {
+    if (!firebaseUser) throw new Error("Debes iniciar sesión para buscar usuarios");
+
+    const token = await firebaseUser.getIdToken();
+    const res = await fetch(
+      `/api/groups/${groupId}/members/search?q=${encodeURIComponent(query)}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const payload = (await readJsonSafely(res)) as
+      | { error?: string; users?: SearchableMember[] }
+      | null;
+
+    if (!res.ok) {
+      throw new Error(payload?.error || "No se pudo buscar usuarios");
+    }
+
+    return payload?.users || [];
+  };
+
+  const addMember = async (userId: string) => {
+    try {
+      setActingKey(`add-${userId}`);
+      await postWithAuth(`/api/groups/${groupId}/members/${userId}/add`);
+      await loadGroup();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "No se pudo agregar al integrante");
+      throw err;
     } finally {
       setActingKey(null);
     }
@@ -418,7 +459,18 @@ export default function GrupoPublicDetailPage() {
           </section>
 
           <section className="border border-neutral-200 bg-white p-5 shadow-sm space-y-4">
-            <h2 className="text-lg font-semibold text-neutral-900">Integrantes</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-neutral-900">Integrantes</h2>
+              {group.canManageMembers && (
+                <ActionButton
+                  variant="secondary"
+                  compact
+                  onClick={() => setIsAddMemberModalOpen(true)}
+                >
+                  + Agregar integrante
+                </ActionButton>
+              )}
+            </div>
 
             {group.pendingAdminRequests.length > 0 && (
               <div className="space-y-2">
@@ -512,6 +564,13 @@ export default function GrupoPublicDetailPage() {
               </div>
             )}
           </section>
+
+          <AddMemberModal
+            open={isAddMemberModalOpen}
+            onClose={() => setIsAddMemberModalOpen(false)}
+            onSearch={searchUsersToAdd}
+            onAddMember={addMember}
+          />
         </>
       )}
     </main>

@@ -211,37 +211,49 @@ const puedeUnirse =
         </div>
 
         <div className="flex flex-col items-end gap-2">
-  <StatusPill
-    label={cfg.label}
-    variant={cfg.variant}
-    icon={cfg.icon}
-    inline
-  />
-
-  {match.visibility && (
-    <StatusPill
-      label={
-        match.visibility === "public"
-          ? "Público"
-          : "Solo grupo"
-      }
-      variant={
-        match.visibility === "public"
-          ? "info"
-          : "success"
-      }
-      inline
-    />
-  )}
-</div>
+          {match.visibility && (
+            <StatusPill
+              label={
+                match.visibility === "public"
+                  ? "Público"
+                  : "Solo grupo"
+              }
+              variant={
+                match.visibility === "public"
+                  ? "info"
+                  : "success"
+              }
+              inline
+            />
+          )}
+        </div>
       </div>
 
       {/* INFO */}
-      <div className="mt-4 space-y-1 text-sm text-neutral-700 dark:text-neutral-300">
+      <div className="mt-4 space-y-2 text-sm text-neutral-700 dark:text-neutral-300">
+  
+        {/* ESTADO */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-neutral-500">
+            Estado:
+          </span>
+
+          <StatusPill
+            label={cfg.label}
+            variant={cfg.variant}
+            icon={cfg.icon}
+            inline
+          />
+        </div>
+
+        {/* FECHA */}
         <p>{formatDateTime(match.horaInicio)}</p>
+
+        {/* CUPOS */}
         <p className="text-sm text-neutral-500">
           Titulares {titulares}/{titularesTotales} · Suplentes {suplentes}/{suplentesTotales}
         </p>
+
       </div>
 
       {/* FOOTER */}

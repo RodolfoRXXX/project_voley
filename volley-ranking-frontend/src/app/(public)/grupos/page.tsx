@@ -15,6 +15,7 @@ import { db } from "@/lib/firebase";
 import useToast from "@/components/ui/toast/useToast";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
 import StatusPill from "@/components/ui/status/StatusPill";
+import { useAction } from "@/components/ui/action/useAction";
 
 /* =====================
    TYPES
@@ -97,6 +98,7 @@ export default function GruposPage() {
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { showToast } = useToast();
+  const { run, isLoading } = useAction();
 
   const endpoint = useMemo(() => {
     const base = process.env.NEXT_PUBLIC_FUNCTIONS_BASE_URL?.replace(/\/$/, "");
@@ -194,17 +196,18 @@ export default function GruposPage() {
     );
   };
 
-  const joinGroup = async (groupId: string) => {
+  const joinGroup = async (group: PublicGroup) => {
     if (!firebaseUser) {
       setError("Debes iniciar sesión para unirte a un grupo");
       return;
     }
 
-    setJoiningGroupId(groupId);
+    const state = getJoinState(group);
+    const isLeaving = state === "member";
 
-    try {
+    const execute = async () => {
       const token = await firebaseUser.getIdToken();
-      const res = await fetch(`/api/groups/${groupId}/join`, {
+      const res = await fetch(`/api/groups/${group.id}/join`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -214,30 +217,42 @@ export default function GruposPage() {
         throw new Error(payload?.error || "No se pudo actualizar la membresía");
 
       setGroups((prev) =>
-        prev.map((group) =>
-          group.id === groupId
+        prev.map((g) =>
+          g.id === group.id
             ? {
-                ...group,
-                memberIds: payload.memberIds || group.memberIds || [],
+                ...g,
+                memberIds: payload.memberIds || g.memberIds || [],
                 pendingRequestIds:
-                  payload.pendingRequestIds || group.pendingRequestIds || [],
+                  payload.pendingRequestIds || g.pendingRequestIds || [],
               }
-            : group
+            : g
         )
       );
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "No se pudo actualizar la membresía";
+    };
 
-      if (message.includes("Hay un solo administrador")) {
-        showToast({ type: "error", message });
-      } else {
-        setError(message);
-      }
-    } finally {
-      setJoiningGroupId(null);
+    if (isLeaving) {
+      run(
+        `leave-group-${group.id}`,
+        execute,
+        {
+          confirm: {
+            message: `¿Querés salir del grupo "${group.name}"?`,
+            confirmText: "Salir del grupo",
+            variant: "danger",
+          },
+          successMessage: "Saliste del grupo",
+        }
+      );
+    } else {
+      run(
+        `join-group-${group.id}`,
+        execute,
+        {
+          successMessage: group.joinApproval
+            ? "Solicitud enviada"
+            : "Te uniste al grupo",
+        }
+      );
     }
   };
 
@@ -344,8 +359,8 @@ export default function GruposPage() {
 
                     <div className="flex items-center justify-between pt-2">
                       <ActionButton
-                        onClick={() => joinGroup(group.id)}
-                        loading={joiningGroupId === group.id}
+                        onClick={() => joinGroup(group)}
+                        loading={isLoading(`leave-group-${group.id}`) || isLoading(`join-group-${group.id}`)}
                         variant={buttonConfig.variant}
                         compact
                       >
@@ -445,8 +460,8 @@ export default function GruposPage() {
 
                     <div className="flex items-center justify-between pt-2">
                       <ActionButton
-                        onClick={() => joinGroup(group.id)}
-                        loading={joiningGroupId === group.id}
+                        onClick={() => joinGroup(group)}
+                        loading={isLoading(`leave-group-${group.id}`) || isLoading(`join-group-${group.id}`)}
                         variant={buttonConfig.variant}
                         compact
                       >

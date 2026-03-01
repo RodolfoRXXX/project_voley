@@ -1,14 +1,31 @@
 "use client";
 
-import CommitmentBadge from "./commitmentBadge";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
+import StatusPill, { type StatusVariant } from "@/components/ui/status/StatusPill";
 import { UserDoc } from "@/types/User";
 
 type Props = {
   user: UserDoc;
 };
 
+function getCommitmentPill(value: number): { label: string; variant: StatusVariant } {
+  if (value >= 3) {
+    return { label: "🤝 Compromiso alto", variant: "success" };
+  }
+
+  if (value < 0) {
+    return { label: "🤝 Compromiso bajo", variant: "danger" };
+  }
+
+  return { label: "🤝 Compromiso normal", variant: "warning" };
+}
+
 export default function ProfileHeader({ user }: Props) {
+  const roleLabel = user.roles === "admin" ? "Admin" : "Player";
+  const roleVariant: StatusVariant =
+    user.roles === "admin" ? "warning" : "info";
+  const commitment = getCommitmentPill(user.estadoCompromiso ?? 0);
+
   return (
     <section
       className="
@@ -21,7 +38,6 @@ export default function ProfileHeader({ user }: Props) {
         gap-6
       "
     >
-      {/* Avatar */}
       <UserAvatar
         nombre={user.nombre}
         photoURL={user.photoURL}
@@ -29,7 +45,6 @@ export default function ProfileHeader({ user }: Props) {
         className="ring-2 ring-orange-200"
       />
 
-      {/* Info */}
       <div className="flex-1 text-center sm:text-left">
         <h2 className="text-2xl font-semibold tracking-tight">
           {user.nombre}
@@ -39,20 +54,9 @@ export default function ProfileHeader({ user }: Props) {
           {user.email}
         </p>
 
-        {/* Badges */}
         <div className="flex flex-wrap justify-center sm:justify-start items-center gap-2 mt-3">
-          <span
-            className="
-              text-xs font-medium
-              px-2.5 py-1
-              rounded-full
-              bg-gray-100 text-gray-700
-            "
-          >
-            {user.roles}
-          </span>
-
-          <CommitmentBadge value={user.estadoCompromiso ?? 0} />
+          <StatusPill label={roleLabel} variant={roleVariant} />
+          <StatusPill label={commitment.label} variant={commitment.variant} />
         </div>
 
         {user.createdAt && (

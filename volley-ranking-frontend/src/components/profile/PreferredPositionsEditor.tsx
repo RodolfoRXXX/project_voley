@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,13 +8,21 @@ import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import useToast from "@/components/ui/toast/useToast";
 import StatusPill from "../ui/status/StatusPill";
 
+type Role = "player" | "admin";
+
 type Props = {
   initial: string[];
+  initialRole: Role;
 };
 
-export default function PreferredPositionsEditor({ initial }: Props) {
+export default function PreferredPositionsEditor({
+  initial,
+  initialRole,
+}: Props) {
   const [savedPositions, setSavedPositions] = useState<string[]>(initial);
   const [positions, setPositions] = useState<string[]>(initial);
+  const [savedRole, setSavedRole] = useState<Role>(initialRole);
+  const [role, setRole] = useState<Role>(initialRole);
   const [allPositions, setAllPositions] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -24,15 +31,16 @@ export default function PreferredPositionsEditor({ initial }: Props) {
 
   const functions = getFunctions(app);
 
-  const updateFn = httpsCallable<
+  const updatePositionsFn = httpsCallable<
     { posiciones: string[] },
     { ok: true }
   >(functions, "updatePreferredPositions");
 
-  const getPosicionesFn = httpsCallable<
-    void,
-    { posiciones: string[] }
-  >(functions, "getValidPositions");
+  const updateRoleFn = httpsCallable<
+    { role: Role },
+    { ok: true }
+  >(functions, "updateUserRole");
+
 
   useEffect(() => {
     setPositions(initial);
@@ -40,8 +48,17 @@ export default function PreferredPositionsEditor({ initial }: Props) {
   }, [initial]);
 
   useEffect(() => {
+    setRole(initialRole);
+    setSavedRole(initialRole);
+  }, [initialRole]);
+
+  useEffect(() => {
     const load = async () => {
       try {
+        const getPosicionesFn = httpsCallable<
+          void,
+          { posiciones: string[] }
+        >(functions, "getValidPositions");
         const res = await getPosicionesFn();
         setAllPositions(res.data.posiciones);
       } catch (err) {
@@ -56,7 +73,7 @@ export default function PreferredPositionsEditor({ initial }: Props) {
     };
 
     load();
-  }, [showToast]);
+  }, [functions, showToast]);
 
   const samePositions = (a: string[], b: string[]) =>
     a.length === b.length && a.every((value, i) => value === b[i]);
@@ -78,7 +95,10 @@ export default function PreferredPositionsEditor({ initial }: Props) {
   const save = async () => {
     if (positions.length < 1) return;
 
-    if (samePositions(positions, savedPositions)) {
+    const changedPositions = !samePositions(positions, savedPositions);
+    const changedRole = role !== savedRole;
+
+    if (!changedPositions && !changedRole) {
       setEditing(false);
       return;
     }
@@ -86,9 +106,23 @@ export default function PreferredPositionsEditor({ initial }: Props) {
     setSaving(true);
 
     try {
-      await updateFn({ posiciones: positions });
-      setSavedPositions(positions);
+      if (changedPositions) {
+        await updatePositionsFn({ posiciones: positions });
+        setSavedPositions(positions);
+      }
+
+      if (changedRole) {
+        await updateRoleFn({ role });
+        setSavedRole(role);
+      }
+
       setEditing(false);
+    } catch (err) {
+      handleFirebaseError(
+        err,
+        showToast,
+        "No se pudieron guardar los cambios de perfil"
+      );
     } finally {
       setSaving(false);
     }
@@ -104,7 +138,6 @@ export default function PreferredPositionsEditor({ initial }: Props) {
 
   return (
     <section className="bg-white rounded-lg border border-neutral-200 p-4 space-y-4 dark:bg-[var(--surface)] dark:border-[var(--border)]">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-neutral-800 dark:text-[var(--foreground)]">
@@ -125,7 +158,6 @@ export default function PreferredPositionsEditor({ initial }: Props) {
         )}
       </div>
 
-      {/* Pills */}
       <div className="flex flex-wrap gap-2">
         {!editing &&
           positions.map((p, i) => (
@@ -157,7 +189,35 @@ export default function PreferredPositionsEditor({ initial }: Props) {
           })}
       </div>
 
-      {/* Acciones */}
+      <div className="border-t border-neutral-200 pt-4 space-y-2 dark:border-[var(--border)]">
+        <h4 className="text-sm font-semibold text-neutral-800 dark:text-[var(--foreground)]">
+          Rol del perfil
+        </h4>
+        <p className="text-xs text-neutral-500 dark:text-[var(--text-muted)]">
+          Esta configuración es independiente de tus posiciones preferidas.
+        </p>
+
+        {editing ? (
+          <div className="flex flex-wrap gap-2">
+            <StatusPill
+              label="Player"
+              variant={role === "player" ? "success" : "neutral"}
+              onClick={() => setRole("player")}
+            />
+            <StatusPill
+              label="Admin"
+              variant={role === "admin" ? "warning" : "neutral"}
+              onClick={() => setRole("admin")}
+            />
+          </div>
+        ) : (
+          <StatusPill
+            label={role === "admin" ? "Admin" : "Player"}
+            variant={role === "admin" ? "warning" : "success"}
+          />
+        )}
+      </div>
+
       {editing && (
         <div className="flex gap-2 pt-3">
           <ActionButton
@@ -174,6 +234,7 @@ export default function PreferredPositionsEditor({ initial }: Props) {
             compact
             onClick={() => {
               setPositions(savedPositions);
+              setRole(savedRole);
               setEditing(false);
             }}
             disabled={saving}

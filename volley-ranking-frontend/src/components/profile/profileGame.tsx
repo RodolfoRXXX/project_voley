@@ -4,9 +4,10 @@ import PreferredPositionsEditor from "./PreferredPositionsEditor";
 
 type Props = {
   posicionesPreferidas: string[];
+  role: "player" | "admin";
 };
 
-export default function ProfileGame({ posicionesPreferidas }: Props) {
+export default function ProfileGame({ posicionesPreferidas, role }: Props) {
   return (
     <section
       className="
@@ -24,6 +25,7 @@ export default function ProfileGame({ posicionesPreferidas }: Props) {
 
       <PreferredPositionsEditor
         initial={posicionesPreferidas || []}
+        initialRole={role}
       />
     </section>
   );

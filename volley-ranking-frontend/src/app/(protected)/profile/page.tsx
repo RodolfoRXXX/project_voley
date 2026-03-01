@@ -76,6 +76,7 @@ export default function ProfilePage() {
 
       <ProfileGame
         posicionesPreferidas={userDoc.posicionesPreferidas || []}
+        role={userDoc.roles}
       />
 
       {/* Profile Matches */}

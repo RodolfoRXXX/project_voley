@@ -1,6 +1,7 @@
 const functions = require("firebase-functions/v1");
 const { admin, db } = require("./firebase");
 const { normalizeGroupAdmins } = require("./services/groupAdminsService");
+const { sendEmail, getWebAppUrl } = require("./services/emailService");
 
 function getBearerToken(authHeader = "") {
   if (!authHeader.startsWith("Bearer ")) return null;
@@ -384,7 +385,9 @@ async function handleGroupMemberAdd(req, res, authContext, groupId, userId) {
   }
 
   const memberIds = cleanStringArray(group.memberIds);
-  if (!memberIds.includes(String(userId))) {
+  const isNewMember = !memberIds.includes(String(userId));
+
+  if (isNewMember) {
     memberIds.push(String(userId));
   }
 
@@ -396,6 +399,52 @@ async function handleGroupMemberAdd(req, res, authContext, groupId, userId) {
     memberIds: Array.from(new Set(memberIds)),
     pendingRequestIds: Array.from(new Set(pendingRequestIds)),
   });
+
+  if (isNewMember) {
+    const invitedUser = userSnap.data();
+    if (invitedUser?.email) {
+      const groupName = group?.nombre || "tu grupo";
+      const webAppUrl = getWebAppUrl();
+      const groupUrl = `${webAppUrl}/grupos/${groupId}`;
+
+      await sendEmail({
+        to: invitedUser.email,
+        subject: `Fuiste agregado a ${groupName}`,
+        text: `Te agregaron al grupo ${groupName}. Ingresá desde aquí: ${groupUrl}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; background:#f4f6f8; padding:30px;">
+            <div style="max-width:600px; margin:0 auto; background:white; border-radius:10px; padding:30px;">
+              <h2 style="color:#1e3a8a; margin-bottom:10px;">🎉 ¡Ahora sos parte de un grupo!</h2>
+
+              <p style="font-size:16px; color:#333;">
+                Un administrador te agregó al grupo <strong>${groupName}</strong>.
+              </p>
+
+              <div style="text-align:center; margin:30px 0;">
+                <a href="${groupUrl}"
+                  style="
+                    background:#2563eb;
+                    color:white;
+                    padding:12px 24px;
+                    text-decoration:none;
+                    border-radius:6px;
+                    font-weight:bold;
+                    display:inline-block;
+                  ">
+                  Ir al grupo
+                </a>
+              </div>
+
+              <hr style="border:none; border-top:1px solid #eee; margin:30px 0;" />
+              <p style="font-size:12px; color:#888; text-align:center;">
+                Este es un mensaje automático de Proyecto Voley.
+              </p>
+            </div>
+          </div>
+        `,
+      });
+    }
+  }
 
   res.status(200).json({ ok: true, memberIds: Array.from(new Set(memberIds)) });
 }
@@ -611,7 +660,11 @@ async function handleAdminRemoval(req, res, authContext, groupId, userId) {
   }
 }
 
-module.exports = functions.https.onRequest(async (req, res) => {
+module.exports = functions
+  .runWith({
+    secrets: ["GMAIL_USER", "GMAIL_PASS", "WEB_APP_URL"],
+  })
+  .https.onRequest(async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
   res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -695,4 +748,4 @@ module.exports = functions.https.onRequest(async (req, res) => {
   }
 
   res.status(404).json({ error: "Not found" });
-});
+  });

@@ -392,7 +392,7 @@ export default function GruposPage() {
       ======================= */}
 
       {otherGroups.length > 0 && (
-        <section className="space-y-4">
+        <section className="space-y-4 border-t pt-2">
           <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wide">
             Otros grupos
           </h2>
@@ -402,7 +402,7 @@ export default function GruposPage() {
               const buttonConfig = getButtonConfig(group);
 
               return (
-                <div key={group.id} className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col h-full">
+                <div key={group.id} className="rounded-md border border-neutral-200 bg-white p-4 flex flex-col h-full">
                   {/* HEADER (crece libremente) */}
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1">

@@ -26,7 +26,7 @@ export default function NewGroupPage() {
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [activo, setActivo] = useState(true);
-  const [visibility, setVisibility] = useState<"public" | "private">("private");
+  const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [joinApproval, setJoinApproval] = useState(true);
 
   /* =====================

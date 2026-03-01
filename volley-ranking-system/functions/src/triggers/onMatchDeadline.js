@@ -4,12 +4,11 @@
 
 const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
+const { sendEmail, getWebAppUrl } = require("../services/emailService");
 
 if (!admin.apps.length) {
   admin.initializeApp();
 }
-
-const nodemailer = require("nodemailer");
 
 const db = admin.firestore();
 
@@ -21,17 +20,7 @@ module.exports = functions
   .schedule("every 30 minutes")
   .timeZone("America/Argentina/Buenos_Aires")
   .onRun(async () => {
-    const gmailUser = process.env.GMAIL_USER;
-    const gmailPass = process.env.GMAIL_PASS;
-    const webAppUrl = (process.env.WEB_APP_URL || "https://tudominio.com").replace(
-      /\/+$/,
-      ""
-    );
-
-    if (!gmailUser || !gmailPass) {
-      console.error("Faltan secrets GMAIL_USER/GMAIL_PASS");
-      return null;
-    }
+    const webAppUrl = getWebAppUrl();
 
     const now = admin.firestore.Timestamp.now();
 
@@ -43,16 +32,6 @@ module.exports = functions
       .where("estado", "in", ["abierto", "verificando"])
       .where("nextDeadlineAt", "<=", now)
       .get();
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: gmailUser,
-        pass: gmailPass,
-      },
-    });
-
-    console.log("GMAIL USER:", gmailUser);
 
     if (matchesSnap.empty) {
       console.log("No hay matches para actualizar");
@@ -230,8 +209,7 @@ module.exports = functions
             const adminUser = userSnap.data()
 
             if (adminUser.email) {
-              await transporter.sendMail({
-                from: `"Volley Ranking" <${gmailUser}>`,
+              await sendEmail({
                 to: adminUser.email,
                 subject: `Partido en ${groupName} – ${fechaFormateada}`,
                 text: `Se alcanzó el Deadline ${nextStage} del partido en ${groupName}. Revisalo aquí: ${matchUrl}`,

@@ -13,6 +13,7 @@ import { db } from "@/lib/firebase";
 import StatusPill from "@/components/ui/status/StatusPill";
 import AddMemberModal from "@/components/addMemberModal/AddMemberModal";
 import { SearchableMember } from "@/components/addMemberModal/AddMemberModal.types";
+import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
 
 type GroupMember = {
   id: string;
@@ -49,6 +50,73 @@ type GroupDetail = {
   canManageAdmins: boolean;
   canRequestAdminRole: boolean;
 };
+
+/* =====================
+   SKELETON
+===================== */
+
+function GroupDetailSkeleton() {
+  return (
+    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
+
+      {/* Back link */}
+      <SkeletonSoft className="h-4 w-32" />
+
+      {/* HEADER */}
+      <section className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 px-5 py-5 space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-3">
+            <Skeleton className="h-8 w-56" />
+            <SkeletonSoft className="h-4 w-80" />
+            <SkeletonSoft className="h-8 w-48 rounded-lg" />
+          </div>
+
+          <div className="flex flex-col gap-2 items-end">
+            <SkeletonSoft className="h-5 w-16 rounded-full" />
+            <SkeletonSoft className="h-5 w-28 rounded-full" />
+          </div>
+        </div>
+      </section>
+
+      {/* PARTIDOS */}
+      <section className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 px-5 py-5 space-y-4">
+        <Skeleton className="h-5 w-40" />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1,2,3].map(i => (
+            <div key={i} className="rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 space-y-2">
+              <Skeleton className="h-4 w-3/4" />
+              <SkeletonSoft className="h-3 w-1/2" />
+              <SkeletonSoft className="h-3 w-2/3" />
+              <SkeletonSoft className="h-3 w-1/3" />
+              <SkeletonSoft className="h-4 w-24" />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* INTEGRANTES */}
+      <section className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-5 w-40" />
+          <SkeletonSoft className="h-8 w-40 rounded-lg" />
+        </div>
+
+        {[1,2,3,4].map(i => (
+          <div key={i} className="rounded-xl border border-neutral-200 dark:border-neutral-700 p-3 flex items-center gap-3">
+            <Skeleton className="h-9 w-9 rounded-full" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-3 w-40" />
+              <SkeletonSoft className="h-3 w-32" />
+            </div>
+            <SkeletonSoft className="h-8 w-20 rounded-lg" />
+          </div>
+        ))}
+      </section>
+
+    </main>
+  );
+}
 
 export default function GrupoPublicDetailPage() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -324,7 +392,7 @@ export default function GrupoPublicDetailPage() {
         ← Volver a grupos
       </Link>
 
-      {loading && <p className="text-gray-500">Cargando detalle del grupo...</p>}
+      {loading && <GroupDetailSkeleton />}
       {error && <p className="text-red-500">{error}</p>}
 
       {!loading && !error && group && (

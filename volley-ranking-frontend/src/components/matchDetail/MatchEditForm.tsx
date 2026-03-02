@@ -35,11 +35,14 @@ export default function MatchEditForm({
   if (!editMode) return null;
 
   const inputBase =
-    "w-full border border-neutral-300 rounded px-3 py-2 text-sm text-neutral-900 " +
-    "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500";
+  "w-full border border-neutral-300 dark:border-neutral-700 " +
+  "bg-white dark:bg-neutral-800 " +
+  "text-neutral-900 dark:text-neutral-100 " +
+  "rounded px-3 py-2 text-sm " +
+  "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500";
 
   return (
-    <div className="grid gap-6 pt-4 border-t border-neutral-200">
+    <div className="grid gap-6 pt-4 border-t border-neutral-200 dark:border-neutral-700">
       {/* CAMPOS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>

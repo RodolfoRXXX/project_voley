@@ -376,33 +376,33 @@ export default function MatchDetailPage() {
   const isJoined = !!myParticipation && myParticipation.estado !== "eliminado";
 
   const handleToggleParticipation = () => {
-  if (!match || !firebaseUser) return;
+    if (!match || !firebaseUser) return;
 
-  if (isJoined) {
-    run(
-      "leave",
-      () => leaveMatch({ matchId: match.id }),
-      {
-        confirm: {
-          message: "¿Querés abandonar el partido?",
-          confirmText: "Abandonar",
-          variant: "danger",
-        },
-        successMessage: "Saliste del partido",
-        errorMessage: "No se pudo salir del partido",
-      }
-    );
-  } else {
-    run(
-      "join",
-      () => joinMatch({ matchId: match.id }),
-      {
-        successMessage: "Te uniste al partido",
-        errorMessage: "No se pudo unir al partido",
-      }
-    );
-  }
-};
+    if (isJoined) {
+      run(
+        "leave",
+        () => leaveMatch({ matchId: match.id }),
+        {
+          confirm: {
+            message: "¿Querés abandonar el partido?",
+            confirmText: "Abandonar",
+            variant: "danger",
+          },
+          successMessage: "Saliste del partido",
+          errorMessage: "No se pudo salir del partido",
+        }
+      );
+    } else {
+      run(
+        "join",
+        () => joinMatch({ matchId: match.id }),
+        {
+          successMessage: "Te uniste al partido",
+          errorMessage: "No se pudo unir al partido",
+        }
+      );
+    }
+  };
 
   /* =====================
      nombre participations
@@ -504,9 +504,9 @@ export default function MatchDetailPage() {
     .filter((p) => p.estado === "titular" && p.rankingTitular !== null)
     .sort((a, b) => a.rankingTitular - b.rankingTitular);
 
-    const suplentes = participations
-  .filter((p) => p.estado === "suplente" && p.rankingSuplente !== null)
-  .sort((a, b) => a.rankingSuplente - b.rankingSuplente);
+  const suplentes = participations
+    .filter((p) => p.estado === "suplente" && p.rankingSuplente !== null)
+    .sort((a, b) => a.rankingSuplente - b.rankingSuplente);
 
   // Cupos ocupados por posiciónAsignada titular
   const ocupadosPorPosicion: Record<string, number> = {};

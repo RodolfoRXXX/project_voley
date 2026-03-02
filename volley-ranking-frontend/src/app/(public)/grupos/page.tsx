@@ -45,43 +45,63 @@ type JoinState = "none" | "member" | "pending";
 
 function GroupsSkeleton() {
   return (
-    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">
-
-      <div className="space-y-1">
-        <Skeleton className="h-5 w-32" />
-        <SkeletonSoft className="h-4 w-56" />
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-8">
+      
+      {/* HEADER */}
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-40" />
+        <SkeletonSoft className="h-4 w-64" />
       </div>
 
-      <div className="grid gap-4">
-        {[1, 2, 3].map((i) => (
+      {/* GRID */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+        {[1, 2, 3, 4, 5, 6].map((i) => (
           <div
             key={i}
-            className="border border-neutral-200 bg-white p-4 space-y-4"
+            className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 flex flex-col h-full"
           >
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-1/3" />
-              <SkeletonSoft className="h-3 w-2/3" />
-            </div>
+            {/* HEADER */}
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-4 w-3/4" />
+                <SkeletonSoft className="h-3 w-full" />
+              </div>
 
-            <div className="flex gap-4">
-              <SkeletonSoft className="h-3 w-20" />
-              <SkeletonSoft className="h-3 w-16" />
-            </div>
-
-            <div className="flex items-center gap-3 pt-3 border-t">
-              <Skeleton className="h-9 w-9 rounded-full" />
-              <div className="space-y-2 w-40">
-                <Skeleton className="h-3 w-24" />
-                <SkeletonSoft className="h-3 w-20" />
+              <div className="flex flex-col gap-2 items-end">
+                <SkeletonSoft className="h-5 w-16 rounded-full" />
+                <SkeletonSoft className="h-5 w-24 rounded-full" />
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Skeleton className="h-8 w-24 rounded-lg" />
-              <Skeleton className="h-8 w-20 rounded-lg" />
+            {/* 👇 BLOQUE INFERIOR (como en la card real) */}
+            <div className="mt-auto pt-4 space-y-4">
+
+              {/* Stats */}
+              <div className="flex gap-4">
+                <SkeletonSoft className="h-3 w-20" />
+                <SkeletonSoft className="h-3 w-24" />
+              </div>
+
+              {/* Owner */}
+              <div className="flex items-center gap-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
+                <Skeleton className="h-9 w-9 rounded-full" />
+                <div className="space-y-2 w-32">
+                  <Skeleton className="h-3 w-24" />
+                  <SkeletonSoft className="h-3 w-20" />
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex items-center justify-between pt-2">
+                <Skeleton className="h-8 w-28 rounded-lg" />
+                <SkeletonSoft className="h-4 w-20" />
+              </div>
+
             </div>
           </div>
         ))}
+
       </div>
     </main>
   );

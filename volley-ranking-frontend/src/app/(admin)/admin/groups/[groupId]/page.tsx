@@ -61,7 +61,7 @@ function GroupDetailSkeleton() {
       </div>
 
       {/* Estado */}
-      <section className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4">
+      <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-4">
         <Skeleton className="h-4 w-32" />
 
         <div className="flex items-center justify-between">
@@ -306,8 +306,8 @@ export default function AdminGroupPage() {
       </div>
 
       {/* Estado */}
-      <section className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
-        <h2 className="text-sm font-semibold text-neutral-900">
+      <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-3">
+        <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
           Estado del grupo
         </h2>
 
@@ -342,8 +342,8 @@ export default function AdminGroupPage() {
 
       {/* Edit */}
       {editMode && (
-        <section className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4">
-          <h2 className="text-sm font-semibold text-neutral-900">
+        <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-4">
+          <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
             Editar grupo
           </h2>
 
@@ -355,7 +355,7 @@ export default function AdminGroupPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, nombre: e.target.value })
                 }
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 px-3 py-2 text-sm"
               />
             </label>
 
@@ -366,7 +366,7 @@ export default function AdminGroupPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, descripcion: e.target.value })
                 }
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 px-3 py-2 text-sm"
               />
             </label>
 
@@ -380,7 +380,7 @@ export default function AdminGroupPage() {
                     visibility: e.target.value as "public" | "private",
                   })
                 }
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 px-3 py-2 text-sm"
               >
                 <option value="private">Privado</option>
                 <option value="public">Público</option>
@@ -397,7 +397,7 @@ export default function AdminGroupPage() {
                     joinApproval: e.target.value === "approval_required",
                   })
                 }
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 px-3 py-2 text-sm"
               >
                 <option value="approval_required">Requiere aprobación</option>
                 <option value="free">Entrada libre</option>

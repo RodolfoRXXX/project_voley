@@ -30,6 +30,15 @@ const functions = getFunctions(app);
 const editGroup = httpsCallable(functions, "editGroup");
 const toggleGroupActivo = httpsCallable(functions, "toggleGroupActivo");
 
+const canAdminGroup = (group: any, uid?: string) => {
+  if (!uid) return false;
+  if (Array.isArray(group?.adminIds)) {
+    return group.adminIds.includes(uid);
+  }
+  return group?.adminId === uid;
+};
+
+
 /* =====================
    SKELETON
 ===================== */
@@ -52,7 +61,7 @@ function GroupDetailSkeleton() {
       </div>
 
       {/* Estado */}
-      <section className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4">
+      <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-4">
         <Skeleton className="h-4 w-32" />
 
         <div className="flex items-center justify-between">
@@ -102,6 +111,8 @@ export default function AdminGroupPage() {
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
+    visibility: "private" as "public" | "private",
+    joinApproval: true,
   });
 
   /* =====================
@@ -131,7 +142,7 @@ export default function AdminGroupPage() {
 
         const data = snap.data();
 
-        if (data.adminId !== firebaseUser?.uid) {
+        if (!canAdminGroup(data, firebaseUser?.uid)) {
           router.replace("/admin/groups");
           return;
         }
@@ -141,6 +152,8 @@ export default function AdminGroupPage() {
         setFormData({
           nombre: data.nombre,
           descripcion: data.descripcion || "",
+          visibility: data.visibility === "public" ? "public" : "private",
+          joinApproval: data.joinApproval ?? true,
         });
 
         const q = query(
@@ -175,7 +188,9 @@ export default function AdminGroupPage() {
   const saveGroup = () => {
     const hasChanges =
       group?.nombre !== formData.nombre ||
-      (group?.descripcion || "") !== formData.descripcion;
+      (group?.descripcion || "") !== formData.descripcion ||
+      (group?.visibility === "public" ? "public" : "private") !== formData.visibility ||
+      (group?.joinApproval ?? true) !== formData.joinApproval;
 
     if (!hasChanges) {
       setEditMode(false);
@@ -189,12 +204,16 @@ export default function AdminGroupPage() {
           groupId,
           nombre: formData.nombre,
           descripcion: formData.descripcion,
+          visibility: formData.visibility,
+          joinApproval: formData.joinApproval,
         });
 
         setGroup({
           ...group,
           nombre: formData.nombre,
           descripcion: formData.descripcion,
+          visibility: formData.visibility,
+          joinApproval: formData.joinApproval,
         });
 
         setEditMode(false);
@@ -243,6 +262,8 @@ export default function AdminGroupPage() {
     setFormData({
       nombre: group.nombre,
       descripcion: group.descripcion || "",
+      visibility: group.visibility === "public" ? "public" : "private",
+      joinApproval: group.joinApproval ?? true,
     });
   };
 
@@ -285,8 +306,8 @@ export default function AdminGroupPage() {
       </div>
 
       {/* Estado */}
-      <section className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
-        <h2 className="text-sm font-semibold text-neutral-900">
+      <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-3">
+        <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
           Estado del grupo
         </h2>
 
@@ -308,12 +329,21 @@ export default function AdminGroupPage() {
             {group.activo ? "Desactivar" : "Reactivar"}
           </ActionButton>
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          <p className="text-neutral-600">
+            Visibilidad: <span className="font-medium text-neutral-900">{group.visibility === "public" ? "Público" : "Privado"}</span>
+          </p>
+          <p className="text-neutral-600">
+            Ingreso: <span className="font-medium text-neutral-900">{group.joinApproval ? "Requiere aprobación" : "Entrada libre"}</span>
+          </p>
+        </div>
       </section>
 
       {/* Edit */}
       {editMode && (
-        <section className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4">
-          <h2 className="text-sm font-semibold text-neutral-900">
+        <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-4">
+          <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
             Editar grupo
           </h2>
 
@@ -325,7 +355,7 @@ export default function AdminGroupPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, nombre: e.target.value })
                 }
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 px-3 py-2 text-sm"
               />
             </label>
 
@@ -336,8 +366,42 @@ export default function AdminGroupPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, descripcion: e.target.value })
                 }
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 px-3 py-2 text-sm"
               />
+            </label>
+
+            <label className="block text-sm">
+              <span className="text-neutral-700">Visibilidad</span>
+              <select
+                value={formData.visibility}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    visibility: e.target.value as "public" | "private",
+                  })
+                }
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 px-3 py-2 text-sm"
+              >
+                <option value="private">Privado</option>
+                <option value="public">Público</option>
+              </select>
+            </label>
+
+            <label className="block text-sm">
+              <span className="text-neutral-700">Ingreso al grupo</span>
+              <select
+                value={formData.joinApproval ? "approval_required" : "free"}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    joinApproval: e.target.value === "approval_required",
+                  })
+                }
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 px-3 py-2 text-sm"
+              >
+                <option value="approval_required">Requiere aprobación</option>
+                <option value="free">Entrada libre</option>
+              </select>
             </label>
           </div>
 

@@ -46,7 +46,7 @@ export default function PlayersTable<T extends Player>({
           No hay jugadores.
         </p>
       ) : (
-        <div className="bg-white border border-neutral-200 rounded-md overflow-hidden dark:bg-[var(--surface)] dark:border-[var(--border)]">
+        <div className="bg-white border border-neutral-200 overflow-hidden dark:bg-[var(--surface)] dark:border-[var(--border)]">
           {/* HEADER (solo desktop) */}
           <div
             className={`
@@ -76,7 +76,7 @@ export default function PlayersTable<T extends Player>({
                   transition
                   ${
                     isMe
-                      ? "bg-blue-50/70 dark:bg-slate-800/60 dark:text-[var(--foreground)] font-medium"
+                      ? "bg-blue-50/70 dark:bg-blue-900/30 font-medium"
                       : "hover:bg-neutral-50 dark:hover:bg-slate-800/60"
                   }
                 `}

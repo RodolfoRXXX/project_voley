@@ -1,60 +1,96 @@
-# project_voley
+🏐 Project Voley
 
-🧠 VISIÓN GENERAL DEL SISTEMA (ordenado)
+Sistema de gestión inteligente de partidos y grupos de vóley.
 
-Voy a dividir el sistema en:
+🧠 1. Visión General del Sistema
 
-Modelo mental (qué existe)
+El sistema está dividido en:
 
-Estados y eventos (qué puede pasar)
+Modelo de datos (qué existe)
 
-Responsabilidades del sistema vs admin
+Eventos del sistema (qué puede pasar)
 
-Roadmap de implementación (en qué orden codificar)
+Responsabilidades (qué hace el sistema vs qué hace el admin)
 
-Después, en el próximo mensaje, recién ahí empezamos a mapear tu código actual contra esto y ver qué ajustar.
+Roadmap técnico
 
-1️⃣ MODELO DEL SISTEMA (entidades claras)
+🏗 2. Modelo del Sistema
 👤 USER
 
-Existe una sola vez en el sistema.
-
-Campos clave:
+Entidad única del sistema.
 
 user {
   role: "player" | "admin"
   posicionesPreferidas: ["central", "punta", "opuesto"]
 }
 
+✔ No guarda matches
+✔ No guarda ranking
+✔ No guarda pagos
 
-🔹 El user no sabe de matches
-🔹 El user no tiene ranking
-🔹 El user no tiene pagos
+El usuario es identidad + preferencias.
 
 🏐 GROUP
 
-Es el “torneo recurrente”.
+Representa un torneo recurrente.
 
 group {
   nombre
   descripcion
   creadoPor
-  activo: true | false
-  partidosTotales
+  activo: boolean
+  partidosTotales: number
+  visibility: "public" | "private"
+  joinApproval: boolean
+  memberIds: string[]
+  adminIds: string[]
+  pendingRequestIds: string[]
 }
+Visibilidad
 
+Public
 
-📌 El group acumula historia
-📌 partidosTotales se incrementa automáticamente (Evento 8)
+Visible en listado general
+
+Puede requerir aprobación (joinApproval)
+
+Private
+
+Solo visible para integrantes
+
+Admin agrega directamente
+
+Usuario recibe mail de aviso
+
+📄 Detalle del Grupo
+Public View (informativo)
+
+Info del grupo
+
+Admins
+
+Partidos creados
+
+Integrantes
+
+Protected View (requiere pertenecer)
+
+Editar info (solo owner gestiona admins)
+
+Crear matches
+
+Aceptar integrantes
+
+Agregar nuevos integrantes
 
 📅 MATCH
 
-Es un evento puntual.
+Evento puntual dentro de un grupo.
 
 match {
   groupId
   creadoPor
-  estado: "abierto" | "verificando" | "jugado" | "cerrado" | "cancelado"
+  estado: "abierto" | "verificando" | "cerrado" | "jugado" | "cancelado"
   horaInicio: Timestamp
   posicionesObjetivo: {
     central: 2,
@@ -62,16 +98,16 @@ match {
     punta: 2
   }
   deadlineProcesado: boolean
+  visibility: "group_only" | "public"
 }
 
+✔ No guarda jugadores
+✔ No calcula ranking
+✔ No maneja pagos
 
-⚠️ El match no guarda jugadores
-⚠️ El match no calcula ranking
-⚠️ El match no sabe de pagos individuales
+🧾 PARTICIPATION (Entidad Clave)
 
-🧾 PARTICIPATION (pieza clave)
-
-👉 Este documento representa a un jugador en un match
+Representa un jugador en un match.
 
 participation {
   userId
@@ -89,56 +125,52 @@ participation {
   estadoPago: "pendiente" | "pospuesto" | "confirmado"
 }
 
+📌 Todo ocurre acá
+📌 El ranking siempre se reconstruye desde cero
 
-📌 Todo lo importante pasa acá
-📌 El ranking es SOLO un orden, no una lógica
+👥 TEAM
 
-👥 TEAM (post cierre)
+Se genera después del cierre.
+
 team {
   matchId
   jugadores: [userId]
 }
 
+Puede rehacerse sin tocar participations.
 
-Se genera después del cierre
-Puede rehacerse sin tocar participations
-
-2️⃣ EVENTOS DEL SISTEMA (orden cronológico real)
-🟢 EVENTO 1 — Login / Onboarding
-Flujo:
+🔄 3. Eventos del Sistema (Orden Real)
+🟢 1. Login / Onboarding
 
 Login Google
 
-Si user existe → entra
-
-Si no existe → onboarding:
+Si no existe user:
 
 rol
 
 posicionesPreferidas (ordenadas)
 
-✔️ Resultado: user creado
+Resultado → user creado
 
-🟢 EVENTO 2 — Admin crea group
+🟢 2. Admin crea Group
 
-Estado inicial: activo
+Estado inicial:
+
+activo = true
 
 partidosTotales = 0
 
-🟢 EVENTO 3 — Admin crea match
+🟢 3. Admin crea Match
 
 Estado inicial:
 
 estado: "abierto"
 deadlineProcesado: false
+🟢 4. Player se une al Match
 
-🟢 EVENTO 4 — Player se une a match
+Proceso:
 
-👉 Este evento dispara TODO el ranking
-
-Pasos claros:
-
-Crear participation (estado: pendiente)
+Crear participation (pendiente)
 
 Calcular puntaje
 
@@ -146,37 +178,25 @@ Ejecutar:
 
 recalcularRanking(matchId)
 
+⚠ Regla clave:
 
-📌 Regla clave
+El ranking SIEMPRE se recalcula desde cero.
 
-El ranking SIEMPRE se recalcula desde cero
-No se “ajusta”, se reconstruye
+🟢 5. Admin modifica Match (abierto)
 
-🟢 EVENTO 5 — Cambios manuales del admin (match abierto)
-
-El admin puede:
+Puede:
 
 eliminar jugadores
 
 forzar recálculo
 
-Cada eliminación:
+Cada cambio → recalcularRanking()
 
-→ recalcularRanking(matchId)
-
-
-📌 El sistema:
-
-sube suplentes automáticamente
-
-respeta orden y posicionesPreferidas
-
-🟡 EVENTO 6 — Deadline automático (cron)
+🟡 6. Deadline Automático (cron)
 
 Condición:
 
 horaInicio - 3hs
-
 
 Acciones:
 
@@ -184,11 +204,11 @@ estado → verificando
 
 deadlineProcesado → true
 
-NO toca ranking
+No toca ranking.
 
-🟡 EVENTO 7 — Gestión de pagos (admin)
+🟡 7. Gestión de Pagos (admin)
 
-Admin decide por cada titular:
+Admin define por titular:
 
 confirmado
 
@@ -198,130 +218,34 @@ eliminado
 
 Si elimina:
 
-→ sistema busca reemplazo
-→ estadoPago del reemplazo = pospuesto
+sistema busca reemplazo
 
+nuevo titular → estadoPago = pospuesto
 
-📌 El match NO se cierra solo
+🔴 7.5 Condición de Cierre
 
-🔴 EVENTO 7.5 — Condición de cierre
+Se puede cerrar SOLO si:
 
-El sistema permite cerrar SOLO si:
+✔ no hay pagos pendientes
+✔ no hay decisiones abiertas
 
-no hay estadoPago = pendiente
+🔒 8. Cierre del Match
 
-no hay decisiones abiertas
+Estado → cerrado
 
-🔴 EVENTO 8 — Cierre del match
-estado: "jugado"
+Se habilita:
 
+generar equipos
 
-Admin puede:
+rehacer equipos
 
-generar teams (random)
+🏁 9. Inicio del Partido
 
-rehacerlos
-
-🔵 EVENTO 9 — Inicio del partido (horaInicio)
-
-Automático:
+Cuando llega horaInicio:
 
 group.partidosTotales += 1
-
-3️⃣ RESPONSABILIDADES (esto es clave)
-🤖 SISTEMA AUTOMÁTICO
-
-ranking
-
-reemplazos
-
-deadlines
-
-incrementos automáticos
-
-validaciones
-
-👨‍💼 ADMIN
-
-elimina jugadores
-
-decide pagos
-
-cierra match
-
-genera equipos
-
-❗ El sistema nunca decide pagos
-❗ El admin nunca ordena rankings
-
-4️⃣ ROADMAP DE CÓDIGO (orden correcto)
-
-Para no romper nada, el orden ideal es:
-
-🔹 FASE 1 — Núcleo
-
-recalcularRanking(matchId) ✔️ (ya casi listo)
-
-calcularPuntaje()
-
-seed estable
-
-🔹 FASE 2 — Admin
-
-eliminarTitularYReemplazar()
-
-reglas de acceso admin
-
-🔹 FASE 3 — Cron
-
-deadline automático
-
-verificador de pagos
-
-🔹 FASE 4 — Post partido
-
-generarTeams()
-
-sumar partidosTotales
-
-
-
-Lineamientos principales
-
-1) el home contiene el boton de iniciar sesion con google, si el usuario ya tiene cuenta entonces ingresó y puede anotarse a los matches, si no está registrado, salta una venta onboarding que pregunta el rol que desea(player|admin) y las tres posiciones preferidas por orden de importancia(central|armador|opuesto|punta|libero) y luego de registrarse le permite unirse a los matches.
-
-2) un admin crea groups que muestra el estado activo del mismo, quien lo creo, su descripcion, el nombre, ademas de q se guarda en la variable partidosTotales la cantidad de partidos jugados de ese grupo. Desde un group se pueden crear matches, estos matches dicen quien lo creo, su estado(abierto|verificando| cerrado | jugado|cancelado), a que group pertenecen, su horaInicio(de esta informacion se saca la fecha y la hora de inicio), un array con las posicionesObjetivo, que son las posiciones de jugadores necesarias y que cantidad, el deadlineProcesado(true|false) que indica si ya paso el deadline o no.
-
-3) cuando un jugador se une a un match, el sistema crea un documento en la coleccion participations con su estado(pendiente|titular|suplente), el matchId, el puntaje(que ya vimos como lo calcula), la posicionAsignada(el sistema la asigna de acuerdo a las opciones preferidas del jugador, si la primera opción es central, busca en el listado de titulares si hay lugares libres para central, si hay entonces lo ubica en el ranking de acuerdo a su puntaje, si no hay, busca en la segunda opción o en la tercera, en el caso de que las tres posiciones preferidas del jugador esten completas en el ranking de titulares, se lo coloca como suplente en una posicion de ranking de suplentes q depende de su puntaje), y el ranking, ya sea este titular o suplente. Despues hay otras variables como pagoEstado(pendiente|pospuesto|confirmado, q esta informacion la define el admin.
-
-4) el sistema va armando la lista de titulares y suplentes de acuerdo al puntaje que obtuvieron y eso se ve por su posición en el ranking de titulares o de suplentes. Cuando un jugador se elimina del listado o el admin lo elimina, entonces el sistema automaticamente debería buscar en los suplentes un reemplazo para esa posición(si la hubiera, caso contrario la deja vacía), la forma en que deberia buscarla es en la lista de suplentes es recorriendo el array de posicionesPreferidas de cada suplente hasta que encuentre uno q tenga esa posicion como elegida, claro q el listado de suplentes se recorre desde aquellos que esta mas arriba en el ranking hasta los de mas abajo.
-
-5) el admin tiene el poder para (sobre un match abierto) eliminar jugadores y cuando elimina a alguno, el sistema automaticamente sube a un suplente de acuerdo a la logica ya mencionada.
-
-6) Cuando se alcance el deadline y se cierre el match, el admin tiene la libertad de generar equipos con el listado, estos equipos se forman al azar con una funcion y puede rehacerlos las veces que quiera. los teams se crean en la coleccion teams.
-
-7) el match se cierra cuando se pasa del deadline y cuando la condicion de pago de todos en el listado es de pago confirmado o pago pospuesto.
-
-8) cuando se alcance la fecha y hora de la variable horaInicio entonces el sistema suma +1 a la variable del group "partidosTotales".
-
-
-
-1️⃣ LÓGICA FINAL DEL CIERRE DE MATCH (VERSIÓN CONSOLIDADA)
-🧩 Estados reales del match
-
-El estado del match sí necesita más de 3 valores, y está bien así:
-
-abierto
-verificando
-cerrado
-jugado
-cancelado
-
-
-verificando NO es solo visual, tiene reglas propias.
-
-🔓 Estado: ABIERTO
-Qué se puede
+🔐 4. Máquina de Estados del Match
+🟢 ABIERTO
 
 Jugadores:
 
@@ -331,168 +255,146 @@ desunirse
 
 Admin:
 
-editar match
+editar
 
 eliminar jugadores
 
-cerrar match (manual)
+cerrar manualmente
 
-eliminar match
+Transición:
+→ verificando
 
-Cómo se sale
+🟡 VERIFICANDO
 
-📅 Automáticamente por deadline (3h / 2h / 1h)
-
-👑 Manualmente si el admin intenta cerrar
-
-➡️ En ambos casos:
-
-estado → verificando
-
-🔎 Estado: VERIFICANDO
-Cómo se entra
-
-Deadline alcanzado (automático)
-
-Admin intenta cerrar match manualmente
-
-Qué se puede
-
-👑 Solo admin:
+Solo admin puede:
 
 eliminar jugadores
 
 revisar pagos
 
-cerrar match (si pagos OK)
+cerrar
 
-volver a abrir el match
+reabrir
 
-eliminar el match
+Jugadores:
+❌ no pueden unirse/desunirse
 
-Qué NO se puede
+Condición cierre:
 
-❌ jugadores:
+estadoPago === confirmado || pospuesto
+🔒 CERRADO
 
-unirse
+Lista definitiva.
 
-desunirse
+Se pueden generar equipos.
 
-❌ edición del match
+Transición automática:
+→ jugado
 
-Eliminación en verificando
+🏁 JUGADO
 
-Admin elimina un titular
+El partido ocurrió.
 
-El sistema:
+Sistema:
 
-busca suplente válido
+incrementa compromiso
 
-recalcula puntaje
+incrementa partidosTotales
 
-recalcula ranking
+Estado final.
 
-promueve suplente a titular
+❌ CANCELADO
 
-✔️ exactamente como ya tenés hoy
+No se juega.
+No se suma nada.
+Estado final.
 
-Condición para cerrar
+🤖 5. Responsabilidades
+Sistema Automático
 
-✔️ TODOS los jugadores deben tener:
+ranking
 
-pagoEstado === confirmado || pospuesto
+reemplazos
 
+deadlines
 
-Si no se cumple:
+validaciones
 
-❌ no se puede cerrar
+incrementos automáticos
 
-se muestra el motivo
+Admin
 
-🔒 Estado: CERRADO
-Qué implica
+elimina jugadores
 
-Lista definitiva de jugadores
+decide pagos
 
-No hay modificaciones
+cierra match
 
-Se habilita:
+genera equipos
 
-Armar equipos
+⚠ El sistema nunca decide pagos
+⚠ El admin nunca ordena rankings
 
-Transición automática
+🛣 6. Roadmap Técnico
+Fase 1 — Núcleo
 
-⏰ Cuando llega horaInicio:
+recalcularRanking()
 
-cerrado → jugado
+calcularPuntaje()
 
-🏁 Estado: JUGADO
-Qué pasa
+seed estable
 
-El match ocurrió
+Fase 2 — Admin
 
-El sistema:
+eliminarTitularYReemplazar()
 
-suma +1 a:
+reglas de acceso
 
-users.estadoCompromiso
+Fase 3 — Cron
 
-groups.partidosTotales
+deadline automático
 
-No hay más acciones
+verificador de pagos
 
-❌ Estado: cancelado
-Qué implica
+Fase 4 — Post Partido
 
-El partido no se juega
+generarTeams()
 
-No se borra el match
+sumar partidosTotales
 
-No se recalcula nada
+🏠 7. Flujo Principal del Usuario
 
-No se suma compromiso
+Home → Login Google
 
-Estado final
+Si nuevo → onboarding
 
-Para verificar los secrets guardados de las credenciales de google para el correo
+Puede unirse a matches
 
-firebase functions:secrets:access GMAIL_USER
-firebase functions:secrets:access GMAIL_PASS
+Admin crea groups
 
-## Nota sobre deprecación de `functions.config()` (marzo 2026)
+Groups crean matches
 
-Si ves este error al usar Firebase CLI:
+Sistema organiza ranking automáticamente
 
-`DEPRECATION NOTICE: Action required before March 2026`
+Admin gestiona pagos y cierre
 
-no corresponde a este proyecto (ya usa `secrets` + `process.env` para correo),
-sino a comandos legacy como `firebase functions:config:*`.
+Sistema suma historial
 
-En este repo **no usar** `functions:config:set/get/unset`.
-Si querés actualizar la contraseña de Gmail, este comando legacy va a fallar:
+🔐 Secrets Firebase (Correo)
 
-```bash
-firebase functions:config:set gmail.pass="TU_APP_PASSWORD"
-```
+Este proyecto usa Firebase Secrets + process.env
 
-Debés actualizar el secret con:
+NO usar:
 
-```bash
-firebase functions:secrets:set GMAIL_PASS
-firebase deploy --only functions
-```
+firebase functions:config:set
 
-Para setear usuario + contraseña desde cero:
+Usar:
 
-```bash
 firebase functions:secrets:set GMAIL_USER
 firebase functions:secrets:set GMAIL_PASS
 firebase deploy --only functions
-```
 
-Verificación rápida:
+Verificar:
 
-```bash
 firebase functions:secrets:access GMAIL_USER
 firebase functions:secrets:access GMAIL_PASS
-```

@@ -9,7 +9,7 @@ export type Match = {
   id: string;
   estado: MatchEstado;
   groupId: string;
-  adminId?: string;
+  visibility?: "group_only" | "public";
 
   formacion: string;
   cantidadEquipos: number;

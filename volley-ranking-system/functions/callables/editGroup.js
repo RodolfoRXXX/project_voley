@@ -12,7 +12,7 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
 
-  const { groupId, nombre, descripcion, activo } = data;
+  const { groupId, nombre, descripcion, activo, visibility, joinApproval } = data;
 
   if (!groupId) {
     throw new functions.https.HttpsError(
@@ -21,10 +21,21 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
 
+
+  if (visibility !== undefined && !["public", "private"].includes(visibility)) {
+    throw new functions.https.HttpsError("invalid-argument", "visibility inválida");
+  }
+
+  if (joinApproval !== undefined && typeof joinApproval !== "boolean") {
+    throw new functions.https.HttpsError("invalid-argument", "joinApproval inválido");
+  }
+
   const cambios = {};
   if (nombre !== undefined) cambios.nombre = nombre;
   if (descripcion !== undefined) cambios.descripcion = descripcion;
   if (activo !== undefined) cambios.activo = activo;
+  if (visibility !== undefined) cambios.visibility = visibility;
+  if (joinApproval !== undefined) cambios.joinApproval = joinApproval;
 
   if (Object.keys(cambios).length === 0) {
     throw new functions.https.HttpsError(

@@ -165,7 +165,7 @@ export default function ProfileMatches() {
     <section className="
       bg-white
       border border-neutral-200
-      rounded-xl
+      rounded-md
       p-6
       space-y-5
     ">

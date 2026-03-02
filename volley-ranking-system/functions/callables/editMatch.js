@@ -31,6 +31,7 @@ module.exports = functions.https.onCall(async (data, context) => {
     cantidadSuplentes,
     formacion,
     horaInicioMillis,
+    visibility,
   } = data;
 
   if (!matchId) {
@@ -72,13 +73,20 @@ module.exports = functions.https.onCall(async (data, context) => {
     cambios.cantidadSuplentes = cantidadSuplentes;
   }
 
-  if (typeof horaInicioMillis !== "number") {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "horaInicioMillis inválido"
-    );
-  } else {
+  if (horaInicioMillis !== undefined && typeof horaInicioMillis !== "number") {
+    throw new functions.https.HttpsError("invalid-argument", "horaInicioMillis inválido");
+  }
+
+  if (typeof horaInicioMillis === "number") {
     cambios.horaInicio = Timestamp.fromMillis(horaInicioMillis);
+  }
+
+  if (visibility !== undefined && !["group_only", "public"].includes(visibility)) {
+    throw new functions.https.HttpsError("invalid-argument", "visibility inválida");
+  }
+
+  if (visibility !== undefined) {
+    cambios.visibility = visibility;
   }
 
   await assertIsAdmin(context.auth.uid);

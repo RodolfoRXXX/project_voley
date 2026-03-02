@@ -19,7 +19,11 @@ interface Group {
   descripcion: string;
   activo: boolean;
   partidosTotales: number;
-  adminId: string;
+  createdAt?: {
+    seconds: number;
+  };
+  ownerId?: string;
+  adminIds?: string[];
 }
 
 /* =====================
@@ -81,17 +85,25 @@ export default function AdminGroupsPage() {
     if (authLoading || !firebaseUser) return;
 
     const loadGroups = async () => {
-      const q = query(
-        collection(db, "groups"),
-        where("adminId", "==", firebaseUser.uid),
-        orderBy("createdAt", "desc")
+      const groupsRef = collection(db, "groups");
+      const multiAdminSnap = await getDocs(
+        query(
+          groupsRef,
+          where("adminIds", "array-contains", firebaseUser.uid),
+          orderBy("createdAt", "desc")
+        )
       );
-      const snap = await getDocs(q);
 
-      const data: Group[] = snap.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Group, "id">),
-      }));
+      const data = multiAdminSnap.docs
+        .map((groupDoc) => ({
+          id: groupDoc.id,
+          ...(groupDoc.data() as Omit<Group, "id">),
+        }))
+        .sort((a, b) => {
+        const aTime = a.createdAt?.seconds ?? 0;
+        const bTime = b.createdAt?.seconds ?? 0;
+        return bTime - aTime;
+      });
 
       setGroups(data);
       setLoading(false);

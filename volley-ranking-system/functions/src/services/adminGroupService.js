@@ -13,13 +13,20 @@ async function crearGrupo({
   nombre,
   descripcion,
   adminId,
+  visibility = "private",
+  joinApproval = true,
 }) {
   await db.collection("groups").doc(groupId).set({
     nombre,
     descripcion,
-    adminId,
+    ownerId: adminId,
+    adminIds: [adminId],
+    admins: [{ userId: adminId, role: "owner", order: 0 }],
+    memberIds: [adminId],
     activo: true,
     partidosTotales: 0,
+    visibility,
+    joinApproval,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 }

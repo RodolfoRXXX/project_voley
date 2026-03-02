@@ -9,7 +9,6 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   doc,
-  getDoc,
   onSnapshot,
   collection,
   query,
@@ -63,10 +62,24 @@ const reincorporarJugadorFn = httpsCallable(
    Types
 ===================== */
 
+type GroupAdmin = {
+  userId: string;
+  role: "owner" | "admin";
+  order: number;
+};
+
 type Group = {
   id: string;
   nombre: string;
   descripcion?: string;
+  ownerId?: string;
+  adminIds?: string[];
+  admins?: GroupAdmin[];
+};
+
+type GroupAdminProfile = GroupAdmin & {
+  nombre: string;
+  photoURL?: string | null;
 };
 
 /* =====================
@@ -98,7 +111,7 @@ function MatchPageSkeleton() {
         {[...Array(3)].map((_, i) => (
           <SkeletonSoft
             key={i}
-            className="h-24 rounded-xl"
+            className="h-24"
           />
         ))}
       </div>
@@ -111,7 +124,7 @@ function MatchPageSkeleton() {
           {[...Array(4)].map((_, i) => (
             <SkeletonSoft
               key={i}
-              className="h-16 rounded-lg"
+              className="h-16"
             />
           ))}
         </div>
@@ -125,7 +138,7 @@ function MatchPageSkeleton() {
           {[...Array(6)].map((_, i) => (
             <SkeletonSoft
               key={i}
-              className="h-12 rounded-lg"
+              className="h-12"
             />
           ))}
         </div>
@@ -158,7 +171,7 @@ export default function MatchDetailPage() {
   const [editMode, setEditMode] = useState(false);
   const [usersMap, setUsersMap] = useState<Record<string, any>>({});
   const [pagoModal, setPagoModal] = useState<null | any>(null);
-  const [adminUser, setAdminUser] = useState<any | null>(null);
+  const [groupAdminProfiles, setGroupAdminProfiles] = useState<GroupAdminProfile[]>([]);
   const [teamsModalOpen, setTeamsModalOpen] = useState(false);
 
   const [formaciones, setFormaciones] = useState<
@@ -170,11 +183,14 @@ export default function MatchDetailPage() {
     cantidadSuplentes: 0,
     formacion: "",
     horaInicio: "",
+    visibility: "group_only" as "group_only" | "public",
   });
 
   const isAdmin = userDoc?.roles === "admin";
-  const isMatchAdmin =
-    !!firebaseUser?.uid && isAdmin && firebaseUser.uid === match?.adminId;
+  const isGroupAdmin =
+    !!firebaseUser?.uid &&
+    !!group?.adminIds?.includes(firebaseUser.uid);
+  const isMatchAdmin = !!firebaseUser?.uid && isAdmin && isGroupAdmin;
 
   const updatePagoEstado = async (
     participationId: string,
@@ -250,13 +266,13 @@ export default function MatchDetailPage() {
       const data = snap.data();
       setMatch({
         id: snap.id,
-        adminId: data.adminId,
         estado: data.estado,
         formacion: data.formacion,
         cantidadEquipos: data.cantidadEquipos,
         cantidadSuplentes: data.cantidadSuplentes,
         posicionesObjetivo: data.posicionesObjetivo,
         groupId: data.groupId,
+        visibility: data.visibility === "public" ? "public" : "group_only",
         horaInicio: data.horaInicio?.toDate
           ? data.horaInicio.toDate()
           : null,
@@ -268,46 +284,66 @@ export default function MatchDetailPage() {
         horaInicio: data.horaInicio
           ? formatForDateTimeLocal(data.horaInicio)
           : "",
+        visibility: data.visibility === "public" ? "public" : "group_only",
       });
     });
 
     return () => unsub();
   }, [matchId, router]);
 
-  /* =====================
-   Admin del match
-===================== */
-  useEffect(() => {
-    if (!match?.adminId) return;
-
-    const ref = doc(db, "users", match.adminId);
-
-    const unsub = onSnapshot(ref, (snap) => {
-      if (!snap.exists()) return;
-      setAdminUser(snap.data());
-    });
-
-    return () => unsub();
-  }, [match?.adminId]);
 
   /* =====================
      Group load
   ===================== */
   useEffect(() => {
     if (!match?.groupId) return;
-    const loadGroup = async () => {
-      const ref = doc(db, "groups", match.groupId);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        setGroup({
-          id: snap.id,
-          nombre: snap.data().nombre,
-          descripcion: snap.data().descripcion,
-        });
-      }
-    };
-    loadGroup();
+
+    const groupRef = doc(db, "groups", match.groupId);
+    const unsub = onSnapshot(groupRef, (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      setGroup({
+        id: snap.id,
+        nombre: data.nombre,
+        descripcion: data.descripcion,
+        ownerId: data.ownerId,
+        adminIds: data.adminIds || [],
+        admins: Array.isArray(data.admins) ? data.admins : [],
+      });
+    });
+
+    return () => unsub();
   }, [match?.groupId]);
+
+
+  useEffect(() => {
+    if (!group?.admins?.length) return;
+
+    const orderedAdmins = [...group.admins].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+    const unsubs = orderedAdmins.map((admin) =>
+      onSnapshot(doc(db, "users", admin.userId), (snap) => {
+        const userData = snap.exists() ? snap.data() : null;
+        setGroupAdminProfiles((prev) => {
+          const others = prev.filter((item) => item.userId !== admin.userId);
+          const normalizedRole: GroupAdmin["role"] =
+            admin.role === "owner" ? "owner" : "admin";
+
+          const nextAdmin: GroupAdminProfile = {
+            userId: admin.userId,
+            role: normalizedRole,
+            order: admin.order ?? 0,
+            nombre: userData?.nombre || "Sin nombre",
+            photoURL: userData?.photoURL || null,
+          };
+
+          const next: GroupAdminProfile[] = [...others, nextAdmin];
+          return next.sort((a, b) => a.order - b.order);
+        });
+      })
+    );
+
+    return () => unsubs.forEach((unsub) => unsub());
+  }, [group?.admins]);
 
   /* =====================
      Participations realtime
@@ -340,33 +376,33 @@ export default function MatchDetailPage() {
   const isJoined = !!myParticipation && myParticipation.estado !== "eliminado";
 
   const handleToggleParticipation = () => {
-  if (!match || !firebaseUser) return;
+    if (!match || !firebaseUser) return;
 
-  if (isJoined) {
-    run(
-      "leave",
-      () => leaveMatch({ matchId: match.id }),
-      {
-        confirm: {
-          message: "¿Querés abandonar el partido?",
-          confirmText: "Abandonar",
-          variant: "danger",
-        },
-        successMessage: "Saliste del partido",
-        errorMessage: "No se pudo salir del partido",
-      }
-    );
-  } else {
-    run(
-      "join",
-      () => joinMatch({ matchId: match.id }),
-      {
-        successMessage: "Te uniste al partido",
-        errorMessage: "No se pudo unir al partido",
-      }
-    );
-  }
-};
+    if (isJoined) {
+      run(
+        "leave",
+        () => leaveMatch({ matchId: match.id }),
+        {
+          confirm: {
+            message: "¿Querés abandonar el partido?",
+            confirmText: "Abandonar",
+            variant: "danger",
+          },
+          successMessage: "Saliste del partido",
+          errorMessage: "No se pudo salir del partido",
+        }
+      );
+    } else {
+      run(
+        "join",
+        () => joinMatch({ matchId: match.id }),
+        {
+          successMessage: "Te uniste al partido",
+          errorMessage: "No se pudo unir al partido",
+        }
+      );
+    }
+  };
 
   /* =====================
      nombre participations
@@ -412,7 +448,8 @@ export default function MatchDetailPage() {
       match.cantidadEquipos !== formData.cantidadEquipos ||
       match.cantidadSuplentes !== formData.cantidadSuplentes ||
       match.formacion !== formData.formacion ||
-      horaInicioActual !== horaInicioNueva;
+      horaInicioActual !== horaInicioNueva ||
+      (match.visibility || "group_only") !== formData.visibility;
 
     if (!hasChanges) {
       setEditMode(false);
@@ -436,6 +473,7 @@ export default function MatchDetailPage() {
           cantidadSuplentes: formData.cantidadSuplentes,
           formacion: formData.formacion,
           horaInicioMillis,
+          visibility: formData.visibility,
         });
 
         setMatch({
@@ -443,6 +481,7 @@ export default function MatchDetailPage() {
           ...formData,
           posicionesObjetivo,
           horaInicio: new Date(formData.horaInicio),
+          visibility: formData.visibility,
         });
 
         setEditMode(false);
@@ -465,9 +504,9 @@ export default function MatchDetailPage() {
     .filter((p) => p.estado === "titular" && p.rankingTitular !== null)
     .sort((a, b) => a.rankingTitular - b.rankingTitular);
 
-    const suplentes = participations
-  .filter((p) => p.estado === "suplente" && p.rankingSuplente !== null)
-  .sort((a, b) => a.rankingSuplente - b.rankingSuplente);
+  const suplentes = participations
+    .filter((p) => p.estado === "suplente" && p.rankingSuplente !== null)
+    .sort((a, b) => a.rankingSuplente - b.rankingSuplente);
 
   // Cupos ocupados por posiciónAsignada titular
   const ocupadosPorPosicion: Record<string, number> = {};
@@ -665,7 +704,7 @@ export default function MatchDetailPage() {
 
       <MatchInfoCard
         match={match}
-        adminUser={adminUser}
+        groupAdmins={groupAdminProfiles}
       />
 
       {/* =============== EDITAR MATCH =============== */}

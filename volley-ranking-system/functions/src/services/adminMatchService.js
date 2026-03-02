@@ -38,12 +38,12 @@ function calcularDeadline(horaInicio, stage = 1) {
 async function crearMatch({
   matchId,
   groupId,
-  adminId,
   horaInicio,
   cantidadEquipos,
   formacion,
   posicionesBase,
   cantidadSuplentes,
+  visibility = "group_only",
 }) {
   const posicionesObjetivo = {};
 
@@ -58,8 +58,7 @@ async function crearMatch({
 
   await db.collection("matches").doc(matchId).set({
     groupId,
-    adminId,
-
+  
     estado: "abierto",
 
     horaInicio,
@@ -67,6 +66,7 @@ async function crearMatch({
     formacion,
     posicionesObjetivo,
     cantidadSuplentes,
+    visibility,
 
     // ⏱️ DEADLINES
     deadlineStage,

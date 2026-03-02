@@ -30,7 +30,7 @@ function ProfilePageSkeleton() {
       </div>
 
       {/* Profile game */}
-      <div className="bg-white border rounded-xl p-4 space-y-3">
+      <div className="bg-white border p-4 space-y-3">
         <Skeleton className="h-5 w-32" />
 
         <div className="flex gap-2 flex-wrap">
@@ -76,6 +76,7 @@ export default function ProfilePage() {
 
       <ProfileGame
         posicionesPreferidas={userDoc.posicionesPreferidas || []}
+        role={userDoc.roles}
       />
 
       {/* Profile Matches */}

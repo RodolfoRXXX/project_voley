@@ -74,6 +74,37 @@ async function updatePreferredPositions(userId, posiciones) {
   return true;
 }
 
+async function updateUserRole(userId, role) {
+  if (!role || !["player", "admin"].includes(role)) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Rol inválido"
+    );
+  }
+
+  const userRef = db.collection("users").doc(userId);
+  const snap = await userRef.get();
+
+  if (!snap.exists) {
+    throw new functions.https.HttpsError(
+      "not-found",
+      "Usuario no existe"
+    );
+  }
+
+  const currentRole = snap.data().roles;
+  if (currentRole === role) {
+    return false;
+  }
+
+  await userRef.update({
+    roles: role,
+  });
+
+  return true;
+}
+
 module.exports = {
   updatePreferredPositions,
+  updateUserRole,
 };

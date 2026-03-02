@@ -1,4 +1,3 @@
-
 // -------------------
 // Info de un Match
 // -------------------
@@ -8,6 +7,14 @@ import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import StatusPill from "../ui/status/StatusPill";
 import { matchStatusMap } from "@/components/ui/status/matchStatusMap";
 
+type GroupAdminProfile = {
+  userId: string;
+  role: "owner" | "admin";
+  order: number;
+  nombre: string;
+  photoURL?: string | null;
+};
+
 type MatchInfoCardProps = {
   match: {
     estado: string;
@@ -15,16 +22,14 @@ type MatchInfoCardProps = {
     formacion: string;
     cantidadEquipos: number;
     cantidadSuplentes: number;
+    visibility?: "group_only" | "public";
   };
-  adminUser?: {
-    nombre: string;
-    photoURL?: string | null;
-  } | null;
+  groupAdmins?: GroupAdminProfile[];
 };
 
 export default function MatchInfoCard({
   match,
-  adminUser,
+  groupAdmins = [],
 }: MatchInfoCardProps) {
   const cfg = matchStatusMap[match.estado];
   return (
@@ -51,7 +56,7 @@ export default function MatchInfoCard({
       </div>
 
       {/* DATOS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-sm">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
         <div>
           <p className="text-neutral-500">Formación</p>
           <p className="font-medium text-neutral-900">
@@ -59,7 +64,7 @@ export default function MatchInfoCard({
           </p>
         </div>
 
-        <div className="grid grid-cols-2">
+        <div className="grid grid-cols-3 gap-3">
           <div>
             <p className="text-neutral-500">Equipos</p>
             <p className="font-medium text-neutral-900">
@@ -73,30 +78,36 @@ export default function MatchInfoCard({
               {match.cantidadSuplentes}
             </p>
           </div>
-        </div>
-        
-      </div>
-
-      {/* ADMIN */}
-      {adminUser && (
-        <div className="flex items-center gap-3 pt-4 border-t border-neutral-200">
-          <UserAvatar
-            nombre={adminUser.nombre}
-            photoURL={adminUser.photoURL}
-            size={32}
-          />
 
           <div>
-            <p className="text-sm font-medium text-neutral-900">
-              {adminUser.nombre}
+            <p className="text-neutral-500">Visibilidad</p>
+            <p className="font-medium text-neutral-900">
+              {match.visibility === "public" ? "Público" : "Solo grupo"}
             </p>
-            <p className="text-xs text-neutral-500">
-              Admin del grupo
-            </p>
+          </div>
+        </div>
+      </div>
+
+      {groupAdmins.length > 0 && (
+        <div className="pt-4 border-t border-neutral-200">
+          <p className="text-xs uppercase tracking-wide text-neutral-500 mb-3">
+            Administradores del grupo
+          </p>
+
+          <div className="flex flex-wrap gap-4">
+            {groupAdmins.map((admin) => (
+              <div key={admin.userId} className="flex flex-col items-center w-20 text-center">
+                <UserAvatar
+                  nombre={admin.nombre}
+                  photoURL={admin.photoURL}
+                  size={44}
+                />
+                <p className="text-xs text-neutral-900 mt-2 leading-tight">{admin.nombre}</p>
+              </div>
+            ))}
           </div>
         </div>
       )}
     </section>
   );
 }
-

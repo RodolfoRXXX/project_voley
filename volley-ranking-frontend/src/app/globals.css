@@ -8,6 +8,7 @@
   --border: #e5e7eb;
   --nav-bg: #f8fafc;
   --text-muted: #6b7280;
+  --logo-text: #0b1120;
 }
 
 html[data-theme="dark"] {
@@ -18,50 +19,7 @@ html[data-theme="dark"] {
   --border: #334155;
   --nav-bg: #0f172a;
   --text-muted: #cbd5e1;
-}
-
-html[data-theme="dark"] :where(.bg-white) {
-  background-color: var(--surface) !important;
-}
-
-html[data-theme="dark"] :where(.bg-neutral-50, .bg-neutral-100, .bg-neutral-200, .bg-gray-100) {
-  background-color: var(--surface-muted) !important;
-}
-
-html[data-theme="dark"] :where(.border, .border-neutral-200, .border-gray-200) {
-  border-color: var(--border) !important;
-}
-
-html[data-theme="dark"] :where(.text-black, .text-neutral-900, .text-neutral-800, .text-gray-900, .text-gray-800, .text-slate-800) {
-  color: var(--foreground) !important;
-}
-
-html[data-theme="dark"] :where(
-  .text-neutral-700,
-  .text-neutral-600,
-  .text-neutral-500,
-  .text-neutral-400,
-  .text-gray-700,
-  .text-gray-600,
-  .text-gray-500,
-  .text-gray-400,
-  .text-slate-600,
-  .text-slate-500,
-  .text-slate-400
-) {
-  color: var(--text-muted) !important;
-}
-
-html[data-theme="dark"] :where(.hover\:text-black:hover) {
-  color: var(--foreground) !important;
-}
-
-html[data-theme="dark"] :where(.hover\:bg-gray-200:hover, .hover\:bg-gray-100:hover, .hover\:bg-neutral-100:hover, .hover\:bg-neutral-50:hover) {
-  background-color: var(--surface-muted) !important;
-}
-
-html[data-theme="dark"] :where(.shadow-sm, .shadow, .shadow-lg, .shadow-xl) {
-  --tw-shadow-color: rgb(2 6 23 / 0.5);
+  --logo-text: #ffffff;
 }
 
 html[data-theme="dark"] :where(.bg-white) {
@@ -119,60 +77,34 @@ html[data-theme="dark"] input[type="datetime-local"] {
 }
 
 
-/* === SPORTEXA LOGO PRO VERSION === */
+/* === SPORTEXA LOGO === */
 
 .sportexa-logo {
   display: inline-flex;
-  align-items: center; /* centra verticalmente */
+  align-items: baseline;
   font-size: 1.4rem;
   text-decoration: none;
 }
 
-/* Texto normal */
 .logo-text {
   font-family: var(--font-outfit);
   font-weight: 700;
-  font-style: italic;
-  letter-spacing: 1px;
+  letter-spacing: 0.02em;
   color: var(--logo-text);
-  display: flex;
-  align-items: center;
+  line-height: 1;
 }
 
-/* X agresiva estilo e-sport */
 .logo-x {
   font-family: var(--font-arizonia);
-  font-weight: 500;
-  font-style: italic;
-  font-size: 1.8em;        /* más grande */
-  line-height: 1;
+  font-size: 1.28em;
+  line-height: 0.7;
   color: #ff6a00;
-  display: flex;
-  align-items: center;
+  margin-inline: 0.02em;
   transform: translateY(-1px);
   transition: transform 0.2s ease, text-shadow 0.2s ease;
 }
 
-/* Hover sutil competitivo */
 .sportexa-logo:hover .logo-x {
-  transform: scale(1.1);
-  text-shadow: 0 0 12px rgba(255, 106, 0, 0.6);
-}
-
-/* Light */
-:root {
-  --logo-text: #0b1120;
-}
-
-/* Dark */
-.dark {
-  --logo-text: #ffffff;
-}
-
-.logo-text {
-  font-family: var(--font-inter);
-}
-
-.logo-x {
-  font-family: var(--font-orbitron);
+  transform: translateY(-1px) scale(1.06);
+  text-shadow: 0 0 10px rgb(255 106 0 / 0.35);
 }

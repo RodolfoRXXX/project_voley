@@ -7,11 +7,17 @@ import { auth } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "../ui/avatar/UserAvatar";
 import { usePathname, useRouter } from "next/navigation";
+import { Arizonia } from "next/font/google";
 import useToast from "@/components/ui/toast/useToast";
 import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 import ThemeSwitch from "@/components/layout/ThemeSwitch";
 import { useThemeMode } from "@/hooks/useThemeMode";
+
+const arizonia = Arizonia({
+  weight: "400",
+  subsets: ["latin"],
+});
 
 export default function Navbar() {
   const { firebaseUser, userDoc, loading } = useAuth();
@@ -68,9 +74,15 @@ export default function Navbar() {
 
         <Link
           href="/dashboard"
-          className="font-bold text-lg text-[var(--foreground)] md:absolute md:left-1/2 md:-translate-x-1/2"
+          className="group text-3xl font-semibold leading-none tracking-tight text-[var(--foreground)] md:absolute md:left-1/2 md:-translate-x-1/2 md:text-4xl"
         >
-          🏐 Proyecto Voley
+          <span>Sporte</span>
+          <span
+            className={`${arizonia.className} inline-block px-0.5 text-[1.15em] text-orange-500/90 transition-transform transition-colors duration-300 group-hover:scale-110 group-hover:-rotate-[8deg] group-hover:text-orange-400`}
+          >
+            x
+          </span>
+          <span>a</span>
         </Link>
 
         {/* DESKTOP */}

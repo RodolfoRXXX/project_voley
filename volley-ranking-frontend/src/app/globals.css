@@ -117,3 +117,62 @@ body {
 html[data-theme="dark"] input[type="datetime-local"] {
   color-scheme: dark;
 }
+
+
+/* === SPORTEXA LOGO PRO VERSION === */
+
+.sportexa-logo {
+  display: inline-flex;
+  align-items: center; /* centra verticalmente */
+  font-size: 1.4rem;
+  text-decoration: none;
+}
+
+/* Texto normal */
+.logo-text {
+  font-family: var(--font-outfit);
+  font-weight: 700;
+  font-style: italic;
+  letter-spacing: 1px;
+  color: var(--logo-text);
+  display: flex;
+  align-items: center;
+}
+
+/* X agresiva estilo e-sport */
+.logo-x {
+  font-family: var(--font-arizonia);
+  font-weight: 500;
+  font-style: italic;
+  font-size: 1.8em;        /* más grande */
+  line-height: 1;
+  color: #ff6a00;
+  display: flex;
+  align-items: center;
+  transform: translateY(-1px);
+  transition: transform 0.2s ease, text-shadow 0.2s ease;
+}
+
+/* Hover sutil competitivo */
+.sportexa-logo:hover .logo-x {
+  transform: scale(1.1);
+  text-shadow: 0 0 12px rgba(255, 106, 0, 0.6);
+}
+
+/* Light */
+:root {
+  --logo-text: #0b1120;
+}
+
+/* Dark */
+.dark {
+  --logo-text: #ffffff;
+}
+
+.logo-text {
+  font-family: var(--font-inter);
+}
+
+.logo-x {
+  font-family: var(--font-orbitron);
+}

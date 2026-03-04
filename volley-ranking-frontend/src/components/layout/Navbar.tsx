@@ -13,6 +13,7 @@ import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 import ThemeSwitch from "@/components/layout/ThemeSwitch";
 import { useThemeMode } from "@/hooks/useThemeMode";
+import SportexaLogo from "./SportexaLogo";
 
 const arizonia = Arizonia({
   weight: "400",
@@ -72,18 +73,7 @@ export default function Navbar() {
       <div className="relative max-w-7xl mx-auto px-4 py-3 flex items-center">
         <div className="hidden md:block w-64" />
 
-        <Link
-          href="/dashboard"
-          className="text-4xl leading-none text-[var(--foreground)] md:absolute md:left-1/2 md:-translate-x-1/2"
-        >
-          <span className={arizonia.className}>Sporte</span>
-          <span
-            className={`${arizonia.className} inline-block text-orange-500/90 scale-[1.03] -rotate-[4deg] px-0.5`}
-          >
-            x
-          </span>
-          <span className={arizonia.className}>a</span>
-        </Link>
+        <SportexaLogo />
 
         {/* DESKTOP */}
         <div className="ml-auto hidden md:flex items-center gap-3">

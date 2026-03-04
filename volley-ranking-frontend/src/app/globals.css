@@ -81,26 +81,26 @@ html[data-theme="dark"] input[type="datetime-local"] {
 
 .sportexa-logo {
   display: inline-flex;
-  align-items: baseline;
+  align-items:center;
   font-size: 1.4rem;
   text-decoration: none;
 }
 
 .logo-text {
-  font-family: var(--font-outfit);
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-family: var(--font-outfit)!important;
+  letter-spacing: 0.04em;
   color: var(--logo-text);
   line-height: 1;
 }
 
 .logo-x {
-  font-family: var(--font-arizonia);
-  font-size: 1.28em;
+  font-family: var(--font-arizonia)!important;
+  font-size: 1.8em;
   line-height: 0.7;
   color: #ff6a00;
+  font-weight: bold;
   margin-inline: 0.02em;
-  transform: translateY(-1px);
+  margin: 0 0 0 3px;
   transition: transform 0.2s ease, text-shadow 0.2s ease;
 }
 

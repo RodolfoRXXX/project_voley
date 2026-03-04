@@ -437,7 +437,7 @@ async function handleGroupMemberAdd(req, res, authContext, groupId, userId) {
 
               <hr style="border:none; border-top:1px solid #eee; margin:30px 0;" />
               <p style="font-size:12px; color:#888; text-align:center;">
-                Este es un mensaje automático de Proyecto Voley.
+                Este es un mensaje automático de Sportexa.
               </p>
             </div>
           </div>

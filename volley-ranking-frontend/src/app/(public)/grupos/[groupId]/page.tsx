@@ -65,9 +65,9 @@ function GroupDetailSkeleton() {
       {/* HEADER */}
       <section className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 px-5 py-5 space-y-4">
         <div className="flex items-start justify-between gap-4">
-          <div className="space-y-3">
-            <Skeleton className="h-8 w-56" />
-            <SkeletonSoft className="h-4 w-80" />
+          <div className="space-y-3 min-w-0">
+            <Skeleton className="h-8 w-36" />
+            <SkeletonSoft className="h-4 w-28" />
             <SkeletonSoft className="h-8 w-48 rounded-lg" />
           </div>
 

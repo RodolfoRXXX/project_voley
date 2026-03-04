@@ -74,15 +74,15 @@ export default function Navbar() {
 
         <Link
           href="/dashboard"
-          className="group text-3xl font-semibold leading-none tracking-tight text-[var(--foreground)] md:absolute md:left-1/2 md:-translate-x-1/2 md:text-4xl"
+          className="text-4xl leading-none text-[var(--foreground)] md:absolute md:left-1/2 md:-translate-x-1/2"
         >
-          <span>Sporte</span>
+          <span className={arizonia.className}>Sporte</span>
           <span
-            className={`${arizonia.className} inline-block px-0.5 text-[1.15em] text-orange-500/90 transition-transform transition-colors duration-300 group-hover:scale-110 group-hover:-rotate-[8deg] group-hover:text-orange-400`}
+            className={`${arizonia.className} inline-block text-orange-500/90 scale-[1.03] -rotate-[4deg] px-0.5`}
           >
             x
           </span>
-          <span>a</span>
+          <span className={arizonia.className}>a</span>
         </Link>
 
         {/* DESKTOP */}

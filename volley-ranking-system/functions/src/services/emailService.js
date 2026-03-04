@@ -32,7 +32,7 @@ async function sendEmail({ to, subject, text, html }) {
   }
 
   await mailerConfig.transporter.sendMail({
-    from: `"Volley Ranking" <${mailerConfig.gmailUser}>`,
+    from: `"Sportexa" <${mailerConfig.gmailUser}>`,
     to,
     subject,
     text,
@@ -43,7 +43,7 @@ async function sendEmail({ to, subject, text, html }) {
 }
 
 function getWebAppUrl() {
-  const base = process.env.WEB_APP_URL || "https://tudominio.com";
+  const base = process.env.WEB_APP_URL || "https://sportexa.site";
   return base.replace(/\/+$/, "");
 }
 

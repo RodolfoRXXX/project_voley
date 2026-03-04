@@ -7,11 +7,17 @@ import { auth } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "../ui/avatar/UserAvatar";
 import { usePathname, useRouter } from "next/navigation";
+import { Arizonia } from "next/font/google";
 import useToast from "@/components/ui/toast/useToast";
 import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 import ThemeSwitch from "@/components/layout/ThemeSwitch";
 import { useThemeMode } from "@/hooks/useThemeMode";
+
+const arizonia = Arizonia({
+  weight: "400",
+  subsets: ["latin"],
+});
 
 export default function Navbar() {
   const { firebaseUser, userDoc, loading } = useAuth();
@@ -68,9 +74,15 @@ export default function Navbar() {
 
         <Link
           href="/dashboard"
-          className="font-bold text-lg text-[var(--foreground)] md:absolute md:left-1/2 md:-translate-x-1/2"
+          className="text-4xl leading-none text-[var(--foreground)] md:absolute md:left-1/2 md:-translate-x-1/2"
         >
-          🏐 Proyecto Voley
+          <span className={arizonia.className}>Sporte</span>
+          <span
+            className={`${arizonia.className} inline-block text-orange-500/90 scale-[1.03] -rotate-[4deg] px-0.5`}
+          >
+            x
+          </span>
+          <span className={arizonia.className}>a</span>
         </Link>
 
         {/* DESKTOP */}

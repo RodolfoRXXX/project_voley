@@ -1,5 +1,6 @@
 const functions = require("firebase-functions/v1");
-const { db, admin } = require("../firebase");
+const { db } = require("../firebase");
+const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 
 const TOURNAMENT_STATUS = {
   DRAFT: "draft",
@@ -107,8 +108,8 @@ function validateTournamentPayload(data) {
     format,
     maxTeams,
     minTeams,
-    startDate: admin.firestore.Timestamp.fromMillis(startDateMillis),
-    endDate: admin.firestore.Timestamp.fromMillis(endDateMillis),
+    startDate: Timestamp.fromMillis(startDateMillis),
+    endDate: Timestamp.fromMillis(endDateMillis),
     rules,
     structure,
     adminIds: cleanAdminIds,
@@ -117,7 +118,7 @@ function validateTournamentPayload(data) {
 
 async function createTournament({ data, uid }) {
   const payload = validateTournamentPayload(data);
-  const now = admin.firestore.FieldValue.serverTimestamp();
+  const now = FieldValue.serverTimestamp();
   const docRef = db.collection("tournaments").doc();
 
   const adminIds = [...new Set([uid, ...payload.adminIds])];
@@ -179,7 +180,7 @@ async function addTournamentAdmin({ uid, tournamentId, adminUserId }) {
     trx.update(tournamentRef, {
       adminIds: nextAdminIds,
       updatedBy: uid,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
   });
 
@@ -212,7 +213,7 @@ async function openTournamentRegistrations({ uid, tournamentId }) {
     trx.update(tournamentRef, {
       status: TOURNAMENT_STATUS.OPEN,
       updatedBy: uid,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
   });
 

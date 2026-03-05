@@ -58,6 +58,7 @@ export default function Navbar() {
   const navItems = [
     { label: "Inicio", href: "/dashboard" },
     { label: "Grupos", href: "/grupos" },
+    { label: "Torneos", href: "/torneos" },
     { label: "Perfil", href: "/profile" },
   ];
 
@@ -65,6 +66,10 @@ export default function Navbar() {
     navItems.push({
       label: "Gestión",
       href: "/admin/groups",
+    });
+    navItems.push({
+      label: "Mis torneos",
+      href: "/admin/tournaments",
     });
   }
 

@@ -140,9 +140,90 @@ async function createTournament({ data, uid }) {
   return { tournamentId: docRef.id };
 }
 
+
+async function addTournamentAdmin({ uid, tournamentId, adminUserId }) {
+  if (typeof tournamentId !== "string" || !tournamentId) {
+    throw new functions.https.HttpsError("invalid-argument", "tournamentId inválido");
+  }
+
+  if (typeof adminUserId !== "string" || !adminUserId) {
+    throw new functions.https.HttpsError("invalid-argument", "adminUserId inválido");
+  }
+
+  const targetUserSnap = await db.collection("users").doc(adminUserId).get();
+  if (!targetUserSnap.exists || targetUserSnap.data().roles !== "admin") {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "El usuario a agregar no es admin"
+    );
+  }
+
+  const tournamentRef = db.collection("tournaments").doc(tournamentId);
+
+  await db.runTransaction(async (trx) => {
+    const tournamentSnap = await trx.get(tournamentRef);
+    if (!tournamentSnap.exists) {
+      throw new functions.https.HttpsError("not-found", "El torneo no existe");
+    }
+
+    const tournament = tournamentSnap.data();
+    assertTournamentOwner(tournament, uid);
+
+    const currentAdminIds = Array.isArray(tournament.adminIds) ? tournament.adminIds : [];
+    if (currentAdminIds.includes(adminUserId)) {
+      throw new functions.https.HttpsError("already-exists", "El admin ya está asignado al torneo");
+    }
+
+    const nextAdminIds = [...currentAdminIds, adminUserId];
+
+    trx.update(tournamentRef, {
+      adminIds: nextAdminIds,
+      updatedBy: uid,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { ok: true };
+}
+
+async function openTournamentRegistrations({ uid, tournamentId }) {
+  if (typeof tournamentId !== "string" || !tournamentId) {
+    throw new functions.https.HttpsError("invalid-argument", "tournamentId inválido");
+  }
+
+  const tournamentRef = db.collection("tournaments").doc(tournamentId);
+
+  await db.runTransaction(async (trx) => {
+    const tournamentSnap = await trx.get(tournamentRef);
+    if (!tournamentSnap.exists) {
+      throw new functions.https.HttpsError("not-found", "El torneo no existe");
+    }
+
+    const tournament = tournamentSnap.data();
+    assertTournamentAdmin(tournament, uid);
+
+    if (tournament.status !== TOURNAMENT_STATUS.DRAFT) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Solo se pueden abrir inscripciones desde estado draft"
+      );
+    }
+
+    trx.update(tournamentRef, {
+      status: TOURNAMENT_STATUS.OPEN,
+      updatedBy: uid,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { ok: true };
+}
+
 module.exports = {
   TOURNAMENT_STATUS,
   assertTournamentAdmin,
   assertTournamentOwner,
   createTournament,
+  addTournamentAdmin,
+  openTournamentRegistrations,
 };

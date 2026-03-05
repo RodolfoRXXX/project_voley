@@ -46,9 +46,18 @@ export default function AdminTournamentsPage() {
     <main className="max-w-4xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">
       <AdminBreadcrumb items={[{ label: "Gestión" }, { label: "Torneos" }]} />
 
-      <div className="space-y-1">
-        <h1 className="text-xl font-semibold text-neutral-900">Mis torneos</h1>
-        <p className="text-sm text-neutral-500">Torneos donde sos owner o admin gestor.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="text-xl font-semibold text-neutral-900">Mis torneos</h1>
+          <p className="text-sm text-neutral-500">Torneos donde sos owner o admin gestor.</p>
+        </div>
+
+        <Link
+          href="/admin/tournaments/new"
+          className="px-4 py-2 rounded-lg text-sm font-medium text-center bg-neutral-900 text-white hover:bg-neutral-800 transition"
+        >
+          Crear torneo
+        </Link>
       </div>
 
       {tournaments.length === 0 && <p className="text-sm text-neutral-500">Todavía no tenés torneos.</p>}

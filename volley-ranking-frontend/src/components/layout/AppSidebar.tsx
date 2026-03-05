@@ -34,6 +34,10 @@ export default function AppSidebar() {
       href: "/grupos"
     },
     {
+      label: "Torneos",
+      href: "/torneos"
+    },
+    {
       label: "Perfil",
       href: "/profile"
     },
@@ -43,6 +47,10 @@ export default function AppSidebar() {
     navItems.push({
       label: "Gestión",
       href: "/admin/groups",
+    });
+    navItems.push({
+      label: "Mis torneos",
+      href: "/admin/tournaments",
     });
   }
 

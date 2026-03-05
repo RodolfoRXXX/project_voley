@@ -30,5 +30,10 @@ exports.addGroupAdmin = require("./callables/addGroupAdmin");
 exports.removeGroupAdmin = require("./callables/removeGroupAdmin");
 exports.reorderGroupAdmins = require("./callables/reorderGroupAdmins");
 exports.transferGroupOwnership = require("./callables/transferGroupOwnership");
+exports.createTournament = require("./callables/createTournament");
+exports.requestTournamentRegistration = require("./callables/requestTournamentRegistration");
+exports.reviewTournamentRegistration = require("./callables/reviewTournamentRegistration");
+exports.openTournamentRegistrations = require("./callables/openTournamentRegistrations");
+exports.addTournamentAdmin = require("./callables/addTournamentAdmin");
 
 exports.api = require("./src/httpApi");

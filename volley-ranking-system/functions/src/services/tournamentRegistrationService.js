@@ -2,6 +2,10 @@ const functions = require("firebase-functions/v1");
 const { db, admin } = require("../firebase");
 const { assertGroupAdmin } = require("./adminAccessService");
 const { TOURNAMENT_STATUS, assertTournamentAdmin } = require("./tournamentService");
+const {
+  FieldValue,
+} = require("firebase-admin/firestore");
+
 
 async function requestTournamentRegistration({ uid, tournamentId, groupId }) {
   if (typeof tournamentId !== "string" || !tournamentId) {
@@ -47,8 +51,8 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId }) {
       status: "pendiente",
       paymentStatus: "pendiente",
       paymentAmount: 0,
-      registeredAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      registeredAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
       decidedByUserId: null,
     });
   });

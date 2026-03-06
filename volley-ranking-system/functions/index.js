@@ -35,5 +35,6 @@ exports.requestTournamentRegistration = require("./callables/requestTournamentRe
 exports.reviewTournamentRegistration = require("./callables/reviewTournamentRegistration");
 exports.openTournamentRegistrations = require("./callables/openTournamentRegistrations");
 exports.addTournamentAdmin = require("./callables/addTournamentAdmin");
+exports.editTournament = require("./callables/editTournament");
 
 exports.api = require("./src/httpApi");

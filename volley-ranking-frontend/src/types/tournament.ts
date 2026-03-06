@@ -15,6 +15,7 @@ export type Tournament = {
   adminIds: string[];
   minTeams: number;
   maxTeams: number;
+  paymentForPlayer: number;
   acceptedTeamsCount?: number;
   podiumTeamIds?: [string, string, string] | null;
   startDate?: { seconds: number };

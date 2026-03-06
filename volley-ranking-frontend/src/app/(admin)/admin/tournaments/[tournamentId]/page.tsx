@@ -12,6 +12,7 @@ import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 
 const openRegistrationsFn = httpsCallable(functions, "openTournamentRegistrations");
 const addTournamentAdminFn = httpsCallable(functions, "addTournamentAdmin");
+const editTournamentFn = httpsCallable(functions, "editTournament");
 
 export default function AdminTournamentDetailPage() {
   const params = useParams<{ tournamentId: string }>();
@@ -23,6 +24,20 @@ export default function AdminTournamentDetailPage() {
   const [opening, setOpening] = useState(false);
   const [adminUserId, setAdminUserId] = useState("");
   const [addingAdmin, setAddingAdmin] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const [editForm, setEditForm] = useState({
+    name: "",
+    description: "",
+    minTeams: 0,
+    maxTeams: 0,
+    paymentForPlayer: 0,
+  });
+
+  const canEdit =
+  tournament?.status === "draft" ||
+  tournament?.status === "inscripciones_abiertas";
 
   const loadTournament = useCallback(async () => {
     if (!tournamentId) return;
@@ -41,6 +56,47 @@ export default function AdminTournamentDetailPage() {
   useEffect(() => {
     loadTournament();
   }, [loadTournament]);
+
+  const startEdit = () => {
+    if (!tournament) return;
+
+    setEditForm({
+      name: tournament.name,
+      description: tournament.description,
+      minTeams: tournament.minTeams,
+      maxTeams: tournament.maxTeams,
+      paymentForPlayer: tournament.paymentForPlayer || 0,
+    });
+
+    setEditing(true);
+  };
+
+  const onSaveEdit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!tournamentId) return;
+
+    setSaving(true);
+
+    try {
+      await editTournamentFn({
+        tournamentId,
+        ...editForm,
+      });
+
+      showToast({
+        type: "success",
+        message: "Torneo actualizado",
+      });
+
+      setEditing(false);
+      await loadTournament();
+    } catch (err) {
+      handleFirebaseError(err, showToast, "No se pudo actualizar el torneo");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const openRegistrations = async () => {
     if (!tournamentId) return;
@@ -95,13 +151,29 @@ export default function AdminTournamentDetailPage() {
       />
 
       <header className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold text-neutral-900">{tournament.name}</h1>
-          <span className="text-xs rounded-full px-2 py-1 bg-orange-100 text-orange-700">
-            {tournamentStatusLabel[tournament.status]}
-          </span>
+        <div className="flex content-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-neutral-900">
+              {tournament.name}
+            </h1>
+            <p className="text-sm text-neutral-600">{tournament.description || "Sin descripción"}</p>
+          </div>
+
+          <div className="flex flex-col items-end justify-between gap-2">
+            <span className="text-xs rounded-full px-2 py-1 bg-orange-100 text-orange-700">
+              {tournamentStatusLabel[tournament.status]}
+            </span>
+
+            {canEdit && !editing && (
+              <button
+                onClick={startEdit}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium border hover:bg-neutral-50"
+              >
+                Editar
+              </button>
+            )}
+          </div>
         </div>
-        <p className="text-sm text-neutral-600">{tournament.description || "Sin descripción"}</p>
 
         {tournament.status === "draft" && (
           <button
@@ -125,6 +197,101 @@ export default function AdminTournamentDetailPage() {
           <p>Admins asignados: <b>{tournament.adminIds?.length || 0}</b></p>
         </div>
       </section>
+
+      {editing && (
+        <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
+          <h2 className="text-base font-semibold">Editar torneo</h2>
+
+          <form onSubmit={onSaveEdit} className="space-y-3">
+
+            <div>
+              <label className="text-sm font-medium">Nombre</label>
+              <input
+                value={editForm.name}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, name: e.target.value }))
+                }
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Descripción</label>
+              <textarea
+                value={editForm.description}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, description: e.target.value }))
+                }
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-sm font-medium">Min equipos</label>
+                <input
+                  type="number"
+                  value={editForm.minTeams}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      minTeams: Number(e.target.value),
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Max equipos</label>
+                <input
+                  type="number"
+                  value={editForm.maxTeams}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      maxTeams: Number(e.target.value),
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Pago por jugador</label>
+                <input
+                  type="number"
+                  value={editForm.paymentForPlayer}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      paymentForPlayer: Number(e.target.value),
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                disabled={saving}
+                className="px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm"
+              >
+                {saving ? "Guardando..." : "Guardar cambios"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="px-4 py-2 rounded-lg border text-sm"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
 
       <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
         <h2 className="text-base font-semibold text-neutral-900">Agregar admin al torneo</h2>

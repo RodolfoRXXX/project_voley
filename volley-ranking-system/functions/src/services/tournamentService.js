@@ -40,7 +40,6 @@ function validateTournamentPayload(data) {
     maxTeams,
     minTeams,
     startDateMillis,
-    endDateMillis,
     rules,
     structure,
     adminIds,
@@ -70,12 +69,8 @@ function validateTournamentPayload(data) {
     throw new functions.https.HttpsError("invalid-argument", "minTeams inválido");
   }
 
-  if (typeof startDateMillis !== "number" || typeof endDateMillis !== "number") {
-    throw new functions.https.HttpsError("invalid-argument", "Fechas inválidas");
-  }
-
-  if (startDateMillis >= endDateMillis) {
-    throw new functions.https.HttpsError("invalid-argument", "startDate debe ser menor a endDate");
+  if (typeof startDateMillis !== "number") {
+    throw new functions.https.HttpsError("invalid-argument", "Fecha de inicio inválida");
   }
 
   if (!rules || typeof rules !== "object") {
@@ -109,7 +104,9 @@ function validateTournamentPayload(data) {
     maxTeams,
     minTeams,
     startDate: Timestamp.fromMillis(startDateMillis),
-    endDate: Timestamp.fromMillis(endDateMillis),
+    ...(typeof data.endDateMillis === "number"
+      ? { endDate: Timestamp.fromMillis(data.endDateMillis) }
+      : {}),
     rules,
     structure,
     adminIds: cleanAdminIds,

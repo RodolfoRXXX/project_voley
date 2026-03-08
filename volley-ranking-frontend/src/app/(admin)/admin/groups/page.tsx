@@ -12,7 +12,6 @@ import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
-import { Tournament, tournamentStatusLabel } from "@/types/tournament";
 
 interface Group {
   id: string;
@@ -80,7 +79,6 @@ function GroupsSkeleton() {
 export default function AdminGroupsPage() {
   const { firebaseUser, loading: authLoading } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -109,22 +107,6 @@ export default function AdminGroupsPage() {
 
       setGroups(data);
 
-      const tournamentsRef = collection(db, "tournaments");
-      const tournamentsSnap = await getDocs(
-        query(
-          tournamentsRef,
-          where("adminIds", "array-contains", firebaseUser.uid),
-          orderBy("updatedAt", "desc"),
-          limit(3)
-        )
-      );
-
-      const tournamentsData = tournamentsSnap.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Tournament, "id">),
-      }));
-
-      setTournaments(tournamentsData);
       setLoading(false);
     };
 
@@ -138,7 +120,7 @@ export default function AdminGroupsPage() {
 
       <AdminBreadcrumb
         items={[
-          { label: "Gestión"},
+          { label: "Mis grupos"},
           { label: "Grupos"},
         ]}
       />
@@ -164,42 +146,6 @@ export default function AdminGroupsPage() {
       {groups.length === 0 && (
         <p className="text-gray-500">No hay grupos creados.</p>
       )}
-
-      <section className="space-y-3 rounded-xl border border-neutral-200 bg-white p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-neutral-900">Torneos</h2>
-            <p className="text-sm text-neutral-500">Resumen rápido de tus torneos administrados.</p>
-          </div>
-          <Link
-            href="/admin/tournaments"
-            className="px-3 py-1.5 rounded-lg border text-sm text-neutral-700 hover:bg-neutral-50"
-          >
-            Ver todos
-          </Link>
-        </div>
-
-        {tournaments.length === 0 ? (
-          <p className="text-sm text-neutral-500">Aún no hay torneos para mostrar.</p>
-        ) : (
-          <div className="grid gap-3">
-            {tournaments.map((tournament) => (
-              <div key={tournament.id} className="rounded-lg border border-neutral-200 p-3 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-neutral-900">{tournament.name}</p>
-                  <p className="text-xs text-neutral-500">Estado: {tournamentStatusLabel[tournament.status]}</p>
-                </div>
-                <Link
-                  href={`/admin/tournaments/${tournament.id}`}
-                  className="text-sm text-orange-600 hover:text-orange-700"
-                >
-                  Ver detalle
-                </Link>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
 
       <div className="grid gap-4">
         {groups.map((group) => (

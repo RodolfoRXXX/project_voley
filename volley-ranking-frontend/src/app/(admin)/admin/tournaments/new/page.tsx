@@ -204,7 +204,7 @@ export default function NewTournamentPage() {
     <main className="max-w-3xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">
       <AdminBreadcrumb
         items={[
-          { label: "Gestión", href: "/admin/groups" },
+          { label: "Mis grupos", href: "/admin/groups" },
           { label: "Torneos", href: "/admin/tournaments" },
           { label: "Nuevo torneo" },
         ]}

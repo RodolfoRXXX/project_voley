@@ -105,7 +105,7 @@ export default function NewMatchPage() {
 
       <AdminBreadcrumb
         items={[
-          { label: "Gestión" },
+          { label: "Mis grupos" },
           { label: "Grupos", href: "/admin/groups" },
           { label: "Nuevo partido" },
         ]}

@@ -14,6 +14,7 @@ import UserAvatar from "../ui/avatar/UserAvatar";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 import ThemeSwitch from "@/components/layout/ThemeSwitch";
 import { useThemeMode } from "@/hooks/useThemeMode";
+import { useEffect, useState } from "react";
 
 export default function AppSidebar() {
   const pathname = usePathname();
@@ -21,38 +22,50 @@ export default function AppSidebar() {
   const router = useRouter();
   const { confirm } = useConfirm();
   const { theme, themeLabel, toggleTheme } = useThemeMode();
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
   const isAdmin = userDoc?.roles === "admin";
 
   const navItems = [
     {
       label: "Inicio",
-      href: "/dashboard"
+      href: "/dashboard",
     },
     {
       label: "Grupos",
-      href: "/grupos"
+      href: "/grupos",
     },
     {
       label: "Torneos",
-      href: "/torneos"
+      href: "/torneos",
     },
     {
-      label: "Perfil",
-      href: "/profile"
+      label: "Mi perfil",
+      children: [
+        { label: "Mi info", href: "/profile" },
+        { label: "Mis grupos", href: "/profile/groups" },
+        { label: "Mis torneos", href: "/profile/tournaments" },
+      ],
+    },
+    {
+      label: "Mi gestión",
+      adminOnly: true,
+      children: [
+        { label: "Grupos", href: "/admin/groups" },
+        { label: "Torneos", href: "/admin/tournaments" },
+      ],
     },
   ];
 
-  if (isAdmin) {
-    navItems.push({
-      label: "Gestión",
-      href: "/admin/groups",
-    });
-    navItems.push({
-      label: "Mis torneos",
-      href: "/admin/tournaments",
-    });
-  }
+  useEffect(() => {
+    if (pathname.startsWith("/profile")) {
+      setOpenMenus((prev) => ({ ...prev, "Mi perfil": true }));
+    }
+
+    if (pathname.startsWith("/admin")) {
+      setOpenMenus((prev) => ({ ...prev, "Mi gestión": true }));
+    }
+  }, [pathname]);
 
   const logout = async () => {
     const ok = await confirm({
@@ -66,6 +79,13 @@ export default function AppSidebar() {
 
     await signOut(auth);
     router.replace("/dashboard");
+  };
+
+  const toggleMenu = (label: string) => {
+    setOpenMenus((prev) => ({
+      ...prev,
+      [label]: !prev[label],
+    }));
   };
 
   return (
@@ -85,21 +105,68 @@ export default function AppSidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          const isActive = pathname.startsWith(item.href);
+          if (item.adminOnly && !isAdmin) return null;
+
+          const isOpen = openMenus[item.label];
+
+          // ITEM SIMPLE
+          if (!item.children) {
+            const isActive = pathname.startsWith(item.href);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 rounded-lg px-4 py-2 text-sm font-medium transition-colors
+                  ${
+                    isActive
+                      ? "bg-orange-500/10 text-orange-600"
+                      : "hover:bg-[var(--surface-muted)] text-[var(--text-muted)] hover:text-[var(--foreground)]"
+                  }
+                `}
+              >
+                {item.label}
+              </Link>
+            );
+          }
+
+          // ITEM CON SUBMENU
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 rounded-lg px-4 py-2 text-sm font-medium transition-colors
-                ${
-                  isActive
-                    ? "bg-orange-500/10 text-orange-600"
-                    : "hover:bg-[var(--surface-muted)] text-[var(--text-muted)] hover:text-[var(--foreground)]"
-                }
-              `}
-            >
-              {item.label}
-            </Link>
+            <div key={item.label}>
+              <button
+                onClick={() => toggleMenu(item.label)}
+                className="w-full flex items-center justify-between rounded-lg px-4 py-2 text-sm font-medium text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)] transition-colors"
+              >
+                {item.label}
+                <span className={`transition-transform ${isOpen ? "rotate-90" : ""}`}>
+                  ▶
+                </span>
+              </button>
+
+              {isOpen && (
+                <div className="ml-4 mt-1 space-y-1">
+                  {item.children.map((sub) => {
+                    const isActive = pathname.startsWith(sub.href);
+
+                    return (
+                      <Link
+                        key={sub.href}
+                        href={sub.href}
+                        className={`block rounded-lg px-4 py-2 text-sm transition-colors
+                          ${
+                            isActive
+                              ? "bg-orange-500/10 text-orange-600"
+                              : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+                          }
+                        `}
+                      >
+                        {sub.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
       </nav>

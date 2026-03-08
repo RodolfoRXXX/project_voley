@@ -97,7 +97,7 @@ export default function NewGroupPage() {
 
       <AdminBreadcrumb
         items={[
-          { label: "Gestión"},
+          { label: "Mis grupos"},
           { label: "Grupos", href: "/admin/groups" },
           { label: "Nuevo grupo" },
         ]}

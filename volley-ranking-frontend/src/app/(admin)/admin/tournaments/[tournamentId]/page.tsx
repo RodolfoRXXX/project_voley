@@ -9,6 +9,7 @@ import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 import { Tournament, tournamentStatusLabel } from "@/types/tournament";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
+import { collection, getDocs, query, where } from "firebase/firestore";
 
 const openRegistrationsFn = httpsCallable(functions, "openTournamentRegistrations");
 const addTournamentAdminFn = httpsCallable(functions, "addTournamentAdmin");
@@ -35,6 +36,9 @@ export default function AdminTournamentDetailPage() {
     paymentForPlayer: 0,
   });
 
+  const [registrations, setRegistrations] = useState<any[]>([]);
+  const [loadingRegistrations, setLoadingRegistrations] = useState(false);
+
   const canEdit =
   tournament?.status === "draft" ||
   tournament?.status === "inscripciones_abiertas";
@@ -53,8 +57,30 @@ export default function AdminTournamentDetailPage() {
     setLoading(false);
   }, [tournamentId]);
 
+  const loadRegistrations = useCallback(async () => {
+    if (!tournamentId) return;
+
+    setLoadingRegistrations(true);
+
+    const q = query(
+      collection(db, "tournamentRegistrations"),
+      where("tournamentId", "==", tournamentId)
+    );
+
+    const snap = await getDocs(q);
+
+    const data = snap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    setRegistrations(data);
+    setLoadingRegistrations(false);
+  }, [tournamentId]);
+
   useEffect(() => {
     loadTournament();
+    loadRegistrations();
   }, [loadTournament]);
 
   const startEdit = () => {
@@ -132,6 +158,10 @@ export default function AdminTournamentDetailPage() {
     }
   };
 
+  const pendingRegistrations = registrations.filter(r => r.status === "pendiente");
+  const acceptedRegistrations = registrations.filter(r => r.status === "aceptado");
+  const rejectedRegistrations = registrations.filter(r => r.status === "rechazado");
+
   if (loading) {
     return <p className="text-sm text-neutral-500">Cargando torneo...</p>;
   }
@@ -144,7 +174,7 @@ export default function AdminTournamentDetailPage() {
     <main className="max-w-4xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">
       <AdminBreadcrumb
         items={[
-          { label: "Gestión", href: "/admin/groups" },
+          { label: "Mis torneos" },
           { label: "Torneos", href: "/admin/tournaments" },
           { label: tournament.name },
         ]}
@@ -185,18 +215,6 @@ export default function AdminTournamentDetailPage() {
           </button>
         )}
       </header>
-
-      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
-        <h2 className="text-base font-semibold text-neutral-900">Información del torneo</h2>
-        <div className="text-sm text-neutral-600 grid sm:grid-cols-2 gap-2">
-          <p>Formato: <b>{tournament.format}</b></p>
-          <p>Deporte: <b>{tournament.sport}</b></p>
-          <p>Equipos mínimos: <b>{tournament.minTeams}</b></p>
-          <p>Equipos máximos: <b>{tournament.maxTeams}</b></p>
-          <p>Equipos aceptados: <b>{tournament.acceptedTeamsCount || 0}</b></p>
-          <p>Admins asignados: <b>{tournament.adminIds?.length || 0}</b></p>
-        </div>
-      </section>
 
       {editing && (
         <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
@@ -292,6 +310,100 @@ export default function AdminTournamentDetailPage() {
           </form>
         </section>
       )}
+
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
+        <h2 className="text-base font-semibold text-neutral-900">Información del torneo</h2>
+        <div className="text-sm text-neutral-600 grid sm:grid-cols-2 gap-2">
+          <p>Formato: <b>{tournament.format}</b></p>
+          <p>Deporte: <b>{tournament.sport}</b></p>
+          <p>Equipos mínimos: <b>{tournament.minTeams}</b></p>
+          <p>Equipos máximos: <b>{tournament.maxTeams}</b></p>
+          <p>Equipos aceptados: <b>{tournament.acceptedTeamsCount || 0}</b></p>
+          <p>Admins asignados: <b>{tournament.adminIds?.length || 0}</b></p>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-6">
+        <h2 className="text-base font-semibold text-neutral-900">
+          Equipos inscriptos
+        </h2>
+
+        {loadingRegistrations && (
+          <p className="text-sm text-neutral-500">Cargando registraciones...</p>
+        )}
+
+        {!loadingRegistrations && registrations.length === 0 && (
+          <p className="text-sm text-neutral-500">
+            Todavía no hay equipos registrados en este torneo.
+          </p>
+        )}
+
+        {/* Pendientes */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-yellow-700">
+            Pendientes ({pendingRegistrations.length})
+          </h3>
+
+          {pendingRegistrations.map((r) => (
+            <div
+              key={r.id}
+              className="flex justify-between items-center border rounded-lg px-3 py-2 text-sm"
+            >
+              <span>Grupo: {r.groupId}</span>
+
+              <button
+                className="text-xs px-2 py-1 rounded border hover:bg-neutral-50"
+              >
+                Ver equipo
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Aceptados */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-green-700">
+            Aceptados ({acceptedRegistrations.length})
+          </h3>
+
+          {acceptedRegistrations.map((r) => (
+            <div
+              key={r.id}
+              className="flex justify-between items-center border rounded-lg px-3 py-2 text-sm"
+            >
+              <span>Grupo: {r.groupId}</span>
+
+              <button
+                className="text-xs px-2 py-1 rounded border hover:bg-neutral-50"
+              >
+                Ver equipo
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Rechazados */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-red-700">
+            Rechazados ({rejectedRegistrations.length})
+          </h3>
+
+          {rejectedRegistrations.map((r) => (
+            <div
+              key={r.id}
+              className="flex justify-between items-center border rounded-lg px-3 py-2 text-sm"
+            >
+              <span>Grupo: {r.groupId}</span>
+
+              <button
+                className="text-xs px-2 py-1 rounded border hover:bg-neutral-50"
+              >
+                Ver equipo
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
         <h2 className="text-base font-semibold text-neutral-900">Agregar admin al torneo</h2>

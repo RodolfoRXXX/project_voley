@@ -44,7 +44,7 @@ export default function AdminTournamentsPage() {
 
   return (
     <main className="max-w-4xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">
-      <AdminBreadcrumb items={[{ label: "Gestión" }, { label: "Torneos" }]} />
+      <AdminBreadcrumb items={[{ label: "Mis torneos" }, { label: "Torneos" }]} />
 
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">

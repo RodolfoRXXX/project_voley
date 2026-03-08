@@ -272,7 +272,7 @@ export default function AdminGroupPage() {
 
       <AdminBreadcrumb
         items={[
-          { label: "Gestión"},
+          { label: "Mis grupos"},
           { label: "Grupos", href:"/admin/groups"},
           { label: group.nombre},
         ]}

@@ -103,7 +103,7 @@ export default function TorneosPage() {
               </ActionButton>
 
               <Link
-                href={`/torneos/${tournament.id}`}
+                href={`/tournaments/${tournament.id}`}
                 className="text-sm font-medium text-orange-600 hover:text-orange-700"
               >
                 Ver detalle →

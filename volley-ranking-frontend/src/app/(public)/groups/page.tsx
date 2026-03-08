@@ -276,6 +276,15 @@ export default function GruposPage() {
     }
   };
 
+
+  const getGroupDetailHref = (group: PublicGroup) => {
+    if (getJoinState(group) === "member") {
+      return `/profile/groups/${group.id}`;
+    }
+
+    return `/groups/${group.id}`;
+  };
+
   const getButtonConfig = (group: PublicGroup) => {
     const state = getJoinState(group);
     if (state === "member")
@@ -388,7 +397,7 @@ export default function GruposPage() {
                       </ActionButton>
 
                       <Link
-                        href={`/grupos/${group.id}`}
+                        href={getGroupDetailHref(group)}
                         className={`text-sm transition-colors ${
                           canViewDetail(group)
                             ? "text-neutral-500 hover:text-neutral-800"
@@ -489,7 +498,7 @@ export default function GruposPage() {
                       </ActionButton>
 
                       <Link
-                        href={`/grupos/${group.id}`}
+                        href={getGroupDetailHref(group)}
                         className={`text-sm transition-colors ${
                           canViewDetail(group)
                             ? "text-neutral-500 hover:text-neutral-800"

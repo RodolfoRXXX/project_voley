@@ -33,11 +33,11 @@ export default function AppSidebar() {
     },
     {
       label: "Grupos",
-      href: "/grupos",
+      href: "/groups",
     },
     {
       label: "Torneos",
-      href: "/torneos",
+      href: "/tournaments",
     },
     {
       label: "Mi perfil",

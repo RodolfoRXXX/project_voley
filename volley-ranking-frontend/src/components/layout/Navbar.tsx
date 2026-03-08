@@ -58,8 +58,8 @@ export default function Navbar() {
 
   const navItems = [
     { label: "Inicio", href: "/dashboard" },
-    { label: "Grupos", href: "/grupos" },
-    { label: "Torneos", href: "/torneos" },
+    { label: "Grupos", href: "/groups" },
+    { label: "Torneos", href: "/tournaments" },
 
     {
       label: "Mi perfil",

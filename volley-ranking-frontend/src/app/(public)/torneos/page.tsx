@@ -1,19 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
-import { db, functions } from "@/lib/firebase";
+import { db, } from "@/lib/firebase";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { Tournament, tournamentStatusLabel } from "@/types/tournament";
-import { useAuth } from "@/hooks/useAuth";
-import useToast from "@/components/ui/toast/useToast";
-import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
-
-const requestTournamentRegistrationFn = httpsCallable(functions, "requestTournamentRegistration");
-
-type GroupOption = { id: string; nombre: string };
+import RegisterTournamentModal from "@/components/registerTournamentModal/RegisterTournamentModal";
+import { ActionButton } from "@/components/ui/action/ActionButton";
 
 function TournamentsSkeleton() {
   return (
@@ -36,16 +30,10 @@ function TournamentsSkeleton() {
 }
 
 export default function TorneosPage() {
-  const { firebaseUser, userDoc } = useAuth();
-  const { showToast } = useToast();
 
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [managedGroups, setManagedGroups] = useState<GroupOption[]>([]);
-  const [selectedGroupByTournament, setSelectedGroupByTournament] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [joiningTournamentId, setJoiningTournamentId] = useState<string | null>(null);
-
-  const isAdmin = userDoc?.roles === "admin";
+  const [registerModalTournamentId, setRegisterModalTournamentId] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -68,47 +56,12 @@ export default function TorneosPage() {
     load();
   }, []);
 
-  useEffect(() => {
-    const loadManagedGroups = async () => {
-      if (!firebaseUser || !isAdmin) {
-        setManagedGroups([]);
-        return;
-      }
+  const openRegisterModal = (tournamentId: string) => {
+    setRegisterModalTournamentId(tournamentId);
+  };
 
-      const groupsRef = collection(db, "groups");
-      const groupsSnap = await getDocs(
-        query(groupsRef, where("adminIds", "array-contains", firebaseUser.uid))
-      );
-
-      const options = groupsSnap.docs.map((groupDoc) => ({
-        id: groupDoc.id,
-        nombre: (groupDoc.data().nombre as string) || "Grupo sin nombre",
-      }));
-
-      setManagedGroups(options);
-    };
-
-    loadManagedGroups();
-  }, [firebaseUser, isAdmin]);
-
-  const defaultGroupId = useMemo(() => managedGroups[0]?.id || "", [managedGroups]);
-
-  const requestJoin = async (tournamentId: string) => {
-    const groupId = selectedGroupByTournament[tournamentId] || defaultGroupId;
-    if (!groupId) {
-      showToast({ type: "error", message: "Primero elegí un grupo para inscribir" });
-      return;
-    }
-
-    setJoiningTournamentId(tournamentId);
-    try {
-      await requestTournamentRegistrationFn({ tournamentId, groupId });
-      showToast({ type: "success", message: "Solicitud de inscripción enviada" });
-    } catch (err) {
-      handleFirebaseError(err, showToast, "No se pudo solicitar inscripción");
-    } finally {
-      setJoiningTournamentId(null);
-    }
+  const closeRegisterModal = () => {
+    setRegisterModalTournamentId(null);
   };
 
   if (loading) return <TournamentsSkeleton />;
@@ -139,45 +92,31 @@ export default function TorneosPage() {
               <span>Equipos: <b>{tournament.acceptedTeamsCount || 0}/{tournament.maxTeams}</b></span>
             </div>
 
-            {isAdmin ? (
-              <div className="space-y-2 pt-1">
-                <label className="text-xs text-neutral-600">Inscribir uno de tus grupos</label>
-                <div className="flex gap-2">
-                  <select
-                    className="flex-1 rounded-lg border px-2 py-1.5 text-sm"
-                    value={selectedGroupByTournament[tournament.id] || defaultGroupId}
-                    onChange={(e) =>
-                      setSelectedGroupByTournament((prev) => ({
-                        ...prev,
-                        [tournament.id]: e.target.value,
-                      }))
-                    }
-                  >
-                    {managedGroups.length === 0 && <option value="">No tenés grupos administrados</option>}
-                    {managedGroups.map((group) => (
-                      <option key={group.id} value={group.id}>{group.nombre}</option>
-                    ))}
-                  </select>
-                  <button
-                    disabled={joiningTournamentId === tournament.id || managedGroups.length === 0}
-                    onClick={() => requestJoin(tournament.id)}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-60"
-                  >
-                    {joiningTournamentId === tournament.id ? "Enviando..." : "Unirme"}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <Link
-                href="/grupos"
-                className="inline-flex text-sm font-medium text-orange-600 hover:text-orange-700"
+            <div className="flex items-center justify-between pt-2">
+              <ActionButton
+                onClick={() => openRegisterModal(tournament.id)}
+                variant="success"
+                compact
+                disabled={tournament.status !== "inscripciones_abiertas"}
               >
-                Ver grupos →
+                Inscribirme
+              </ActionButton>
+
+              <Link
+                href={`/torneos/${tournament.id}`}
+                className="text-sm font-medium text-orange-600 hover:text-orange-700"
+              >
+                Ver detalle →
               </Link>
-            )}
+            </div>
           </article>
         ))}
       </div>
+      <RegisterTournamentModal
+        open={registerModalTournamentId !== null}
+        onClose={closeRegisterModal}
+        tournamentId={registerModalTournamentId}
+      />
     </main>
   );
 }

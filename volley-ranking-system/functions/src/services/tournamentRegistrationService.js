@@ -7,7 +7,8 @@ const {
 } = require("firebase-admin/firestore");
 
 
-async function requestTournamentRegistration({ uid, tournamentId, groupId }) {
+async function requestTournamentRegistration({ uid, tournamentId, groupId, nameTeam }) {
+
   if (typeof tournamentId !== "string" || !tournamentId) {
     throw new functions.https.HttpsError("invalid-argument", "tournamentId inválido");
   }
@@ -16,13 +17,25 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId }) {
     throw new functions.https.HttpsError("invalid-argument", "groupId inválido");
   }
 
+  if (typeof nameTeam !== "string" || !nameTeam.trim()) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "El nombre del equipo es obligatorio"
+    );
+  }
+
+  const cleanTeamName = nameTeam.trim();
+
   await assertGroupAdmin(groupId, uid);
 
   const tournamentRef = db.collection("tournaments").doc(tournamentId);
+  const groupRef = db.collection("groups").doc(groupId);
+
   const registrationId = `${tournamentId}_${groupId}`;
   const registrationRef = db.collection("tournamentRegistrations").doc(registrationId);
 
   await db.runTransaction(async (trx) => {
+
     const tournamentSnap = await trx.get(tournamentRef);
     if (!tournamentSnap.exists) {
       throw new functions.https.HttpsError("not-found", "El torneo no existe");
@@ -37,6 +50,11 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId }) {
       );
     }
 
+    const groupSnap = await trx.get(groupRef);
+    if (!groupSnap.exists) {
+      throw new functions.https.HttpsError("not-found", "El grupo no existe");
+    }
+
     const existingRegistration = await trx.get(registrationRef);
     if (existingRegistration.exists) {
       throw new functions.https.HttpsError(
@@ -48,6 +66,7 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId }) {
     trx.set(registrationRef, {
       tournamentId,
       groupId,
+      nameTeam: cleanTeamName,
       status: "pendiente",
       paymentStatus: "pendiente",
       paymentAmount: 0,
@@ -55,6 +74,7 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId }) {
       updatedAt: FieldValue.serverTimestamp(),
       decidedByUserId: null,
     });
+
   });
 
   return { registrationId };

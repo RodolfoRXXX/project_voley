@@ -6,10 +6,12 @@ module.exports = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("unauthenticated", "No autenticado");
   }
 
-  const { tournamentId, groupId } = data;
+  const { tournamentId, groupId, nameTeam } = data;
+
   return requestTournamentRegistration({
     uid: context.auth.uid,
     tournamentId,
     groupId,
+    nameTeam,
   });
 });

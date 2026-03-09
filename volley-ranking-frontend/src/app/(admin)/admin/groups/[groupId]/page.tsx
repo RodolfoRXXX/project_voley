@@ -267,12 +267,15 @@ export default function AdminGroupPage() {
           joinApproval: formData.joinApproval,
         });
 
-        setGroup({
-          ...group,
-          nombre: formData.nombre,
-          descripcion: formData.descripcion,
-          visibility: formData.visibility,
-          joinApproval: formData.joinApproval,
+        setGroup((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            nombre: formData.nombre,
+            descripcion: formData.descripcion,
+            visibility: formData.visibility,
+            joinApproval: formData.joinApproval,
+          };
         });
 
         setEditMode(false);
@@ -293,9 +296,12 @@ export default function AdminGroupPage() {
           activo: !group.activo,
         });
 
-        setGroup({
-          ...group,
-          activo: !group.activo,
+        setGroup((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            activo: !prev.activo,
+          };
         });
       },
       {

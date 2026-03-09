@@ -50,8 +50,12 @@ export default function ProfileGroupsPage() {
         where("adminIds", "array-contains", firebaseUser.uid)
       );
 
-      const [memberSnap, adminSnap] = await Promise.all([getDocs(byMember), getDocs(byAdmin)]);
-      const merged = new Map<string, GroupItem>();
+      const [memberSnap, adminSnap] = await Promise.all([
+        getDocs(byMember),
+        getDocs(byAdmin),
+      ]);
+
+      const merged = new Map<string, any>();
 
       [...memberSnap.docs, ...adminSnap.docs].forEach((docItem) => {
         const data = docItem.data();
@@ -63,18 +67,46 @@ export default function ProfileGroupsPage() {
           visibility: data.visibility === "private" ? "private" : "public",
           joinApproval: !!data.joinApproval,
           totalMatches: data.totalMatches ?? data.partidosTotales ?? 0,
-          owner: data.owner
-            ? {
-                name: data.owner.name || "No disponible",
-                photoURL: data.owner.photoURL || null,
-              }
-            : null,
+          ownerId: data.ownerId || null,
           memberIds: Array.isArray(data.memberIds) ? data.memberIds : [],
           adminIds: Array.isArray(data.adminIds) ? data.adminIds : [],
         });
       });
 
-      setGroups(Array.from(merged.values()));
+      const groupsArray = Array.from(merged.values());
+
+      // cargar owners
+      const ownerIds = [...new Set(groupsArray.map((g) => g.ownerId).filter(Boolean))];
+
+      let ownersMap = new Map();
+
+      if (ownerIds.length) {
+        const q = query(
+          collection(db, "users"),
+          where("__name__", "in", ownerIds)
+        );
+
+        const usersSnap = await getDocs(q);
+
+        usersSnap.forEach((doc) => {
+          ownersMap.set(doc.id, doc.data());
+        });
+      }
+
+      const finalGroups: GroupItem[] = groupsArray.map((g) => ({
+        ...g,
+        owner: g.ownerId
+          ? {
+              name:
+                ownersMap.get(g.ownerId)?.name ||
+                ownersMap.get(g.ownerId)?.displayName ||
+                "Usuario",
+              photoURL: ownersMap.get(g.ownerId)?.photoURL || null,
+            }
+          : null,
+      }));
+
+      setGroups(finalGroups);
       setLoading(false);
     };
 

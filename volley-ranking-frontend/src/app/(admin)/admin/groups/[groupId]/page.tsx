@@ -25,6 +25,12 @@ import Link from "next/link";
 import { formatDateTime } from "@/lib/date";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
+import UserAvatar from "@/components/ui/avatar/UserAvatar";
+import StatusPill from "@/components/ui/status/StatusPill";
+import AddMemberModal from "@/components/addMemberModal/AddMemberModal";
+import { SearchableMember } from "@/components/addMemberModal/AddMemberModal.types";
+import useToast from "@/components/ui/toast/useToast";
+import { readJsonSafely } from "@/lib/http/readJsonSafely";
 
 const functions = getFunctions(app);
 const editGroup = httpsCallable(functions, "editGroup");
@@ -108,6 +114,9 @@ export default function AdminGroupPage() {
   const [matches, setMatches] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  const [actingKey, setActingKey] = useState<string | null>(null);
+  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
@@ -266,6 +275,118 @@ export default function AdminGroupPage() {
       joinApproval: group.joinApproval ?? true,
     });
   };
+
+  /* =====================
+     Agregado
+  ===================== */
+
+  //helper para POST autenticado
+
+  const postWithAuth = async (url: string) => {
+    if (!firebaseUser) throw new Error("Debes iniciar sesión");
+
+    const token = await firebaseUser.getIdToken();
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const payload = (await readJsonSafely(res)) as { error?: string } | null;
+
+    if (!res.ok) {
+      throw new Error(payload?.error || "No se pudo completar la acción");
+    }
+
+    return payload;
+  };
+
+  //eliminar integrante
+
+  const removeMember = async (userId: string) => {
+    try {
+      setActingKey(`remove-${userId}`);
+
+      await postWithAuth(
+        `/api/groups/${groupId}/members/${userId}/remove`
+      );
+
+    } finally {
+      setActingKey(null);
+    }
+  };
+
+  //buscar usuarios para agregar
+
+  const searchUsersToAdd = async (query: string) => {
+    if (!firebaseUser) return [];
+
+    const token = await firebaseUser.getIdToken();
+
+    const res = await fetch(
+      `/api/groups/${groupId}/members/search?q=${encodeURIComponent(query)}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    const payload = (await readJsonSafely(res)) as
+      | { users?: SearchableMember[] }
+      | null;
+
+    return payload?.users || [];
+  };
+
+  //agregar integrante
+
+  const addMember = async (userId: string) => {
+    try {
+      setActingKey(`add-${userId}`);
+
+      await postWithAuth(
+        `/api/groups/${groupId}/members/${userId}/add`
+      );
+
+    } finally {
+      setActingKey(null);
+    }
+  };
+
+  //aceptar / rechazar solicitudes
+
+  const resolveRequest = async (
+    userId: string,
+    action: "approve" | "reject"
+  ) => {
+    try {
+      setActingKey(`${action}-${userId}`);
+
+      await postWithAuth(
+        `/api/groups/${groupId}/requests/${userId}/${action}`
+      );
+
+    } finally {
+      setActingKey(null);
+    }
+  };
+
+  //remover admin
+
+  const removeAdmin = async (userId: string) => {
+    try {
+      setActingKey(`remove-admin-${userId}`);
+
+      await postWithAuth(
+        `/api/groups/${groupId}/admins/${userId}/remove`
+      );
+
+    } finally {
+      setActingKey(null);
+    }
+  };
+
 
   return (
     <main className="max-w-3xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">
@@ -427,6 +548,79 @@ export default function AdminGroupPage() {
         </section>
       )}
 
+      {/* ================= MEMBERS ================= */}
+
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
+
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-neutral-900">
+            Integrantes
+          </h2>
+
+          <ActionButton
+            variant="secondary"
+            compact
+            onClick={() => setIsAddMemberModalOpen(true)}
+          >
+            + Agregar integrante
+          </ActionButton>
+        </div>
+
+        {!group.members || group.members.length === 0 ? (
+          <p className="text-sm text-neutral-500">
+            No hay integrantes en el grupo
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {(group.members ?? []).map((member: any) => (
+              <li
+                key={member.id}
+                className="rounded-xl border border-neutral-200 p-3 flex items-center justify-between"
+              >
+
+                <div className="flex items-center gap-3">
+
+                  <UserAvatar
+                    nombre={member.name}
+                    photoURL={member.photoURL}
+                    size={36}
+                  />
+
+                  <div>
+                    <p className="text-sm font-medium text-neutral-900">
+                      {member.name}
+                    </p>
+
+                    <p className="text-xs text-neutral-500">
+                      {member.positions?.join(" · ") || "Sin posiciones"}
+                    </p>
+                  </div>
+
+                </div>
+
+                {member.isAdmin ? (
+                  <StatusPill
+                    label="Admin"
+                    variant="warning"
+                  />
+                ) : (
+                  <ActionButton
+                    onClick={() => removeMember(member.id)}
+                    loading={actingKey === `remove-${member.id}`}
+                    variant="danger_outline"
+                    compact
+                  >
+                    Eliminar
+                  </ActionButton>
+                )}
+
+              </li>
+            ))}
+          </ul>
+        )}
+
+      </section>
+
       {/* Matches */}
       <section>
         <div className="flex justify-between items-center mb-4">
@@ -490,6 +684,13 @@ export default function AdminGroupPage() {
           </div>
         )}
       </section>
+
+      <AddMemberModal
+        open={isAddMemberModalOpen}
+        onClose={() => setIsAddMemberModalOpen(false)}
+        onSearch={searchUsersToAdd}
+        onAddMember={addMember}
+      />
     </main>
   );
 }

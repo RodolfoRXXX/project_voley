@@ -287,13 +287,17 @@ export default function AdminGroupPage() {
     );
   };
 
-  const toggleActivo = () =>
-    run(
+  const toggleActivo = () => {
+    if (!group) return;
+
+    const currentActivo = !!group.activo;
+
+    return run(
       "toggle-activo",
       async () => {
         await toggleGroupActivo({
           groupId: group.id,
-          activo: !group.activo,
+          activo: !currentActivo,
         });
 
         setGroup((prev) => {
@@ -306,17 +310,18 @@ export default function AdminGroupPage() {
       },
       {
         confirm: {
-          message: group.activo
+          message: currentActivo
             ? "¿Seguro que querés desactivar este grupo?"
             : "¿Seguro que querés reactivar este grupo?",
-          confirmText: group.activo ? "Desactivar" : "Reactivar",
+          confirmText: currentActivo ? "Desactivar" : "Reactivar",
           cancelText: "Cancelar",
-          variant: group.activo ? "danger" : "success",
+          variant: currentActivo ? "danger" : "success",
         },
         successMessage: "Estado actualizado",
         errorMessage: "No se pudo actualizar el estado",
       }
     );
+  };
 
   if (loading || loadingData) return <GroupDetailSkeleton />;
   if (!group) return null;

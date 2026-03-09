@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, documentId } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
@@ -13,13 +13,13 @@ import StatusPill from "@/components/ui/status/StatusPill";
 
 type GroupItem = {
   id: string;
-  name: string;
+  nombre: string;
   description: string;
   visibility: "public" | "private";
   joinApproval: boolean;
   totalMatches: number;
   owner: {
-    name: string;
+    nombre: string;
     photoURL?: string | null;
   } | null;
   memberIds: string[];
@@ -62,7 +62,7 @@ export default function ProfileGroupsPage() {
 
         merged.set(docItem.id, {
           id: docItem.id,
-          name: data.name || data.nombre || "Grupo sin nombre",
+          nombre: data.name || data.nombre || "Grupo sin nombre",
           description: data.description || data.descripcion || "",
           visibility: data.visibility === "private" ? "private" : "public",
           joinApproval: !!data.joinApproval,
@@ -83,7 +83,7 @@ export default function ProfileGroupsPage() {
       if (ownerIds.length) {
         const q = query(
           collection(db, "users"),
-          where("__name__", "in", ownerIds)
+          where(documentId(), "in", ownerIds)
         );
 
         const usersSnap = await getDocs(q);
@@ -97,8 +97,8 @@ export default function ProfileGroupsPage() {
         ...g,
         owner: g.ownerId
           ? {
-              name:
-                ownersMap.get(g.ownerId)?.name ||
+              nombre:
+                ownersMap.get(g.ownerId)?.nombre ||
                 ownersMap.get(g.ownerId)?.displayName ||
                 "Usuario",
               photoURL: ownersMap.get(g.ownerId)?.photoURL || null,
@@ -134,7 +134,7 @@ export default function ProfileGroupsPage() {
       },
       {
         confirm: {
-          message: `¿Querés salir del grupo "${group.name}"?`,
+          message: `¿Querés salir del grupo "${group.nombre}"?`,
           confirmText: "Salir del grupo",
           variant: "danger",
         },
@@ -163,12 +163,12 @@ export default function ProfileGroupsPage() {
       {groups.length === 0 ? (
         <p className="text-sm text-neutral-500">Todavía no formas parte de ningún grupo.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {groups.map((group) => (
             <article key={group.id} className="rounded-md border border-neutral-200 bg-white p-4 flex flex-col h-full">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <h2 className="text-base font-semibold text-neutral-900">{group.name}</h2>
+                  <h2 className="text-base font-semibold text-neutral-900">{group.nombre}</h2>
                   <p className="text-sm text-neutral-600">{group.description || "Sin descripción"}</p>
                 </div>
 
@@ -200,13 +200,13 @@ export default function ProfileGroupsPage() {
 
                 <div className="flex items-center gap-3 pt-3 border-t">
                   <UserAvatar
-                    nombre={group.owner?.name}
+                    nombre={group.owner?.nombre}
                     photoURL={group.owner?.photoURL}
                     size={36}
                   />
                   <div>
                     <p className="text-sm font-medium text-neutral-900">
-                      {group.owner?.name || "No disponible"}
+                      {group.owner?.nombre || "No disponible"}
                     </p>
                     <p className="text-xs text-neutral-500">Admin principal</p>
                   </div>

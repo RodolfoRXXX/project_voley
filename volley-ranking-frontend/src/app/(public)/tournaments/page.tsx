@@ -16,7 +16,7 @@ function TournamentsSkeleton() {
         <Skeleton className="h-8 w-40" />
         <SkeletonSoft className="h-4 w-80" />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {[1, 2, 3, 4].map((idx) => (
           <div key={idx} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
             <Skeleton className="h-5 w-1/2" />
@@ -77,7 +77,7 @@ export default function TorneosPage() {
         <p className="text-sm text-neutral-500">No hay torneos vigentes por el momento.</p>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {tournaments.map((tournament) => (
           <article key={tournament.id} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
             <div className="flex items-start justify-between gap-2">

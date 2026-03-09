@@ -43,7 +43,7 @@ export default function AdminTournamentsPage() {
   }
 
   return (
-    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
       <AdminBreadcrumb items={[{ label: "Mis torneos" }, { label: "Torneos" }]} />
 
       <div className="flex items-start justify-between gap-3">
@@ -62,7 +62,7 @@ export default function AdminTournamentsPage() {
 
       {tournaments.length === 0 && <p className="text-sm text-neutral-500">Todavía no tenés torneos.</p>}
 
-      <div className="grid gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {tournaments.map((tournament) => (
           <article key={tournament.id} className="rounded-xl border border-neutral-200 bg-white p-4">
             <div className="flex justify-between items-start gap-4">

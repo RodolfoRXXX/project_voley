@@ -85,7 +85,7 @@ const canAdminGroup = (
 
 function GroupDetailSkeleton() {
   return (
-    <main className="max-w-3xl mx-auto mt-6 sm:mt-10 space-y-6">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 space-y-6">
 
       {/* Breadcrumb */}
       <SkeletonSoft className="h-4 w-56" />
@@ -550,7 +550,7 @@ export default function AdminGroupPage() {
   const pendingAdminRequests: GroupMember[] = Array.isArray(group.pendingAdminRequests) ? group.pendingAdminRequests : [];
 
   return (
-    <main className="max-w-3xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
 
       <AdminBreadcrumb
         items={[

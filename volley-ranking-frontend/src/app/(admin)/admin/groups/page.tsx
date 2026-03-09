@@ -32,7 +32,7 @@ interface Group {
 
 function GroupsSkeleton() {
   return (
-    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 space-y-6">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 space-y-6">
 
       {/* Breadcrumb */}
       <SkeletonSoft className="h-4 w-40" />
@@ -48,11 +48,11 @@ function GroupsSkeleton() {
       </div>
 
       {/* Cards */}
-      <div className="grid gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="rounded-xl border border-neutral-200 bg-white p-4 flex justify-between items-center"
+            className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col h-full"
           >
             <div className="space-y-2 w-full">
               <Skeleton className="h-4 w-1/3" />
@@ -64,7 +64,7 @@ function GroupsSkeleton() {
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="mt-auto pt-4 flex gap-2">
               <Skeleton className="h-8 w-14 rounded-lg" />
               <Skeleton className="h-8 w-24 rounded-lg" />
             </div>
@@ -116,7 +116,7 @@ export default function AdminGroupsPage() {
   if (authLoading || loading) return <GroupsSkeleton />;
 
   return (
-    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
 
       <AdminBreadcrumb
         items={[
@@ -147,11 +147,11 @@ export default function AdminGroupsPage() {
         <p className="text-gray-500">No hay grupos creados.</p>
       )}
 
-      <div className="grid gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {groups.map((group) => (
           <div
             key={group.id}
-            className="rounded-xl border border-neutral-200 bg-white p-4 flex justify-between items-center"
+            className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col h-full"
           >
             <div className="space-y-1">
               <h2 className="text-base font-semibold text-neutral-900">
@@ -175,7 +175,7 @@ export default function AdminGroupsPage() {
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="mt-auto pt-4 flex gap-2">
               <Link
                 href={`/admin/groups/${group.id}`}
                 className="flex items-center px-3 py-1.5 rounded-lg border text-sm text-neutral-700 dark:text-[var(--foreground)] hover:bg-neutral-50 dark:hover:bg-slate-800/60 transition-colors"

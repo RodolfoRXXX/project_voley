@@ -171,7 +171,7 @@ export default function AdminTournamentDetailPage() {
   }
 
   return (
-    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
       <AdminBreadcrumb
         items={[
           { label: "Mis torneos" },

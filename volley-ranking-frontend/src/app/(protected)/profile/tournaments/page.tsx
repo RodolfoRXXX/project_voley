@@ -90,7 +90,7 @@ export default function ProfileTournamentsPage() {
       {rows.length === 0 ? (
         <p className="text-sm text-neutral-500">Todavía no tienes torneos asociados.</p>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {rows.map((row) => (
             <article key={row.tournament.id} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-2">
               <div className="flex items-center justify-between gap-3">

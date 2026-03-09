@@ -57,7 +57,7 @@ type GroupDetail = {
 
 function GroupDetailSkeleton() {
   return (
-    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
 
       {/* Back link */}
       <SkeletonSoft className="h-4 w-32" />
@@ -397,7 +397,7 @@ export default function GrupoPublicDetailPage() {
     !!firebaseUser?.uid && !!group?.pendingAdminRequestIds?.includes(firebaseUser.uid);
 
   return (
-    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
       <Link href="/groups" className="text-sm text-neutral-600 hover:underline">
         ← Volver a grupos
       </Link>

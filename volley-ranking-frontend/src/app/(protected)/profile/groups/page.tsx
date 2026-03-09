@@ -163,7 +163,7 @@ export default function ProfileGroupsPage() {
       {groups.length === 0 ? (
         <p className="text-sm text-neutral-500">Todavía no formas parte de ningún grupo.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {groups.map((group) => (
             <article key={group.id} className="rounded-md border border-neutral-200 bg-white p-4 flex flex-col h-full">
               <div className="flex items-start justify-between gap-4">

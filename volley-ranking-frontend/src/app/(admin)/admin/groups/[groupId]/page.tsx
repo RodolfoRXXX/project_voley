@@ -67,7 +67,10 @@ const functions = getFunctions(app);
 const editGroup = httpsCallable(functions, "editGroup");
 const toggleGroupActivo = httpsCallable(functions, "toggleGroupActivo");
 
-const canAdminGroup = (group: GroupData | null, uid?: string) => {
+const canAdminGroup = (
+  group: Pick<GroupData, "adminIds" | "adminId"> | null | undefined,
+  uid?: string
+) => {
   if (!uid) return false;
   if (Array.isArray(group?.adminIds)) {
     return group.adminIds.includes(uid);

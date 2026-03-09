@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   doc,
@@ -29,14 +29,45 @@ import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import StatusPill from "@/components/ui/status/StatusPill";
 import AddMemberModal from "@/components/addMemberModal/AddMemberModal";
 import { SearchableMember } from "@/components/addMemberModal/AddMemberModal.types";
-import useToast from "@/components/ui/toast/useToast";
 import { readJsonSafely } from "@/lib/http/readJsonSafely";
+
+type GroupMember = {
+  id: string;
+  name: string;
+  photoURL?: string | null;
+  positions?: string[];
+  isAdmin?: boolean;
+};
+
+type GroupMatch = {
+  id: string;
+  estado?: string;
+  horaInicio?: Date | null;
+  createdAt?: Date | null;
+  [key: string]: unknown;
+};
+
+type GroupData = {
+  id: string;
+  nombre: string;
+  descripcion?: string;
+  visibility?: "public" | "private";
+  joinApproval?: boolean;
+  activo?: boolean;
+  ownerId?: string;
+  adminId?: string;
+  adminIds?: string[];
+  members?: GroupMember[];
+  pendingRequests?: GroupMember[];
+  pendingAdminRequests?: GroupMember[];
+  [key: string]: unknown;
+};
 
 const functions = getFunctions(app);
 const editGroup = httpsCallable(functions, "editGroup");
 const toggleGroupActivo = httpsCallable(functions, "toggleGroupActivo");
 
-const canAdminGroup = (group: any, uid?: string) => {
+const canAdminGroup = (group: GroupData | null, uid?: string) => {
   if (!uid) return false;
   if (Array.isArray(group?.adminIds)) {
     return group.adminIds.includes(uid);
@@ -110,13 +141,12 @@ export default function AdminGroupPage() {
   const { firebaseUser, userDoc, loading } = useAuth();
   const { run, isLoading } = useAction();
 
-  const [group, setGroup] = useState<any>(null);
-  const [matches, setMatches] = useState<any[]>([]);
+  const [group, setGroup] = useState<GroupData | null>(null);
+  const [matches, setMatches] = useState<GroupMatch[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [actingKey, setActingKey] = useState<string | null>(null);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
-  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
@@ -133,6 +163,53 @@ export default function AdminGroupPage() {
     }
   }, [firebaseUser, userDoc, loading, router]);
 
+  const loadGroupDetails = useCallback(async () => {
+    if (!firebaseUser?.uid || !groupId) return;
+
+    const ref = doc(db, "groups", groupId);
+    const snap = await getDoc(ref);
+
+    if (!snap.exists()) {
+      router.replace("/dashboard");
+      return;
+    }
+
+    const data = snap.data();
+
+    if (!canAdminGroup(data, firebaseUser.uid)) {
+      router.replace("/admin/groups");
+      return;
+    }
+
+    setGroup({ id: snap.id, ...data });
+
+    setFormData({
+      nombre: data.nombre,
+      descripcion: data.descripcion || "",
+      visibility: data.visibility === "public" ? "public" : "private",
+      joinApproval: data.joinApproval ?? true,
+    });
+
+    const q = query(
+      collection(db, "matches"),
+      where("groupId", "==", groupId),
+      orderBy("horaInicio", "desc")
+    );
+
+    const snapMatches = await getDocs(q);
+    setMatches(
+      snapMatches.docs.map((d) => {
+        const matchData = d.data();
+        return {
+          id: d.id,
+          ...matchData,
+          horaInicio: matchData.horaInicio?.toDate?.() ?? null,
+          createdAt: matchData.createdAt?.toDate?.() ?? null,
+        };
+      })
+    );
+  }, [firebaseUser?.uid, groupId, router]);
+
   /* =====================
      Load data
   ===================== */
@@ -141,55 +218,14 @@ export default function AdminGroupPage() {
 
     const load = async () => {
       try {
-        const ref = doc(db, "groups", groupId);
-        const snap = await getDoc(ref);
-
-        if (!snap.exists()) {
-          router.replace("/dashboard");
-          return;
-        }
-
-        const data = snap.data();
-
-        if (!canAdminGroup(data, firebaseUser?.uid)) {
-          router.replace("/admin/groups");
-          return;
-        }
-
-        setGroup({ id: snap.id, ...data });
-
-        setFormData({
-          nombre: data.nombre,
-          descripcion: data.descripcion || "",
-          visibility: data.visibility === "public" ? "public" : "private",
-          joinApproval: data.joinApproval ?? true,
-        });
-
-        const q = query(
-          collection(db, "matches"),
-          where("groupId", "==", groupId),
-          orderBy("horaInicio", "desc") // 👈 más recientes primero
-        );
-
-        const snapMatches = await getDocs(q);
-        setMatches(
-          snapMatches.docs.map((d) => {
-            const data = d.data();
-            return {
-              id: d.id,
-              ...data,
-              horaInicio: data.horaInicio?.toDate?.() ?? null,
-              createdAt: data.createdAt?.toDate?.() ?? null,
-            };
-          })
-        );
+        await loadGroupDetails();
       } finally {
         setLoadingData(false);
       }
     };
 
     load();
-  }, [firebaseUser?.uid, groupId, loading, router]);
+  }, [firebaseUser?.uid, groupId, loading, loadGroupDetails]);
 
   /* =====================
      Actions
@@ -312,6 +348,7 @@ export default function AdminGroupPage() {
       await postWithAuth(
         `/api/groups/${groupId}/members/${userId}/remove`
       );
+      await loadGroupDetails();
 
     } finally {
       setActingKey(null);
@@ -348,6 +385,7 @@ export default function AdminGroupPage() {
       await postWithAuth(
         `/api/groups/${groupId}/members/${userId}/add`
       );
+      await loadGroupDetails();
 
     } finally {
       setActingKey(null);
@@ -366,6 +404,26 @@ export default function AdminGroupPage() {
       await postWithAuth(
         `/api/groups/${groupId}/requests/${userId}/${action}`
       );
+      await loadGroupDetails();
+
+    } finally {
+      setActingKey(null);
+    }
+  };
+
+  //aceptar / rechazar solicitudes de admin
+
+  const resolveAdminRequest = async (
+    userId: string,
+    action: "approve" | "reject"
+  ) => {
+    try {
+      setActingKey(`admin-${action}-${userId}`);
+
+      await postWithAuth(
+        `/api/groups/${groupId}/admin-requests/${userId}/${action}`
+      );
+      await loadGroupDetails();
 
     } finally {
       setActingKey(null);
@@ -381,12 +439,17 @@ export default function AdminGroupPage() {
       await postWithAuth(
         `/api/groups/${groupId}/admins/${userId}/remove`
       );
+      await loadGroupDetails();
 
     } finally {
       setActingKey(null);
     }
   };
 
+
+  const isPrimaryAdmin = !!firebaseUser?.uid && group.ownerId === firebaseUser.uid;
+  const pendingRequests: GroupMember[] = Array.isArray(group.pendingRequests) ? group.pendingRequests : [];
+  const pendingAdminRequests: GroupMember[] = Array.isArray(group.pendingAdminRequests) ? group.pendingAdminRequests : [];
 
   return (
     <main className="max-w-3xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">
@@ -566,54 +629,78 @@ export default function AdminGroupPage() {
           </ActionButton>
         </div>
 
+        {pendingAdminRequests.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-amber-700">Solicitudes para ser admin</p>
+            <ul className="space-y-2">
+              {pendingAdminRequests.map((member) => (
+                <li key={`admin-pending-${member.id}`} className="rounded-xl border border-neutral-200 p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
+                    <div>
+                      <p className="text-sm font-medium text-neutral-900">{member.name}</p>
+                      <p className="text-xs text-neutral-500">Postulación pendiente</p>
+                    </div>
+                  </div>
+                  {isPrimaryAdmin && (
+                    <div className="flex items-center gap-2">
+                      <ActionButton onClick={() => resolveAdminRequest(member.id, "approve")} loading={actingKey === `admin-approve-${member.id}`} variant="success_outline" compact>Aceptar</ActionButton>
+                      <ActionButton onClick={() => resolveAdminRequest(member.id, "reject")} loading={actingKey === `admin-reject-${member.id}`} variant="danger_outline" compact>Eliminar</ActionButton>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {pendingRequests.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-amber-700">Solicitudes de ingreso</p>
+            <ul className="space-y-2">
+              {pendingRequests.map((member) => (
+                <li key={`pending-${member.id}`} className="rounded-xl border border-neutral-200 p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
+                    <div>
+                      <p className="text-sm font-medium text-neutral-900">{member.name}</p>
+                      <p className="text-xs text-neutral-500">Solicitud pendiente</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <ActionButton onClick={() => resolveRequest(member.id, "approve")} loading={actingKey === `approve-${member.id}`} variant="success_outline" compact>Aceptar</ActionButton>
+                    <ActionButton onClick={() => resolveRequest(member.id, "reject")} loading={actingKey === `reject-${member.id}`} variant="danger_outline" compact>Eliminar</ActionButton>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {!group.members || group.members.length === 0 ? (
-          <p className="text-sm text-neutral-500">
-            No hay integrantes en el grupo
-          </p>
+          <p className="text-sm text-neutral-500">No hay integrantes en el grupo</p>
         ) : (
           <ul className="space-y-2">
-            {(group.members ?? []).map((member: any) => (
-              <li
-                key={member.id}
-                className="rounded-xl border border-neutral-200 p-3 flex items-center justify-between"
-              >
-
+            {(group.members ?? []).map((member: GroupMember) => (
+              <li key={member.id} className="rounded-xl border border-neutral-200 p-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-
-                  <UserAvatar
-                    nombre={member.name}
-                    photoURL={member.photoURL}
-                    size={36}
-                  />
-
+                  <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
                   <div>
-                    <p className="text-sm font-medium text-neutral-900">
-                      {member.name}
-                    </p>
-
-                    <p className="text-xs text-neutral-500">
-                      {member.positions?.join(" · ") || "Sin posiciones"}
-                    </p>
+                    <p className="text-sm font-medium text-neutral-900">{member.name}</p>
+                    <p className="text-xs text-neutral-500">{member.positions?.join(" · ") || "Sin posiciones"}</p>
                   </div>
-
                 </div>
 
                 {member.isAdmin ? (
-                  <StatusPill
-                    label="Admin"
-                    variant="warning"
-                  />
+                  <div className="flex items-center gap-2">
+                    <StatusPill label={member.id === group.ownerId ? "Admin principal" : "Admin"} variant="warning" />
+                    {isPrimaryAdmin && member.id !== firebaseUser?.uid && (
+                      <ActionButton onClick={() => removeAdmin(member.id)} loading={actingKey === `remove-admin-${member.id}`} variant="danger_outline" compact>Quitar admin</ActionButton>
+                    )}
+                  </div>
                 ) : (
-                  <ActionButton
-                    onClick={() => removeMember(member.id)}
-                    loading={actingKey === `remove-${member.id}`}
-                    variant="danger_outline"
-                    compact
-                  >
-                    Eliminar
-                  </ActionButton>
+                  <ActionButton onClick={() => removeMember(member.id)} loading={actingKey === `remove-${member.id}`} variant="danger_outline" compact>Eliminar</ActionButton>
                 )}
-
               </li>
             ))}
           </ul>

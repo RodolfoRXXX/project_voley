@@ -239,9 +239,13 @@ export default function AdminGroupPage() {
 
     return {
       id: uid,
-      name: u?.name || u?.displayName || "Usuario",
+      name: u?.nombre || u?.name || u?.displayName || "Usuario",
       photoURL: u?.photoURL || null,
-      positions: Array.isArray(u?.positions) ? u.positions : [],
+      positions: Array.isArray(u?.posicionesPreferidas)
+        ? u.posicionesPreferidas
+        : Array.isArray(u?.positions)
+        ? u.positions
+        : [],
       isAdmin: adminUserIds.includes(uid),
     };
   };

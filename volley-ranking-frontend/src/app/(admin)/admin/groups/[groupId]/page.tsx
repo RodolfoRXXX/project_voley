@@ -177,20 +177,31 @@ export default function AdminGroupPage() {
       return;
     }
 
-    const data = snap.data();
+    const data = snap.data() as Partial<GroupData>;
 
     if (!canAdminGroup(data, firebaseUser.uid)) {
       router.replace("/admin/groups");
       return;
     }
 
-    setGroup({ id: snap.id, ...data });
+    if (typeof data.nombre !== "string" || !data.nombre.trim()) {
+      router.replace("/admin/groups");
+      return;
+    }
+
+    const groupData: GroupData = {
+      id: snap.id,
+      ...data,
+      nombre: data.nombre,
+    };
+
+    setGroup(groupData);
 
     setFormData({
-      nombre: data.nombre,
-      descripcion: data.descripcion || "",
-      visibility: data.visibility === "public" ? "public" : "private",
-      joinApproval: data.joinApproval ?? true,
+      nombre: groupData.nombre,
+      descripcion: groupData.descripcion || "",
+      visibility: groupData.visibility === "public" ? "public" : "private",
+      joinApproval: groupData.joinApproval ?? true,
     });
 
     const q = query(

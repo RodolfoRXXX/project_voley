@@ -26,6 +26,16 @@ type GroupItem = {
   adminIds: string[];
 };
 
+function chunkArray<T>(array: T[], size: number) {
+  const result: T[][] = [];
+
+  for (let i = 0; i < array.length; i += size) {
+    result.push(array.slice(i, i + size));
+  }
+
+  return result;
+}
+
 export default function ProfileGroupsPage() {
   const { firebaseUser } = useAuth();
   const [groups, setGroups] = useState<GroupItem[]>([]);
@@ -78,19 +88,23 @@ export default function ProfileGroupsPage() {
       // cargar owners
       const ownerIds = [...new Set(groupsArray.map((g) => g.ownerId).filter(Boolean))];
 
-      let ownersMap = new Map();
+      let ownersMap = new Map<string, any>();
 
       if (ownerIds.length) {
-        const q = query(
-          collection(db, "users"),
-          where(documentId(), "in", ownerIds)
-        );
+        const batches = chunkArray(ownerIds, 10);
 
-        const usersSnap = await getDocs(q);
+        for (const batch of batches) {
+          const q = query(
+            collection(db, "users"),
+            where(documentId(), "in", batch)
+          );
 
-        usersSnap.forEach((doc) => {
-          ownersMap.set(doc.id, doc.data());
-        });
+          const usersSnap = await getDocs(q);
+
+          usersSnap.forEach((doc) => {
+            ownersMap.set(doc.id, doc.data());
+          });
+        }
       }
 
       const finalGroups: GroupItem[] = groupsArray.map((g) => ({

@@ -167,62 +167,131 @@ export default function AdminGroupPage() {
   }, [firebaseUser, userDoc, loading, router]);
 
   const loadGroupDetails = useCallback(async () => {
-    if (!firebaseUser?.uid || !groupId) return;
+  if (!firebaseUser?.uid || !groupId) return;
 
-    const ref = doc(db, "groups", groupId);
-    const snap = await getDoc(ref);
+  const groupRef = doc(db, "groups", groupId);
+  const snap = await getDoc(groupRef);
 
-    if (!snap.exists()) {
-      router.replace("/dashboard");
-      return;
+  if (!snap.exists()) {
+    router.replace("/dashboard");
+    return;
+  }
+
+  const data = snap.data();
+
+  if (!canAdminGroup(data, firebaseUser.uid)) {
+    router.replace("/admin/groups");
+    return;
+  }
+
+  if (!data.nombre) {
+    router.replace("/admin/groups");
+    return;
+  }
+
+  const memberIds: string[] = Array.isArray(data.memberIds) ? data.memberIds : [];
+  const pendingIds: string[] = Array.isArray(data.pendingRequestIds) ? data.pendingRequestIds : [];
+
+  const adminUserIds =
+    Array.isArray(data.admins) && data.admins.length > 0
+      ? data.admins.map((a: any) => a.userId)
+      : Array.isArray(data.adminIds)
+      ? data.adminIds
+      : [];
+
+  const allUserIds = [...new Set([...memberIds, ...pendingIds])];
+
+  const loadUsersByIds = async (ids: string[]) => {
+    if (ids.length === 0) return [];
+
+    const chunks = [];
+    for (let i = 0; i < ids.length; i += 10) {
+      chunks.push(ids.slice(i, i + 10));
     }
 
-    const data = snap.data() as Partial<GroupData>;
+    const results: any[] = [];
 
-    if (!canAdminGroup(data, firebaseUser.uid)) {
-      router.replace("/admin/groups");
-      return;
+    for (const chunk of chunks) {
+      const q = query(
+        collection(db, "users"),
+        where("__name__", "in", chunk)
+      );
+
+      const snap = await getDocs(q);
+
+      snap.forEach((doc) => {
+        results.push({
+          id: doc.id,
+          ...doc.data(),
+        });
+      });
     }
 
-    if (typeof data.nombre !== "string" || !data.nombre.trim()) {
-      router.replace("/admin/groups");
-      return;
-    }
+    return results;
+  };
 
-    const groupData: GroupData = {
-      id: snap.id,
-      ...data,
-      nombre: data.nombre,
+  const users = await loadUsersByIds(allUserIds);
+
+  const userMap = new Map(users.map((u) => [u.id, u]));
+
+  const buildMember = (uid: string): GroupMember => {
+    const u = userMap.get(uid);
+
+    return {
+      id: uid,
+      name: u?.name || u?.displayName || "Usuario",
+      photoURL: u?.photoURL || null,
+      positions: Array.isArray(u?.positions) ? u.positions : [],
+      isAdmin: adminUserIds.includes(uid),
     };
+  };
 
-    setGroup(groupData);
+  const members = memberIds.map(buildMember);
+  const pendingRequests = pendingIds.map(buildMember);
 
-    setFormData({
-      nombre: groupData.nombre,
-      descripcion: groupData.descripcion || "",
-      visibility: groupData.visibility === "public" ? "public" : "private",
-      joinApproval: groupData.joinApproval ?? true,
-    });
+  const pendingAdminRequests: GroupMember[] = Array.isArray(data.pendingAdminRequestIds)
+    ? data.pendingAdminRequestIds.map(buildMember)
+    : [];
 
-    const q = query(
-      collection(db, "matches"),
-      where("groupId", "==", groupId),
-      orderBy("horaInicio", "desc")
-    );
+  const groupData: GroupData = {
+    id: snap.id,
+    ...data,
+    members,
+    pendingRequests,
+    pendingAdminRequests,
+    nombre: ""
+  };
 
-    const snapMatches = await getDocs(q);
-    setMatches(
-      snapMatches.docs.map((d) => {
-        const matchData = d.data();
-        return {
-          id: d.id,
-          ...matchData,
-          horaInicio: matchData.horaInicio?.toDate?.() ?? null,
-          createdAt: matchData.createdAt?.toDate?.() ?? null,
-        };
-      })
-    );
-  }, [firebaseUser?.uid, groupId, router]);
+  setGroup(groupData);
+
+  setFormData({
+    nombre: groupData.nombre,
+    descripcion: groupData.descripcion || "",
+    visibility: groupData.visibility === "public" ? "public" : "private",
+    joinApproval: groupData.joinApproval ?? true,
+  });
+
+  const qMatches = query(
+    collection(db, "matches"),
+    where("groupId", "==", groupId),
+    orderBy("horaInicio", "desc")
+  );
+
+  const snapMatches = await getDocs(qMatches);
+
+  setMatches(
+    snapMatches.docs.map((d) => {
+      const m = d.data();
+
+      return {
+        id: d.id,
+        ...m,
+        horaInicio: m.horaInicio?.toDate?.() ?? null,
+        createdAt: m.createdAt?.toDate?.() ?? null,
+      };
+    })
+  );
+}, [firebaseUser?.uid, groupId, router]);
 
   /* =====================
      Load data
@@ -730,7 +799,6 @@ export default function AdminGroupPage() {
             ))}
           </ul>
         )}
-
       </section>
 
       {/* Matches */}

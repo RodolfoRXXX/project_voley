@@ -263,7 +263,7 @@ export default function AdminGroupPage() {
     members,
     pendingRequests,
     pendingAdminRequests,
-    nombre: ""
+    nombre: typeof data.nombre === "string" ? data.nombre : "",
   };
 
   setGroup(groupData);
@@ -554,7 +554,7 @@ export default function AdminGroupPage() {
 
       <AdminBreadcrumb
         items={[
-          { label: "Mis grupos"},
+          { label: "Mi gestión"},
           { label: "Grupos", href:"/admin/groups"},
           { label: group.nombre},
         ]}

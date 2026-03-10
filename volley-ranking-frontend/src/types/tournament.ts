@@ -10,6 +10,23 @@ export type Tournament = {
   description: string;
   sport: string;
   format: "liga" | "eliminacion" | "mixto";
+  rules?: {
+    setsToWin?: number;
+    pointsWin?: number;
+    pointsDraw?: number;
+    pointsLose?: number;
+  };
+  structure?: {
+    groupStage?: {
+      enabled?: boolean;
+      groupCount?: number;
+      rounds?: number;
+    };
+    knockoutStage?: {
+      enabled?: boolean;
+      startFrom?: "octavos" | "cuartos" | "semi" | "final";
+    };
+  };
   status: TournamentStatus;
   ownerAdminId: string;
   adminIds: string[];

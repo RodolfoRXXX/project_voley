@@ -197,6 +197,9 @@ function validateTournamentPayload(data) {
 function validateTournamentUpdate(data) {
   const update = {};
 
+  const validFormats = ["liga", "eliminacion", "mixto"];
+  const validKnockoutStarts = ["octavos", "cuartos", "semi", "final"];
+
   if (typeof data.name === "string" && data.name.trim()) {
     update.name = data.name.trim();
   }
@@ -228,6 +231,14 @@ function validateTournamentUpdate(data) {
     update.paymentForPlayer = data.paymentForPlayer;
   }
 
+  if (typeof data.format === "string") {
+    if (!validFormats.includes(data.format)) {
+      throw new functions.https.HttpsError("invalid-argument", "format inválido");
+    }
+
+    update.format = data.format;
+  }
+
   if (typeof data.startDateMillis === "number") {
     update.startDate = Timestamp.fromMillis(data.startDateMillis);
   }
@@ -249,6 +260,69 @@ function validateTournamentUpdate(data) {
     if (Object.keys(nextRules).length) {
       update.rules = nextRules;
     }
+  }
+
+  if (data.structure && typeof data.structure === "object") {
+    const groupStage = data.structure.groupStage || {};
+    const knockoutStage = data.structure.knockoutStage || {};
+
+    if (typeof groupStage.enabled !== "boolean") {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "structure.groupStage.enabled inválido"
+      );
+    }
+
+    if (groupStage.enabled) {
+      if (typeof groupStage.groupCount !== "number" || groupStage.groupCount < 1) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "groupCount inválido"
+        );
+      }
+
+      if (typeof groupStage.rounds !== "number" || groupStage.rounds < 1) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "rounds inválido"
+        );
+      }
+    }
+
+    if (typeof knockoutStage.enabled !== "boolean") {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "structure.knockoutStage.enabled inválido"
+      );
+    }
+
+    if (
+      knockoutStage.enabled &&
+      !validKnockoutStarts.includes(knockoutStage.startFrom)
+    ) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "startFrom inválido"
+      );
+    }
+
+    update.structure = {
+      groupStage: {
+        enabled: groupStage.enabled,
+        ...(groupStage.enabled
+          ? {
+              groupCount: groupStage.groupCount,
+              rounds: groupStage.rounds,
+            }
+          : {}),
+      },
+      knockoutStage: {
+        enabled: knockoutStage.enabled,
+        ...(knockoutStage.enabled
+          ? { startFrom: knockoutStage.startFrom }
+          : {}),
+      },
+    };
   }
 
   return update;
@@ -313,12 +387,7 @@ async function editTournament({ uid, tournamentId, data }) {
 
     assertTournamentAdmin(tournament, uid);
 
-    if (
-      ![
-        TOURNAMENT_STATUS.DRAFT,
-        TOURNAMENT_STATUS.OPEN,
-      ].includes(tournament.status)
-    ) {
+    if (tournament.status !== TOURNAMENT_STATUS.DRAFT) {
       throw new functions.https.HttpsError(
         "failed-precondition",
         "El torneo no se puede editar en su estado actual"

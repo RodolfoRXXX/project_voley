@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { useParams } from "next/navigation";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "@/lib/firebase";
@@ -9,11 +9,65 @@ import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 import { Tournament, tournamentStatusLabel } from "@/types/tournament";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import StatusPill, { type StatusVariant } from "@/components/ui/status/StatusPill";
+import TournamentRegistrationStatusModal from "@/components/tournamentRegistrationStatusModal/TournamentRegistrationStatusModal";
+import { TournamentRegistrationItem } from "@/components/tournamentRegistrationStatusModal/TournamentRegistrationStatusModal.types";
 
 const openRegistrationsFn = httpsCallable(functions, "openTournamentRegistrations");
 const addTournamentAdminFn = httpsCallable(functions, "addTournamentAdmin");
 const editTournamentFn = httpsCallable(functions, "editTournament");
+
+type TournamentForm = {
+  name: string;
+  description: string;
+  format: "liga" | "eliminacion" | "mixto";
+  minTeams: number;
+  maxTeams: number;
+  paymentForPlayer: number;
+  rules: {
+    setsToWin: number;
+  };
+  structure: {
+    groupStage: {
+      enabled: boolean;
+      groupCount: number;
+      rounds: number;
+    };
+    knockoutStage: {
+      enabled: boolean;
+      startFrom: "octavos" | "cuartos" | "semi" | "final";
+    };
+  };
+};
+
+function statusVariant(status: Tournament["status"]): StatusVariant {
+  switch (status) {
+    case "draft":
+      return "warning";
+    case "inscripciones_abiertas":
+      return "info";
+    case "activo":
+      return "success";
+    case "finalizado":
+      return "neutral";
+    default:
+      return "neutral";
+  }
+}
+
+function formatLabel(format: Tournament["format"]) {
+  if (format === "mixto") return "Normal";
+  if (format === "eliminacion") return "Eliminación";
+  return "Liga";
+}
+
+function knockoutLabel(startFrom?: "octavos" | "cuartos" | "semi" | "final") {
+  if (startFrom === "octavos") return "Octavos";
+  if (startFrom === "cuartos") return "Cuartos";
+  if (startFrom === "semi") return "Semifinal";
+  if (startFrom === "final") return "Final";
+  return "-";
+}
 
 export default function AdminTournamentDetailPage() {
   const params = useParams<{ tournamentId: string }>();
@@ -27,21 +81,35 @@ export default function AdminTournamentDetailPage() {
   const [addingAdmin, setAddingAdmin] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selectedRegistration, setSelectedRegistration] = useState<TournamentRegistrationItem | null>(null);
 
-  const [editForm, setEditForm] = useState({
+  const [editForm, setEditForm] = useState<TournamentForm>({
     name: "",
     description: "",
+    format: "mixto",
     minTeams: 0,
     maxTeams: 0,
     paymentForPlayer: 0,
+    rules: {
+      setsToWin: 3,
+    },
+    structure: {
+      groupStage: {
+        enabled: true,
+        groupCount: 2,
+        rounds: 1,
+      },
+      knockoutStage: {
+        enabled: false,
+        startFrom: "semi",
+      },
+    },
   });
 
-  const [registrations, setRegistrations] = useState<any[]>([]);
+  const [registrations, setRegistrations] = useState<TournamentRegistrationItem[]>([]);
   const [loadingRegistrations, setLoadingRegistrations] = useState(false);
 
-  const canEdit =
-  tournament?.status === "draft" ||
-  tournament?.status === "inscripciones_abiertas";
+  const canEdit = tournament?.status === "draft";
 
   const loadTournament = useCallback(async () => {
     if (!tournamentId) return;
@@ -69,9 +137,9 @@ export default function AdminTournamentDetailPage() {
 
     const snap = await getDocs(q);
 
-    const data = snap.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
+    const data = snap.docs.map((currentDoc) => ({
+      id: currentDoc.id,
+      ...(currentDoc.data() as Omit<TournamentRegistrationItem, "id">),
     }));
 
     setRegistrations(data);
@@ -81,7 +149,7 @@ export default function AdminTournamentDetailPage() {
   useEffect(() => {
     loadTournament();
     loadRegistrations();
-  }, [loadTournament]);
+  }, [loadTournament, loadRegistrations]);
 
   const startEdit = () => {
     if (!tournament) return;
@@ -89,9 +157,24 @@ export default function AdminTournamentDetailPage() {
     setEditForm({
       name: tournament.name,
       description: tournament.description,
+      format: tournament.format,
       minTeams: tournament.minTeams,
       maxTeams: tournament.maxTeams,
       paymentForPlayer: tournament.paymentForPlayer || 0,
+      rules: {
+        setsToWin: tournament.rules?.setsToWin || 3,
+      },
+      structure: {
+        groupStage: {
+          enabled: tournament.structure?.groupStage?.enabled ?? tournament.format !== "eliminacion",
+          groupCount: tournament.structure?.groupStage?.groupCount || 1,
+          rounds: tournament.structure?.groupStage?.rounds || 1,
+        },
+        knockoutStage: {
+          enabled: tournament.structure?.knockoutStage?.enabled ?? tournament.format !== "liga",
+          startFrom: tournament.structure?.knockoutStage?.startFrom || "semi",
+        },
+      },
     });
 
     setEditing(true);
@@ -158,9 +241,9 @@ export default function AdminTournamentDetailPage() {
     }
   };
 
-  const pendingRegistrations = registrations.filter(r => r.status === "pendiente");
-  const acceptedRegistrations = registrations.filter(r => r.status === "aceptado");
-  const rejectedRegistrations = registrations.filter(r => r.status === "rechazado");
+  const pendingRegistrations = registrations.filter((r) => r.status === "pendiente");
+  const acceptedRegistrations = registrations.filter((r) => r.status === "aceptado");
+  const rejectedRegistrations = registrations.filter((r) => r.status === "rechazado");
 
   if (loading) {
     return <p className="text-sm text-neutral-500">Cargando torneo...</p>;
@@ -169,6 +252,11 @@ export default function AdminTournamentDetailPage() {
   if (!tournament) {
     return <p className="text-sm text-neutral-500">Torneo no encontrado.</p>;
   }
+
+  const isLeague = tournament.format === "liga";
+  const isNormal = tournament.format === "mixto";
+  const hasGroups = tournament.structure?.groupStage?.enabled;
+  const hasKnockout = tournament.structure?.knockoutStage?.enabled;
 
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
@@ -190,14 +278,16 @@ export default function AdminTournamentDetailPage() {
           </div>
 
           <div className="flex flex-col items-end justify-between gap-2">
-            <span className="text-xs rounded-full px-2 py-1 bg-orange-100 text-orange-700">
-              {tournamentStatusLabel[tournament.status]}
-            </span>
+            <StatusPill
+              label={tournamentStatusLabel[tournament.status]}
+              variant={statusVariant(tournament.status)}
+            />
 
-            {canEdit && !editing && (
+            {!editing && (
               <button
                 onClick={startEdit}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium border hover:bg-neutral-50"
+                disabled={!canEdit}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium border hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Editar
               </button>
@@ -221,7 +311,6 @@ export default function AdminTournamentDetailPage() {
           <h2 className="text-base font-semibold">Editar torneo</h2>
 
           <form onSubmit={onSaveEdit} className="space-y-3">
-
             <div>
               <label className="text-sm font-medium">Nombre</label>
               <input
@@ -245,6 +334,21 @@ export default function AdminTournamentDetailPage() {
             </div>
 
             <div className="grid sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-sm font-medium">Formato</label>
+                <select
+                  value={editForm.format}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, format: e.target.value as TournamentForm["format"] }))
+                  }
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                >
+                  <option value="liga">Liga</option>
+                  <option value="eliminacion">Eliminación</option>
+                  <option value="mixto">Normal</option>
+                </select>
+              </div>
+
               <div>
                 <label className="text-sm font-medium">Min equipos</label>
                 <input
@@ -274,7 +378,9 @@ export default function AdminTournamentDetailPage() {
                   className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
                 />
               </div>
+            </div>
 
+            <div className="grid sm:grid-cols-3 gap-3">
               <div>
                 <label className="text-sm font-medium">Pago por jugador</label>
                 <input
@@ -289,6 +395,94 @@ export default function AdminTournamentDetailPage() {
                   className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
                 />
               </div>
+
+              <div>
+                <label className="text-sm font-medium">Sets para ganar</label>
+                <input
+                  type="number"
+                  value={editForm.rules.setsToWin}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      rules: {
+                        ...prev.rules,
+                        setsToWin: Number(e.target.value),
+                      },
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium">Cantidad de grupos</label>
+                <input
+                  type="number"
+                  value={editForm.structure.groupStage.groupCount}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      structure: {
+                        ...prev.structure,
+                        groupStage: {
+                          ...prev.structure.groupStage,
+                          enabled: true,
+                          groupCount: Number(e.target.value),
+                        },
+                      },
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Vueltas de liga</label>
+                <input
+                  type="number"
+                  value={editForm.structure.groupStage.rounds}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      structure: {
+                        ...prev.structure,
+                        groupStage: {
+                          ...prev.structure.groupStage,
+                          rounds: Number(e.target.value),
+                        },
+                      },
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Etapa de eliminación (si aplica)</label>
+              <select
+                value={editForm.structure.knockoutStage.startFrom}
+                onChange={(e) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    structure: {
+                      ...prev.structure,
+                      knockoutStage: {
+                        enabled: prev.format !== "liga",
+                        startFrom: e.target.value as TournamentForm["structure"]["knockoutStage"]["startFrom"],
+                      },
+                    },
+                  }))
+                }
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              >
+                <option value="octavos">Octavos</option>
+                <option value="cuartos">Cuartos</option>
+                <option value="semi">Semifinal</option>
+                <option value="final">Final</option>
+              </select>
             </div>
 
             <div className="flex gap-2 pt-2">
@@ -314,12 +508,26 @@ export default function AdminTournamentDetailPage() {
       <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
         <h2 className="text-base font-semibold text-neutral-900">Información del torneo</h2>
         <div className="text-sm text-neutral-600 grid sm:grid-cols-2 gap-2">
-          <p>Formato: <b>{tournament.format}</b></p>
+          <p>Formato: <b>{formatLabel(tournament.format)}</b></p>
           <p>Deporte: <b>{tournament.sport}</b></p>
           <p>Equipos mínimos: <b>{tournament.minTeams}</b></p>
           <p>Equipos máximos: <b>{tournament.maxTeams}</b></p>
           <p>Equipos aceptados: <b>{tournament.acceptedTeamsCount || 0}</b></p>
           <p>Admins asignados: <b>{tournament.adminIds?.length || 0}</b></p>
+          <p>Sets para ganar: <b>{tournament.rules?.setsToWin || "-"}</b></p>
+          <p>¿Tiene grupos?: <b>{hasGroups ? "Sí" : "No"}</b></p>
+          {hasGroups && (
+            <>
+              <p>Cantidad de grupos: <b>{tournament.structure?.groupStage?.groupCount || "-"}</b></p>
+              <p>Vueltas: <b>{tournament.structure?.groupStage?.rounds || "-"}</b></p>
+            </>
+          )}
+          {isNormal && hasKnockout && (
+            <p>Eliminación desde: <b>{knockoutLabel(tournament.structure?.knockoutStage?.startFrom)}</b></p>
+          )}
+          {isLeague && (
+            <p>Tipo de fase: <b>Liga</b></p>
+          )}
         </div>
       </section>
 
@@ -338,7 +546,6 @@ export default function AdminTournamentDetailPage() {
           </p>
         )}
 
-        {/* Pendientes */}
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-yellow-700">
             Pendientes ({pendingRegistrations.length})
@@ -349,18 +556,18 @@ export default function AdminTournamentDetailPage() {
               key={r.id}
               className="flex justify-between items-center border rounded-lg px-3 py-2 text-sm"
             >
-              <span>Grupo: {r.groupId}</span>
+              <span>Equipo: {r.nameTeam || "Sin nombre"}</span>
 
               <button
+                onClick={() => setSelectedRegistration(r)}
                 className="text-xs px-2 py-1 rounded border hover:bg-neutral-50"
               >
-                Ver equipo
+                Ver estado
               </button>
             </div>
           ))}
         </div>
 
-        {/* Aceptados */}
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-green-700">
             Aceptados ({acceptedRegistrations.length})
@@ -371,18 +578,18 @@ export default function AdminTournamentDetailPage() {
               key={r.id}
               className="flex justify-between items-center border rounded-lg px-3 py-2 text-sm"
             >
-              <span>Grupo: {r.groupId}</span>
+              <span>Equipo: {r.nameTeam || "Sin nombre"}</span>
 
               <button
+                onClick={() => setSelectedRegistration(r)}
                 className="text-xs px-2 py-1 rounded border hover:bg-neutral-50"
               >
-                Ver equipo
+                Ver estado
               </button>
             </div>
           ))}
         </div>
 
-        {/* Rechazados */}
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-red-700">
             Rechazados ({rejectedRegistrations.length})
@@ -393,12 +600,13 @@ export default function AdminTournamentDetailPage() {
               key={r.id}
               className="flex justify-between items-center border rounded-lg px-3 py-2 text-sm"
             >
-              <span>Grupo: {r.groupId}</span>
+              <span>Equipo: {r.nameTeam || "Sin nombre"}</span>
 
               <button
+                onClick={() => setSelectedRegistration(r)}
                 className="text-xs px-2 py-1 rounded border hover:bg-neutral-50"
               >
-                Ver equipo
+                Ver estado
               </button>
             </div>
           ))}
@@ -424,6 +632,12 @@ export default function AdminTournamentDetailPage() {
           </button>
         </form>
       </section>
+
+      <TournamentRegistrationStatusModal
+        open={selectedRegistration !== null}
+        registration={selectedRegistration}
+        onClose={() => setSelectedRegistration(null)}
+      />
     </main>
   );
 }

@@ -266,7 +266,7 @@ export default function NewTournamentPage() {
             >
               <option value="liga">Liga</option>
               <option value="eliminacion">Eliminación</option>
-              <option value="mixto">Mixto</option>
+              <option value="mixto">Normal</option>
             </select>
           </div>
 

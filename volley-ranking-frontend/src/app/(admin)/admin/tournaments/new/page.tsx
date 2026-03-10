@@ -17,6 +17,8 @@ type TournamentForm = {
   format: "liga" | "eliminacion" | "mixto";
   minTeams: number;
   maxTeams: number;
+  minPlayers: number;
+  maxPlayers: number;
   paymentForPlayer: number;
   startDate: string;
   rules: {
@@ -50,6 +52,8 @@ export default function NewTournamentPage() {
     format: "mixto",
     minTeams: 4,
     maxTeams: 12,
+    minPlayers: 6,
+    maxPlayers: 12,
     paymentForPlayer: 0,
     startDate: "",
     rules: {
@@ -118,6 +122,16 @@ export default function NewTournamentPage() {
       return;
     }
 
+
+    if (form.minPlayers > form.maxPlayers) {
+      showToast({
+        type: "error",
+        message: "El mínimo de jugadores no puede ser mayor al máximo",
+      });
+      setLoading(false);
+      return;
+    }
+
     if (!form.startDate) {
       showToast({
         type: "error",
@@ -135,6 +149,8 @@ export default function NewTournamentPage() {
         format: form.format,
         minTeams: Number(form.minTeams),
         maxTeams: Number(form.maxTeams),
+        minPlayers: Number(form.minPlayers),
+        maxPlayers: Number(form.maxPlayers),
         paymentForPlayer: Number(form.paymentForPlayer),
         startDateMillis: new Date(form.startDate).getTime(),
         rules: {
@@ -297,6 +313,40 @@ export default function NewTournamentPage() {
                 setForm((prev) => ({
                   ...prev,
                   maxTeams: Number(e.target.value),
+                }))
+              }
+            />
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm font-medium">Mín. jugadores por equipo</label>
+            <input
+              type="number"
+              min={1}
+              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              value={form.minPlayers}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  minPlayers: Number(e.target.value),
+                }))
+              }
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Máx. jugadores por equipo</label>
+            <input
+              type="number"
+              min={1}
+              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              value={form.maxPlayers}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  maxPlayers: Number(e.target.value),
                 }))
               }
             />
@@ -506,6 +556,10 @@ export default function NewTournamentPage() {
 
             <p>
               <b>Equipos:</b> {form.minTeams} - {form.maxTeams}
+            </p>
+
+            <p>
+              <b>Jugadores por equipo:</b> {form.minPlayers} - {form.maxPlayers}
             </p>
 
             <p>

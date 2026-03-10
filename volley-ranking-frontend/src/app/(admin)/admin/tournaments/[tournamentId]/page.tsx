@@ -23,6 +23,8 @@ type TournamentForm = {
   format: "liga" | "eliminacion" | "mixto";
   minTeams: number;
   maxTeams: number;
+  minPlayers: number;
+  maxPlayers: number;
   paymentForPlayer: number;
   rules: {
     setsToWin: number;
@@ -89,6 +91,8 @@ export default function AdminTournamentDetailPage() {
     format: "mixto",
     minTeams: 0,
     maxTeams: 0,
+    minPlayers: 0,
+    maxPlayers: 0,
     paymentForPlayer: 0,
     rules: {
       setsToWin: 3,
@@ -160,6 +164,8 @@ export default function AdminTournamentDetailPage() {
       format: tournament.format,
       minTeams: tournament.minTeams,
       maxTeams: tournament.maxTeams,
+      minPlayers: tournament.minPlayers || 1,
+      maxPlayers: tournament.maxPlayers || 1,
       paymentForPlayer: tournament.paymentForPlayer || 0,
       rules: {
         setsToWin: tournament.rules?.setsToWin || 3,
@@ -184,6 +190,15 @@ export default function AdminTournamentDetailPage() {
     e.preventDefault();
 
     if (!tournamentId) return;
+
+    if (editForm.minPlayers > editForm.maxPlayers) {
+      showToast({
+        type: "error",
+        message: "El mínimo de jugadores no puede ser mayor al máximo",
+      });
+
+      return;
+    }
 
     setSaving(true);
 
@@ -380,6 +395,38 @@ export default function AdminTournamentDetailPage() {
               </div>
             </div>
 
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium">Min jugadores por equipo</label>
+                <input
+                  type="number"
+                  value={editForm.minPlayers}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      minPlayers: Number(e.target.value),
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Max jugadores por equipo</label>
+                <input
+                  type="number"
+                  value={editForm.maxPlayers}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      maxPlayers: Number(e.target.value),
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
             <div className="grid sm:grid-cols-3 gap-3">
               <div>
                 <label className="text-sm font-medium">Pago por jugador</label>
@@ -513,6 +560,8 @@ export default function AdminTournamentDetailPage() {
           <p>Equipos mínimos: <b>{tournament.minTeams}</b></p>
           <p>Equipos máximos: <b>{tournament.maxTeams}</b></p>
           <p>Equipos aceptados: <b>{tournament.acceptedTeamsCount || 0}</b></p>
+          <p>Jugadores mínimos por equipo: <b>{tournament.minPlayers || 1}</b></p>
+          <p>Jugadores máximos por equipo: <b>{tournament.maxPlayers || 1}</b></p>
           <p>Admins asignados: <b>{tournament.adminIds?.length || 0}</b></p>
           <p>Sets para ganar: <b>{tournament.rules?.setsToWin || "-"}</b></p>
           <p>¿Tiene grupos?: <b>{hasGroups ? "Sí" : "No"}</b></p>

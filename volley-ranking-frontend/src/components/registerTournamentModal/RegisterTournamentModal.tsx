@@ -4,7 +4,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
 import { db, functions } from "@/lib/firebase";
@@ -18,6 +18,14 @@ import { RegisterTournamentModalProps } from "./RegisterTournamentModal.types";
 type GroupOption = {
   id: string;
   nombre: string;
+  memberCount: number;
+};
+
+type RegistrationOption = {
+  id: string;
+  groupId?: string;
+  nameTeam?: string;
+  status?: string;
 };
 
 function getRegistrationStatus(status: string): {
@@ -57,39 +65,54 @@ export default function RegisterTournamentModal({
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingGroups, setLoadingGroups] = useState(true);
-  const [registrations, setRegistrations] = useState<any[]>([]);
+  const [registrations, setRegistrations] = useState<RegistrationOption[]>([]);
   const [teamName, setTeamName] = useState("");
-  const [loadingRegistrations, setLoadingRegistrations] = useState(true);
+  const [minPlayers, setMinPlayers] = useState(1);
 
   useEffect(() => {
     if (!open || !firebaseUser || !tournamentId) return;
 
     const loadRegistrations = async () => {
-        try {
-        const registrationsRef = collection(db, "tournamentRegistrations");
+      const registrationsRef = collection(db, "tournamentRegistrations");
 
-        const q = query(
-            registrationsRef,
-            where("tournamentId", "==", tournamentId)
-        );
+      const q = query(
+        registrationsRef,
+        where("tournamentId", "==", tournamentId)
+      );
 
-        const snap = await getDocs(q);
+      const snap = await getDocs(q);
 
-        const rows = snap.docs.map((doc) => ({
-            id: doc.id,
-            ...(doc.data() as any),
-        }));
+      const rows = snap.docs.map((doc) => {
+        const data = doc.data() as Omit<RegistrationOption, "id">;
 
-        setRegistrations(rows);
+        return {
+          id: doc.id,
+          ...data,
+        };
+      });
 
-        } finally {
-        setLoadingRegistrations(false);
-        }
+      setRegistrations(rows);
     };
 
     loadRegistrations();
 
   }, [open, firebaseUser, tournamentId]);
+
+
+  useEffect(() => {
+    if (!open || !tournamentId) return;
+
+    const loadTournament = async () => {
+      const tournamentSnap = await getDoc(doc(db, "tournaments", tournamentId));
+
+      if (tournamentSnap.exists()) {
+        const data = tournamentSnap.data() as { minPlayers?: number };
+        setMinPlayers(Number(data.minPlayers || 1));
+      }
+    };
+
+    loadTournament();
+  }, [open, tournamentId]);
 
   const usedGroupIds = new Set(
     registrations.map((r) => r.groupId)
@@ -109,10 +132,15 @@ export default function RegisterTournamentModal({
 
         const snap = await getDocs(q);
 
-        const rows = snap.docs.map((doc) => ({
-          id: doc.id,
-          nombre: (doc.data().nombre as string) || "Grupo sin nombre",
-        }));
+        const rows = snap.docs.map((doc) => {
+          const groupData = doc.data() as { nombre?: string; memberIds?: string[] };
+
+          return {
+            id: doc.id,
+            nombre: groupData.nombre || "Grupo sin nombre",
+            memberCount: Array.isArray(groupData.memberIds) ? groupData.memberIds.length : 0,
+          };
+        });
 
         setGroups(rows);
 
@@ -133,14 +161,19 @@ export default function RegisterTournamentModal({
     if (!open) {
       setTeamName("");
       setSelectedGroupId("");
+      setMinPlayers(1);
     }
   }, [open]);
 
   if (!open || !tournamentId) return null;
 
-    const handleRegister = async () => {
+  const selectedGroup = groups.find((group) => group.id === selectedGroupId);
+  const selectedGroupMemberCount = selectedGroup?.memberCount || 0;
+  const hasMinPlayersForSelectedGroup = selectedGroupMemberCount >= minPlayers;
 
-        if (!selectedGroupId || !teamName.trim()) return;
+  const handleRegister = async () => {
+
+        if (!selectedGroupId || !teamName.trim() || !hasMinPlayersForSelectedGroup) return;
 
         try {
 
@@ -229,7 +262,7 @@ export default function RegisterTournamentModal({
                     </div>
 
                     {(() => {
-                      const status = getRegistrationStatus(reg.status);
+                      const status = getRegistrationStatus(reg.status || "pendiente");
 
                       return (
                         <StatusPill
@@ -252,6 +285,10 @@ export default function RegisterTournamentModal({
 
             <p className="text-sm font-medium text-neutral-700">
             Nueva inscripción
+            </p>
+
+            <p className="text-xs text-neutral-500">
+              Este torneo requiere al menos <b>{minPlayers}</b> jugadores por equipo para inscribirse.
             </p>
 
             {loadingGroups ? (
@@ -284,18 +321,24 @@ export default function RegisterTournamentModal({
                 >
                     {groups.map((group) => {
                       const isUsed = usedGroupIds.has(group.id);
+                      const hasMinPlayers = group.memberCount >= minPlayers;
 
                       return (
                         <option
                           key={group.id}
                           value={group.id}
-                          disabled={isUsed}
+                          disabled={isUsed || !hasMinPlayers}
                         >
-                          {group.nombre} {isUsed ? "(ya inscripto)" : ""}
+                          {group.nombre} ({group.memberCount} integrantes) {isUsed ? "(ya inscripto)" : ""} {!hasMinPlayers ? `(mínimo ${minPlayers})` : ""}
                         </option>
                       );
                     })}
                 </select>
+                {!hasMinPlayersForSelectedGroup && selectedGroupId && (
+                  <p className="text-xs text-red-600">
+                    Este grupo no cumple con el mínimo de {minPlayers} jugadores para inscribirse.
+                  </p>
+                )}
                 </div>
 
                 {/* TEAM NAME */}
@@ -334,7 +377,7 @@ export default function RegisterTournamentModal({
             <ActionButton
             onClick={handleRegister}
             loading={loading}
-            disabled={!selectedGroupId || !teamName.trim() || loadingGroups}
+            disabled={!selectedGroupId || !teamName.trim() || loadingGroups || !hasMinPlayersForSelectedGroup}
             variant="success"
             compact
             >

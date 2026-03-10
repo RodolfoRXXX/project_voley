@@ -72,12 +72,12 @@ export default function TournamentRegistrationStatusModal({
         <div className="grid sm:grid-cols-2 gap-3 text-sm">
           <div className="rounded-xl border border-neutral-200 p-3">
             <p className="text-xs text-neutral-500">Equipo</p>
-            <p className="font-medium text-neutral-900">{registration.nameTeam || "Sin nombre"}</p>
+            <p className="font-medium text-center text-neutral-900">{registration.nameTeam || "Sin nombre"}</p>
           </div>
 
           <div className="rounded-xl border border-neutral-200 p-3">
             <p className="text-xs text-neutral-500">Integrantes del equipo</p>
-            <p className="font-medium text-neutral-900">{registration.teamMembersCount ?? "-"}</p>
+            <p className="font-medium text-center text-neutral-900">{registration.teamMembersCount ?? "-"}</p>
           </div>
 
           <div className="rounded-xl border border-neutral-200 p-3 space-y-1">
@@ -92,12 +92,12 @@ export default function TournamentRegistrationStatusModal({
 
           <div className="rounded-xl border border-neutral-200 p-3">
             <p className="text-xs text-neutral-500">Monto registrado</p>
-            <p className="font-medium text-neutral-900">${registration.paymentAmount || 0}</p>
+            <p className="font-medium text-center text-neutral-900">${registration.paymentAmount || 0}</p>
           </div>
 
           <div className="rounded-xl border border-neutral-200 p-3">
             <p className="text-xs text-neutral-500">Revisado por</p>
-            <p className="font-medium text-neutral-900">{registration.decidedByUserId || "Pendiente"}</p>
+            <p className="font-medium text-center text-neutral-900">{registration.decidedByUserId || "Pendiente"}</p>
           </div>
 
           <div className="rounded-xl border border-neutral-200 p-3">

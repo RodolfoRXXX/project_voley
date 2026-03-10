@@ -858,7 +858,7 @@ export default function AdminGroupPage() {
                 </div>
 
                 <Link
-                  href={`/groups/${groupId}/matches/${m.id}`}
+                  href={`/profile/groups/${groupId}/matches/${m.id}`}
                   className="text-sm font-medium text-blue-600 hover:underline"
                 >
                   Ver detalle →

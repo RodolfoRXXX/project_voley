@@ -55,6 +55,17 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId, nameT
       throw new functions.https.HttpsError("not-found", "El grupo no existe");
     }
 
+    const group = groupSnap.data();
+    const teamMembersCount = Array.isArray(group.memberIds) ? group.memberIds.length : 0;
+    const minPlayers = Number(tournament.minPlayers || 1);
+
+    if (teamMembersCount < minPlayers) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        `El grupo debe tener al menos ${minPlayers} integrantes para inscribirse`
+      );
+    }
+
     const existingRegistration = await trx.get(registrationRef);
     if (existingRegistration.exists) {
       throw new functions.https.HttpsError(
@@ -67,6 +78,7 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId, nameT
       tournamentId,
       groupId,
       nameTeam: cleanTeamName,
+      teamMembersCount,
       status: "pendiente",
       paymentStatus: "pendiente",
       paymentAmount: 0,

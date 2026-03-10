@@ -76,8 +76,8 @@ export default function TournamentRegistrationStatusModal({
           </div>
 
           <div className="rounded-xl border border-neutral-200 p-3">
-            <p className="text-xs text-neutral-500">Grupo</p>
-            <p className="font-medium text-neutral-900">{registration.groupId || "-"}</p>
+            <p className="text-xs text-neutral-500">Integrantes del equipo</p>
+            <p className="font-medium text-neutral-900">{registration.teamMembersCount ?? "-"}</p>
           </div>
 
           <div className="rounded-xl border border-neutral-200 p-3 space-y-1">

@@ -41,6 +41,8 @@ function validateTournamentPayload(data) {
     format,
     maxTeams,
     minTeams,
+    minPlayers,
+    maxPlayers,
     startDateMillis,
     paymentForPlayer,
     rules,
@@ -70,6 +72,18 @@ function validateTournamentPayload(data) {
 
   if (typeof minTeams !== "number" || minTeams <= 1 || minTeams > maxTeams) {
     throw new functions.https.HttpsError("invalid-argument", "minTeams inválido");
+  }
+
+  if (typeof minPlayers !== "number" || minPlayers < 1) {
+    throw new functions.https.HttpsError("invalid-argument", "minPlayers inválido");
+  }
+
+  if (
+    typeof maxPlayers !== "number" ||
+    maxPlayers < 1 ||
+    maxPlayers < minPlayers
+  ) {
+    throw new functions.https.HttpsError("invalid-argument", "maxPlayers inválido");
   }
 
   if (typeof startDateMillis !== "number") {
@@ -158,6 +172,8 @@ function validateTournamentPayload(data) {
     format,
     maxTeams,
     minTeams,
+    minPlayers,
+    maxPlayers,
     paymentForPlayer,
     startDate: Timestamp.fromMillis(startDateMillis),
 
@@ -216,6 +232,14 @@ function validateTournamentUpdate(data) {
     update.minTeams = data.minTeams;
   }
 
+  if (typeof data.minPlayers === "number" && data.minPlayers >= 1) {
+    update.minPlayers = data.minPlayers;
+  }
+
+  if (typeof data.maxPlayers === "number" && data.maxPlayers >= 1) {
+    update.maxPlayers = data.maxPlayers;
+  }
+
   if (
     typeof update.maxTeams === "number" &&
     typeof update.minTeams === "number" &&
@@ -224,6 +248,17 @@ function validateTournamentUpdate(data) {
     throw new functions.https.HttpsError(
       "invalid-argument",
       "minTeams no puede ser mayor que maxTeams"
+    );
+  }
+
+  if (
+    typeof update.maxPlayers === "number" &&
+    typeof update.minPlayers === "number" &&
+    update.minPlayers > update.maxPlayers
+  ) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "minPlayers no puede ser mayor que maxPlayers"
     );
   }
 
@@ -391,6 +426,23 @@ async function editTournament({ uid, tournamentId, data }) {
       throw new functions.https.HttpsError(
         "failed-precondition",
         "El torneo no se puede editar en su estado actual"
+      );
+    }
+
+    const nextMinPlayers =
+      typeof updatePayload.minPlayers === "number"
+        ? updatePayload.minPlayers
+        : Number(tournament.minPlayers || 1);
+
+    const nextMaxPlayers =
+      typeof updatePayload.maxPlayers === "number"
+        ? updatePayload.maxPlayers
+        : Number(tournament.maxPlayers || 1);
+
+    if (nextMinPlayers > nextMaxPlayers) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "minPlayers no puede ser mayor que maxPlayers"
       );
     }
 

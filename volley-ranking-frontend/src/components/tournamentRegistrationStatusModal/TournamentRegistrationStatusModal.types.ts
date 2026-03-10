@@ -6,6 +6,7 @@ export type TournamentRegistrationItem = {
   id: string;
   nameTeam?: string;
   groupId?: string;
+  teamMembersCount?: number;
   status?: RegistrationStatus;
   paymentStatus?: PaymentStatus;
   paymentAmount?: number;

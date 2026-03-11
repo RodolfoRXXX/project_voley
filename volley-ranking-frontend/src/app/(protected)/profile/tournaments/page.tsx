@@ -10,12 +10,13 @@ import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 
 type RegistrationStatus = "pendiente" | "aceptado" | "rechazado";
 
-type RegistrationRecord = {
+type TournamentEntryRecord = {
   id: string;
   tournamentId: string;
   groupId: string;
   nameTeam?: string;
   status?: RegistrationStatus;
+  source: "registration" | "team";
 };
 
 type Row = {
@@ -23,6 +24,8 @@ type Row = {
   tournament: Tournament;
   nameTeam: string;
   registrationStatus: RegistrationStatus;
+  source: "registration" | "team";
+  entryId: string;
 };
 
 const registrationStatusLabel: Record<RegistrationStatus, string> = {
@@ -50,7 +53,7 @@ export default function ProfileTournamentsPage() {
       const adminSnap = await getDocs(byAdminQ);
       const groupIds = adminSnap.docs.map((row) => row.id);
 
-      const records: RegistrationRecord[] = [];
+      const records: TournamentEntryRecord[] = [];
 
       await Promise.all(
         groupIds.map(async (groupId) => {
@@ -62,23 +65,24 @@ export default function ProfileTournamentsPage() {
           registrationSnap.docs.forEach((item) => {
             records.push({
               id: item.id,
-              ...(item.data() as Omit<RegistrationRecord, "id">),
+              ...(item.data() as Omit<TournamentEntryRecord, "id" | "source">),
+              source: "registration",
             });
           });
 
           teamsSnap.docs.forEach((item) => {
-            const data = item.data() as Omit<RegistrationRecord, "id">;
+            const data = item.data() as Omit<TournamentEntryRecord, "id" | "source">;
             records.push({
               id: item.id,
               ...data,
+              source: "team",
               status: data.status || "aceptado",
             });
           });
         })
       );
 
-      const visibleRecords = records.filter((item) => (item.status || "pendiente") !== "aceptado");
-      const tournamentIds = Array.from(new Set(visibleRecords.map((record) => record.tournamentId).filter(Boolean)));
+      const tournamentIds = Array.from(new Set(records.map((record) => record.tournamentId).filter(Boolean)));
 
       const tournamentsById = new Map<string, Tournament>();
       await Promise.all(
@@ -93,7 +97,7 @@ export default function ProfileTournamentsPage() {
         })
       );
 
-      const nextRows: Row[] = visibleRecords
+      const nextRows: Row[] = records
         .map((record) => {
           const tournament = tournamentsById.get(record.tournamentId);
           if (!tournament) return null;
@@ -101,10 +105,12 @@ export default function ProfileTournamentsPage() {
           const status = record.status || "pendiente";
 
           return {
-            id: `${record.tournamentId}-${record.groupId}-${record.id}`,
+            id: `${record.source}-${record.id}`,
             tournament,
             nameTeam: record.nameTeam || "Equipo sin nombre",
             registrationStatus: status,
+            source: record.source,
+            entryId: record.id,
           };
         })
         .filter(Boolean) as Row[];
@@ -132,7 +138,7 @@ export default function ProfileTournamentsPage() {
       <h1 className="text-2xl font-bold text-neutral-900">Mis torneos</h1>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-neutral-500">No tienes inscripciones pendientes o rechazadas.</p>
+        <p className="text-sm text-neutral-500">No tienes inscripciones o equipos de torneos todavía.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {rows.map((row) => (
@@ -143,12 +149,16 @@ export default function ProfileTournamentsPage() {
                 {registrationStatusLabel[row.registrationStatus]}
               </span>
 
-              <h2 className="pr-20 text-base font-semibold text-neutral-900">{row.tournament.name}</h2>
+              <h2 className="pr-24 text-base font-semibold text-neutral-900">{row.tournament.name}</h2>
               <p className="text-sm text-neutral-600">{tournamentStatusLabel[row.tournament.status]}</p>
               <p className="text-sm text-neutral-800">{row.nameTeam}</p>
 
               <Link
-                href={`/profile/tournaments/${row.tournament.id}`}
+                href={
+                  row.source === "registration"
+                    ? `/profile/tournaments/registrations/${row.entryId}`
+                    : `/profile/tournaments/teams/${row.entryId}`
+                }
                 className="inline-block text-sm font-medium text-orange-600 hover:text-orange-700"
               >
                 Ver detalle

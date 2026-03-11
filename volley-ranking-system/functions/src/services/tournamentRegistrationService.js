@@ -144,7 +144,7 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
 
       trx.update(tournamentRef, {
         acceptedTeamsCount: acceptedTeamsCount + 1,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
         updatedBy: uid,
       });
     }
@@ -163,9 +163,9 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
       paymentAmount: paidAmount,
       expectedAmount,
       pendingAmount: nextPaymentStatus === "pagado" ? 0 : pendingAmount,
-      paymentDate: nextPaymentStatus === "pagado" ? admin.firestore.FieldValue.serverTimestamp() : null,
+      paymentDate: nextPaymentStatus === "pagado" ? FieldValue.serverTimestamp() : null,
       decidedByUserId: uid,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     };
 
     trx.update(registrationRef, updatePayload);
@@ -213,8 +213,8 @@ async function updateTournamentRegistrationPayment({ uid, registrationId, paidAm
       pendingAmount,
       paymentStatus,
       paymentVerifiedBy: uid,
-      paymentVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      paymentVerifiedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
   });
 

@@ -78,6 +78,7 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId, nameT
       tournamentId,
       groupId,
       nameTeam: cleanTeamName,
+      playerIds: [],
       teamMembersCount,
       status: "pendiente",
       paymentStatus: "pendiente",

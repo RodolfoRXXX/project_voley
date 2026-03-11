@@ -143,6 +143,14 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
         );
       }
 
+      const existingTournamentTeamSnap = await trx.get(tournamentTeamRef);
+      if (existingTournamentTeamSnap.exists) {
+        throw new functions.https.HttpsError(
+          "already-exists",
+          "Ya existe un equipo del torneo para esta inscripción"
+        );
+      }
+
       trx.update(tournamentRef, {
         acceptedTeamsCount: acceptedTeamsCount + 1,
         updatedAt: FieldValue.serverTimestamp(),

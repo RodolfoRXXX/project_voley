@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { tournamentStatusLabel, type Tournament } from "@/types/tournament";
+import { ActionButton } from "@/components/ui/action/ActionButton";
 
 type EntrySource = "registration" | "team";
 type RegistrationStatus = "pendiente" | "aceptado" | "rechazado";
@@ -202,7 +203,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
 
       <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-base font-semibold text-neutral-900">Integrantes del grupo</h2>
+          <h2 className="text-base font-semibold text-neutral-900">Integrantes del equipo</h2>
           <div className="text-sm text-neutral-700 flex items-center gap-2">
             <span>{selectedCount} seleccionados</span>
             <span>{isCountValid ? "✅" : "⚠️"}</span>
@@ -230,17 +231,15 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
                     </div>
                   </div>
 
-                  <button
+                  <ActionButton
                     onClick={() => togglePlayer(member.id)}
-                    disabled={saving === member.id}
-                    className={`text-xs rounded-md px-3 py-1.5 font-medium ${
-                      inTeam
-                        ? "bg-red-50 text-red-700 border border-red-200"
-                        : "bg-green-50 text-green-700 border border-green-200"
-                    }`}
+                    loading={saving === member.id}
+                    disabled={!inTeam && selectedCount >= Number(tournament.maxPlayers || 0)}
+                    variant={inTeam ? "danger_outline" : "success_outline"}
+                    compact
                   >
                     {inTeam ? "- quitar" : "+ agregar"}
-                  </button>
+                  </ActionButton>
                 </li>
               );
             })}
@@ -248,14 +247,31 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
         )}
       </article>
 
-      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2 text-sm">
-        <h2 className="text-base font-semibold text-neutral-900">Pago de inscripción</h2>
-        <p><b>Pago por jugador:</b> ${Number(tournament.paymentForPlayer || 0)}</p>
-        <p><b>Monto a abonar:</b> ${expectedAmount}</p>
-        <p><b>Monto registrado:</b> ${Number(entry.paymentAmount || 0)}</p>
-        <span className={`inline-block text-xs rounded-full px-2 py-1 ${paymentStatusClass[paymentStatus]}`}>
+      <article className="relative rounded-xl border border-neutral-200 bg-white p-5 space-y-2 text-sm">
+
+        {/* Badge */}
+        <span
+          className={`absolute top-4 right-4 text-xs rounded-full px-2 py-1 ${paymentStatusClass[paymentStatus]}`}
+        >
           {paymentStatusLabel[paymentStatus]}
         </span>
+
+        <h2 className="text-base font-semibold text-neutral-900">
+          Pago de inscripción
+        </h2>
+
+        <p>
+          <b>Pago por jugador:</b> ${Number(tournament.paymentForPlayer || 0)}
+        </p>
+
+        <p>
+          <b>Monto a abonar:</b> ${expectedAmount}
+        </p>
+
+        <p>
+          <b>Monto registrado:</b> ${Number(entry.paymentAmount || 0)}
+        </p>
+
       </article>
     </section>
   );

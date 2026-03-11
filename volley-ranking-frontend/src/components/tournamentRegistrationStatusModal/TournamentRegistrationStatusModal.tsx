@@ -1,11 +1,12 @@
 "use client";
 
 import StatusPill, { type StatusVariant } from "@/components/ui/status/StatusPill";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
+import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 import {
   TournamentRegistrationStatusModalProps,
   RegistrationStatus,
@@ -56,17 +57,44 @@ export default function TournamentRegistrationStatusModal({
   onClose,
   onUpdated,
   registration,
+  tournamentMinPlayers,
+  tournamentMaxPlayers,
 }: TournamentRegistrationStatusModalProps) {
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const updateTournamentRegistrationPaymentFn = httpsCallable(functions, "updateTournamentRegistrationPayment");
+  const reviewTournamentRegistrationFn = httpsCallable(functions, "reviewTournamentRegistration");
 
   const [paidAmountInput, setPaidAmountInput] = useState(0);
   const [savingPayment, setSavingPayment] = useState(false);
+  const [reviewing, setReviewing] = useState<"aceptado" | "rechazado" | null>(null);
 
   useEffect(() => {
     if (!registration) return;
     setPaidAmountInput(Number(registration.paidAmount ?? registration.paymentAmount ?? 0));
   }, [registration]);
+
+  const teamMembersCount = Array.isArray(registration?.playerIds)
+    ? registration.playerIds.length
+    : Number(registration?.teamMembersCount ?? 0);
+
+  const missingConditions = useMemo(() => {
+    const issues: string[] = [];
+
+    if (registration?.paymentStatus !== "pagado") {
+      issues.push("El estado de pago debe ser 'Pagado'");
+    }
+
+    if (typeof tournamentMinPlayers === "number" && teamMembersCount < tournamentMinPlayers) {
+      issues.push(`El equipo debe tener al menos ${tournamentMinPlayers} integrantes`);
+    }
+
+    if (typeof tournamentMaxPlayers === "number" && teamMembersCount > tournamentMaxPlayers) {
+      issues.push(`El equipo debe tener como máximo ${tournamentMaxPlayers} integrantes`);
+    }
+
+    return issues;
+  }, [registration?.paymentStatus, teamMembersCount, tournamentMaxPlayers, tournamentMinPlayers]);
 
   if (!open || !registration) return null;
 
@@ -77,6 +105,7 @@ export default function TournamentRegistrationStatusModal({
   const pendingAmount = typeof registration.pendingAmount === "number"
     ? registration.pendingAmount
     : Math.max(expectedAmount - paidAmount, 0);
+  const canApprove = missingConditions.length === 0;
 
   const onConfirmPayment = async () => {
     try {
@@ -97,6 +126,51 @@ export default function TournamentRegistrationStatusModal({
       handleFirebaseError(err, showToast, "No se pudo actualizar el pago");
     } finally {
       setSavingPayment(false);
+    }
+  };
+
+  const onReviewRegistration = async (nextStatus: "aceptado" | "rechazado") => {
+    const firstConfirm = await confirm({
+      title: nextStatus === "aceptado" ? "Confirmar aceptación" : "Confirmar rechazo",
+      message: nextStatus === "aceptado"
+        ? "¿Querés continuar con la aceptación de esta inscripción?"
+        : "¿Querés continuar con el rechazo de esta inscripción?",
+      confirmText: "Continuar",
+      cancelText: "Cancelar",
+      variant: nextStatus === "aceptado" ? "success" : "warning",
+    });
+
+    if (!firstConfirm) return;
+
+    const secondConfirm = await confirm({
+      title: "Última confirmación",
+      message: nextStatus === "aceptado"
+        ? "Esta acción aceptará la inscripción y creará el equipo del torneo."
+        : "Esta acción marcará la inscripción como rechazada.",
+      confirmText: nextStatus === "aceptado" ? "Sí, aceptar" : "Sí, rechazar",
+      cancelText: "Volver",
+      variant: nextStatus === "aceptado" ? "success" : "danger",
+    });
+
+    if (!secondConfirm) return;
+
+    try {
+      setReviewing(nextStatus);
+      await reviewTournamentRegistrationFn({
+        registrationId: registration.id,
+        status: nextStatus,
+      });
+
+      showToast({
+        message: nextStatus === "aceptado" ? "Inscripción aceptada" : "Inscripción rechazada",
+        type: "success",
+      });
+      await onUpdated?.();
+      onClose();
+    } catch (err) {
+      handleFirebaseError(err, showToast, "No se pudo actualizar el estado de inscripción");
+    } finally {
+      setReviewing(null);
     }
   };
 
@@ -125,7 +199,7 @@ export default function TournamentRegistrationStatusModal({
 
           <div className="rounded-xl border border-neutral-200 p-3">
             <p className="text-xs text-neutral-500">Integrantes del equipo</p>
-            <p className="font-medium text-center text-neutral-900">{registration.teamMembersCount ?? "-"}</p>
+            <p className="font-medium text-center text-neutral-900">{teamMembersCount}</p>
           </div>
 
           <div className="rounded-xl border border-neutral-200 p-3 space-y-1">
@@ -190,6 +264,45 @@ export default function TournamentRegistrationStatusModal({
               className="h-10 rounded-lg bg-neutral-900 text-white text-sm font-medium disabled:opacity-60"
             >
               {savingPayment ? "Guardando..." : "Guardar pago"}
+            </button>
+          </div>
+
+          <p className="text-xs text-neutral-500">
+            Verificado por: <span className="font-medium text-neutral-700">{registration.paymentVerifiedBy || "Sin verificar"}</span>
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-neutral-200 p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-neutral-900">Resolver inscripción</h3>
+
+          {!canApprove && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              <p className="font-medium">Faltan condiciones para poder aceptar:</p>
+              <ul className="list-disc pl-4 mt-1 space-y-0.5">
+                {missingConditions.map((condition) => (
+                  <li key={condition}>{condition}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => onReviewRegistration("aceptado")}
+              disabled={!canApprove || reviewing !== null}
+              className="h-10 rounded-lg bg-emerald-600 px-4 text-white text-sm font-medium disabled:opacity-60"
+            >
+              {reviewing === "aceptado" ? "Aceptando..." : "Confirmar inscripción"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onReviewRegistration("rechazado")}
+              disabled={reviewing !== null}
+              className="h-10 rounded-lg bg-red-600 px-4 text-white text-sm font-medium disabled:opacity-60"
+            >
+              {reviewing === "rechazado" ? "Rechazando..." : "Rechazar inscripción"}
             </button>
           </div>
         </div>

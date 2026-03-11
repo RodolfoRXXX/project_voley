@@ -85,6 +85,7 @@ type TournamentRegistration = {
   groupId: string;
 
   status: "pendiente" | "aceptado" | "rechazado";
+  nameTeam: string;
 
   paymentStatus: "pendiente" | "pagado";
   paymentAmount?: number;
@@ -102,6 +103,7 @@ type TournamentRegistration = {
 type TournamentTeam = {
   tournamentId: string;
   groupId: string;
+  registrationId: string;
 
   name: string;
   playerIds: string[];

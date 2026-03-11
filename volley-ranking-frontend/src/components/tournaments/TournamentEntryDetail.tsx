@@ -11,7 +11,7 @@ import { ActionButton } from "@/components/ui/action/ActionButton";
 
 type EntrySource = "registration" | "team";
 type RegistrationStatus = "pendiente" | "aceptado" | "rechazado";
-type PaymentStatus = "pendiente" | "pagado";
+type PaymentStatus = "pendiente" | "parcial" | "pagado";
 
 type EntryDoc = {
   id: string;
@@ -23,6 +23,9 @@ type EntryDoc = {
   status?: RegistrationStatus;
   paymentStatus?: PaymentStatus;
   paymentAmount?: number;
+  expectedAmount?: number;
+  paidAmount?: number;
+  pendingAmount?: number;
   playerIds?: string[];
   groupLabel?: string;
 };
@@ -59,11 +62,13 @@ const registrationStatusLabel: Record<RegistrationStatus, string> = {
 
 const paymentStatusClass: Record<PaymentStatus, string> = {
   pendiente: "bg-yellow-100 text-yellow-700",
+  parcial: "bg-orange-100 text-orange-700",
   pagado: "bg-green-100 text-green-700",
 };
 
 const paymentStatusLabel: Record<PaymentStatus, string> = {
   pendiente: "Pendiente",
+  parcial: "Parcial",
   pagado: "Pagado",
 };
 
@@ -148,23 +153,34 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
   }, [selectedCount, tournament]);
 
   const togglePlayer = async (playerId: string) => {
-    if (!entry || !tournament) return;
+    if (!entry || !tournament || source !== "registration") return;
 
     const current = Array.isArray(entry.playerIds) ? entry.playerIds : [];
     const exists = current.includes(playerId);
     const next = exists ? current.filter((id) => id !== playerId) : [...current, playerId];
-    const nextAmount = next.length * Number(tournament.paymentForPlayer || 0);
+    const nextExpectedAmount = next.length * Number(tournament.paymentForPlayer || 0);
+    const paidAmount = Number(entry.paidAmount ?? entry.paymentAmount ?? 0);
+    const pendingAmount = Math.max(nextExpectedAmount - paidAmount, 0);
+    const paymentStatus: PaymentStatus = paidAmount <= 0 ? "pendiente" : pendingAmount === 0 ? "pagado" : "parcial";
 
     setSaving(playerId);
 
     const collectionName = source === "registration" ? "tournamentRegistrations" : "tournamentTeams";
     await updateDoc(doc(db, collectionName, entry.id), {
       playerIds: next,
-      paymentAmount: nextAmount,
+      expectedAmount: nextExpectedAmount,
+      pendingAmount,
+      paymentStatus,
       updatedAt: serverTimestamp(),
     });
 
-    setEntry((prev) => (prev ? { ...prev, playerIds: next, paymentAmount: nextAmount } : prev));
+    setEntry((prev) => (prev ? {
+      ...prev,
+      playerIds: next,
+      expectedAmount: nextExpectedAmount,
+      pendingAmount,
+      paymentStatus,
+    } : prev));
     setSaving(null);
   };
 
@@ -178,6 +194,9 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
 
   const registrationStatus = entry.status || "pendiente";
   const paymentStatus = entry.paymentStatus || "pendiente";
+  const paidAmount = Number(entry.paidAmount ?? entry.paymentAmount ?? 0);
+  const storedExpectedAmount = Number(entry.expectedAmount ?? expectedAmount);
+  const pendingAmount = Number(entry.pendingAmount ?? Math.max(storedExpectedAmount - paidAmount, 0));
 
   return (
     <section className="space-y-5">
@@ -234,7 +253,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
                   <ActionButton
                     onClick={() => togglePlayer(member.id)}
                     loading={saving === member.id}
-                    disabled={!inTeam && selectedCount >= Number(tournament.maxPlayers || 0)}
+                    disabled={source === "team" || (!inTeam && selectedCount >= Number(tournament.maxPlayers || 0))}
                     variant={inTeam ? "danger_outline" : "success_outline"}
                     compact
                   >
@@ -265,11 +284,15 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
         </p>
 
         <p>
-          <b>Monto a abonar:</b> ${expectedAmount}
+          <b>Monto total:</b> ${storedExpectedAmount}
         </p>
 
         <p>
-          <b>Monto registrado:</b> ${Number(entry.paymentAmount || 0)}
+          <b>Pagado:</b> ${paidAmount}
+        </p>
+
+        <p>
+          <b>Falta pagar:</b> ${pendingAmount}
         </p>
 
       </article>

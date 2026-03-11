@@ -686,6 +686,7 @@ export default function AdminTournamentDetailPage() {
         open={selectedRegistration !== null}
         registration={selectedRegistration}
         onClose={() => setSelectedRegistration(null)}
+        onUpdated={loadRegistrations}
       />
     </main>
   );

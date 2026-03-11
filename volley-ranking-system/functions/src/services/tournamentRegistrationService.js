@@ -74,11 +74,20 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId, nameT
       );
     }
 
+    const paymentForPlayer = Number(tournament.paymentForPlayer || 0);
+    const expectedAmount = 0;
+    const paidAmount = 0;
+    const pendingAmount = expectedAmount;
+
     trx.set(registrationRef, {
       tournamentId,
       groupId,
       nameTeam: cleanTeamName,
       playerIds: [],
+      paymentForPlayer,
+      expectedAmount,
+      paidAmount,
+      pendingAmount,
       teamMembersCount,
       status: "pendiente",
       paymentStatus: "pendiente",
@@ -140,11 +149,21 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
       });
     }
 
+    const paidAmount = typeof paymentAmount === "number" ? paymentAmount : Number(registration.paidAmount || 0);
+    const expectedAmount = Number(registration.expectedAmount || 0);
+    const pendingAmount = Math.max(expectedAmount - paidAmount, 0);
+    const computedPaymentStatus = paidAmount <= 0 ? "pendiente" : pendingAmount === 0 ? "pagado" : "parcial";
+
+    const nextPaymentStatus = paymentStatus === "pagado" ? "pagado" : computedPaymentStatus;
+
     const updatePayload = {
       status,
-      paymentStatus: paymentStatus === "pagado" ? "pagado" : "pendiente",
-      paymentAmount: typeof paymentAmount === "number" ? paymentAmount : 0,
-      paymentDate: paymentStatus === "pagado" ? admin.firestore.FieldValue.serverTimestamp() : null,
+      paymentStatus: nextPaymentStatus,
+      paidAmount,
+      paymentAmount: paidAmount,
+      expectedAmount,
+      pendingAmount: nextPaymentStatus === "pagado" ? 0 : pendingAmount,
+      paymentDate: nextPaymentStatus === "pagado" ? admin.firestore.FieldValue.serverTimestamp() : null,
       decidedByUserId: uid,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
@@ -155,7 +174,55 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
   return { ok: true };
 }
 
+async function updateTournamentRegistrationPayment({ uid, registrationId, paidAmount }) {
+  if (typeof registrationId !== "string" || !registrationId) {
+    throw new functions.https.HttpsError("invalid-argument", "registrationId inválido");
+  }
+
+  if (typeof paidAmount !== "number" || paidAmount < 0) {
+    throw new functions.https.HttpsError("invalid-argument", "paidAmount inválido");
+  }
+
+  const registrationRef = db.collection("tournamentRegistrations").doc(registrationId);
+
+  await db.runTransaction(async (trx) => {
+    const registrationSnap = await trx.get(registrationRef);
+    if (!registrationSnap.exists) {
+      throw new functions.https.HttpsError("not-found", "La inscripción no existe");
+    }
+
+    const registration = registrationSnap.data();
+    const tournamentRef = db.collection("tournaments").doc(registration.tournamentId);
+    const tournamentSnap = await trx.get(tournamentRef);
+
+    if (!tournamentSnap.exists) {
+      throw new functions.https.HttpsError("not-found", "El torneo no existe");
+    }
+
+    const tournament = tournamentSnap.data();
+    assertTournamentAdmin(tournament, uid);
+
+    const expectedAmount = Number(registration.expectedAmount || 0);
+    const pendingAmount = Math.max(expectedAmount - paidAmount, 0);
+    const paymentStatus = paidAmount <= 0 ? "pendiente" : pendingAmount === 0 ? "pagado" : "parcial";
+
+    trx.update(registrationRef, {
+      paidAmount,
+      paymentAmount: paidAmount,
+      expectedAmount,
+      pendingAmount,
+      paymentStatus,
+      paymentVerifiedBy: uid,
+      paymentVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { ok: true };
+}
+
 module.exports = {
   requestTournamentRegistration,
   reviewTournamentRegistration,
+  updateTournamentRegistrationPayment,
 };

@@ -7,6 +7,7 @@ export type TournamentRegistrationItem = {
   nameTeam?: string;
   groupId?: string;
   teamMembersCount?: number;
+  playerIds?: string[];
   status?: RegistrationStatus;
   paymentStatus?: PaymentStatus;
   paymentAmount?: number;
@@ -26,4 +27,6 @@ export type TournamentRegistrationStatusModalProps = {
   onClose: () => void;
   onUpdated?: () => void | Promise<void>;
   registration: TournamentRegistrationItem | null;
+  tournamentMinPlayers?: number;
+  tournamentMaxPlayers?: number;
 };

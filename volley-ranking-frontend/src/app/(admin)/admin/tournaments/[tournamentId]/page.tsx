@@ -685,8 +685,12 @@ export default function AdminTournamentDetailPage() {
       <TournamentRegistrationStatusModal
         open={selectedRegistration !== null}
         registration={selectedRegistration}
+        tournamentMinPlayers={tournament?.minPlayers}
+        tournamentMaxPlayers={tournament?.maxPlayers}
         onClose={() => setSelectedRegistration(null)}
-        onUpdated={loadRegistrations}
+        onUpdated={async () => {
+          await Promise.all([loadRegistrations(), loadTournament()]);
+        }}
       />
     </main>
   );

@@ -117,6 +117,7 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
 
     const registration = registrationSnap.data();
     const tournamentRef = db.collection("tournaments").doc(registration.tournamentId);
+    const tournamentTeamRef = db.collection("tournamentTeams").doc(registration.id || registrationId);
     const tournamentSnap = await trx.get(tournamentRef);
 
     if (!tournamentSnap.exists) {
@@ -146,6 +147,33 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
         acceptedTeamsCount: acceptedTeamsCount + 1,
         updatedAt: FieldValue.serverTimestamp(),
         updatedBy: uid,
+      });
+
+      const existingTournamentTeamSnap = await trx.get(tournamentTeamRef);
+      if (existingTournamentTeamSnap.exists) {
+        throw new functions.https.HttpsError(
+          "already-exists",
+          "Ya existe un equipo del torneo para esta inscripción"
+        );
+      }
+
+      trx.set(tournamentTeamRef, {
+        tournamentId: registration.tournamentId,
+        groupId: registration.groupId,
+        registrationId,
+        name: registration.nameTeam || "Sin nombre",
+        playerIds: Array.isArray(registration.playerIds) ? registration.playerIds : [],
+        groupLabel: 0,
+        stats: {
+          played: 0,
+          won: 0,
+          draw: 0,
+          lost: 0,
+          points: 0,
+          setsFor: 0,
+          setsAgainst: 0,
+        },
+        createdAt: FieldValue.serverTimestamp(),
       });
     }
 

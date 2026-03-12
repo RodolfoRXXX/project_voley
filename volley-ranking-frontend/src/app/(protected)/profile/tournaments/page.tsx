@@ -14,6 +14,7 @@ type TournamentEntryRecord = {
   id: string;
   tournamentId: string;
   groupId: string;
+  name?: string;
   nameTeam?: string;
   status?: RegistrationStatus;
   source: "registration" | "team";
@@ -97,7 +98,20 @@ export default function ProfileTournamentsPage() {
         })
       );
 
+      const acceptedTeamKeys = new Set(
+        records
+          .filter((record) => record.source === "team")
+          .map((record) => `${record.tournamentId}::${record.groupId}`)
+      );
+
       const nextRows: Row[] = records
+        .filter((record) => {
+          if (record.source !== "registration") return true;
+          const status = record.status || "pendiente";
+          if (status !== "aceptado") return true;
+
+          return !acceptedTeamKeys.has(`${record.tournamentId}::${record.groupId}`);
+        })
         .map((record) => {
           const tournament = tournamentsById.get(record.tournamentId);
           if (!tournament) return null;
@@ -107,7 +121,7 @@ export default function ProfileTournamentsPage() {
           return {
             id: `${record.source}-${record.id}`,
             tournament,
-            nameTeam: record.nameTeam || "Equipo sin nombre",
+            nameTeam: record.nameTeam || record.name || "Equipo sin nombre",
             registrationStatus: status,
             source: record.source,
             entryId: record.id,

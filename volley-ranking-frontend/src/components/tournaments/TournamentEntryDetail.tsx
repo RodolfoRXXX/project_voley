@@ -20,6 +20,7 @@ type EntryDoc = {
   registrationId?: string;
   name?: string;
   nameTeam?: string;
+  playersIds?: string[];
   status?: RegistrationStatus;
   paymentStatus?: PaymentStatus;
   paymentAmount?: number;
@@ -96,9 +97,19 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
       }
 
       const entryData = { id: entrySnap.id, ...(entrySnap.data() as Omit<EntryDoc, "id">) };
-      const playerIds = Array.isArray(entryData.playerIds) ? entryData.playerIds : [];
+      const normalizedPlayers = Array.isArray(entryData.playerIds)
+        ? entryData.playerIds
+        : Array.isArray(entryData.playersIds)
+          ? entryData.playersIds
+          : [];
       const safeStatus = entryData.status || (source === "team" ? "aceptado" : "pendiente");
-      setEntry({ ...entryData, playerIds, status: safeStatus });
+      setEntry({
+        ...entryData,
+        nameTeam: entryData.nameTeam || entryData.name || "",
+        playerIds: normalizedPlayers,
+        playersIds: normalizedPlayers,
+        status: safeStatus,
+      });
 
       const [groupSnap, tournamentSnap] = await Promise.all([
         getDoc(doc(db, "groups", entryData.groupId)),
@@ -153,21 +164,32 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
   }, [selectedCount, tournament]);
 
   const togglePlayer = async (playerId: string) => {
-    if (!entry || !tournament || source !== "registration") return;
+    if (!entry || !tournament) return;
 
     const current = Array.isArray(entry.playerIds) ? entry.playerIds : [];
     const exists = current.includes(playerId);
+    const minPlayers = Number(tournament.minPlayers || 0);
+    const maxPlayers = Number(tournament.maxPlayers || 0);
+
+    if (!exists && current.length >= maxPlayers) return;
+    if (exists && current.length <= minPlayers) return;
+
     const next = exists ? current.filter((id) => id !== playerId) : [...current, playerId];
     const nextExpectedAmount = next.length * Number(tournament.paymentForPlayer || 0);
     const paidAmount = Number(entry.paidAmount ?? entry.paymentAmount ?? 0);
     const pendingAmount = Math.max(nextExpectedAmount - paidAmount, 0);
-    const paymentStatus: PaymentStatus = paidAmount <= 0 ? "pendiente" : pendingAmount === 0 ? "pagado" : "parcial";
+
+    let paymentStatus: PaymentStatus = paidAmount <= 0 ? "pendiente" : pendingAmount === 0 ? "pagado" : "parcial";
+    if (nextExpectedAmount > paidAmount) {
+      paymentStatus = "pendiente";
+    }
 
     setSaving(playerId);
 
     const collectionName = source === "registration" ? "tournamentRegistrations" : "tournamentTeams";
     await updateDoc(doc(db, collectionName, entry.id), {
       playerIds: next,
+      playersIds: next,
       expectedAmount: nextExpectedAmount,
       pendingAmount,
       paymentStatus,
@@ -177,6 +199,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
     setEntry((prev) => (prev ? {
       ...prev,
       playerIds: next,
+      playersIds: next,
       expectedAmount: nextExpectedAmount,
       pendingAmount,
       paymentStatus,
@@ -214,7 +237,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
       <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2 text-sm">
         <h2 className="text-base font-semibold text-neutral-900">Información del torneo y equipo</h2>
         <p><b>Tipo de registro:</b> {source === "registration" ? "Inscripción" : "Equipo"}</p>
-        <p><b>Nombre del equipo:</b> {entry.nameTeam || entry.name || "Sin nombre"}</p>
+        <p><b>Nombre del equipo:</b> {entry.nameTeam || entry.name || group.nombre || "Sin nombre"}</p>
         <p><b>Grupo:</b> {group.nombre || entry.groupLabel || entry.groupId}</p>
         <p><b>Jugadores permitidos:</b> min {tournament.minPlayers} / max {tournament.maxPlayers}</p>
         {source === "team" && entry.registrationId && <p><b>Registration ID:</b> {entry.registrationId}</p>}
@@ -253,7 +276,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
                   <ActionButton
                     onClick={() => togglePlayer(member.id)}
                     loading={saving === member.id}
-                    disabled={source === "team" || (!inTeam && selectedCount >= Number(tournament.maxPlayers || 0))}
+                    disabled={(!inTeam && selectedCount >= Number(tournament.maxPlayers || 0)) || (inTeam && selectedCount <= Number(tournament.minPlayers || 0))}
                     variant={inTeam ? "danger_outline" : "success_outline"}
                     compact
                   >
@@ -266,36 +289,37 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
         )}
       </article>
 
-      <article className="relative rounded-xl border border-neutral-200 bg-white p-5 space-y-2 text-sm">
+      {source === "registration" && (
+        <article className="relative rounded-xl border border-neutral-200 bg-white p-5 space-y-2 text-sm">
 
-        {/* Badge */}
-        <span
-          className={`absolute top-4 right-4 text-xs rounded-full px-2 py-1 ${paymentStatusClass[paymentStatus]}`}
-        >
-          {paymentStatusLabel[paymentStatus]}
-        </span>
+          <span
+            className={`absolute top-4 right-4 text-xs rounded-full px-2 py-1 ${paymentStatusClass[paymentStatus]}`}
+          >
+            {paymentStatusLabel[paymentStatus]}
+          </span>
 
-        <h2 className="text-base font-semibold text-neutral-900">
-          Pago de inscripción
-        </h2>
+          <h2 className="text-base font-semibold text-neutral-900">
+            Pago de inscripción
+          </h2>
 
-        <p>
-          <b>Pago por jugador:</b> ${Number(tournament.paymentForPlayer || 0)}
-        </p>
+          <p>
+            <b>Pago por jugador:</b> ${Number(tournament.paymentForPlayer || 0)}
+          </p>
 
-        <p>
-          <b>Monto total:</b> ${storedExpectedAmount}
-        </p>
+          <p>
+            <b>Monto total:</b> ${storedExpectedAmount}
+          </p>
 
-        <p>
-          <b>Pagado:</b> ${paidAmount}
-        </p>
+          <p>
+            <b>Pagado:</b> ${paidAmount}
+          </p>
 
-        <p>
-          <b>Falta pagar:</b> ${pendingAmount}
-        </p>
+          <p>
+            <b>Falta pagar:</b> ${pendingAmount}
+          </p>
 
-      </article>
+        </article>
+      )}
     </section>
   );
 }

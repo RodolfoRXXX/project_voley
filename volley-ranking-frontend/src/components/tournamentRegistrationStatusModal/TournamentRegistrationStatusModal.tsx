@@ -175,8 +175,8 @@ export default function TournamentRegistrationStatusModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl w-full max-w-xl p-6 space-y-5 shadow-xl">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4 py-3 sm:py-6">
+      <div className="bg-white rounded-2xl w-full max-w-xl p-6 space-y-5 shadow-xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-neutral-900">Estado de inscripción</h2>

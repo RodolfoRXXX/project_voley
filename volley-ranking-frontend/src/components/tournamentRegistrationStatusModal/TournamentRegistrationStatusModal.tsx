@@ -2,8 +2,9 @@
 
 import StatusPill, { type StatusVariant } from "@/components/ui/status/StatusPill";
 import { useEffect, useMemo, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { functions } from "@/lib/firebase";
+import { db, functions } from "@/lib/firebase";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
@@ -67,11 +68,50 @@ export default function TournamentRegistrationStatusModal({
 
   const [paidAmountInput, setPaidAmountInput] = useState(0);
   const [savingPayment, setSavingPayment] = useState(false);
-  const [reviewing, setReviewing] = useState<"aceptado" | "rechazado" | null>(null);
+  const [reviewing, setReviewing] = useState<"aceptado" | "rechazado" | "equipo_rechazado" | null>(null);
+  const [loadingSourceData, setLoadingSourceData] = useState(false);
+  const [sourceRegistrationId, setSourceRegistrationId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!registration) return;
-    setPaidAmountInput(Number(registration.paidAmount ?? registration.paymentAmount ?? 0));
+
+    const source = registration.source || "registration";
+
+    if (source === "registration") {
+      setSourceRegistrationId(registration.id);
+      setPaidAmountInput(Number(registration.paidAmount ?? registration.paymentAmount ?? 0));
+      return;
+    }
+
+    const linkedRegistrationId = registration.registrationId;
+
+    if (!linkedRegistrationId) {
+      setSourceRegistrationId(null);
+      setPaidAmountInput(Number(registration.paidAmount ?? registration.paymentAmount ?? 0));
+      return;
+    }
+
+    setLoadingSourceData(true);
+
+    getDoc(doc(db, "tournamentRegistrations", linkedRegistrationId))
+      .then((snap) => {
+        if (!snap.exists()) {
+          setSourceRegistrationId(linkedRegistrationId);
+          setPaidAmountInput(Number(registration.paidAmount ?? registration.paymentAmount ?? 0));
+          return;
+        }
+
+        const linkedRegistration = snap.data();
+        setSourceRegistrationId(linkedRegistrationId);
+        setPaidAmountInput(Number(linkedRegistration.paidAmount ?? linkedRegistration.paymentAmount ?? 0));
+      })
+      .catch(() => {
+        setSourceRegistrationId(linkedRegistrationId);
+        setPaidAmountInput(Number(registration.paidAmount ?? registration.paymentAmount ?? 0));
+      })
+      .finally(() => {
+        setLoadingSourceData(false);
+      });
   }, [registration]);
 
   const teamMembersCount = Array.isArray(registration?.playerIds)
@@ -105,6 +145,8 @@ export default function TournamentRegistrationStatusModal({
   const pendingAmount = typeof registration.pendingAmount === "number"
     ? registration.pendingAmount
     : Math.max(expectedAmount - paidAmount, 0);
+  const source = registration.source || "registration";
+  const isTeamSource = source === "team";
   const canApprove = missingConditions.length === 0;
 
   const onConfirmPayment = async () => {
@@ -112,7 +154,7 @@ export default function TournamentRegistrationStatusModal({
       setSavingPayment(true);
 
       await updateTournamentRegistrationPaymentFn({
-        registrationId: registration.id,
+        registrationId: sourceRegistrationId || registration.id,
         paidAmount: Number(paidAmountInput || 0),
       });
 
@@ -129,12 +171,12 @@ export default function TournamentRegistrationStatusModal({
     }
   };
 
-  const onReviewRegistration = async (nextStatus: "aceptado" | "rechazado") => {
+  const onReviewRegistration = async (nextStatus: "aceptado" | "rechazado" | "equipo_rechazado") => {
     const firstConfirm = await confirm({
       title: nextStatus === "aceptado" ? "Confirmar aceptación" : "Confirmar rechazo",
       message: nextStatus === "aceptado"
         ? "¿Querés continuar con la aceptación de esta inscripción?"
-        : "¿Querés continuar con el rechazo de esta inscripción?",
+        : "¿Querés continuar con el rechazo de este equipo?",
       confirmText: "Continuar",
       cancelText: "Cancelar",
       variant: nextStatus === "aceptado" ? "success" : "warning",
@@ -157,12 +199,12 @@ export default function TournamentRegistrationStatusModal({
     try {
       setReviewing(nextStatus);
       await reviewTournamentRegistrationFn({
-        registrationId: registration.id,
-        status: nextStatus,
+        registrationId: sourceRegistrationId || registration.id,
+        status: nextStatus === "equipo_rechazado" ? "rechazado" : nextStatus,
       });
 
       showToast({
-        message: nextStatus === "aceptado" ? "Inscripción aceptada" : "Inscripción rechazada",
+        message: nextStatus === "aceptado" ? "Inscripción aceptada" : "Equipo rechazado",
         type: "success",
       });
       await onUpdated?.();
@@ -176,11 +218,11 @@ export default function TournamentRegistrationStatusModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4 py-3 sm:py-6">
-      <div className="bg-white rounded-2xl w-full max-w-xl p-6 space-y-5 shadow-xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
-        <div className="flex items-start justify-between gap-4">
+      <div className="bg-white rounded-2xl w-full max-w-xl shadow-xl max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-start justify-between gap-4 p-6 border-b border-neutral-200">
           <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-neutral-900">Estado de inscripción</h2>
-            <p className="text-xs text-neutral-500">Detalle administrativo del registro del equipo.</p>
+            <h2 className="text-lg font-semibold text-neutral-900">Estado del equipo</h2>
+            <p className="text-xs text-neutral-500">Detalle administrativo del estado del equipo.</p>
           </div>
 
           <button
@@ -191,10 +233,11 @@ export default function TournamentRegistrationStatusModal({
           </button>
         </div>
 
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
         <div className="grid sm:grid-cols-2 gap-3 text-sm">
           <div className="rounded-xl border border-neutral-200 p-3">
             <p className="text-xs text-neutral-500">Equipo</p>
-            <p className="font-medium text-center text-neutral-900">{registration.nameTeam || "Sin nombre"}</p>
+            <p className="font-medium text-center text-neutral-900">{registration.nameTeam || registration.name || "Sin nombre"}</p>
           </div>
 
           <div className="rounded-xl border border-neutral-200 p-3">
@@ -207,30 +250,6 @@ export default function TournamentRegistrationStatusModal({
             <StatusPill label={statusBadge.label} variant={statusBadge.variant} />
           </div>
 
-          <div className="rounded-xl border border-neutral-200 p-3 space-y-1">
-            <p className="text-xs text-neutral-500">Estado de pago</p>
-            <StatusPill label={paymentBadge.label} variant={paymentBadge.variant} />
-          </div>
-
-          <div className="rounded-xl border border-neutral-200 p-3">
-            <p className="text-xs text-neutral-500">Monto total esperado</p>
-            <p className="font-medium text-center text-neutral-900">${expectedAmount}</p>
-          </div>
-
-          <div className="rounded-xl border border-neutral-200 p-3">
-            <p className="text-xs text-neutral-500">Monto pagado</p>
-            <p className="font-medium text-center text-neutral-900">${paidAmount}</p>
-          </div>
-
-          <div className="rounded-xl border border-neutral-200 p-3">
-            <p className="text-xs text-neutral-500">Falta pagar</p>
-            <p className="font-medium text-center text-neutral-900">${pendingAmount}</p>
-          </div>
-
-          <div className="rounded-xl border border-neutral-200 p-3">
-            <p className="text-xs text-neutral-500">Revisado por</p>
-            <p className="font-medium text-center text-neutral-900">{registration.decidedByUserId || "Pendiente"}</p>
-          </div>
 
           <div className="rounded-xl border border-neutral-200 p-3">
             <p className="text-xs text-neutral-500">Fecha de registro</p>
@@ -244,7 +263,21 @@ export default function TournamentRegistrationStatusModal({
         </div>
 
         <div className="rounded-xl border border-neutral-200 p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-neutral-900">Confirmar pago</h3>
+          <h3 className="text-sm font-semibold text-neutral-900">Pago</h3>
+          <div className="grid sm:grid-cols-3 gap-3 text-sm">
+            <div className="rounded-lg border border-neutral-200 p-3 space-y-1">
+              <p className="text-xs text-neutral-500">Estado de pago</p>
+              <StatusPill label={paymentBadge.label} variant={paymentBadge.variant} />
+            </div>
+            <div className="rounded-lg border border-neutral-200 p-3">
+              <p className="text-xs text-neutral-500">Abonado / Esperado</p>
+              <p className="font-medium text-neutral-900">${paidAmount} / ${expectedAmount}</p>
+            </div>
+            <div className="rounded-lg border border-neutral-200 p-3">
+              <p className="text-xs text-neutral-500">Pago pendiente</p>
+              <p className="font-medium text-neutral-900">${pendingAmount}</p>
+            </div>
+          </div>
           <div className="grid sm:grid-cols-2 gap-3 items-end">
             <label className="text-xs text-neutral-500 space-y-1 block">
               Monto pagado confirmado
@@ -260,22 +293,19 @@ export default function TournamentRegistrationStatusModal({
             <button
               type="button"
               onClick={onConfirmPayment}
-              disabled={savingPayment}
+              disabled={savingPayment || loadingSourceData || !sourceRegistrationId}
               className="h-10 rounded-lg bg-neutral-900 text-white text-sm font-medium disabled:opacity-60"
             >
               {savingPayment ? "Guardando..." : "Guardar pago"}
             </button>
           </div>
 
-          <p className="text-xs text-neutral-500">
-            Verificado por: <span className="font-medium text-neutral-700">{registration.paymentVerifiedBy || "Sin verificar"}</span>
-          </p>
         </div>
 
-        <div className="rounded-xl border border-neutral-200 p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-neutral-900">Resolver inscripción</h3>
+        </div>
 
-          {!canApprove && (
+        <div className="p-6 border-t border-neutral-200 space-y-3">
+          {!isTeamSource && !canApprove && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
               <p className="font-medium">Faltan condiciones para poder aceptar:</p>
               <ul className="list-disc pl-4 mt-1 space-y-0.5">
@@ -287,22 +317,28 @@ export default function TournamentRegistrationStatusModal({
           )}
 
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => onReviewRegistration("aceptado")}
-              disabled={!canApprove || reviewing !== null}
-              className="h-10 rounded-lg bg-emerald-600 px-4 text-white text-sm font-medium disabled:opacity-60"
-            >
-              {reviewing === "aceptado" ? "Aceptando..." : "Confirmar inscripción"}
-            </button>
+            {!isTeamSource && (
+              <button
+                type="button"
+                onClick={() => onReviewRegistration("aceptado")}
+                disabled={!canApprove || reviewing !== null}
+                className="h-10 rounded-lg bg-emerald-600 px-4 text-white text-sm font-medium disabled:opacity-60"
+              >
+                {reviewing === "aceptado" ? "Aceptando..." : "Confirmar inscripción"}
+              </button>
+            )}
 
             <button
               type="button"
-              onClick={() => onReviewRegistration("rechazado")}
+              onClick={() => onReviewRegistration(isTeamSource ? "equipo_rechazado" : "rechazado")}
               disabled={reviewing !== null}
               className="h-10 rounded-lg bg-red-600 px-4 text-white text-sm font-medium disabled:opacity-60"
             >
-              {reviewing === "rechazado" ? "Rechazando..." : "Rechazar inscripción"}
+              {reviewing === "rechazado" || reviewing === "equipo_rechazado"
+                ? "Rechazando..."
+                : isTeamSource
+                  ? "Rechazar equipo"
+                  : "Rechazar inscripción"}
             </button>
           </div>
         </div>

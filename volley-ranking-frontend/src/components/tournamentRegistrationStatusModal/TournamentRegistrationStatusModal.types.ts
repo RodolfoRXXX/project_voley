@@ -4,7 +4,10 @@ export type PaymentStatus = "pendiente" | "parcial" | "pagado";
 
 export type TournamentRegistrationItem = {
   id: string;
+  source?: "registration" | "team";
+  registrationId?: string;
   nameTeam?: string;
+  name?: string;
   groupId?: string;
   teamMembersCount?: number;
   playerIds?: string[];

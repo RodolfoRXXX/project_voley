@@ -12,6 +12,39 @@ import { useRouter } from "next/navigation";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import useToast from "@/components/ui/toast/useToast";
+import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
+
+function OnboardingFormSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <Skeleton className="h-5 w-40" />
+        <div className="grid grid-cols-2 gap-3">
+          <SkeletonSoft className="h-10 w-full rounded-lg" />
+          <SkeletonSoft className="h-10 w-full rounded-lg" />
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Skeleton className="h-5 w-44" />
+        <SkeletonSoft className="h-4 w-56" />
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <SkeletonSoft
+              key={idx}
+              className="h-9 w-full rounded-lg"
+            />
+          ))}
+        </div>
+
+        <SkeletonSoft className="h-4 w-40" />
+      </div>
+
+      <Skeleton className="h-10 w-full rounded-lg" />
+    </div>
+  );
+}
 
 export default function OnboardingForm() {
   const router = useRouter();
@@ -101,11 +134,7 @@ export default function OnboardingForm() {
   };
 
   if (loadingCatalog) {
-    return (
-      <p className="text-sm text-gray-500">
-        Cargando posiciones…
-      </p>
-    );
+    return <OnboardingFormSkeleton />;
   }
 
   const isSelected = (p: string) => posiciones.includes(p);

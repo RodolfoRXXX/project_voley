@@ -96,12 +96,12 @@ export default function AdminTournamentsPage() {
 
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
-      <AdminBreadcrumb items={[{ label: "Mis torneos" }, { label: "Torneos" }]} />
+      <AdminBreadcrumb items={[{ label: "Mis gestión" }, { label: "Torneos" }]} />
 
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-xl font-semibold text-neutral-900">Mis torneos</h1>
-          <p className="text-sm text-neutral-500">Torneos donde sos owner o admin gestor.</p>
+          <p className="text-sm text-neutral-500">Torneos donde sos administrador.</p>
         </div>
 
         <Link
@@ -112,7 +112,7 @@ export default function AdminTournamentsPage() {
         </Link>
       </div>
 
-      {tournaments.length === 0 && <p className="text-sm text-neutral-500">Todavía no tenés torneos.</p>}
+      {tournaments.length === 0 && <p className="text-sm text-neutral-500">Todavía no tenés torneos creados.</p>}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {tournaments.map((tournament) => (

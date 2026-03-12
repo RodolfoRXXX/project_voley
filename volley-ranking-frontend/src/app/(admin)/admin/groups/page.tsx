@@ -18,7 +18,7 @@ interface Group {
   nombre: string;
   descripcion: string;
   activo: boolean;
-  partidosTotales: number;
+  memberIds?: string[];
   createdAt?: {
     seconds: number;
   };
@@ -120,7 +120,7 @@ export default function AdminGroupsPage() {
 
       <AdminBreadcrumb
         items={[
-          { label: "Mis grupos"},
+          { label: "Mis gestión"},
           { label: "Grupos"},
         ]}
       />
@@ -144,7 +144,7 @@ export default function AdminGroupsPage() {
       </div>
 
       {groups.length === 0 && (
-        <p className="text-gray-500">No hay grupos creados.</p>
+        <p className="text-gray-500">No tenés grupos creados.</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -153,56 +153,41 @@ export default function AdminGroupsPage() {
             key={group.id}
             className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col h-full"
           >
+
+            {/* Contenido superior */}
             <div className="space-y-1">
-              <h2 className="text-base font-semibold text-neutral-900">
-                {group.nombre}
-              </h2>
+              <div className="flex items-start justify-between gap-4">
+                <h2 className="text-base font-semibold text-neutral-900">
+                  {group.nombre}
+                </h2>
+
+                <Link
+                  href={`/admin/groups/${group.id}`}
+                  className="flex items-center whitespace-nowrap px-3 py-1.5 rounded-lg border text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
+                >
+                  Ver detalle
+                </Link>
+              </div>
 
               <p className="text-sm text-neutral-600">
                 {group.descripcion}
               </p>
-
-              <div className="flex gap-4 text-xs text-neutral-500 pt-1">
-                <span>
-                  Estado:{" "}
-                  <b className={group.activo ? "text-green-600" : "text-red-500"}>
-                    {group.activo ? "Activo" : "Inactivo"}
-                  </b>
-                </span>
-                <span>
-                  Partidos: <b>{group.partidosTotales}</b>
-                </span>
-              </div>
             </div>
 
-            <div className="mt-auto pt-4 flex gap-2">
-              <Link
-                href={`/admin/groups/${group.id}`}
-                className="flex items-center px-3 py-1.5 rounded-lg border text-sm text-neutral-700 dark:text-[var(--foreground)] hover:bg-neutral-50 dark:hover:bg-slate-800/60 transition-colors"
-              >
-                Ver
-              </Link>
+            {/* Footer de la card */}
+            <div className="mt-auto flex gap-4 text-xs text-neutral-500 pt-3">
+              <span>
+                Estado:{" "}
+                <b className={group.activo ? "text-green-600" : "text-red-500"}>
+                  {group.activo ? "Activo" : "Inactivo"}
+                </b>
+              </span>
 
-              <Link
-                href={
-                  group.activo
-                    ? `/admin/groups/${group.id}/matches/new`
-                    : "#"
-                }
-                onClick={(e) => {
-                  if (!group.activo) e.preventDefault();
-                }}
-                className={`px-3 py-1.5 rounded-lg text-sm text-center font-medium transition
-                  ${
-                    group.activo
-                      ? "bg-neutral-900 text-white hover:bg-neutral-800"
-                      : "bg-neutral-200 text-neutral-400 cursor-not-allowed"
-                  }
-                `}
-              >
-                Crear Partido
-              </Link>
+              <span>
+                Integrantes: <b>{group.memberIds?.length || 0}</b>
+              </span>
             </div>
+
           </div>
         ))}
       </div>

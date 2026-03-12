@@ -157,14 +157,6 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
         updatedBy: uid,
       });
 
-      const existingTournamentTeamSnap = await trx.get(tournamentTeamRef);
-      if (existingTournamentTeamSnap.exists) {
-        throw new functions.https.HttpsError(
-          "already-exists",
-          "Ya existe un equipo del torneo para esta inscripción"
-        );
-      }
-
       trx.set(tournamentTeamRef, {
         tournamentId: registration.tournamentId,
         groupId: registration.groupId,

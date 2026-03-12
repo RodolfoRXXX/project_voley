@@ -27,6 +27,7 @@ type EntryDoc = {
   expectedAmount?: number;
   paidAmount?: number;
   pendingAmount?: number;
+  paymentForPlayer?: number;
   playerIds?: string[];
   groupLabel?: string;
 };

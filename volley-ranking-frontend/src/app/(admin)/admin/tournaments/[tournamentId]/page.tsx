@@ -111,6 +111,7 @@ export default function AdminTournamentDetailPage() {
   });
 
   const [registrations, setRegistrations] = useState<TournamentRegistrationItem[]>([]);
+  const [acceptedTeams, setAcceptedTeams] = useState<TournamentRegistrationItem[]>([]);
   const [loadingRegistrations, setLoadingRegistrations] = useState(false);
 
   const canEdit = tournament?.status === "draft";
@@ -134,19 +135,41 @@ export default function AdminTournamentDetailPage() {
 
     setLoadingRegistrations(true);
 
-    const q = query(
+    const registrationsQuery = query(
       collection(db, "tournamentRegistrations"),
       where("tournamentId", "==", tournamentId)
     );
 
-    const snap = await getDocs(q);
+    const teamsQuery = query(
+      collection(db, "tournamentTeams"),
+      where("tournamentId", "==", tournamentId)
+    );
 
-    const data = snap.docs.map((currentDoc) => ({
+    const [registrationsSnap, teamsSnap] = await Promise.all([
+      getDocs(registrationsQuery),
+      getDocs(teamsQuery),
+    ]);
+
+    const registrationData = registrationsSnap.docs.map((currentDoc) => ({
       id: currentDoc.id,
-      ...(currentDoc.data() as Omit<TournamentRegistrationItem, "id">),
+      source: "registration" as const,
+      ...(currentDoc.data() as Omit<TournamentRegistrationItem, "id" | "source">),
     }));
 
-    setRegistrations(data);
+    const acceptedTeamsData = teamsSnap.docs.map((currentDoc) => {
+      const teamData = currentDoc.data() as Omit<TournamentRegistrationItem, "id" | "source">;
+      return {
+        id: currentDoc.id,
+        source: "team" as const,
+        status: "aceptado" as const,
+        registrationId: teamData.registrationId || currentDoc.id,
+        nameTeam: teamData.nameTeam || teamData.name,
+        ...teamData,
+      };
+    });
+
+    setRegistrations(registrationData);
+    setAcceptedTeams(acceptedTeamsData);
     setLoadingRegistrations(false);
   }, [tournamentId]);
 
@@ -257,7 +280,7 @@ export default function AdminTournamentDetailPage() {
   };
 
   const pendingRegistrations = registrations.filter((r) => r.status === "pendiente");
-  const acceptedRegistrations = registrations.filter((r) => r.status === "aceptado");
+  const acceptedRegistrations = acceptedTeams;
   const rejectedRegistrations = registrations.filter((r) => r.status === "rechazado");
 
   if (loading) {

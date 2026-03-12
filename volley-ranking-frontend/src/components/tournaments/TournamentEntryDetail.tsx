@@ -289,7 +289,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
         )}
       </article>
 
-      {source === "registration" && (
+      {(source === "registration" || source === "team") && (
         <article className="relative rounded-xl border border-neutral-200 bg-white p-5 space-y-2 text-sm">
 
           <span
@@ -303,7 +303,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
           </h2>
 
           <p>
-            <b>Pago por jugador:</b> ${Number(tournament.paymentForPlayer || 0)}
+            <b>Pago por jugador:</b> ${Number(tournament.paymentForPlayer || entry.paymentForPlayer || 0)}
           </p>
 
           <p>

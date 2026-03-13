@@ -255,11 +255,7 @@ export default function TournamentRegistrationStatusModal({
             <p className="text-xs text-neutral-500">Fecha de registro</p>
             <p className="font-medium text-neutral-900">{formatTimestamp(registration.registeredAt)}</p>
           </div>
-
-          <div className="rounded-xl border border-neutral-200 p-3">
-            <p className="text-xs text-neutral-500">Última actualización</p>
-            <p className="font-medium text-neutral-900">{formatTimestamp(registration.updatedAt)}</p>
-          </div>
+          
         </div>
 
         <div className="rounded-xl border border-neutral-200 p-4 space-y-3">

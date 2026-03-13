@@ -10,7 +10,7 @@ module.exports = functions.https.onCall(async (data, context) => {
   const uid = context.auth.uid;
   await assertIsAdmin(uid);
 
-  const { registrationId, status, paymentStatus, paidAmountInput } = data;
+  const { registrationId, status, paymentStatus, paidAmountInput, source } = data;
 
   return reviewTournamentRegistration({
     uid,
@@ -18,5 +18,6 @@ module.exports = functions.https.onCall(async (data, context) => {
     status,
     paymentStatus,
     paidAmountInput,
+    source,
   });
 });

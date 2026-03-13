@@ -13,7 +13,6 @@ export type TournamentRegistrationItem = {
   playerIds?: string[];
   status?: RegistrationStatus;
   paymentStatus?: PaymentStatus;
-  paymentAmount?: number;
   expectedAmount?: number;
   paidAmount?: number;
   pendingAmount?: number;

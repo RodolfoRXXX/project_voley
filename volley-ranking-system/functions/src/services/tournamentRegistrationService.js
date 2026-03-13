@@ -91,7 +91,6 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId, nameT
       teamMembersCount,
       status: "pendiente",
       paymentStatus: "pendiente",
-      paymentAmount: 0,
       registeredAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       decidedByUserId: null,
@@ -102,7 +101,7 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId, nameT
   return { registrationId };
 }
 
-async function reviewTournamentRegistration({ uid, registrationId, status, paymentStatus, paymentAmount }) {
+async function reviewTournamentRegistration({ uid, registrationId, status, paymentStatus, paidAmountInput }) {
   if (!["aceptado", "rechazado"].includes(status)) {
     throw new functions.https.HttpsError("invalid-argument", "status inválido");
   }
@@ -127,14 +126,17 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
     const tournament = tournamentSnap.data();
     assertTournamentAdmin(tournament, uid);
 
-    if (registration.status !== "pendiente") {
-      throw new functions.https.HttpsError(
-        "failed-precondition",
-        "La inscripción ya fue procesada"
-      );
-    }
+    const isPendingRegistration = registration.status === "pendiente";
+    const isAcceptedRegistration = registration.status === "aceptado";
 
     if (status === "aceptado") {
+      if (!isPendingRegistration) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "La inscripción ya fue procesada"
+        );
+      }
+
       const acceptedTeamsCount = Number(tournament.acceptedTeamsCount || 0);
       if (acceptedTeamsCount >= Number(tournament.maxTeams || 0)) {
         throw new functions.https.HttpsError(
@@ -173,11 +175,35 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
           setsFor: 0,
           setsAgainst: 0,
         },
+        status: "aceptado",
         createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       });
     }
 
-    const paidAmount = typeof paymentAmount === "number" ? paymentAmount : Number(registration.paidAmount || 0);
+    if (status === "rechazado" && isAcceptedRegistration) {
+      const tournamentTeamSnap = await trx.get(tournamentTeamRef);
+      if (!tournamentTeamSnap.exists) {
+        throw new functions.https.HttpsError("not-found", "El equipo del torneo no existe");
+      }
+
+      trx.update(tournamentTeamRef, {
+        status: "rechazado",
+        updatedAt: FieldValue.serverTimestamp(),
+        decidedByUserId: uid,
+      });
+
+      return;
+    }
+
+    if (!isPendingRegistration) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "La inscripción ya fue procesada"
+      );
+    }
+
+    const paidAmount = typeof paidAmountInput === "number" ? paidAmountInput : Number(registration.paidAmount || 0);
     const expectedAmount = Number(registration.expectedAmount || 0);
     const pendingAmount = Math.max(expectedAmount - paidAmount, 0);
     const computedPaymentStatus = paidAmount <= 0 ? "pendiente" : pendingAmount === 0 ? "pagado" : "parcial";
@@ -188,7 +214,6 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
       status,
       paymentStatus: nextPaymentStatus,
       paidAmount,
-      paymentAmount: paidAmount,
       expectedAmount,
       pendingAmount: nextPaymentStatus === "pagado" ? 0 : pendingAmount,
       paymentDate: nextPaymentStatus === "pagado" ? FieldValue.serverTimestamp() : null,
@@ -202,13 +227,13 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
   return { ok: true };
 }
 
-async function updateTournamentRegistrationPayment({ uid, registrationId, paidAmount }) {
+async function updateTournamentRegistrationPayment({ uid, registrationId, paidAmountToAdd }) {
   if (typeof registrationId !== "string" || !registrationId) {
     throw new functions.https.HttpsError("invalid-argument", "registrationId inválido");
   }
 
-  if (typeof paidAmount !== "number" || paidAmount < 0) {
-    throw new functions.https.HttpsError("invalid-argument", "paidAmount inválido");
+  if (typeof paidAmountToAdd !== "number" || paidAmountToAdd < 0) {
+    throw new functions.https.HttpsError("invalid-argument", "paidAmountToAdd inválido");
   }
 
   const registrationRef = db.collection("tournamentRegistrations").doc(registrationId);
@@ -230,13 +255,14 @@ async function updateTournamentRegistrationPayment({ uid, registrationId, paidAm
     const tournament = tournamentSnap.data();
     assertTournamentAdmin(tournament, uid);
 
+    const currentPaidAmount = Number(registration.paidAmount || 0);
+    const paidAmount = currentPaidAmount + paidAmountToAdd;
     const expectedAmount = Number(registration.expectedAmount || 0);
     const pendingAmount = Math.max(expectedAmount - paidAmount, 0);
     const paymentStatus = paidAmount <= 0 ? "pendiente" : pendingAmount === 0 ? "pagado" : "parcial";
 
     trx.update(registrationRef, {
       paidAmount,
-      paymentAmount: paidAmount,
       expectedAmount,
       pendingAmount,
       paymentStatus,

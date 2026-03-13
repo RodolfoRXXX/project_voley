@@ -167,16 +167,22 @@ export default function ProfileTournamentsPage() {
               <p className="text-sm text-neutral-600">{tournamentStatusLabel[row.tournament.status]}</p>
               <p className="text-sm text-neutral-800">{row.nameTeam}</p>
 
-              <Link
-                href={
-                  row.source === "registration"
-                    ? `/profile/tournaments/registrations/${row.entryId}`
-                    : `/profile/tournaments/teams/${row.entryId}`
-                }
-                className="inline-block text-sm font-medium text-orange-600 hover:text-orange-700"
-              >
-                Ver detalle
-              </Link>
+              {row.registrationStatus === "rechazado" ? (
+                <span className="inline-block text-sm font-medium text-neutral-400 cursor-not-allowed">
+                  Ver detalle
+                </span>
+              ) : (
+                <Link
+                  href={
+                    row.source === "registration"
+                      ? `/profile/tournaments/registrations/${row.entryId}`
+                      : `/profile/tournaments/teams/${row.entryId}`
+                  }
+                  className="inline-block text-sm font-medium text-orange-600 hover:text-orange-700"
+                >
+                  Ver detalle
+                </Link>
+              )}
             </article>
           ))}
         </div>

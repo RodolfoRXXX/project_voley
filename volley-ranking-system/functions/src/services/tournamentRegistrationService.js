@@ -101,17 +101,29 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId, nameT
   return { registrationId };
 }
 
-async function reviewTournamentRegistration({ uid, registrationId, status, paymentStatus, paidAmountInput }) {
+async function reviewTournamentRegistration({ uid, registrationId, status, paymentStatus, paidAmountInput, source = "registration" }) {
   if (!["aceptado", "rechazado"].includes(status)) {
     throw new functions.https.HttpsError("invalid-argument", "status inválido");
   }
 
-  const registrationRef = db.collection("tournamentRegistrations").doc(registrationId);
+  if (!["registration", "team"].includes(source)) {
+    throw new functions.https.HttpsError("invalid-argument", "source inválido");
+  }
+
+  if (source === "team" && status === "aceptado") {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "No se puede aceptar un equipo desde la fuente team"
+    );
+  }
+
+  const sourceCollection = source === "team" ? "tournamentTeams" : "tournamentRegistrations";
+  const registrationRef = db.collection(sourceCollection).doc(registrationId);
 
   await db.runTransaction(async (trx) => {
     const registrationSnap = await trx.get(registrationRef);
     if (!registrationSnap.exists) {
-      throw new functions.https.HttpsError("not-found", "La inscripción no existe");
+      throw new functions.https.HttpsError("not-found", "El registro no existe");
     }
 
     const registration = registrationSnap.data();
@@ -128,6 +140,23 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
 
     const isPendingRegistration = registration.status === "pendiente";
     const isAcceptedRegistration = registration.status === "aceptado";
+
+    if (source === "team") {
+      if (!isAcceptedRegistration) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "Solo se puede rechazar un equipo aceptado"
+        );
+      }
+
+      trx.update(registrationRef, {
+        status: "rechazado",
+        decidedByUserId: uid,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+      return;
+    }
 
     if (status === "aceptado") {
       if (!isPendingRegistration) {
@@ -164,7 +193,17 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
         groupId: registration.groupId,
         registrationId,
         name: registration.nameTeam || "Sin nombre",
+        nameTeam: registration.nameTeam || "Sin nombre",
         playerIds: Array.isArray(registration.playerIds) ? registration.playerIds : [],
+        teamMembersCount: Number(registration.teamMembersCount || 0),
+        paymentForPlayer: Number(registration.paymentForPlayer || 0),
+        expectedAmount: Number(registration.expectedAmount || 0),
+        paidAmount: Number(registration.paidAmount || 0),
+        pendingAmount: Number(registration.pendingAmount || 0),
+        paymentStatus: registration.paymentStatus || "pendiente",
+        paymentDate: registration.paymentDate || null,
+        paymentVerifiedBy: registration.paymentVerifiedBy || null,
+        paymentVerifiedAt: registration.paymentVerifiedAt || null,
         groupLabel: 0,
         stats: {
           played: 0,
@@ -227,7 +266,7 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
   return { ok: true };
 }
 
-async function updateTournamentRegistrationPayment({ uid, registrationId, paidAmountToAdd }) {
+async function updateTournamentRegistrationPayment({ uid, registrationId, paidAmountToAdd, source = "registration" }) {
   if (typeof registrationId !== "string" || !registrationId) {
     throw new functions.https.HttpsError("invalid-argument", "registrationId inválido");
   }
@@ -236,7 +275,12 @@ async function updateTournamentRegistrationPayment({ uid, registrationId, paidAm
     throw new functions.https.HttpsError("invalid-argument", "paidAmountToAdd inválido");
   }
 
-  const registrationRef = db.collection("tournamentRegistrations").doc(registrationId);
+  if (!["registration", "team"].includes(source)) {
+    throw new functions.https.HttpsError("invalid-argument", "source inválido");
+  }
+
+  const sourceCollection = source === "team" ? "tournamentTeams" : "tournamentRegistrations";
+  const registrationRef = db.collection(sourceCollection).doc(registrationId);
 
   await db.runTransaction(async (trx) => {
     const registrationSnap = await trx.get(registrationRef);

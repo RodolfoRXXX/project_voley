@@ -2,9 +2,8 @@
 
 import StatusPill, { type StatusVariant } from "@/components/ui/status/StatusPill";
 import { useEffect, useMemo, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { db, functions } from "@/lib/firebase";
+import { functions } from "@/lib/firebase";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
@@ -69,55 +68,8 @@ export default function TournamentRegistrationStatusModal({
   const [paidAmountInput, setPaidAmountInput] = useState(0);
   const [savingPayment, setSavingPayment] = useState(false);
   const [reviewing, setReviewing] = useState<"aceptado" | "rechazado" | "equipo_rechazado" | null>(null);
-  const [loadingSourceData, setLoadingSourceData] = useState(false);
-  const [sourceRegistrationId, setSourceRegistrationId] = useState<string | null>(null);
-  const [sourceRegisteredAt, setSourceRegisteredAt] = useState<{ seconds?: number } | undefined>(undefined);
-
   useEffect(() => {
-    if (!registration) return;
-
-    const source = registration.source || "registration";
-
-    if (source === "registration") {
-      setSourceRegistrationId(registration.id);
-      setSourceRegisteredAt(registration.registeredAt);
-      setPaidAmountInput(0);
-      return;
-    }
-
-    const linkedRegistrationId = registration.registrationId;
-
-    if (!linkedRegistrationId) {
-      setSourceRegistrationId(null);
-      setSourceRegisteredAt(registration.registeredAt);
-      setPaidAmountInput(0);
-      return;
-    }
-
-    setLoadingSourceData(true);
-
-    getDoc(doc(db, "tournamentRegistrations", linkedRegistrationId))
-      .then((snap) => {
-        if (!snap.exists()) {
-          setSourceRegistrationId(linkedRegistrationId);
-          setSourceRegisteredAt(registration.registeredAt);
-          setPaidAmountInput(0);
-          return;
-        }
-
-        const linkedRegistration = snap.data();
-        setSourceRegistrationId(linkedRegistrationId);
-        setSourceRegisteredAt(linkedRegistration.registeredAt);
-        setPaidAmountInput(0);
-      })
-      .catch(() => {
-        setSourceRegistrationId(linkedRegistrationId);
-        setSourceRegisteredAt(registration.registeredAt);
-        setPaidAmountInput(0);
-      })
-      .finally(() => {
-        setLoadingSourceData(false);
-      });
+    setPaidAmountInput(0);
   }, [registration]);
 
   const teamMembersCount = Array.isArray(registration?.playerIds)
@@ -160,7 +112,8 @@ export default function TournamentRegistrationStatusModal({
       setSavingPayment(true);
 
       await updateTournamentRegistrationPaymentFn({
-        registrationId: sourceRegistrationId || registration.id,
+        registrationId: registration.id,
+        source,
         paidAmountToAdd: Number(paidAmountInput || 0),
       });
 
@@ -205,7 +158,8 @@ export default function TournamentRegistrationStatusModal({
     try {
       setReviewing(nextStatus);
       await reviewTournamentRegistrationFn({
-        registrationId: sourceRegistrationId || registration.id,
+        registrationId: registration.id,
+        source,
         status: nextStatus === "equipo_rechazado" ? "rechazado" : nextStatus,
         paidAmountInput: Number(paidAmount),
       });
@@ -260,7 +214,7 @@ export default function TournamentRegistrationStatusModal({
 
           <div className="rounded-xl border border-neutral-200 p-3">
             <p className="text-xs text-neutral-500">Fecha de registro</p>
-            <p className="font-medium text-neutral-900">{formatTimestamp(sourceRegisteredAt ?? registration.registeredAt)}</p>
+            <p className="font-medium text-neutral-900">{formatTimestamp(registration.registeredAt)}</p>
           </div>
           
         </div>
@@ -296,7 +250,7 @@ export default function TournamentRegistrationStatusModal({
             <button
               type="button"
               onClick={onConfirmPayment}
-              disabled={savingPayment || loadingSourceData || !sourceRegistrationId}
+              disabled={savingPayment}
               className="h-10 rounded-lg bg-neutral-900 text-white text-sm font-medium disabled:opacity-60"
             >
               {savingPayment ? "Guardando..." : "Guardar pago"}

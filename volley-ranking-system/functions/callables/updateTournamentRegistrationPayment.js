@@ -10,11 +10,11 @@ module.exports = functions.https.onCall(async (data, context) => {
   const uid = context.auth.uid;
   await assertIsAdmin(uid);
 
-  const { registrationId, paidAmount } = data;
+  const { registrationId, paidAmountToAdd } = data;
 
   return updateTournamentRegistrationPayment({
     uid,
     registrationId,
-    paidAmount,
+    paidAmountToAdd,
   });
 });

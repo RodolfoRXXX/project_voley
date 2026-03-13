@@ -161,7 +161,7 @@ export default function AdminTournamentDetailPage() {
       return {
         id: currentDoc.id,
         source: "team" as const,
-        status: "aceptado" as const,
+        status: (teamData.status as "aceptado" | "rechazado") || "aceptado",
         registrationId: teamData.registrationId || currentDoc.id,
         nameTeam: teamData.nameTeam || teamData.name,
         ...teamData,
@@ -280,8 +280,11 @@ export default function AdminTournamentDetailPage() {
   };
 
   const pendingRegistrations = registrations.filter((r) => r.status === "pendiente");
-  const acceptedRegistrations = acceptedTeams;
-  const rejectedRegistrations = registrations.filter((r) => r.status === "rechazado");
+  const acceptedRegistrations = acceptedTeams.filter((team) => team.status !== "rechazado");
+  const rejectedRegistrations = [
+    ...registrations.filter((r) => r.status === "rechazado"),
+    ...acceptedTeams.filter((team) => team.status === "rechazado"),
+  ];
 
   if (loading) {
     return <p className="text-sm text-neutral-500">Cargando torneo...</p>;
@@ -675,8 +678,8 @@ export default function AdminTournamentDetailPage() {
               <span>Equipo: {r.nameTeam || "Sin nombre"}</span>
 
               <button
-                onClick={() => setSelectedRegistration(r)}
-                className="text-xs px-2 py-1 rounded border hover:bg-neutral-50"
+                disabled
+                className="text-xs px-2 py-1 rounded border text-neutral-400 cursor-not-allowed"
               >
                 Ver estado
               </button>

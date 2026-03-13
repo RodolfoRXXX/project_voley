@@ -71,6 +71,7 @@ export default function TournamentRegistrationStatusModal({
   const [reviewing, setReviewing] = useState<"aceptado" | "rechazado" | "equipo_rechazado" | null>(null);
   const [loadingSourceData, setLoadingSourceData] = useState(false);
   const [sourceRegistrationId, setSourceRegistrationId] = useState<string | null>(null);
+  const [sourceRegisteredAt, setSourceRegisteredAt] = useState<{ seconds?: number } | undefined>(undefined);
 
   useEffect(() => {
     if (!registration) return;
@@ -79,7 +80,8 @@ export default function TournamentRegistrationStatusModal({
 
     if (source === "registration") {
       setSourceRegistrationId(registration.id);
-      setPaidAmountInput(Number(registration.paidAmount ?? registration.paymentAmount ?? 0));
+      setSourceRegisteredAt(registration.registeredAt);
+      setPaidAmountInput(0);
       return;
     }
 
@@ -87,7 +89,8 @@ export default function TournamentRegistrationStatusModal({
 
     if (!linkedRegistrationId) {
       setSourceRegistrationId(null);
-      setPaidAmountInput(Number(registration.paidAmount ?? registration.paymentAmount ?? 0));
+      setSourceRegisteredAt(registration.registeredAt);
+      setPaidAmountInput(0);
       return;
     }
 
@@ -97,17 +100,20 @@ export default function TournamentRegistrationStatusModal({
       .then((snap) => {
         if (!snap.exists()) {
           setSourceRegistrationId(linkedRegistrationId);
-          setPaidAmountInput(Number(registration.paidAmount ?? registration.paymentAmount ?? 0));
+          setSourceRegisteredAt(registration.registeredAt);
+          setPaidAmountInput(0);
           return;
         }
 
         const linkedRegistration = snap.data();
         setSourceRegistrationId(linkedRegistrationId);
-        setPaidAmountInput(Number(linkedRegistration.paidAmount ?? linkedRegistration.paymentAmount ?? 0));
+        setSourceRegisteredAt(linkedRegistration.registeredAt);
+        setPaidAmountInput(0);
       })
       .catch(() => {
         setSourceRegistrationId(linkedRegistrationId);
-        setPaidAmountInput(Number(registration.paidAmount ?? registration.paymentAmount ?? 0));
+        setSourceRegisteredAt(registration.registeredAt);
+        setPaidAmountInput(0);
       })
       .finally(() => {
         setLoadingSourceData(false);
@@ -141,7 +147,7 @@ export default function TournamentRegistrationStatusModal({
   const statusBadge = getStatusBadge(registration.status);
   const paymentBadge = getPaymentBadge(registration.paymentStatus);
   const expectedAmount = Number(registration.expectedAmount ?? 0);
-  const paidAmount = Number(registration.paidAmount ?? registration.paymentAmount ?? 0);
+  const paidAmount = Number(registration.paidAmount ?? 0);
   const pendingAmount = typeof registration.pendingAmount === "number"
     ? registration.pendingAmount
     : Math.max(expectedAmount - paidAmount, 0);
@@ -155,7 +161,7 @@ export default function TournamentRegistrationStatusModal({
 
       await updateTournamentRegistrationPaymentFn({
         registrationId: sourceRegistrationId || registration.id,
-        paidAmount: Number(paidAmountInput || 0),
+        paidAmountToAdd: Number(paidAmountInput || 0),
       });
 
       showToast({
@@ -201,6 +207,7 @@ export default function TournamentRegistrationStatusModal({
       await reviewTournamentRegistrationFn({
         registrationId: sourceRegistrationId || registration.id,
         status: nextStatus === "equipo_rechazado" ? "rechazado" : nextStatus,
+        paidAmountInput: Number(paidAmount),
       });
 
       showToast({
@@ -253,7 +260,7 @@ export default function TournamentRegistrationStatusModal({
 
           <div className="rounded-xl border border-neutral-200 p-3">
             <p className="text-xs text-neutral-500">Fecha de registro</p>
-            <p className="font-medium text-neutral-900">{formatTimestamp(registration.registeredAt)}</p>
+            <p className="font-medium text-neutral-900">{formatTimestamp(sourceRegisteredAt ?? registration.registeredAt)}</p>
           </div>
           
         </div>
@@ -276,7 +283,7 @@ export default function TournamentRegistrationStatusModal({
           </div>
           <div className="grid sm:grid-cols-2 gap-3 items-end">
             <label className="text-xs text-neutral-500 space-y-1 block">
-              Monto pagado confirmado
+              Monto a sumar al pago actual
               <input
                 type="number"
                 min={0}
@@ -320,7 +327,7 @@ export default function TournamentRegistrationStatusModal({
                 disabled={!canApprove || reviewing !== null}
                 className="h-10 rounded-lg bg-emerald-600 px-4 text-white text-sm font-medium disabled:opacity-60"
               >
-                {reviewing === "aceptado" ? "Aceptando..." : "Confirmar inscripción"}
+                {reviewing === "aceptado" ? "Aceptando..." : "Aceptar inscripción"}
               </button>
             )}
 
@@ -333,7 +340,7 @@ export default function TournamentRegistrationStatusModal({
               {reviewing === "rechazado" || reviewing === "equipo_rechazado"
                 ? "Rechazando..."
                 : isTeamSource
-                  ? "Rechazar equipo"
+                  ? "Eliminar equipo"
                   : "Rechazar inscripción"}
             </button>
           </div>

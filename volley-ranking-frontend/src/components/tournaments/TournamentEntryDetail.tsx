@@ -23,7 +23,6 @@ type EntryDoc = {
   playersIds?: string[];
   status?: RegistrationStatus;
   paymentStatus?: PaymentStatus;
-  paymentAmount?: number;
   expectedAmount?: number;
   paidAmount?: number;
   pendingAmount?: number;
@@ -177,7 +176,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
 
     const next = exists ? current.filter((id) => id !== playerId) : [...current, playerId];
     const nextExpectedAmount = next.length * Number(tournament.paymentForPlayer || 0);
-    const paidAmount = Number(entry.paidAmount ?? entry.paymentAmount ?? 0);
+    const paidAmount = Number(entry.paidAmount ?? 0);
     const pendingAmount = Math.max(nextExpectedAmount - paidAmount, 0);
 
     let paymentStatus: PaymentStatus = paidAmount <= 0 ? "pendiente" : pendingAmount === 0 ? "pagado" : "parcial";
@@ -218,7 +217,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
 
   const registrationStatus = entry.status || "pendiente";
   const paymentStatus = entry.paymentStatus || "pendiente";
-  const paidAmount = Number(entry.paidAmount ?? entry.paymentAmount ?? 0);
+  const paidAmount = Number(entry.paidAmount ?? 0);
   const storedExpectedAmount = Number(entry.expectedAmount ?? expectedAmount);
   const pendingAmount = Number(entry.pendingAmount ?? Math.max(storedExpectedAmount - paidAmount, 0));
 

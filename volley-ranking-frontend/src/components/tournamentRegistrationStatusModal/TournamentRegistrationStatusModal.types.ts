@@ -22,6 +22,7 @@ export type TournamentRegistrationItem = {
   decidedByUserId?: string | null;
   registeredAt?: { seconds?: number };
   updatedAt?: { seconds?: number };
+  createdAt?: { seconds?: number };
 };
 
 export type TournamentRegistrationStatusModalProps = {

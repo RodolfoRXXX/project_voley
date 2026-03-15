@@ -116,13 +116,23 @@ export default function TournamentRegistrationStatusModal({
   const registrationDate = isTeamSource ? registration.createdAt || registration.registeredAt : registration.registeredAt;
 
   const onConfirmPayment = async () => {
+    const amountToAdd = Number(paidAmountInput || 0);
+
+    if (amountToAdd <= 0) {
+      showToast({
+        message: "El monto a guardar debe ser mayor a 0",
+        type: "error",
+      });
+      return;
+    }
+
     try {
       setSavingPayment(true);
 
       await updateTournamentRegistrationPaymentFn({
         registrationId: registration.id,
         source,
-        paidAmountToAdd: Number(paidAmountInput || 0),
+        paidAmountToAdd: amountToAdd,
       });
 
       showToast({
@@ -258,7 +268,7 @@ export default function TournamentRegistrationStatusModal({
             <button
               type="button"
               onClick={onConfirmPayment}
-              disabled={savingPayment}
+              disabled={savingPayment || Number(paidAmountInput || 0) <= 0}
               className="h-10 rounded-lg bg-neutral-900 text-white text-sm font-medium dark:bg-neutral-200 dark:text-neutral-900 disabled:opacity-60"
             >
               {savingPayment ? "Guardando..." : "Guardar pago"}

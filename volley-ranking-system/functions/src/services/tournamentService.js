@@ -9,6 +9,7 @@ const TOURNAMENT_STATUS = {
   OPEN: "inscripciones_abiertas",
   ACTIVE: "activo",
   FINISHED: "finalizado",
+  CANCELLED: "cancelado",
 };
 
 function isTournamentAdmin(tournament, uid) {
@@ -422,11 +423,39 @@ async function editTournament({ uid, tournamentId, data }) {
 
     assertTournamentAdmin(tournament, uid);
 
-    if (tournament.status !== TOURNAMENT_STATUS.DRAFT) {
+    const editableStatuses = [
+      TOURNAMENT_STATUS.DRAFT,
+      TOURNAMENT_STATUS.OPEN,
+      TOURNAMENT_STATUS.ACTIVE,
+    ];
+
+    if (!editableStatuses.includes(tournament.status)) {
       throw new functions.https.HttpsError(
         "failed-precondition",
         "El torneo no se puede editar en su estado actual"
       );
+    }
+
+    if (tournament.status === TOURNAMENT_STATUS.ACTIVE) {
+      const allowedFields = [
+        "paymentForPlayer",
+        "minTeams",
+        "maxTeams",
+        "maxPlayers",
+        "rules",
+        "structure",
+      ];
+
+      const invalidFields = Object.keys(updatePayload).filter(
+        (field) => !allowedFields.includes(field)
+      );
+
+      if (invalidFields.length) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "En estado activo solo se pueden editar configuración de pagos, cupos y estructura de juego"
+        );
+      }
     }
 
     const nextMinPlayers =

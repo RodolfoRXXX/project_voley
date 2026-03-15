@@ -43,7 +43,14 @@ function getPaymentBadge(status?: PaymentStatus): {
   return { label: "Pendiente", variant: "warning" };
 }
 
-function formatTimestamp(value?: { seconds?: number }) {
+function formatTimestamp(value?: { seconds?: number; toDate?: () => Date }) {
+  if (value?.toDate) {
+    return value.toDate().toLocaleString("es-AR", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  }
+
   if (!value?.seconds) return "-";
 
   return new Date(value.seconds * 1000).toLocaleString("es-AR", {
@@ -106,6 +113,7 @@ export default function TournamentRegistrationStatusModal({
   const source = registration.source || "registration";
   const isTeamSource = source === "team";
   const canApprove = missingConditions.length === 0;
+  const registrationDate = isTeamSource ? registration.createdAt || registration.registeredAt : registration.registeredAt;
 
   const onConfirmPayment = async () => {
     try {
@@ -214,7 +222,7 @@ export default function TournamentRegistrationStatusModal({
 
           <div className="rounded-xl border border-neutral-200 p-3">
             <p className="text-xs text-neutral-500">Fecha de registro</p>
-            <p className="font-medium text-neutral-900">{formatTimestamp(registration.registeredAt)}</p>
+            <p className="font-medium text-neutral-900">{formatTimestamp(registrationDate)}</p>
           </div>
           
         </div>
@@ -251,7 +259,7 @@ export default function TournamentRegistrationStatusModal({
               type="button"
               onClick={onConfirmPayment}
               disabled={savingPayment}
-              className="h-10 rounded-lg bg-neutral-900 text-white text-sm font-medium disabled:opacity-60"
+              className="h-10 rounded-lg bg-neutral-900 text-white text-sm font-medium dark:bg-neutral-200 dark:text-neutral-900 disabled:opacity-60"
             >
               {savingPayment ? "Guardando..." : "Guardar pago"}
             </button>

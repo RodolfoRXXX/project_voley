@@ -12,6 +12,7 @@ import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import StatusPill, { type StatusVariant } from "@/components/ui/status/StatusPill";
 import TournamentRegistrationStatusModal from "@/components/tournamentRegistrationStatusModal/TournamentRegistrationStatusModal";
 import { TournamentRegistrationItem } from "@/components/tournamentRegistrationStatusModal/TournamentRegistrationStatusModal.types";
+import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 
 const openRegistrationsFn = httpsCallable(functions, "openTournamentRegistrations");
 const addTournamentAdminFn = httpsCallable(functions, "addTournamentAdmin");
@@ -76,6 +77,7 @@ export default function AdminTournamentDetailPage() {
   const tournamentId = params?.tournamentId;
 
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
   const [opening, setOpening] = useState(false);
@@ -114,7 +116,10 @@ export default function AdminTournamentDetailPage() {
   const [acceptedTeams, setAcceptedTeams] = useState<TournamentRegistrationItem[]>([]);
   const [loadingRegistrations, setLoadingRegistrations] = useState(false);
 
-  const canEdit = tournament?.status === "draft";
+  const tournamentStatus = tournament?.status as string | undefined;
+  const canEdit = tournamentStatus === "draft" || tournamentStatus === "inscripciones_abiertas" || tournamentStatus === "activo";
+  const isActiveTournament = tournamentStatus === "activo";
+  const isLockedTournament = tournamentStatus === "finalizado" || tournamentStatus === "cancelado";
 
   const loadTournament = useCallback(async () => {
     if (!tournamentId) return;
@@ -179,7 +184,7 @@ export default function AdminTournamentDetailPage() {
   }, [loadTournament, loadRegistrations]);
 
   const startEdit = () => {
-    if (!tournament) return;
+    if (!tournament || !canEdit || isLockedTournament) return;
 
     setEditForm({
       name: tournament.name,
@@ -212,7 +217,7 @@ export default function AdminTournamentDetailPage() {
   const onSaveEdit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!tournamentId) return;
+    if (!tournamentId || !tournament) return;
 
     if (editForm.minPlayers > editForm.maxPlayers) {
       showToast({
@@ -223,12 +228,45 @@ export default function AdminTournamentDetailPage() {
       return;
     }
 
+    const confirmed = await confirm({
+      title: "Confirmar cambios del torneo",
+      message: "¿Querés guardar los cambios realizados en este torneo?",
+      confirmText: "Guardar cambios",
+      cancelText: "Cancelar",
+      variant: "warning",
+    });
+
+    if (!confirmed) return;
+
+    const payload = isActiveTournament
+      ? {
+          minTeams: editForm.minTeams,
+          maxTeams: editForm.maxTeams,
+          maxPlayers: editForm.maxPlayers,
+          paymentForPlayer: editForm.paymentForPlayer,
+          rules: {
+            setsToWin: editForm.rules.setsToWin,
+          },
+          structure: {
+            groupStage: {
+              enabled: true,
+              groupCount: editForm.structure.groupStage.groupCount,
+              rounds: editForm.structure.groupStage.rounds,
+            },
+            knockoutStage: {
+              enabled: editForm.structure.knockoutStage.enabled,
+              startFrom: editForm.structure.knockoutStage.startFrom,
+            },
+          },
+        }
+      : editForm;
+
     setSaving(true);
 
     try {
       await editTournamentFn({
         tournamentId,
-        ...editForm,
+        ...payload,
       });
 
       showToast({
@@ -340,12 +378,18 @@ export default function AdminTournamentDetailPage() {
       {editing && (
         <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
           <h2 className="text-base font-semibold">Editar torneo</h2>
+          {isActiveTournament && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Torneo activo: solo se permiten cambios en pago por jugador, cupos de equipos, máximo de jugadores, sets para ganar, cantidad de grupos y vueltas.
+            </p>
+          )}
 
           <form onSubmit={onSaveEdit} className="space-y-3">
             <div>
               <label className="text-sm font-medium">Nombre</label>
               <input
                 value={editForm.name}
+                disabled={isActiveTournament}
                 onChange={(e) =>
                   setEditForm((prev) => ({ ...prev, name: e.target.value }))
                 }
@@ -357,6 +401,7 @@ export default function AdminTournamentDetailPage() {
               <label className="text-sm font-medium">Descripción</label>
               <textarea
                 value={editForm.description}
+                disabled={isActiveTournament}
                 onChange={(e) =>
                   setEditForm((prev) => ({ ...prev, description: e.target.value }))
                 }
@@ -369,6 +414,7 @@ export default function AdminTournamentDetailPage() {
                 <label className="text-sm font-medium">Formato</label>
                 <select
                   value={editForm.format}
+                  disabled={isActiveTournament}
                   onChange={(e) =>
                     setEditForm((prev) => ({ ...prev, format: e.target.value as TournamentForm["format"] }))
                   }
@@ -417,6 +463,7 @@ export default function AdminTournamentDetailPage() {
                 <input
                   type="number"
                   value={editForm.minPlayers}
+                  disabled={isActiveTournament}
                   onChange={(e) =>
                     setEditForm((prev) => ({
                       ...prev,
@@ -527,6 +574,7 @@ export default function AdminTournamentDetailPage() {
               <label className="text-sm font-medium">Etapa de eliminación (si aplica)</label>
               <select
                 value={editForm.structure.knockoutStage.startFrom}
+                disabled={isActiveTournament}
                 onChange={(e) =>
                   setEditForm((prev) => ({
                     ...prev,
@@ -574,7 +622,7 @@ export default function AdminTournamentDetailPage() {
           {!editing && (
             <button
               onClick={startEdit}
-              disabled={!canEdit}
+              disabled={!canEdit || isLockedTournament}
               className="px-3 py-1.5 rounded-lg text-sm font-medium border hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Editar

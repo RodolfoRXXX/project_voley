@@ -8,6 +8,7 @@ import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { Tournament, tournamentStatusLabel } from "@/types/tournament";
 import RegisterTournamentModal from "@/components/registerTournamentModal/RegisterTournamentModal";
 import { ActionButton } from "@/components/ui/action/ActionButton";
+import { useAuth } from "@/hooks/useAuth";
 
 function TournamentsSkeleton() {
   return (
@@ -30,6 +31,7 @@ function TournamentsSkeleton() {
 }
 
 export default function TorneosPage() {
+  const { userDoc } = useAuth();
 
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,14 +95,18 @@ export default function TorneosPage() {
             </div>
 
             <div className="flex items-center justify-between pt-2">
-              <ActionButton
-                onClick={() => openRegisterModal(tournament.id)}
-                variant="success"
-                compact
-                disabled={tournament.status !== "inscripciones_abiertas"}
-              >
-                Inscribirme
-              </ActionButton>
+              {userDoc?.roles === "admin" ? (
+                <ActionButton
+                  onClick={() => openRegisterModal(tournament.id)}
+                  variant="success"
+                  compact
+                  disabled={tournament.status !== "inscripciones_abiertas"}
+                >
+                  Inscribirme
+                </ActionButton>
+              ) : (
+                <span />
+              )}
 
               <Link
                 href={`/tournaments/${tournament.id}`}

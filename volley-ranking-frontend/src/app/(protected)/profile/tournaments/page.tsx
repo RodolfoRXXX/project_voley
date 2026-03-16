@@ -17,6 +17,7 @@ type TournamentEntryRecord = {
   name?: string;
   nameTeam?: string;
   status?: RegistrationStatus;
+  playerIds?: string[];
   source: "registration" | "team";
 };
 
@@ -42,7 +43,7 @@ const registrationStatusClass: Record<RegistrationStatus, string> = {
 };
 
 export default function ProfileTournamentsPage() {
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, userDoc } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -50,38 +51,67 @@ export default function ProfileTournamentsPage() {
     const load = async () => {
       if (!firebaseUser) return;
 
-      const byAdminQ = query(collection(db, "groups"), where("adminIds", "array-contains", firebaseUser.uid));
-      const adminSnap = await getDocs(byAdminQ);
-      const groupIds = adminSnap.docs.map((row) => row.id);
+      const groupIds = new Set<string>();
+
+      if (userDoc?.roles === "admin") {
+        const byAdminQ = query(collection(db, "groups"), where("adminIds", "array-contains", firebaseUser.uid));
+        const adminSnap = await getDocs(byAdminQ);
+        adminSnap.docs.forEach((row) => groupIds.add(row.id));
+      }
 
       const records: TournamentEntryRecord[] = [];
 
-      await Promise.all(
-        groupIds.map(async (groupId) => {
-          const [registrationSnap, teamsSnap] = await Promise.all([
-            getDocs(query(collection(db, "tournamentRegistrations"), where("groupId", "==", groupId))),
-            getDocs(query(collection(db, "tournamentTeams"), where("groupId", "==", groupId))),
-          ]);
+      if (userDoc?.roles === "admin") {
+        await Promise.all(
+          Array.from(groupIds).map(async (groupId) => {
+            const [registrationSnap, teamsSnap] = await Promise.all([
+              getDocs(query(collection(db, "tournamentRegistrations"), where("groupId", "==", groupId))),
+              getDocs(query(collection(db, "tournamentTeams"), where("groupId", "==", groupId))),
+            ]);
 
-          registrationSnap.docs.forEach((item) => {
-            records.push({
-              id: item.id,
-              ...(item.data() as Omit<TournamentEntryRecord, "id" | "source">),
-              source: "registration",
+            registrationSnap.docs.forEach((item) => {
+              records.push({
+                id: item.id,
+                ...(item.data() as Omit<TournamentEntryRecord, "id" | "source">),
+                source: "registration",
+              });
             });
-          });
 
-          teamsSnap.docs.forEach((item) => {
-            const data = item.data() as Omit<TournamentEntryRecord, "id" | "source">;
-            records.push({
-              id: item.id,
-              ...data,
-              source: "team",
-              status: data.status || "aceptado",
+            teamsSnap.docs.forEach((item) => {
+              const data = item.data() as Omit<TournamentEntryRecord, "id" | "source">;
+              records.push({
+                id: item.id,
+                ...data,
+                source: "team",
+                status: data.status || "aceptado",
+              });
             });
+          })
+        );
+      } else {
+        const [registrationSnap, teamsSnap] = await Promise.all([
+          getDocs(query(collection(db, "tournamentRegistrations"), where("playerIds", "array-contains", firebaseUser.uid))),
+          getDocs(query(collection(db, "tournamentTeams"), where("playerIds", "array-contains", firebaseUser.uid))),
+        ]);
+
+        registrationSnap.docs.forEach((item) => {
+          records.push({
+            id: item.id,
+            ...(item.data() as Omit<TournamentEntryRecord, "id" | "source">),
+            source: "registration",
           });
-        })
-      );
+        });
+
+        teamsSnap.docs.forEach((item) => {
+          const data = item.data() as Omit<TournamentEntryRecord, "id" | "source">;
+          records.push({
+            id: item.id,
+            ...data,
+            source: "team",
+            status: data.status || "aceptado",
+          });
+        });
+      }
 
       const tournamentIds = Array.from(new Set(records.map((record) => record.tournamentId).filter(Boolean)));
 
@@ -134,7 +164,7 @@ export default function ProfileTournamentsPage() {
     };
 
     load();
-  }, [firebaseUser]);
+  }, [firebaseUser, userDoc?.roles]);
 
   if (loading) {
     return (

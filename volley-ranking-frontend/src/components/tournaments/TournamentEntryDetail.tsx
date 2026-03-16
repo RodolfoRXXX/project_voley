@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { tournamentStatusLabel, type Tournament } from "@/types/tournament";
 import { ActionButton } from "@/components/ui/action/ActionButton";
+import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 
 type EntrySource = "registration" | "team";
 type RegistrationStatus = "pendiente" | "aceptado" | "rechazado";
@@ -72,6 +73,37 @@ const paymentStatusLabel: Record<PaymentStatus, string> = {
   parcial: "Parcial",
   pagado: "Pagado",
 };
+
+function TournamentEntryDetailSkeleton() {
+  return (
+    <section className="space-y-5" aria-busy>
+      <SkeletonSoft className="h-4 w-44" />
+
+      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+        <Skeleton className="h-6 w-2/3" />
+        <SkeletonSoft className="h-4 w-full" />
+        <SkeletonSoft className="h-4 w-1/2" />
+      </article>
+
+      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+        <Skeleton className="h-5 w-48" />
+        {Array.from({ length: 5 }).map((_, idx) => (
+          <SkeletonSoft key={`entry-info-${idx}`} className="h-4 w-full" />
+        ))}
+      </article>
+
+      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <Skeleton className="h-5 w-44" />
+          <SkeletonSoft className="h-4 w-28" />
+        </div>
+        {Array.from({ length: 4 }).map((_, idx) => (
+          <SkeletonSoft key={`entry-member-${idx}`} className="h-14 w-full rounded-lg" />
+        ))}
+      </article>
+    </section>
+  );
+}
 
 export default function TournamentEntryDetail({ source, entryId }: TournamentEntryDetailProps) {
   const { firebaseUser } = useAuth();
@@ -152,6 +184,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
   }, [entryId, firebaseUser, source]);
 
   const selectedCount = entry?.playerIds?.length || 0;
+  const isGroupAdmin = !!firebaseUser?.uid && !!group?.adminIds?.includes(firebaseUser.uid);
 
   const isCountValid = useMemo(() => {
     if (!tournament) return false;
@@ -164,7 +197,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
   }, [selectedCount, tournament]);
 
   const togglePlayer = async (playerId: string) => {
-    if (!entry || !tournament) return;
+    if (!entry || !tournament || !isGroupAdmin) return;
 
     const current = Array.isArray(entry.playerIds) ? entry.playerIds : [];
     const exists = current.includes(playerId);
@@ -208,7 +241,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
   };
 
   if (loading) {
-    return <p className="text-sm text-neutral-500">Cargando detalle...</p>;
+    return <TournamentEntryDetailSkeleton />;
   }
 
   if (!entry || !tournament || !group) {
@@ -273,15 +306,17 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
                     </div>
                   </div>
 
-                  <ActionButton
-                    onClick={() => togglePlayer(member.id)}
-                    loading={saving === member.id}
-                    disabled={(!inTeam && selectedCount >= Number(tournament.maxPlayers || 0)) || (inTeam && selectedCount <= Number(tournament.minPlayers || 0))}
-                    variant={inTeam ? "danger_outline" : "success_outline"}
-                    compact
-                  >
-                    {inTeam ? "- quitar" : "+ agregar"}
-                  </ActionButton>
+                  {isGroupAdmin && (
+                    <ActionButton
+                      onClick={() => togglePlayer(member.id)}
+                      loading={saving === member.id}
+                      disabled={(!inTeam && selectedCount >= Number(tournament.maxPlayers || 0)) || (inTeam && selectedCount <= Number(tournament.minPlayers || 0))}
+                      variant={inTeam ? "danger_outline" : "success_outline"}
+                      compact
+                    >
+                      {inTeam ? "- quitar" : "+ agregar"}
+                    </ActionButton>
+                  )}
                 </li>
               );
             })}
@@ -289,7 +324,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
         )}
       </article>
 
-      {(source === "registration" || source === "team") && (
+      {isGroupAdmin && (source === "registration" || source === "team") && (
         <article className="relative rounded-xl border border-neutral-200 bg-white p-5 space-y-2 text-sm">
 
           <span

@@ -22,6 +22,21 @@ function parseArgs(argv) {
       return;
     }
 
+    if (arg === "--emulator") {
+      options.emulator = true;
+      return;
+    }
+
+    if (arg === "--no-emulator") {
+      options.emulator = false;
+      return;
+    }
+
+    if (arg === "--allow-production") {
+      options.allowProduction = true;
+      return;
+    }
+
     const [rawKey, rawValue] = arg.split("=");
     const key = rawKey.replace(/^--/, "");
 
@@ -38,7 +53,11 @@ function parseArgs(argv) {
     }
 
     if (typeof rawValue === "string" && rawValue.trim().length > 0) {
-      options[key] = rawValue.trim().toLowerCase();
+      const value = rawValue.trim();
+      const normalizedKey = key.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+      options[normalizedKey] = ["project", "domain", "prefix"].includes(normalizedKey)
+        ? value.toLowerCase()
+        : value;
     }
   });
 

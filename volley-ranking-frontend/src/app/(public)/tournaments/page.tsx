@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { db, } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { Tournament, tournamentStatusLabel } from "@/types/tournament";
 import RegisterTournamentModal from "@/components/registerTournamentModal/RegisterTournamentModal";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { useAuth } from "@/hooks/useAuth";
+import { canRegister } from "@/lib/tournamentAdmin";
 
 function TournamentsSkeleton() {
   return (
@@ -100,7 +101,7 @@ export default function TorneosPage() {
                   onClick={() => openRegisterModal(tournament.id)}
                   variant="success"
                   compact
-                  disabled={tournament.status !== "inscripciones_abiertas"}
+                  disabled={!canRegister(tournament)}
                 >
                   Inscribirme
                 </ActionButton>

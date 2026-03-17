@@ -10,10 +10,6 @@ const DEFAULTS = {
   prefix: "seed",
   project: "",
   credentials: "",
-  emulator: true,
-  allowProduction: false,
-  firestoreEmulatorHost: "127.0.0.1:8080",
-  authEmulatorHost: "127.0.0.1:9099",
   dryRun: false,
 };
 
@@ -44,18 +40,7 @@ function parseArgs(argv) {
     const [rawKey, rawValue] = arg.split("=");
     const key = rawKey.replace(/^--/, "");
 
-    if (
-      ![
-        "users",
-        "groups",
-        "domain",
-        "prefix",
-        "project",
-        "credentials",
-        "firestore-emulator-host",
-        "auth-emulator-host",
-      ].includes(key)
-    ) {
+    if (!["users", "groups", "domain", "prefix", "project", "credentials"].includes(key)) {
       return;
     }
 
@@ -103,42 +88,6 @@ function resolveInitOptions(options) {
   }
 
   return initOptions;
-}
-
-function configureEmulators(options) {
-  const firestoreHost = process.env.FIRESTORE_EMULATOR_HOST || options.firestoreEmulatorHost;
-  const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST || options.authEmulatorHost;
-
-  if (options.emulator) {
-    process.env.FIRESTORE_EMULATOR_HOST = firestoreHost;
-    process.env.FIREBASE_AUTH_EMULATOR_HOST = authHost;
-  }
-
-  const usingFirestoreEmulator = Boolean(process.env.FIRESTORE_EMULATOR_HOST);
-  const usingAuthEmulator = Boolean(process.env.FIREBASE_AUTH_EMULATOR_HOST);
-
-  return {
-    usingFirestoreEmulator,
-    usingAuthEmulator,
-    firestoreHost: process.env.FIRESTORE_EMULATOR_HOST || "",
-    authHost: process.env.FIREBASE_AUTH_EMULATOR_HOST || "",
-  };
-}
-
-function assertSafeTarget(options, emulatorStatus) {
-  const writingData = !options.dryRun;
-
-  if (!writingData) return;
-
-  if (emulatorStatus.usingFirestoreEmulator && emulatorStatus.usingAuthEmulator) return;
-
-  if (options.allowProduction) return;
-
-  throw new Error(
-    "Modo seguro: el seed fue bloqueado porque no detectó emuladores de Firestore/Auth. " +
-      "Para usar emulador corré con --emulator o exportá FIRESTORE_EMULATOR_HOST y FIREBASE_AUTH_EMULATOR_HOST. " +
-      "Si realmente querés escribir en producción, agregá --allow-production --no-emulator explícitamente."
-  );
 }
 
 function pickRandomPositions(count = 3) {
@@ -264,8 +213,6 @@ async function upsertGroup(db, group, dryRun) {
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const initOptions = resolveInitOptions(options);
-  const emulatorStatus = configureEmulators(options);
-  assertSafeTarget(options, emulatorStatus);
 
   if (!admin.apps.length) {
     admin.initializeApp(initOptions);
@@ -283,10 +230,6 @@ async function main() {
   console.log(`- domain: ${options.domain}`);
   if (options.project) console.log(`- project: ${options.project}`);
   if (options.credentials) console.log(`- credentials: ${path.resolve(options.credentials)}`);
-  console.log(`- emulator: ${options.emulator}`);
-  console.log(`- firestore emulator host: ${emulatorStatus.firestoreHost || "(desactivado)"}`);
-  console.log(`- auth emulator host: ${emulatorStatus.authHost || "(desactivado)"}`);
-  console.log(`- allowProduction: ${options.allowProduction}`);
   console.log(`- dryRun: ${options.dryRun}`);
 
   for (const user of users) {

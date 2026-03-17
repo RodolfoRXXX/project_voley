@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "@/lib/firebase";
-import { Tournament } from "@/types/tournament";
+import { Tournament, TournamentGroup } from "@/types/tournament";
 import { getAdminAction } from "@/lib/tournamentAdmin";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
@@ -38,6 +38,8 @@ type TournamentAdminPanelProps = {
 
 const openRegistrationsFn = httpsCallable(functions, "openTournamentRegistrations");
 const closeRegistrationsFn = httpsCallable(functions, "closeTournamentRegistrations");
+const previewGroupsFn = httpsCallable(functions, "previewGroups");
+const confirmGroupsFn = httpsCallable(functions, "confirmGroups");
 const previewFixtureFn = httpsCallable(functions, "previewFixture");
 const confirmFixtureFn = httpsCallable(functions, "confirmFixture");
 
@@ -45,8 +47,8 @@ function getGroupIdFromMatch(match: Match) {
   if (match.groupId) return String(match.groupId);
 
   if (match.phase.startsWith("grupos_")) {
-    const groupNumber = match.phase.replace("grupos_", "");
-    return `Grupo ${groupNumber}`;
+    const groupName = match.phase.replace("grupos_", "");
+    return `Grupo ${groupName}`;
   }
 
   if (match.phase === "group") {
@@ -58,26 +60,6 @@ function getGroupIdFromMatch(match: Match) {
 
 function isKnockoutPhase(phase: string) {
   return ["eliminacion", "knockout"].includes(phase);
-}
-
-function roundLabel(round: string | number, totalInKnockout?: number) {
-  const value = Number(round);
-
-  if (!Number.isFinite(value)) return `Round ${round}`;
-
-  if (!totalInKnockout || totalInKnockout <= 1) {
-    if (value >= 1000) return "Final";
-    return `Round ${value}`;
-  }
-
-  const stageBySize: Record<number, string> = {
-    1: "Final",
-    2: "Semifinal",
-    4: "Cuartos",
-    8: "Octavos",
-  };
-
-  return stageBySize[totalInKnockout] || `Round ${value}`;
 }
 
 function groupMatches(matches: Match[]): GroupedMatches {
@@ -119,8 +101,6 @@ function MatchList({
   groupedMatches: GroupedMatches;
   teamNames: Record<string, string>;
 }) {
-  const knockoutRounds = sortRoundEntries(groupedMatches.knockout);
-
   return (
     <div className="space-y-4">
       {Object.entries(groupedMatches.group)
@@ -140,24 +120,23 @@ function MatchList({
             ))}
           </div>
         ))}
+    </div>
+  );
+}
 
-      {knockoutRounds.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-sm font-semibold text-neutral-800">Knockout</h4>
-          {knockoutRounds.map(([round, matches], index) => (
-            <div key={`knockout-${round}`} className="space-y-1 pl-3 border-l border-neutral-200">
-              <p className="text-xs font-medium text-neutral-500">
-                {roundLabel(round, Math.pow(2, knockoutRounds.length - index - 1))}
-              </p>
-              {matches.map((match) => (
-                <p key={match.id} className="text-sm text-neutral-700">
-                  {teamNames[match.homeTeamId || ""] || "Por definir"} vs {teamNames[match.awayTeamId || ""] || "Por definir"}
-                </p>
-              ))}
-            </div>
-          ))}
+function GroupsList({ groups, teamNames }: { groups: TournamentGroup[]; teamNames: Record<string, string> }) {
+  return (
+    <div className="space-y-3">
+      {groups.map((group) => (
+        <div key={group.name} className="rounded border border-neutral-200 p-3">
+          <h5 className="text-sm font-semibold text-neutral-900">Grupo {group.name}</h5>
+          <ul className="mt-2 space-y-1 text-sm text-neutral-700">
+            {group.teamIds.map((teamId) => (
+              <li key={`${group.name}-${teamId}`}>• {teamNames[teamId] || `Equipo ${teamId.slice(0, 6)}`}</li>
+            ))}
+          </ul>
         </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -166,6 +145,11 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   const { showToast } = useToast();
 
   const [busyAction, setBusyAction] = useState(false);
+  const [previewGroups, setPreviewGroups] = useState<TournamentGroup[] | null>(null);
+  const [groupsSeed, setGroupsSeed] = useState<number | null>(null);
+  const [loadingGroupsPreview, setLoadingGroupsPreview] = useState(false);
+  const [confirmingGroups, setConfirmingGroups] = useState(false);
+
   const [previewMatches, setPreviewMatches] = useState<Match[] | null>(null);
   const [confirmedMatches, setConfirmedMatches] = useState<Match[]>([]);
   const [seed, setSeed] = useState<number | null>(null);
@@ -175,6 +159,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   const [teamNames, setTeamNames] = useState<Record<string, string>>({});
 
   const action = getAdminAction(tournament);
+  const confirmedGroups = tournament.groups || [];
 
   const loadConfirmedMatches = useCallback(async () => {
     setLoadingConfirmed(true);
@@ -242,6 +227,48 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     }
   };
 
+  const onPreviewGroups = async () => {
+    setLoadingGroupsPreview(true);
+
+    try {
+      const response = await previewGroupsFn({
+        tournamentId: tournament.id,
+        ...(previewGroups ? { seed: Math.floor(Math.random() * 1000000000) } : {}),
+      });
+
+      const data = response.data as { seed: number; groups: TournamentGroup[] };
+      setGroupsSeed(data.seed);
+      setPreviewGroups(data.groups);
+      showToast({ type: "success", message: "Vista previa de grupos generada" });
+    } catch (error) {
+      handleFirebaseError(error, showToast, "No se pudo generar la vista previa de grupos");
+    } finally {
+      setLoadingGroupsPreview(false);
+    }
+  };
+
+  const onConfirmGroups = async () => {
+    if (!previewGroups || previewGroups.length === 0) return;
+
+    setConfirmingGroups(true);
+
+    try {
+      await confirmGroupsFn({
+        tournamentId: tournament.id,
+        groups: previewGroups,
+      });
+
+      showToast({ type: "success", message: "Grupos confirmados" });
+      setPreviewGroups(null);
+      setGroupsSeed(null);
+      await onTournamentRefresh();
+    } catch (error) {
+      handleFirebaseError(error, showToast, "No se pudieron confirmar los grupos");
+    } finally {
+      setConfirmingGroups(false);
+    }
+  };
+
   const onPreviewFixture = async () => {
     setLoadingPreview(true);
 
@@ -284,8 +311,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
   const groupedPreview = useMemo(() => groupMatches(previewMatches || []), [previewMatches]);
   const groupedConfirmed = useMemo(() => groupMatches(confirmedMatches), [confirmedMatches]);
-
-  const showEmpty = !loadingConfirmed && previewMatches === null && confirmedMatches.length === 0;
+  const showFixtureActions = tournament.status === "inscripciones_cerradas" && confirmedGroups.length > 0;
 
   return (
     <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
@@ -305,6 +331,55 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
       {tournament.status === "inscripciones_cerradas" && (
         <div className="space-y-4 border-t border-neutral-200 pt-4">
+          <h3 className="text-base font-semibold text-neutral-900">Organización del torneo</h3>
+
+          <div className="flex gap-2">
+            <button
+              onClick={onPreviewGroups}
+              disabled={loadingGroupsPreview}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium border border-neutral-300 disabled:opacity-60"
+            >
+              {loadingGroupsPreview ? "Generando..." : previewGroups ? "Regenerar grupos" : "Generar grupos"}
+            </button>
+            <button
+              onClick={onConfirmGroups}
+              disabled={confirmingGroups || !previewGroups || previewGroups.length === 0}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-900 text-white disabled:opacity-60"
+            >
+              {confirmingGroups ? "Confirmando..." : "Confirmar grupos"}
+            </button>
+          </div>
+
+          <p className="text-sm text-neutral-600">Seed de grupos: <b>{groupsSeed ?? "-"}</b></p>
+
+          {previewGroups && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-neutral-900">Vista previa de grupos</h4>
+                <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 bg-amber-200 text-amber-900">
+                  PREVIEW
+                </span>
+              </div>
+              <GroupsList groups={previewGroups} teamNames={teamNames} />
+            </div>
+          )}
+
+          {confirmedGroups.length > 0 && (
+            <div className="rounded-lg border border-green-200 bg-green-50 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-neutral-900">Grupos confirmados</h4>
+                <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 bg-green-200 text-green-900">
+                  CONFIRMADO
+                </span>
+              </div>
+              <GroupsList groups={confirmedGroups} teamNames={teamNames} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {showFixtureActions && (
+        <div className="space-y-4 border-t border-neutral-200 pt-4">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-base font-semibold text-neutral-900">Acciones de fixture</h3>
             <div className="flex gap-2">
@@ -313,14 +388,14 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
                 disabled={loadingPreview}
                 className="px-3 py-1.5 rounded-lg text-sm font-medium border border-neutral-300 disabled:opacity-60"
               >
-                {loadingPreview ? "Generando..." : "Generar Fixture"}
+                {loadingPreview ? "Generando..." : "Generar fixture"}
               </button>
               <button
                 onClick={onConfirmFixture}
                 disabled={confirmingFixture || !previewMatches || previewMatches.length === 0}
                 className="px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-900 text-white disabled:opacity-60"
               >
-                {confirmingFixture ? "Confirmando..." : "Confirmar Fixture"}
+                {confirmingFixture ? "Confirmando..." : "Confirmar fixture"}
               </button>
             </div>
           </div>
@@ -351,7 +426,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
             </div>
           )}
 
-          {showEmpty && (
+          {!loadingConfirmed && previewMatches === null && confirmedMatches.length === 0 && (
             <p className="text-sm text-neutral-500">Aún no hay fixture en vista previa ni confirmado.</p>
           )}
         </div>

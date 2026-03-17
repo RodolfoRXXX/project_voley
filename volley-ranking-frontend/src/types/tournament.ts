@@ -6,6 +6,11 @@ export type TournamentStatus =
   | "finalizado"
   | "cancelado";
 
+export type TournamentGroup = {
+  name: string;
+  teamIds: string[];
+};
+
 export type Tournament = {
   id: string;
   name: string;
@@ -18,6 +23,7 @@ export type Tournament = {
     pointsDraw?: number;
     pointsLose?: number;
   };
+  groups?: TournamentGroup[];
   structure?: {
     groupStage?: {
       enabled?: boolean;

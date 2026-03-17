@@ -1,33 +1,19 @@
 const admin = require("firebase-admin");
-const fs = require("fs");
-const path = require("path");
 const { POSICIONES_VALIDAS } = require("../config/posiciones");
+
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
+const db = admin.firestore();
 
 const DEFAULTS = {
   users: 24,
   groups: 4,
   domain: "seed.local",
   prefix: "seed",
-  project: "",
-  credentials: "",
   dryRun: false,
 };
-
-function getProjectIdFromEnv() {
-  return (
-    process.env.FIREBASE_PROJECT_ID ||
-    process.env.GOOGLE_CLOUD_PROJECT ||
-    process.env.GCLOUD_PROJECT ||
-    ""
-  );
-}
-
-function isUsingEmulators() {
-  return Boolean(
-    process.env.FIRESTORE_EMULATOR_HOST ||
-      process.env.FIREBASE_AUTH_EMULATOR_HOST
-  );
-}
 
 function parseArgs(argv) {
   const options = { ...DEFAULTS };
@@ -41,7 +27,7 @@ function parseArgs(argv) {
     const [rawKey, rawValue] = arg.split("=");
     const key = rawKey.replace(/^--/, "");
 
-    if (!["users", "groups", "domain", "prefix", "project", "credentials"].includes(key)) {
+    if (!["users", "groups", "domain", "prefix"].includes(key)) {
       return;
     }
 
@@ -54,42 +40,11 @@ function parseArgs(argv) {
     }
 
     if (typeof rawValue === "string" && rawValue.trim().length > 0) {
-      const value = rawValue.trim();
-      options[key] = key === "domain" || key === "prefix" ? value.toLowerCase() : value;
+      options[key] = rawValue.trim().toLowerCase();
     }
   });
 
-  options.project = options.project || getProjectIdFromEnv();
-
   return options;
-}
-
-function initializeFirebase(options) {
-  if (admin.apps.length) return;
-
-  const initConfig = {};
-  const credentialsPath = options.credentials || process.env.GOOGLE_APPLICATION_CREDENTIALS;
-
-  if (credentialsPath) {
-    const absolutePath = path.resolve(credentialsPath);
-    if (!fs.existsSync(absolutePath)) {
-      throw new Error(`No existe el archivo de credenciales: ${absolutePath}`);
-    }
-
-    const serviceAccount = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
-    initConfig.credential = admin.credential.cert(serviceAccount);
-    initConfig.projectId = options.project || serviceAccount.project_id;
-  } else if (options.project) {
-    initConfig.projectId = options.project;
-  }
-
-  if (!initConfig.projectId && !isUsingEmulators() && !options.dryRun) {
-    throw new Error(
-      "Falta projectId. Definí FIREBASE_PROJECT_ID o pasá --project=<tu-project-id>."
-    );
-  }
-
-  admin.initializeApp(initConfig);
 }
 
 function randomInt(maxExclusive) {
@@ -182,7 +137,7 @@ async function upsertFirestoreUser(user, isAdmin, dryRun) {
 
   if (dryRun) return;
 
-  const userRef = admin.firestore().collection("users").doc(user.uid);
+  const userRef = db.collection("users").doc(user.uid);
   const existing = await userRef.get();
 
   if (!existing.exists) {
@@ -195,7 +150,7 @@ async function upsertFirestoreUser(user, isAdmin, dryRun) {
 async function upsertGroup(group, dryRun) {
   if (dryRun) return;
 
-  await admin.firestore().collection("groups").doc(group.id).set(
+  await db.collection("groups").doc(group.id).set(
     {
       nombre: group.nombre,
       descripcion: group.descripcion,
@@ -218,8 +173,6 @@ async function upsertGroup(group, dryRun) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  initializeFirebase(options);
-
   const users = buildUsers(options.users, options.prefix, options.domain);
   const [adminUser, ...players] = users;
   const groups = buildGroups(options.groups, adminUser, users, options.prefix);
@@ -229,8 +182,6 @@ async function main() {
   console.log(`- groups: ${options.groups}`);
   console.log(`- prefix: ${options.prefix}`);
   console.log(`- domain: ${options.domain}`);
-  console.log(`- project: ${options.project || "(auto/emulator)"}`);
-  console.log(`- credentials: ${options.credentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "(ADC)"}`);
   console.log(`- dryRun: ${options.dryRun}`);
 
   for (const user of users) {
@@ -254,14 +205,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  if (error.code === "app/invalid-credential") {
-    console.error("\n💡 Tip de configuración:");
-    console.error("1) Definí FIREBASE_PROJECT_ID=<tu_project_id>");
-    console.error(
-      "2) Definí GOOGLE_APPLICATION_CREDENTIALS=<ruta_service_account.json> o pasá --credentials"
-    );
-    console.error("3) Alternativa: usar emuladores con FIRESTORE_EMULATOR_HOST/FIREBASE_AUTH_EMULATOR_HOST");
-  }
   console.error("\n❌ Error ejecutando seed:", error);
   process.exitCode = 1;
 });

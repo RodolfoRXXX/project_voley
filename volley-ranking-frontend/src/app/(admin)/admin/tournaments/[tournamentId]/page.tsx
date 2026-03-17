@@ -5,6 +5,7 @@ import { collection, doc, getDoc, getDocs, query, where } from "firebase/firesto
 import { useParams } from "next/navigation";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "@/lib/firebase";
+import TournamentAdminPanel from "@/components/tournaments/TournamentAdminPanel";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 import { Tournament, tournamentStatusLabel } from "@/types/tournament";
 import useToast from "@/components/ui/toast/useToast";
@@ -14,7 +15,6 @@ import TournamentRegistrationStatusModal from "@/components/tournamentRegistrati
 import { TournamentRegistrationItem } from "@/components/tournamentRegistrationStatusModal/TournamentRegistrationStatusModal.types";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 
-const openRegistrationsFn = httpsCallable(functions, "openTournamentRegistrations");
 const addTournamentAdminFn = httpsCallable(functions, "addTournamentAdmin");
 const editTournamentFn = httpsCallable(functions, "editTournament");
 
@@ -80,7 +80,6 @@ export default function AdminTournamentDetailPage() {
   const { confirm } = useConfirm();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
-  const [opening, setOpening] = useState(false);
   const [adminUserId, setAdminUserId] = useState("");
   const [addingAdmin, setAddingAdmin] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -283,20 +282,6 @@ export default function AdminTournamentDetailPage() {
     }
   };
 
-  const openRegistrations = async () => {
-    if (!tournamentId) return;
-    setOpening(true);
-    try {
-      await openRegistrationsFn({ tournamentId });
-      showToast({ type: "success", message: "Inscripciones abiertas" });
-      await loadTournament();
-    } catch (err) {
-      handleFirebaseError(err, showToast, "No se pudieron abrir inscripciones");
-    } finally {
-      setOpening(false);
-    }
-  };
-
   const onAddAdmin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!tournamentId || !adminUserId.trim()) return;
@@ -362,18 +347,11 @@ export default function AdminTournamentDetailPage() {
               variant={statusVariant(tournament.status)}
             />
 
-            {tournament.status === "draft" && (
-              <button
-                onClick={openRegistrations}
-                disabled={opening}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-neutral-300 disabled:opacity-60"
-              >
-                {opening ? "Abriendo..." : "Abrir inscripciones"}
-              </button>
-            )}
           </div>
         </div>
       </header>
+
+      <TournamentAdminPanel tournament={tournament} onTournamentRefresh={loadTournament} />
 
       {editing && (
         <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">

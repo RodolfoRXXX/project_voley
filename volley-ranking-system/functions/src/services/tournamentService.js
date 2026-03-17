@@ -7,6 +7,7 @@ const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const TOURNAMENT_STATUS = {
   DRAFT: "draft",
   OPEN: "inscripciones_abiertas",
+  CLOSED: "inscripciones_cerradas",
   ACTIVE: "activo",
   FINISHED: "finalizado",
   CANCELLED: "cancelado",
@@ -563,6 +564,51 @@ async function openTournamentRegistrations({ uid, tournamentId }) {
   return { ok: true };
 }
 
+
+async function closeTournamentRegistrations({ uid, tournamentId }) {
+  if (typeof tournamentId !== "string" || !tournamentId) {
+    throw new functions.https.HttpsError("invalid-argument", "tournamentId inválido");
+  }
+
+  const tournamentRef = db.collection("tournaments").doc(tournamentId);
+
+  await db.runTransaction(async (trx) => {
+    const tournamentSnap = await trx.get(tournamentRef);
+    if (!tournamentSnap.exists) {
+      throw new functions.https.HttpsError("not-found", "El torneo no existe");
+    }
+
+    const tournament = tournamentSnap.data();
+    assertTournamentAdmin(tournament, uid);
+
+    if (tournament.status !== TOURNAMENT_STATUS.OPEN) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Solo se pueden cerrar inscripciones desde estado inscripciones_abiertas"
+      );
+    }
+
+    const acceptedTeamsCount = Number(tournament.acceptedTeamsCount || 0);
+    const minTeams = Number(tournament.minTeams || 0);
+    const maxTeams = Number(tournament.maxTeams || 0);
+
+    if (acceptedTeamsCount < minTeams || acceptedTeamsCount > maxTeams) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "El torneo debe tener una cantidad de equipos aceptados entre minTeams y maxTeams"
+      );
+    }
+
+    trx.update(tournamentRef, {
+      status: TOURNAMENT_STATUS.CLOSED,
+      updatedBy: uid,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { ok: true };
+}
+
 module.exports = {
   TOURNAMENT_STATUS,
   assertTournamentAdmin,
@@ -570,5 +616,6 @@ module.exports = {
   createTournament,
   addTournamentAdmin,
   openTournamentRegistrations,
+  closeTournamentRegistrations,
   editTournament,
 };

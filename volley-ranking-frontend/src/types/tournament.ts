@@ -1,8 +1,10 @@
 export type TournamentStatus =
   | "draft"
   | "inscripciones_abiertas"
+  | "inscripciones_cerradas"
   | "activo"
-  | "finalizado";
+  | "finalizado"
+  | "cancelado";
 
 export type Tournament = {
   id: string;
@@ -45,6 +47,8 @@ export type Tournament = {
 export const tournamentStatusLabel: Record<TournamentStatus, string> = {
   draft: "Borrador",
   inscripciones_abiertas: "Inscripciones abiertas",
+  inscripciones_cerradas: "Inscripciones cerradas",
   activo: "Activo",
   finalizado: "Finalizado",
+  cancelado: "Cancelado",
 };

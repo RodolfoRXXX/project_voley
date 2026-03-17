@@ -1,17 +1,15 @@
 const admin = require("firebase-admin");
+const fs = require("node:fs");
+const path = require("node:path");
 const { POSICIONES_VALIDAS } = require("../config/posiciones");
-
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
-
-const db = admin.firestore();
 
 const DEFAULTS = {
   users: 24,
   groups: 4,
   domain: "seed.local",
   prefix: "seed",
+  project: "",
+  credentials: "",
   dryRun: false,
 };
 
@@ -27,7 +25,7 @@ function parseArgs(argv) {
     const [rawKey, rawValue] = arg.split("=");
     const key = rawKey.replace(/^--/, "");
 
-    if (!["users", "groups", "domain", "prefix"].includes(key)) {
+    if (!["users", "groups", "domain", "prefix", "project", "credentials"].includes(key)) {
       return;
     }
 
@@ -49,6 +47,28 @@ function parseArgs(argv) {
 
 function randomInt(maxExclusive) {
   return Math.floor(Math.random() * maxExclusive);
+}
+
+function resolveInitOptions(options) {
+  const initOptions = {};
+
+  if (options.project) {
+    initOptions.projectId = options.project;
+    process.env.FIREBASE_PROJECT_ID = options.project;
+    process.env.GCLOUD_PROJECT = options.project;
+    process.env.GOOGLE_CLOUD_PROJECT = options.project;
+  }
+
+  if (options.credentials) {
+    const credentialsPath = path.resolve(options.credentials);
+    if (!fs.existsSync(credentialsPath)) {
+      throw new Error(`No se encontró el archivo de credenciales: ${credentialsPath}`);
+    }
+
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
+  }
+
+  return initOptions;
 }
 
 function pickRandomPositions(count = 3) {
@@ -123,7 +143,7 @@ async function ensureAuthUser(user, dryRun) {
   }
 }
 
-async function upsertFirestoreUser(user, isAdmin, dryRun) {
+async function upsertFirestoreUser(db, user, isAdmin, dryRun) {
   const payload = {
     email: user.email,
     nombre: user.nombre,
@@ -147,7 +167,7 @@ async function upsertFirestoreUser(user, isAdmin, dryRun) {
   await userRef.set(payload, { merge: true });
 }
 
-async function upsertGroup(group, dryRun) {
+async function upsertGroup(db, group, dryRun) {
   if (dryRun) return;
 
   await db.collection("groups").doc(group.id).set(
@@ -173,6 +193,13 @@ async function upsertGroup(group, dryRun) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
+  const initOptions = resolveInitOptions(options);
+
+  if (!admin.apps.length) {
+    admin.initializeApp(initOptions);
+  }
+
+  const db = admin.firestore();
   const users = buildUsers(options.users, options.prefix, options.domain);
   const [adminUser, ...players] = users;
   const groups = buildGroups(options.groups, adminUser, users, options.prefix);
@@ -182,15 +209,17 @@ async function main() {
   console.log(`- groups: ${options.groups}`);
   console.log(`- prefix: ${options.prefix}`);
   console.log(`- domain: ${options.domain}`);
+  if (options.project) console.log(`- project: ${options.project}`);
+  if (options.credentials) console.log(`- credentials: ${path.resolve(options.credentials)}`);
   console.log(`- dryRun: ${options.dryRun}`);
 
   for (const user of users) {
     await ensureAuthUser(user, options.dryRun);
-    await upsertFirestoreUser(user, user.uid === adminUser.uid, options.dryRun);
+    await upsertFirestoreUser(db, user, user.uid === adminUser.uid, options.dryRun);
   }
 
   for (const group of groups) {
-    await upsertGroup(group, options.dryRun);
+    await upsertGroup(db, group, options.dryRun);
   }
 
   console.log("\n✅ Seed completado");

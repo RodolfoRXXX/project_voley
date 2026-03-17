@@ -58,6 +58,22 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
 
+  if (tournament.format === "mixto") {
+    if (!Array.isArray(tournament.groups) || tournament.groups.length === 0) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Debés confirmar grupos antes de confirmar fixture"
+      );
+    }
+
+    if (matches.some((match) => !String(match.phase).startsWith("grupos_"))) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "En formato mixto solo se permiten partidos de grupos"
+      );
+    }
+  }
+
   const existingMatchesSnap = await db
     .collection("tournamentMatches")
     .where("tournamentId", "==", tournamentId)

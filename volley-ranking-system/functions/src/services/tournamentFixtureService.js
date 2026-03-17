@@ -74,11 +74,16 @@ function generateKnockoutBracket(tournament, teams, startRound = 1, phase = "eli
 
 function generateGroups(tournament, teams, seed) {
   const groupCount = Math.max(1, Number(tournament.structure?.groupStage?.groupCount || 2));
+  return generateBalancedGroups(teams, groupCount, seed);
+}
+
+function generateBalancedGroups(teams, groupCount, seed) {
+  const safeGroupCount = Math.max(1, Math.min(groupCount, teams.length || 1));
   const shuffled = shuffleWithSeed(teams, seed);
-  const groups = Array.from({ length: groupCount }, () => []);
+  const groups = Array.from({ length: safeGroupCount }, () => []);
 
   shuffled.forEach((team, index) => {
-    groups[index % groupCount].push(team);
+    groups[index % safeGroupCount].push(team);
   });
 
   return groups;
@@ -97,20 +102,17 @@ function generateTournamentFixture(tournament, teams, seed) {
   } else if (tournament.format === "eliminacion") {
     matches = generateKnockoutBracket(tournament, shuffledTeams, 1, "eliminacion");
   } else {
-    const groups = generateGroups(tournament, teams, seed);
-    const groupMatches = groups.flatMap((group, index) =>
-      generateRoundRobinMatches(tournament, group, index * 100 + 1, `grupos_${index + 1}`)
-    );
+    const sourceGroups = Array.isArray(tournament.groups) ? tournament.groups : [];
+    const teamById = new Map(teams.map((team) => [team.id, team]));
+    const groupMatches = sourceGroups.flatMap((group, index) => {
+      const groupTeams = (group.teamIds || [])
+        .map((teamId) => teamById.get(teamId))
+        .filter(Boolean);
 
-    const knockoutCandidates = groups.flatMap((group) => group.slice(0, Math.min(2, group.length)));
-    const knockoutMatches = generateKnockoutBracket(
-      tournament,
-      shuffleWithSeed(knockoutCandidates, seed + 9973),
-      1000,
-      "eliminacion"
-    );
+      return generateRoundRobinMatches(tournament, groupTeams, index * 100 + 1, `grupos_${group.name || index + 1}`);
+    });
 
-    matches = [...groupMatches, ...knockoutMatches];
+    matches = groupMatches;
   }
 
   const uniqueKeys = new Set();
@@ -158,5 +160,6 @@ module.exports = {
   generateKnockoutBracket,
   generateGroups,
   generateTournamentFixture,
+  generateBalancedGroups,
   assertValidFixtureTeamCount,
 };

@@ -3,8 +3,8 @@ const { db } = require("../src/firebase");
 const { assertIsAdmin } = require("../src/services/adminAccessService");
 const { assertTournamentAdmin } = require("../src/services/tournamentService");
 const {
-  generateTournamentFixture,
   assertValidFixtureTeamCount,
+  generateBalancedGroups,
 } = require("../src/services/tournamentFixtureService");
 
 module.exports = functions.https.onCall(async (data, context) => {
@@ -42,13 +42,6 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
 
-  if (tournament.format === "mixto" && (!Array.isArray(tournament.groups) || tournament.groups.length === 0)) {
-    throw new functions.https.HttpsError(
-      "failed-precondition",
-      "Debés confirmar grupos antes de generar fixture"
-    );
-  }
-
   const teamsSnap = await db
     .collection("tournamentTeams")
     .where("tournamentId", "==", tournamentId)
@@ -59,7 +52,13 @@ module.exports = functions.https.onCall(async (data, context) => {
   assertValidFixtureTeamCount(tournament, teams);
 
   const seed = providedSeed ?? Math.floor(Math.random() * 1000000000);
-  const matches = generateTournamentFixture(tournament, teams, seed);
+  const configuredGroupCount = Number(tournament.structure?.groupStage?.groupCount || 2);
+  const rawGroups = generateBalancedGroups(teams, configuredGroupCount, seed);
 
-  return { seed, matches };
+  const groups = rawGroups.map((group, index) => ({
+    name: String.fromCharCode(65 + index),
+    teamIds: group.map((team) => team.id),
+  }));
+
+  return { groups, seed };
 });

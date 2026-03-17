@@ -37,7 +37,9 @@ exports.updateTournamentRegistrationPayment = require("./callables/updateTournam
 exports.openTournamentRegistrations = require("./callables/openTournamentRegistrations");
 exports.confirmFixture = require("./callables/confirmFixture");
 exports.previewFixture = require("./callables/previewFixture");
+exports.previewGroups = require("./callables/previewGroups");
 exports.closeTournamentRegistrations = require("./callables/closeTournamentRegistrations");
+exports.confirmGroups = require("./callables/confirmGroups");
 exports.addTournamentAdmin = require("./callables/addTournamentAdmin");
 exports.editTournament = require("./callables/editTournament");
 

@@ -421,6 +421,11 @@ Opciones disponibles:
 - `--domain=seed.local` dominio de emails fake.
 - `--project=mi-proyecto` project id de Firebase/GCP (alternativa a `FIREBASE_PROJECT_ID`).
 - `--credentials=./service-account.json` ruta a service account (alternativa a `GOOGLE_APPLICATION_CREDENTIALS`).
+- `--emulator` (default) fuerza uso de emuladores (`FIRESTORE_EMULATOR_HOST` y `FIREBASE_AUTH_EMULATOR_HOST`).
+- `--no-emulator` desactiva emuladores explícitamente.
+- `--allow-production` permite escritura sin emulador (protección desactivada de forma explícita).
+- `--firestore-emulator-host=127.0.0.1:8080` host Firestore Emulator.
+- `--auth-emulator-host=127.0.0.1:9099` host Auth Emulator.
 
 Ejemplo:
 
@@ -442,6 +447,9 @@ También podés pasarlo por flags:
 ```bash
 npm run seed:dev -- --project=tu-project-id --credentials=./service-account.json
 ```
+
+⚠️ Seguridad: si `dryRun=false` y no hay emuladores activos, el script se bloquea para evitar escribir en producción.
+Para escribir en producción de forma intencional, usá `--allow-production --no-emulator`.
 
 Esto crea/actualiza:
 

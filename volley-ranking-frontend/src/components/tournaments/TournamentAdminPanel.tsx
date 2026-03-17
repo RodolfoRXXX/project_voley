@@ -107,12 +107,12 @@ function MatchList({
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map(([groupId, rounds]) => (
           <div key={groupId} className="space-y-2">
-            <h4 className="text-sm font-semibold text-neutral-800">{groupId}</h4>
+            <h4 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">{groupId}</h4>
             {sortRoundEntries(rounds).map(([round, matches]) => (
-              <div key={`${groupId}-${round}`} className="space-y-1 pl-3 border-l border-neutral-200">
-                <p className="text-xs font-medium text-neutral-500">Round {round}</p>
+              <div key={`${groupId}-${round}`} className="space-y-1 pl-3 border-l border-neutral-200 dark:border-neutral-700">
+                <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Round {round}</p>
                 {matches.map((match) => (
-                  <p key={match.id} className="text-sm text-neutral-700">
+                  <p key={match.id} className="text-sm text-neutral-700 dark:text-neutral-200">
                     {teamNames[match.homeTeamId || ""] || "Por definir"} vs {teamNames[match.awayTeamId || ""] || "Por definir"}
                   </p>
                 ))}
@@ -128,9 +128,9 @@ function GroupsList({ groups, teamNames }: { groups: TournamentGroup[]; teamName
   return (
     <div className="space-y-3">
       {groups.map((group) => (
-        <div key={group.name} className="rounded border border-neutral-200 p-3">
-          <h5 className="text-sm font-semibold text-neutral-900">Grupo {group.name}</h5>
-          <ul className="mt-2 space-y-1 text-sm text-neutral-700">
+        <div key={group.name} className="rounded border border-neutral-200 p-3 dark:border-neutral-700 dark:bg-neutral-900/60">
+          <h5 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Grupo {group.name}</h5>
+          <ul className="mt-2 space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
             {group.teamIds.map((teamId) => (
               <li key={`${group.name}-${teamId}`}>• {teamNames[teamId] || `Equipo ${teamId.slice(0, 6)}`}</li>
             ))}
@@ -319,13 +319,20 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
   const groupedPreview = useMemo(() => groupMatches(previewMatches || []), [previewMatches]);
   const groupedConfirmed = useMemo(() => groupMatches(confirmedMatches), [confirmedMatches]);
+  const canOrganizeTournament = tournament.status === "inscripciones_cerradas";
   const showGroupActions = tournament.status === "inscripciones_cerradas" && !hasConfirmedGroups;
   const showFixtureActions =
     tournament.status === "inscripciones_cerradas" && hasConfirmedGroups && !hasConfirmedFixture;
+  const showGroupsSection = canOrganizeTournament || Boolean(previewGroups) || hasConfirmedGroups;
+  const showFixtureSection =
+    showFixtureActions ||
+    previewMatches !== null ||
+    hasConfirmedFixture ||
+    (loadingConfirmed && hasConfirmedGroups);
 
   return (
-    <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
-      <h2 className="text-base font-semibold text-neutral-900">Gestión del torneo</h2>
+    <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4 dark:border-neutral-800 dark:bg-neutral-950">
+      <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Gestión del torneo</h2>
 
       {action.nextStatus && (
         <div className="flex justify-start">
@@ -339,9 +346,9 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
         </div>
       )}
 
-      {tournament.status === "inscripciones_cerradas" && (
-        <div className="space-y-4 border-t border-neutral-200 pt-4">
-          <h3 className="text-base font-semibold text-neutral-900">Organización del torneo</h3>
+      {showGroupsSection && (
+        <div className="space-y-4 border-t border-neutral-200 pt-4 dark:border-neutral-800">
+          <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Organización del torneo</h3>
 
           {showGroupActions && (
             <div className="flex gap-2">
@@ -362,13 +369,13 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
             </div>
           )}
 
-          <p className="text-sm text-neutral-600">Seed de grupos: <b>{groupsSeed ?? "-"}</b></p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-300">Seed de grupos: <b>{groupsSeed ?? "-"}</b></p>
 
           {previewGroups && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-3">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-3 dark:border-amber-700 dark:bg-amber-950/30">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-neutral-900">Vista previa de grupos</h4>
-                <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 bg-amber-200 text-amber-900">
+                <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Vista previa de grupos</h4>
+                <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 bg-amber-200 text-amber-900 dark:bg-amber-800/70 dark:text-amber-100">
                   PREVIEW
                 </span>
               </div>
@@ -377,10 +384,10 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           )}
 
           {confirmedGroups.length > 0 && (
-            <div className="rounded-lg border border-green-200 bg-green-50 p-3 space-y-3">
+            <div className="rounded-lg border border-green-200 bg-green-50 p-3 space-y-3 dark:border-green-700 dark:bg-green-950/30">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-neutral-900">Grupos confirmados</h4>
-                <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 bg-green-200 text-green-900">
+                <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Grupos confirmados</h4>
+                <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 bg-green-200 text-green-900 dark:bg-green-800/70 dark:text-green-100">
                   CONFIRMADO
                 </span>
               </div>
@@ -390,35 +397,37 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
         </div>
       )}
 
-      {showFixtureActions && (
-        <div className="space-y-4 border-t border-neutral-200 pt-4">
+      {showFixtureSection && (
+        <div className="space-y-4 border-t border-neutral-200 pt-4 dark:border-neutral-800">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-base font-semibold text-neutral-900">Acciones de fixture</h3>
-            <div className="flex gap-2">
-              <button
-                onClick={onPreviewFixture}
-                disabled={loadingPreview}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium border border-neutral-300 disabled:opacity-60"
-              >
-                {loadingPreview ? "Generando..." : "Generar fixture"}
-              </button>
-              <button
-                onClick={onConfirmFixture}
-                disabled={confirmingFixture || !previewMatches || previewMatches.length === 0}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-900 text-white disabled:opacity-60"
-              >
-                {confirmingFixture ? "Confirmando..." : "Confirmar fixture"}
-              </button>
-            </div>
+            <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Acciones de fixture</h3>
+            {showFixtureActions && (
+              <div className="flex gap-2">
+                <button
+                  onClick={onPreviewFixture}
+                  disabled={loadingPreview}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium border border-neutral-300 disabled:opacity-60"
+                >
+                  {loadingPreview ? "Generando..." : "Generar fixture"}
+                </button>
+                <button
+                  onClick={onConfirmFixture}
+                  disabled={confirmingFixture || !previewMatches || previewMatches.length === 0}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-900 text-white disabled:opacity-60"
+                >
+                  {confirmingFixture ? "Confirmando..." : "Confirmar fixture"}
+                </button>
+              </div>
+            )}
           </div>
 
-          <p className="text-sm text-neutral-600">Seed actual: <b>{seed ?? "-"}</b></p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-300">Seed actual: <b>{seed ?? "-"}</b></p>
 
           {!hasConfirmedFixture && previewMatches !== null && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-3">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-3 dark:border-amber-700 dark:bg-amber-950/30">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-neutral-900">Vista previa del fixture</h4>
-                <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 bg-amber-200 text-amber-900">
+                <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Vista previa del fixture</h4>
+                <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 bg-amber-200 text-amber-900 dark:bg-amber-800/70 dark:text-amber-100">
                   Preview (no confirmado)
                 </span>
               </div>
@@ -427,10 +436,13 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           )}
 
           {confirmedMatches.length > 0 && (
-            <div ref={confirmedFixtureRef} className="rounded-lg border border-green-200 bg-green-50 p-3 space-y-3">
+            <div
+              ref={confirmedFixtureRef}
+              className="rounded-lg border border-green-200 bg-green-50 p-3 space-y-3 dark:border-green-700 dark:bg-green-950/30"
+            >
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-neutral-900">Fixture confirmado</h4>
-                <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 bg-green-200 text-green-900">
+                <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Fixture confirmado</h4>
+                <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 bg-green-200 text-green-900 dark:bg-green-800/70 dark:text-green-100">
                   Confirmado
                 </span>
               </div>
@@ -439,7 +451,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           )}
 
           {!loadingConfirmed && previewMatches === null && confirmedMatches.length === 0 && (
-            <p className="text-sm text-neutral-500">Aún no hay fixture en vista previa ni confirmado.</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Aún no hay fixture en vista previa ni confirmado.</p>
           )}
         </div>
       )}

@@ -398,3 +398,37 @@ Verificar:
 
 firebase functions:secrets:access GMAIL_USER
 firebase functions:secrets:access GMAIL_PASS
+## Seed rápido para pruebas (admin + users + grupos)
+
+Para no crear todo manualmente después de reiniciar entorno, podés usar este script:
+
+```bash
+cd volley-ranking-system/functions
+npm run seed:dev
+```
+
+También podés simular sin escribir en Firebase:
+
+```bash
+npm run seed:dev:dry
+```
+
+Opciones disponibles:
+
+- `--users=24` cantidad total de usuarios a generar (el primero será admin).
+- `--groups=4` cantidad de grupos.
+- `--prefix=seed` prefijo para uid/doc ids (evita choques con data real).
+- `--domain=seed.local` dominio de emails fake.
+
+Ejemplo:
+
+```bash
+npm run seed:dev -- --users=30 --groups=6 --prefix=demo
+```
+
+Esto crea/actualiza:
+
+- 1 admin (`roles: "admin"`)
+- N players con `posicionesPreferidas` aleatorias
+- grupos públicos con `joinApproval: false`
+- miembros asignados aleatoriamente a cada grupo

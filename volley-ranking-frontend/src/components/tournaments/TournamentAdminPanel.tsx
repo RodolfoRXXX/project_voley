@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "@/lib/firebase";
@@ -143,6 +143,7 @@ function GroupsList({ groups, teamNames }: { groups: TournamentGroup[]; teamName
 
 export default function TournamentAdminPanel({ tournament, onTournamentRefresh }: TournamentAdminPanelProps) {
   const { showToast } = useToast();
+  const confirmedFixtureRef = useRef<HTMLDivElement | null>(null);
 
   const [busyAction, setBusyAction] = useState(false);
   const [previewGroups, setPreviewGroups] = useState<TournamentGroup[] | null>(null);
@@ -160,6 +161,8 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
   const action = getAdminAction(tournament);
   const confirmedGroups = tournament.groups || [];
+  const hasConfirmedGroups = confirmedGroups.length > 0;
+  const hasConfirmedFixture = confirmedMatches.length > 0;
 
   const loadConfirmedMatches = useCallback(async () => {
     setLoadingConfirmed(true);
@@ -200,9 +203,10 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   }, [tournament.id]);
 
   useEffect(() => {
+    onTournamentRefresh();
     loadConfirmedMatches();
     loadTournamentTeams();
-  }, [loadConfirmedMatches, loadTournamentTeams]);
+  }, [loadConfirmedMatches, loadTournamentTeams, onTournamentRefresh]);
 
   const onMainAction = async () => {
     if (!action.nextStatus) return;
@@ -300,8 +304,12 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
         matches: previewMatches,
       });
 
-      showToast({ type: "success", message: "Fixture confirmado" });
-      await Promise.all([onTournamentRefresh(), loadConfirmedMatches()]);
+      await onTournamentRefresh();
+      await loadConfirmedMatches();
+      setPreviewMatches(null);
+      setSeed(null);
+      showToast({ type: "success", message: "Fixture confirmado correctamente" });
+      confirmedFixtureRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (error) {
       handleFirebaseError(error, showToast, "No se pudo confirmar el fixture");
     } finally {
@@ -311,7 +319,9 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
   const groupedPreview = useMemo(() => groupMatches(previewMatches || []), [previewMatches]);
   const groupedConfirmed = useMemo(() => groupMatches(confirmedMatches), [confirmedMatches]);
-  const showFixtureActions = tournament.status === "inscripciones_cerradas" && confirmedGroups.length > 0;
+  const showGroupActions = tournament.status === "inscripciones_cerradas" && !hasConfirmedGroups;
+  const showFixtureActions =
+    tournament.status === "inscripciones_cerradas" && hasConfirmedGroups && !hasConfirmedFixture;
 
   return (
     <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
@@ -333,22 +343,24 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
         <div className="space-y-4 border-t border-neutral-200 pt-4">
           <h3 className="text-base font-semibold text-neutral-900">Organización del torneo</h3>
 
-          <div className="flex gap-2">
-            <button
-              onClick={onPreviewGroups}
-              disabled={loadingGroupsPreview}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium border border-neutral-300 disabled:opacity-60"
-            >
-              {loadingGroupsPreview ? "Generando..." : previewGroups ? "Regenerar grupos" : "Generar grupos"}
-            </button>
-            <button
-              onClick={onConfirmGroups}
-              disabled={confirmingGroups || !previewGroups || previewGroups.length === 0}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-900 text-white disabled:opacity-60"
-            >
-              {confirmingGroups ? "Confirmando..." : "Confirmar grupos"}
-            </button>
-          </div>
+          {showGroupActions && (
+            <div className="flex gap-2">
+              <button
+                onClick={onPreviewGroups}
+                disabled={loadingGroupsPreview}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium border border-neutral-300 disabled:opacity-60"
+              >
+                {loadingGroupsPreview ? "Generando..." : previewGroups ? "Regenerar grupos" : "Generar grupos"}
+              </button>
+              <button
+                onClick={onConfirmGroups}
+                disabled={confirmingGroups || !previewGroups || previewGroups.length === 0}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-900 text-white disabled:opacity-60"
+              >
+                {confirmingGroups ? "Confirmando..." : "Confirmar grupos"}
+              </button>
+            </div>
+          )}
 
           <p className="text-sm text-neutral-600">Seed de grupos: <b>{groupsSeed ?? "-"}</b></p>
 
@@ -402,7 +414,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
           <p className="text-sm text-neutral-600">Seed actual: <b>{seed ?? "-"}</b></p>
 
-          {previewMatches !== null && (
+          {!hasConfirmedFixture && previewMatches !== null && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-semibold text-neutral-900">Vista previa del fixture</h4>
@@ -415,7 +427,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           )}
 
           {confirmedMatches.length > 0 && (
-            <div className="rounded-lg border border-green-200 bg-green-50 p-3 space-y-3">
+            <div ref={confirmedFixtureRef} className="rounded-lg border border-green-200 bg-green-50 p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-semibold text-neutral-900">Fixture confirmado</h4>
                 <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 bg-green-200 text-green-900">

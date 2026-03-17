@@ -37,31 +37,34 @@ type Tournament = {
   sport: "voley" | string;
   format: "liga" | "eliminacion" | "mixto";
 
-  status: "draft" | "inscripciones_abiertas" | "activo" | "finalizado";
+  status: "draft" | "inscripciones_abiertas" | "inscripciones_cerradas" | "activo" | "finalizado" | "cancelado";
 
   ownerAdminId: string; // admin principal creador del torneo
   adminIds: string[]; // admins habilitados a gestionar el torneo
   createdByAdminIds: string[]; // historial inicial de admins definidos al crear
   updatedBy?: string; // último admin que modificó el documento
+  paymentForPlayer: number;
 
   maxTeams: number;
   minTeams: number;
 
+  minPlayers: number;
+  maxPlayers: number;
+
   startDate: Timestamp;
-  endDate: Timestamp;
 
   rules: {
     pointsWin: number;
     pointsDraw: number;
     pointsLose: number;
     setsToWin: number;
-    allowDraws: boolean;
   };
 
   structure: {
     groupStage?: {
       enabled: boolean;
       groupsCount?: number;
+      rounds: number;
     };
     knockoutStage?: {
       enabled: boolean;
@@ -75,6 +78,16 @@ type Tournament = {
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };
+
+
+draft: borrador, estado previo a iniciar a tomar inscripciones
+  inscripciones_abiertas: estado donde se toman inscripciones
+  inscripciones_cerradas: estado donde se cerraron las inscripciones y estamos armando el torneo. Acá se generan los encuentros(todavia no está activo el torneo)
+  activo: cuando ya se generaron los encuentros y se puede iniciar con el torneo
+  finalizado: cuando se terminó el torneo y se hace el recuento definitivo de los puntos y resultados
+  cancelado: cuando se cancela el torneo
+
+  draft -> inscripciones_abiertas -> inscripciones_cerradas -> activo -> finalizado
 ```
 
 ### 2) `tournamentRegistrations`

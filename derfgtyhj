@@ -1,0 +1,365 @@
+[33mbe2814a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdev[m[33m, [m[1;31morigin/dev[m[33m)[m Merge pull request #86 from RodolfoRXXX/codex/add-skeleton-and-update-permissions-in-tournament-detail
+[33m92a2f8f[m[33m ([m[1;31morigin/codex/add-skeleton-and-update-permissions-in-tournament-detail[m[33m)[m Add tournament entry detail skeleton and admin-only controls
+[33mc8ceaf1[m Merge pull request #85 from RodolfoRXXX/codex/restrict-tournament-signup-button-to-admins
+[33md3aec82[m[33m ([m[1;31morigin/codex/restrict-tournament-signup-button-to-admins[m[33m)[m Ajusta visibilidad de torneos por rol
+[33m43c6000[m Merge pull request #84 from RodolfoRXXX/codex/update-payment-button-and-tournament-editing-rules
+[33m269558e[m[33m ([m[1;31morigin/codex/update-payment-button-and-tournament-editing-rules[m[33m)[m Restringe edición de torneos por estado y valida pago > 0
+[33medd3766[m Merge pull request #83 from RodolfoRXXX/codex/aclarar-boton-negro-en-modo-dark
+[33mea2002c[m[33m ([m[1;31morigin/codex/aclarar-boton-negro-en-modo-dark[m[33m)[m Ajusta botones admin dark y fecha de registro en modal
+[33m4e6ec32[m Merge pull request #82 from RodolfoRXXX/codex/agregar-variables-de-pagos-a-tournamentteams
+[33m81bf572[m[33m ([m[1;31morigin/codex/agregar-variables-de-pagos-a-tournamentteams[m[33m)[m Soportar pagos y revisión desde tournamentTeams
+[33m5a44f3a[m Merge pull request #81 from RodolfoRXXX/codex/refactor-tournament-registration-and-teams-logic
+[33m4cc0e8c[m[33m ([m[1;31morigin/codex/refactor-tournament-registration-and-teams-logic[m[33m)[m Unify registration payment field and rejected-team status flow
+[33me907ed8[m update
+[33m160ad57[m update
+[33mb3f67b5[m Merge pull request #80 from RodolfoRXXX/codex/update-payment-info-display-in-tournament-detail
+[33mff09395[m[33m ([m[1;31morigin/codex/update-payment-info-display-in-tournament-detail[m[33m)[m Fix tipo de paymentForPlayer en TournamentEntryDetail
+[33m5b6e9b7[m Ajusta estados/pagos en modal y detalle de torneos
+[33me4bbce7[m Merge pull request #79 from RodolfoRXXX/codex/fix-registration-cards-and-team-details
+[33m9adeb5f[m[33m ([m[1;31morigin/codex/fix-registration-cards-and-team-details[m[33m)[m Ajusta vistas de torneos y reglas de pago/jugadores
+[33mb1d8619[m Merge pull request #78 from RodolfoRXXX/codex/add-skeleton-loader-for-onboarding-form
+[33me67dddd[m[33m ([m[1;31morigin/codex/add-skeleton-loader-for-onboarding-form[m[33m)[m Add skeleton to onboarding form while positions load
+[33ma050e2d[m Merge pull request #77 from RodolfoRXXX/codex/fix-variable-redeclaration-error
+[33m35b22ca[m[33m ([m[1;31morigin/codex/fix-variable-redeclaration-error[m[33m)[m Fix duplicate tournament team snapshot declaration
+[33m0a11229[m Merge pull request #76 from RodolfoRXXX/codex/update-tournament-registration-modal-r2p72y
+[33m9f17eb1[m[33m ([m[1;31morigin/codex/update-tournament-registration-modal-r2p72y[m[33m)[m Merge branch 'dev' into codex/update-tournament-registration-modal-r2p72y
+[33m4aea867[m Fix Firestore transaction read/write order in registration review
+[33m204987a[m Merge pull request #75 from RodolfoRXXX/codex/update-tournament-registration-modal
+[33med9602c[m[33m ([m[1;31morigin/codex/update-tournament-registration-modal[m[33m)[m Mejora revisión de inscripciones y creación de tournamentTeams
+[33m8045ba4[m update
+[33mf4dc4f8[m Merge pull request #74 from RodolfoRXXX/codex/improve-payment-logic-for-registration
+[33m20e067f[m[33m ([m[1;31morigin/codex/improve-payment-logic-for-registration[m[33m)[m Mejora el flujo de pagos de inscripciones con estado parcial
+[33me0d5db0[m update
+[33m83492d4[m update
+[33mf2cca5c[m Merge pull request #73 from RodolfoRXXX/codex/add-playerids-array-and-detailed-views
+[33mcfb2239[m[33m ([m[1;31morigin/codex/add-playerids-array-and-detailed-views[m[33m)[m Add registration/team tournament detail views with player selection
+[33m835df07[m Merge pull request #72 from RodolfoRXXX/codex/update-tournament-view-to-show-registrations
+[33mff112d3[m[33m ([m[1;31morigin/codex/update-tournament-view-to-show-registrations[m[33m)[m Ajusta cards de mis torneos por estado de inscripción
+[33m4b0f471[m update
+[33m7925e12[m Merge pull request #71 from RodolfoRXXX/codex/add-tournament-player-limits-and-validation
+[33m7d4b7b4[m[33m ([m[1;31morigin/codex/add-tournament-player-limits-and-validation[m[33m)[m Agregar reglas de jugadores para inscripción de torneos
+[33m0a788db[m Merge pull request #70 from RodolfoRXXX/codex/update-tournament-admin-view-features
+[33m1773f75[m[33m ([m[1;31morigin/codex/update-tournament-admin-view-features[m[33m)[m Mejora detalle admin de torneos y restricciones de edición
+[33mb44e938[m update
+[33madd3aa3[m update
+[33m4fe9051[m update
+[33me2cf72b[m update
+[33mbb6cfb3[m Merge pull request #69 from RodolfoRXXX/codex/update-card-layout-for-dashboard-and-details
+[33m442f2d3[m[33m ([m[1;31morigin/codex/update-card-layout-for-dashboard-and-details[m[33m)[m Ajusta grillas y anchos consistentes en vistas de cards
+[33mb87841a[m update
+[33m20df96c[m update
+[33m4de44d6[m Merge pull request #68 from RodolfoRXXX/codex/update-group-visibility-and-links-in-pages
+[33m15212b7[m[33m ([m[1;31morigin/codex/update-group-visibility-and-links-in-pages[m[33m)[m Ajusta vistas de grupos público y perfil
+[33mbfa3754[m update
+[33m702af90[m Merge pull request #67 from RodolfoRXXX/codex/investigate-group-detail-display-issues
+[33m9505e1e[m[33m ([m[1;31morigin/codex/investigate-group-detail-display-issues[m[33m)[m Fix admin group member field mapping from user docs
+[33m2c69d42[m update
+[33mfac5f85[m Merge pull request #66 from RodolfoRXXX/codex/fix-page.tsx-to-display-group-members
+[33m30ed8ad[m[33m ([m[1;31morigin/codex/fix-page.tsx-to-display-group-members[m[33m)[m Corrige null safety en toggle de estado del grupo
+[33me177ba0[m Evita id opcional al actualizar estado del grupo
+[33mb208f48[m Valida nombre de grupo al cargar detalle admin
+[33m9ab3ae6[m Corrige tipado en validación admin de grupos
+[33mbafe4b5[m Mejora gestión de integrantes en admin de grupos
+[33m760f427[m update
+[33mc662725[m update
+[33m444abcd[m Merge pull request #65 from RodolfoRXXX/codex/implementar-estructura-de-acceso-con-rutas
+[33m480ee33[m[33m ([m[1;31morigin/codex/implementar-estructura-de-acceso-con-rutas[m[33m)[m Add public/protected tournament and profile group routes
+[33mb8feec2[m update
+[33m9842b58[m update
+[33m28217a5[m update
+[33m54d81e9[m update
+[33mc841f55[m Merge pull request #64 from RodolfoRXXX/codex/modificar-formulario-para-crear-torneos
+[33mf80f38b[m[33m ([m[1;31morigin/codex/modificar-formulario-para-crear-torneos[m[33m)[m Actualizar formulario de torneos por formato
+[33m4e98097[m Merge pull request #63 from RodolfoRXXX/codex/fix-unhandled-error-creating-tournament
+[33m04b67aa[m[33m ([m[1;31morigin/codex/fix-unhandled-error-creating-tournament[m[33m)[m Fix tournament timestamp parsing in create flow
+[33m89fd890[m Merge pull request #62 from RodolfoRXXX/codex/add-tournament-feature-for-admins-7npfo2
+[33m82ccb5e[m[33m ([m[1;31morigin/codex/add-tournament-feature-for-admins-7npfo2[m[33m)[m Merge branch 'dev' into codex/add-tournament-feature-for-admins-7npfo2
+[33m5134e47[m feat: fase A torneos con alta, admins y apertura de inscripciones
+[33mfee6dc5[m Merge pull request #61 from RodolfoRXXX/codex/add-tournament-feature-for-admins-xk59td
+[33ma15a56e[m[33m ([m[1;31morigin/codex/add-tournament-feature-for-admins-xk59td[m[33m)[m feat: iniciar implementación de torneos en backend y frontend
+[33mc37aa52[m Merge pull request #60 from RodolfoRXXX/codex/add-tournament-feature-for-admins
+[33m1af2785[m[33m ([m[1;31morigin/codex/add-tournament-feature-for-admins[m[33m)[m docs: ajustar modelo y flujo de torneos según feedback
+[33m5ab0ecd[m update
+[33m576dd9b[m update
+[33ma5f8134[m Merge pull request #57 from RodolfoRXXX/codex/split-title-sportexa-into-styled-parts
+[33ma127078[m Refina el estilo del logo Sportexa
+[33m0c48094[m Merge pull request #56 from RodolfoRXXX/codex/fix-text-color-in-dark-mode
+[33mcf8f51c[m Merge branch 'dev' into codex/fix-text-color-in-dark-mode
+[33m5a190cc[m Ajusta Sportexa: Arizonia solo en X y hover
+[33mb1ea4e0[m Merge branch 'dev' of https://github.com/RodolfoRXXX/project_voley into dev
+[33m953b03f[m update
+[33m7b2f6eb[m Merge pull request #55 from RodolfoRXXX/codex/fix-text-color-in-dark-mode
+[33m832b542[m Refina el título Sportexa en navbar
+[33m22abe2a[m update
+[33m490babd[m update
+[33mf3a2fb5[m update
+[33ma50cc74[m Merge pull request #53 from RodolfoRXXX/codex/add-email-notification-for-new-users
+[33m54fc7cb[m[33m ([m[1;31morigin/codex/add-email-notification-for-new-users[m[33m)[m Add reusable email service and notify on member add
+[33m8d2c59f[m Merge pull request #52 from RodolfoRXXX/codex/remove-commitmentbadge-and-update-statuspill
+[33me3a1171[m[33m ([m[1;31morigin/codex/remove-commitmentbadge-and-update-statuspill[m[33m)[m Actualizar edición de perfil con rol y status pills
+[33m11cfeec[m update
+[33mc823622[m Merge pull request #51 from RodolfoRXXX/codex/add-+-agregar-integrante-button
+[33m1b2cea2[m[33m ([m[1;31morigin/codex/add-+-agregar-integrante-button[m[33m)[m Agregar modal para sumar integrantes en detalle público de grupo
+[33mbe178e3[m update
+[33mf3d168c[m update
+[33m4278cc2[m Merge pull request #50 from RodolfoRXXX/codex/add-group-visibility-editing-in-admin
+[33m226d70a[m[33m ([m[1;31morigin/codex/add-group-visibility-editing-in-admin[m[33m)[m Add group/match visibility editing and toggle admin applications
+[33m6c50bf3[m update
+[33ma32b67e[m update
+[33mb8451a1[m Merge pull request #49 from RodolfoRXXX/codex/fix-group-admin-error-messages-and-visibility-issues
+[33me370ed7[m[33m ([m[1;31morigin/codex/fix-group-admin-error-messages-and-visibility-issues[m[33m)[m Corrige tipado de admins de grupo en detalle de match
+[33m053e664[m Mejora UX de grupos y elimina adminId de matches
+[33m44a1b8f[m update
+[33m6be3f48[m Merge pull request #48 from RodolfoRXXX/codex/refactorizar-manejo-de-adminid-y-actualizar-ui
+[33m4aaeea4[m[33m ([m[1;31morigin/codex/refactorizar-manejo-de-adminid-y-actualizar-ui[m[33m)[m Fix MatchActions isAdmin typing for build
+[33m428077b[m Refactor groups admin model and improve realtime/toast UX
+[33m01b024b[m Merge pull request #47 from RodolfoRXXX/codex/update-group-creation-and-member-visibility
+[33m655ce42[m[33m ([m[1;31morigin/codex/update-group-creation-and-member-visibility[m[33m)[m Fix group membership and group_only match visibility
+[33mdd0c200[m Merge pull request #46 from RodolfoRXXX/codex/fix-group-member-access-error-lab18y
+[33md7d0c3b[m[33m ([m[1;31morigin/codex/fix-group-member-access-error-lab18y[m[33m)[m Refuerza autenticación del detalle de grupo
+[33m2a49769[m Merge pull request #45 from RodolfoRXXX/codex/fix-group-member-access-error
+[33m9373503[m[33m ([m[1;31morigin/codex/fix-group-member-access-error[m[33m)[m Ajusta acceso al detalle de grupos y UI de enlace
+[33m88b4f2a[m Merge pull request #44 from RodolfoRXXX/codex/add-group-member-verification-for-details-access
+[33mc22e99c[m[33m ([m[1;31morigin/codex/add-group-member-verification-for-details-access[m[33m)[m Enforce group membership rules on public group detail/admin flow
+[33me2b8104[m Merge pull request #43 from RodolfoRXXX/codex/fix-firestore-update-error-on-admin-requests
+[33mec656ec[m[33m ([m[1;31morigin/codex/fix-firestore-update-error-on-admin-requests[m[33m)[m Fix undefined admin metadata in group admin normalization
+[33m52db5b3[m Merge pull request #42 from RodolfoRXXX/codex/fix-json-input-error-on-admin-action
+[33m1008f64[m[33m ([m[1;31morigin/codex/fix-json-input-error-on-admin-action[m[33m)[m Handle empty upstream responses in group admin actions
+[33m20ed492[m Merge pull request #41 from RodolfoRXXX/codex/restrict-admin-actions-in-group-view
+[33m5d9df94[m[33m ([m[1;31morigin/codex/restrict-admin-actions-in-group-view[m[33m)[m Restringe gestión por owner/admin del grupo en detalle público
+[33m3e61b40[m Merge pull request #40 from RodolfoRXXX/codex/update-public-groups-listing-ui
+[33m3b10251[m[33m ([m[1;31morigin/codex/update-public-groups-listing-ui[m[33m)[m Mejora flujo público de grupos y gestión de integrantes
+[33ma1dcd64[m update
+[33mc37732c[m Merge pull request #39 from RodolfoRXXX/codex/update-light/dark-mode-switch-in-sidebar
+[33mc455666[m[33m ([m[1;31morigin/codex/update-light/dark-mode-switch-in-sidebar[m[33m)[m Reubica y estiliza el switch de tema en sidebar
+[33mc6ce241[m Merge pull request #38 from RodolfoRXXX/codex/add-styled-toggle-button-for-dark/light-mode
+[33m85f4cf8[m[33m ([m[1;31morigin/codex/add-styled-toggle-button-for-dark/light-mode[m[33m)[m Mejora switch de tema en navbar y drawer móvil
+[33mb1d94c9[m Merge pull request #37 from RodolfoRXXX/codex/add-join-button-for-public-groups
+[33m5995421[m[33m ([m[1;31morigin/codex/add-join-button-for-public-groups[m[33m)[m feat: agregar unión y detalle público de grupos
+[33m74f48b8[m Merge pull request #36 from RodolfoRXXX/codex/add-group-management-and-match-visibility-enhancements-0no672
+[33m99e450d[m[33m ([m[1;31morigin/codex/add-group-management-and-match-visibility-enhancements-0no672[m[33m)[m Merge branch 'dev' into codex/add-group-management-and-match-visibility-enhancements-0no672
+[33mff8e783[m Fix groups endpoint URL composition for Functions API base
+[33md3d5fca[m Merge pull request #35 from RodolfoRXXX/codex/add-group-management-and-match-visibility-enhancements
+[33mca19314[m[33m ([m[1;31morigin/codex/add-group-management-and-match-visibility-enhancements[m[33m)[m Add group and match visibility management plus public groups page
+[33me7c0a12[m Merge pull request #34 from RodolfoRXXX/codex/propose-changes-for-multi-admin-support
+[33m2e2ed72[m[33m ([m[1;31morigin/codex/propose-changes-for-multi-admin-support[m[33m)[m feat: implement multi-admin group model and ownership operations
+[33mf61f69c[m update
+[33m3c6f529[m[33m ([m[1;32mmain[m[33m)[m Merge pull request #33 from RodolfoRXXX/codex/create-commercial-overview-of-application
+[33m7d6b1f2[m[33m ([m[1;31morigin/codex/create-commercial-overview-of-application[m[33m)[m docs: agregar resumen comercial de la aplicacion
+[33m9268a8a[m Merge pull request #32 from RodolfoRXXX/codex/verify-participant-state-update-on-match-played
+[33m7a09010[m[33m ([m[1;31morigin/codex/verify-participant-state-update-on-match-played[m[33m)[m Incrementa estadoCompromiso al marcar match como jugado
+[33m1f0fb38[m Merge branch 'main' of https://github.com/RodolfoRXXX/project_voley
+[33m0b82037[m update
+[33mc25670a[m Merge pull request #31 from RodolfoRXXX/codex/add-bottom-padding-to-all-views
+[33m61ae548[m[33m ([m[1;31morigin/codex/add-bottom-padding-to-all-views[m[33m)[m Fix mobile bottom safe-area padding across app layouts
+[33mf6f0d76[m Merge pull request #30 from RodolfoRXXX/codex/improve-dark-mode-styles-and-confirmations
+[33m473e6fb[m[33m ([m[1;31morigin/codex/improve-dark-mode-styles-and-confirmations[m[33m)[m Improve dark mode UI details and add action confirmations
+[33m5b7d26a[m update
+[33m6caa094[m update
+[33m3fd2493[m update
+[33m7d6cc74[m Merge pull request #29 from RodolfoRXXX/codex/improve-dark-mode-styling
+[33m27ab5a6[m[33m ([m[1;31morigin/codex/improve-dark-mode-styling[m[33m)[m Improve dark mode contrast and hover states across UI
+[33m271ce95[m Merge pull request #28 from RodolfoRXXX/codex/disable-buttons-for-played-or-canceled-matches
+[33mb5364ec[m[33m ([m[1;31morigin/codex/disable-buttons-for-played-or-canceled-matches[m[33m)[m Disable player remove/rejoin actions for canceled or played matches
+[33m98148d7[m update
+[33me3fc4f0[m Merge pull request #27 from RodolfoRXXX/codex/add-theme-switch-for-all-views-nvhrb0
+[33m038fb3a[m[33m ([m[1;31morigin/codex/add-theme-switch-for-all-views-nvhrb0[m[33m)[m fix(frontend): make page backgrounds theme-aware and improve dark muted text
+[33ma8d6d52[m Merge pull request #26 from RodolfoRXXX/codex/add-theme-switch-for-all-views
+[33m9f92775[m[33m ([m[1;31morigin/codex/add-theme-switch-for-all-views[m[33m)[m feat(frontend): apply dark theme styles across all views
+[33mf2df66a[m Merge pull request #25 from RodolfoRXXX/codex/add-dark-and-light-mode-toggle
+[33m8b348ab[m[33m ([m[1;31morigin/codex/add-dark-and-light-mode-toggle[m[33m)[m feat(frontend): agregar toggle de tema claro/oscuro
+[33mc548d65[m update
+[33m54aebc1[m Merge pull request #24 from RodolfoRXXX/codex/fix-action-buttons-visibility-on-mobile-8xuyma
+[33m7436d66[m[33m ([m[1;31morigin/codex/fix-action-buttons-visibility-on-mobile-8xuyma[m[33m)[m Fix mobile match detail bottom visibility and protected scroll target
+[33m97dd972[m Merge pull request #23 from RodolfoRXXX/codex/fix-action-buttons-visibility-on-mobile
+[33mbad24b3[m[33m ([m[1;31morigin/codex/fix-action-buttons-visibility-on-mobile[m[33m)[m Fix mobile match detail offset by resetting protected scroll
+[33m1498412[m update
+[33m7b4c570[m update
+[33md91ada5[m Merge pull request #22 from RodolfoRXXX/codex/restrict-edit-and-payment-options-to-match-admin
+[33m8316c4b[m[33m ([m[1;31morigin/codex/restrict-edit-and-payment-options-to-match-admin[m[33m)[m Restringe edición y pagos al admin del match
+[33m64ecdaa[m Merge pull request #21 from RodolfoRXXX/codex/fix-access-issue-for-group-details
+[33mdbd934b[m[33m ([m[1;31morigin/codex/fix-access-issue-for-group-details[m[33m)[m Fix admin group detail auth loading race
+[33m605b4cb[m Merge pull request #20 from RodolfoRXXX/codex/fix-admin-check-in-generarequipos
+[33mbbcdc01[m[33m ([m[1;31morigin/codex/fix-admin-check-in-generarequipos[m[33m)[m Enforce admin ownership for groups and matches
+[33m67e9273[m Merge pull request #19 from RodolfoRXXX/codex/verify-lock-variable-functionality
+[33m708bc3b[m[33m ([m[1;31morigin/codex/verify-lock-variable-functionality[m[33m)[m Fix lock lifecycle and remove nested lock conflicts
+[33m13639df[m Merge pull request #18 from RodolfoRXXX/codex/fix-hamburger-menu-expansion-on-login
+[33ma34ffb0[m[33m ([m[1;31morigin/codex/fix-hamburger-menu-expansion-on-login[m[33m)[m Fix mobile navbar drawer staying open after login
+[33mb53da03[m Merge pull request #17 from RodolfoRXXX/codex/fix-email-button-match-url-generation
+[33mf9a10fa[m[33m ([m[1;31morigin/codex/fix-email-button-match-url-generation[m[33m)[m Fix deadline email match URL to point to real match route
+[33m59a1ddd[m update
+[33m6569c58[m update
+[33m6ab0429[m Merge pull request #16 from RodolfoRXXX/codex/add-real-time-match-status-updates
+[33m7c0ff5f[m[33m ([m[1;31morigin/codex/add-real-time-match-status-updates[m[33m)[m feat(dashboard): actualizar matches en tiempo real
+[33m33ac197[m update
+[33mee1b877[m update
+[33mcd45644[m update
+[33m7427358[m update
+[33ma5dc04e[m update
+[33mb906387[m update
+[33m91521d7[m update
+[33mb00d8b7[m update
+[33mc0439f4[m Merge pull request #15 from RodolfoRXXX/codex/set-deadlinestage-to-0-on-new-match-creation
+[33mce51d06[m[33m ([m[1;31morigin/codex/set-deadlinestage-to-0-on-new-match-creation[m[33m)[m Set initial deadlineStage to 0 for new matches
+[33mc527afa[m update
+[33m379f571[m update
+[33m17bee35[m Merge branch 'main' of https://github.com/RodolfoRXXX/project_voley
+[33m9157a78[m update
+[33m246934e[m Merge pull request #14 from RodolfoRXXX/codex/fix-gmail-credentials-issue-in-nodemailer
+[33m1069bee[m[33m ([m[1;31morigin/codex/fix-gmail-credentials-issue-in-nodemailer[m[33m)[m docs: clarify how to update gmail password secret
+[33m1ea3d0a[m Merge pull request #13 from RodolfoRXXX/codex/add-state-transition-for-onmatchdeadline
+[33ma280512[m[33m ([m[1;31morigin/codex/add-state-transition-for-onmatchdeadline[m[33m)[m Update deadline trigger to move open matches to verificando
+[33ma949feb[m update
+[33mf576992[m Merge pull request #12 from RodolfoRXXX/codex/filter-dashboard-matches-by-status-and-time
+[33m9491e8e[m[33m ([m[1;31morigin/codex/filter-dashboard-matches-by-status-and-time[m[33m)[m Filtrar matches del dashboard por estado y hora de inicio
+[33mbb23161[m update
+[33m0e0cc7e[m Merge pull request #11 from RodolfoRXXX/codex/fix-typeerror-in-onmatchdeadline-trigger
+[33mc3f5b83[m[33m ([m[1;31morigin/codex/fix-typeerror-in-onmatchdeadline-trigger[m[33m)[m Fix scheduler handler and secret usage in onMatchDeadline
+[33m9427d22[m update
+[33m9f4a286[m Merge pull request #10 from RodolfoRXXX/codex/check-node_modules-and-package.json-locations
+[33md74065e[m[33m ([m[1;31morigin/codex/check-node_modules-and-package.json-locations[m[33m)[m chore: remove empty root npm manifests and stray lockfiles
+[33m980756d[m update
+[33m7e5637c[m update
+[33mab5b6a9[m update
+[33m0ee2697[m update
+[33m68b2929[m Merge pull request #9 from RodolfoRXXX/codex/actualizar-schedulers-a-cada-15-minutos
+[33m38da364[m[33m ([m[1;31morigin/codex/actualizar-schedulers-a-cada-15-minutos[m[33m)[m Adjust scheduler cadence to 15 minutes with early exits
+[33mfd59caf[m Merge pull request #8 from RodolfoRXXX/codex/fix-onsnapshot-closures
+[33m733bb92[m[33m ([m[1;31morigin/codex/fix-onsnapshot-closures[m[33m)[m Harden snapshot-driven maps when source lists are empty
+[33m28fb99e[m Merge pull request #7 from RodolfoRXXX/codex/optimize-data-updates-to-avoid-redundancy
+[33md47fa7c[m[33m ([m[1;31morigin/codex/optimize-data-updates-to-avoid-redundancy[m[33m)[m Evita updates redundantes en match, grupo y posiciones
+[33mf2900ca[m update
+[33m950a5ad[m Merge pull request #6 from RodolfoRXXX/codex/create-technical-summary-for-deployment
+[33m01fb367[m[33m ([m[1;31morigin/codex/create-technical-summary-for-deployment[m[33m)[m docs: agregar resumen técnico para estrategia de producción
+[33m7f889de[m update
+[33m04d38a6[m update
+[33m655f303[m update
+[33m241f706[m update
+[33m66eb554[m update
+[33md659215[m update
+[33m32ad7af[m update
+[33mda4e831[m update
+[33m5aacc82[m update
+[33mb465a68[m update
+[33m1d156de[m update
+[33md973c7c[m update
+[33mee36c90[m update
+[33m1daacb5[m update
+[33m56c9c89[m update
+[33m51e67c3[m update
+[33md50ba97[m update
+[33meb1eaf8[m update
+[33mfaf44d2[m update
+[33m446acd0[m update
+[33m47b7b09[m update
+[33mb69c262[m update
+[33m1fc9cd5[m update
+[33mdf7a118[m update
+[33m2ac2799[m update
+[33m7183766[m update
+[33me0944f0[m update
+[33m9f0d3d4[m Merge pull request #5 from RodolfoRXXX/codex/fix-cards-loading-when-logged-out
+[33maab732e[m[33m ([m[1;31morigin/codex/fix-cards-loading-when-logged-out[m[33m)[m Allow dashboard for logged-out users
+[33m2cdb4cf[m update
+[33mc1620eb[m update
+[33mf363649[m update
+[33mf035687[m Merge pull request #4 from RodolfoRXXX/codex/ajustar-sidebar-para-pantalla-completa
+[33mce7f8e0[m[33m ([m[1;31morigin/codex/ajustar-sidebar-para-pantalla-completa[m[33m)[m Adjust sidebar height and layout scrolling
+[33mc83e107[m update
+[33m9322fe7[m update
+[33m47f366f[m update
+[33ma8663a9[m update
+[33m4e88331[m update
+[33m863e546[m Merge pull request #3 from RodolfoRXXX/codex/allow-access-to-dashboard-without-login
+[33m676603a[m[33m ([m[1;31morigin/codex/allow-access-to-dashboard-without-login[m[33m)[m Permitir dashboard público y forzar login al entrar a match
+[33m675acee[m update
+[33mbf0fa66[m Merge pull request #1 from RodolfoRXXX/codex/fix-navbar-update-after-onboarding
+[33mfc539bd[m[33m ([m[1;31morigin/codex/fix-navbar-update-after-onboarding[m[33m)[m fix(frontend): refresh auth user doc in real time after onboarding
+[33m34cafd6[m update
+[33mb0f88ee[m update
+[33mdde87ec[m update
+[33m78fbd5f[m update
+[33m9c0afe6[m update
+[33m56f0ea5[m update
+[33mf3ac745[m update
+[33md738c5f[m update
+[33mb4dbc89[m update
+[33mdfc6ef8[m update
+[33m2cc0729[m update
+[33mcdc7bbd[m update
+[33m46071f5[m update
+[33m4fa062d[m update
+[33ma0459b6[m update
+[33mb492e1f[m update
+[33m069d510[m update
+[33m6a28557[m update
+[33mff4fd56[m update
+[33m6de73c5[m update
+[33mc173f5b[m update
+[33m763483f[m update
+[33m7bce11c[m update
+[33mffebad8[m update
+[33m4a8798b[m update
+[33m29737c3[m update
+[33mbee7b46[m update
+[33m02819e7[m update
+[33ma74e693[m update
+[33mffa1c1c[m update
+[33m5854b87[m update
+[33m001a8bc[m update
+[33m02bc631[m update
+[33m0200b20[m update
+[33mc0efb92[m update
+[33m2cc7a6f[m update
+[33m29bbd89[m update
+[33m5ecab6f[m update
+[33me278df8[m update
+[33mac54b4d[m update
+[33m5f9bbb0[m update
+[33m2d8fe21[m update
+[33mdc46354[m update
+[33m87f57b0[m update
+[33mea882cf[m update
+[33mafe7040[m update
+[33mf4756cd[m update
+[33m507db81[m update
+[33m0c96a8f[m update
+[33m542907b[m update
+[33m29423fd[m update
+[33m81a3151[m update
+[33mcf37820[m update
+[33m8e02da9[m update
+[33maaceeb8[m update
+[33m20573e3[m update
+[33m0c3eb07[m update
+[33m9cc4727[m update
+[33m274522a[m update
+[33me39e0f1[m update
+[33m8985b02[m update
+[33ma83e723[m update
+[33m47537b8[m update
+[33m67dcef0[m update
+[33m41ff41b[m update
+[33mb7cba4f[m update
+[33mf224f2c[m update
+[33ma571d18[m update
+[33mb11b2c3[m update
+[33m961d452[m update
+[33mda9d0d6[m update
+[33m094ab46[m update
+[33m6811055[m update
+[33mc8d3342[m update
+[33m6f88d1e[m update
+[33m9d38684[m update
+[33m88b5f9f[m update
+[33m7830b32[m update
+[33m1696852[m update
+[33m1a7692d[m update
+[33mbb9f723[m update
+[33md33daf0[m update
+[33m27a6c61[m update
+[33m7619bac[m update
+[33md3d73f1[m update
+[33m5f9bcd9[m update
+[33mdd18342[m update
+[33m3059ebd[m first commit

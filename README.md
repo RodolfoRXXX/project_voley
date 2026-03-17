@@ -419,11 +419,28 @@ Opciones disponibles:
 - `--groups=4` cantidad de grupos.
 - `--prefix=seed` prefijo para uid/doc ids (evita choques con data real).
 - `--domain=seed.local` dominio de emails fake.
+- `--project=mi-proyecto` project id de Firebase/GCP (alternativa a `FIREBASE_PROJECT_ID`).
+- `--credentials=./service-account.json` ruta a service account (alternativa a `GOOGLE_APPLICATION_CREDENTIALS`).
 
 Ejemplo:
 
 ```bash
 npm run seed:dev -- --users=30 --groups=6 --prefix=demo
+```
+
+Si corrés local fuera de GCP, además definí el proyecto y credenciales para evitar el error
+`metadata.google.internal`:
+
+```bash
+export FIREBASE_PROJECT_ID="tu-project-id"
+export GOOGLE_APPLICATION_CREDENTIALS="/ruta/service-account.json"
+npm run seed:dev -- --users=30 --groups=6 --prefix=demo
+```
+
+También podés pasarlo por flags:
+
+```bash
+npm run seed:dev -- --project=tu-project-id --credentials=./service-account.json
 ```
 
 Esto crea/actualiza:

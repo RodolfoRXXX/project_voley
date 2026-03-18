@@ -1,9 +1,24 @@
+import { TournamentPhaseType } from "@/types/tournament";
+
+export type TournamentMatchStatus = "scheduled" | "completed";
+
+export type TournamentMatchResult = {
+  winnerId?: string;
+  homeSets?: number;
+  awaySets?: number;
+  homePoints?: number[];
+  awayPoints?: number[];
+} | null;
+
 export type TournamentMatch = {
   id: string;
   tournamentId: string;
-  phase: string;
+  phaseId: string;
+  phaseType: TournamentPhaseType;
   round: number;
+  groupLabel?: string | null;
   homeTeamId: string;
   awayTeamId: string;
-  status: "pending";
+  status: TournamentMatchStatus;
+  result?: TournamentMatchResult;
 };

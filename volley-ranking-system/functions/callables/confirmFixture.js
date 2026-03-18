@@ -2,139 +2,64 @@ const functions = require("firebase-functions/v1");
 const { FieldValue } = require("firebase-admin/firestore");
 const { db } = require("../src/firebase");
 const { assertIsAdmin } = require("../src/services/adminAccessService");
-const { assertTournamentAdmin } = require("../src/services/tournamentService");
+const { assertTournamentAdmin, PHASE_STATUS, PHASE_TYPES } = require("../src/services/tournamentService");
+const { buildStandingsDoc, getTournamentAndPhase } = require("../src/services/tournamentPhaseService");
 
 function isValidMatch(match) {
-  return (
-    match &&
-    typeof match === "object" &&
-    typeof match.id === "string" &&
-    typeof match.phase === "string" &&
-    Number.isFinite(match.round) &&
-    typeof match.homeTeamId === "string" &&
-    typeof match.awayTeamId === "string" &&
-    match.homeTeamId !== match.awayTeamId &&
-    match.status === "pending"
-  );
+  return match && typeof match === "object" && typeof match.id === "string" && typeof match.phaseId === "string" && typeof match.phaseType === "string" && typeof match.homeTeamId === "string" && typeof match.awayTeamId === "string" && match.homeTeamId !== match.awayTeamId;
 }
 
 module.exports = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "No autenticado");
-  }
-
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "No autenticado");
   const uid = context.auth.uid;
   await assertIsAdmin(uid);
 
   const tournamentId = typeof data?.tournamentId === "string" ? data.tournamentId.trim() : "";
+  const phaseId = typeof data?.phaseId === "string" ? data.phaseId.trim() : "";
   const matches = data?.matches;
+  if (!tournamentId) throw new functions.https.HttpsError("invalid-argument", "tournamentId inválido");
+  if (!Array.isArray(matches) || !matches.length || !matches.every(isValidMatch)) throw new functions.https.HttpsError("invalid-argument", "matches inválido");
 
-  if (!tournamentId) {
-    throw new functions.https.HttpsError("invalid-argument", "tournamentId inválido");
-  }
-
-  if (!Array.isArray(matches) || matches.length === 0) {
-    throw new functions.https.HttpsError("invalid-argument", "matches inválido");
-  }
-
-  if (!matches.every(isValidMatch)) {
-    throw new functions.https.HttpsError("invalid-argument", "Hay partidos inválidos en el fixture");
-  }
-
-  const tournamentRef = db.collection("tournaments").doc(tournamentId);
-  const tournamentSnap = await tournamentRef.get();
-
-  if (!tournamentSnap.exists) {
-    throw new functions.https.HttpsError("not-found", "El torneo no existe");
-  }
-
-  const tournament = { id: tournamentSnap.id, ...tournamentSnap.data() };
+  const { tournament, phase, tournamentRef, phaseRef } = await getTournamentAndPhase({ tournamentId, phaseId, allowedTypes: [PHASE_TYPES.GROUP_STAGE, PHASE_TYPES.ROUND_ROBIN, PHASE_TYPES.KNOCKOUT] });
   assertTournamentAdmin(tournament, uid);
 
-  if (tournament.status !== "inscripciones_cerradas") {
-    throw new functions.https.HttpsError(
-      "failed-precondition",
-      "El torneo debe estar en estado inscripciones_cerradas"
-    );
-  }
+  const existingMatchesSnap = await db.collection("tournamentMatches").where("phaseId", "==", phase.id).limit(1).get();
+  if (!existingMatchesSnap.empty) throw new functions.https.HttpsError("already-exists", "El fixture ya fue confirmado");
 
-  if (tournament.format === "mixto") {
-    if (!Array.isArray(tournament.groups) || tournament.groups.length === 0) {
-      throw new functions.https.HttpsError(
-        "failed-precondition",
-        "Debés confirmar grupos antes de confirmar fixture"
-      );
-    }
-
-    if (matches.some((match) => !String(match.phase).startsWith("grupos_"))) {
-      throw new functions.https.HttpsError(
-        "invalid-argument",
-        "En formato mixto solo se permiten partidos de grupos"
-      );
-    }
-  }
-
-  const existingMatchesSnap = await db
-    .collection("tournamentMatches")
-    .where("tournamentId", "==", tournamentId)
-    .limit(1)
-    .get();
-
-  if (!existingMatchesSnap.empty) {
-    throw new functions.https.HttpsError("already-exists", "El fixture ya fue confirmado");
-  }
-
-  const teamsSnap = await db
-    .collection("tournamentTeams")
-    .where("tournamentId", "==", tournamentId)
-    .where("status", "==", "aceptado")
-    .get();
-
+  const teamsSnap = await db.collection("tournamentTeams").where("tournamentId", "==", tournamentId).where("status", "==", "aceptado").get();
   const validTeamIds = new Set(teamsSnap.docs.map((teamDoc) => teamDoc.id));
-  const pairSet = new Set();
-
-  for (const match of matches) {
-    if (!validTeamIds.has(match.homeTeamId) || !validTeamIds.has(match.awayTeamId)) {
-      throw new functions.https.HttpsError(
-        "failed-precondition",
-        "El fixture contiene equipos que no pertenecen al torneo"
-      );
-    }
-
-    const pairKey = [match.homeTeamId, match.awayTeamId].sort().join("::");
-    if (pairSet.has(pairKey)) {
-      throw new functions.https.HttpsError(
-        "invalid-argument",
-        "El fixture contiene partidos duplicados"
-      );
-    }
-
-    pairSet.add(pairKey);
-  }
-
   const batch = db.batch();
+  const standingSeeds = new Map();
 
   for (const match of matches) {
-    const matchRef = db.collection("tournamentMatches").doc(match.id);
-    batch.set(matchRef, {
+    if (match.phaseId !== phase.id || match.phaseType !== phase.type) throw new functions.https.HttpsError("invalid-argument", "El fixture no corresponde a la fase indicada");
+    if (!validTeamIds.has(match.homeTeamId) || !validTeamIds.has(match.awayTeamId)) throw new functions.https.HttpsError("failed-precondition", "El fixture contiene equipos que no pertenecen al torneo");
+    batch.set(db.collection("tournamentMatches").doc(match.id), {
       tournamentId,
-      phase: match.phase,
+      phaseId: phase.id,
+      phaseType: phase.type,
+      groupLabel: match.groupLabel || null,
       round: match.round,
       homeTeamId: match.homeTeamId,
       awayTeamId: match.awayTeamId,
-      status: "pending",
+      status: "scheduled",
+      result: null,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
+
+    [match.homeTeamId, match.awayTeamId].forEach((teamId) => {
+      const standingId = `${tournamentId}_${phase.id}_${teamId}`;
+      if (!standingSeeds.has(standingId)) standingSeeds.set(standingId, buildStandingsDoc({ tournamentId, phase, teamId, groupLabel: match.groupLabel || null }));
+    });
   }
 
-  batch.update(tournamentRef, {
-    status: "activo",
-    updatedBy: uid,
-    updatedAt: FieldValue.serverTimestamp(),
+  standingSeeds.forEach((standing, standingId) => {
+    batch.set(db.collection("tournamentStandings").doc(standingId), standing, { merge: true });
   });
 
+  batch.update(phaseRef, { status: PHASE_STATUS.CONFIRMED, confirmedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
+  batch.update(tournamentRef, { status: "activo", currentPhaseId: phase.id, currentPhaseType: phase.type, updatedBy: uid, updatedAt: FieldValue.serverTimestamp() });
   await batch.commit();
-
-  return { ok: true, matchesCount: matches.length };
+  return { ok: true, matchesCount: matches.length, phaseId: phase.id };
 });

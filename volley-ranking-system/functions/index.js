@@ -42,5 +42,7 @@ exports.closeTournamentRegistrations = require("./callables/closeTournamentRegis
 exports.confirmGroups = require("./callables/confirmGroups");
 exports.addTournamentAdmin = require("./callables/addTournamentAdmin");
 exports.editTournament = require("./callables/editTournament");
+exports.recordMatchResult = require("./callables/recordMatchResult");
+exports.advancePhase = require("./callables/advancePhase");
 
 exports.api = require("./src/httpApi");

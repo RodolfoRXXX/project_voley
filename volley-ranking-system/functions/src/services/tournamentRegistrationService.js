@@ -57,7 +57,7 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId, nameT
 
     const group = groupSnap.data();
     const teamMembersCount = Array.isArray(group.memberIds) ? group.memberIds.length : 0;
-    const minPlayers = Number(tournament.minPlayers || 1);
+    const minPlayers = Number(tournament.settings?.minPlayers || tournament.minPlayers || 1);
 
     if (teamMembersCount < minPlayers) {
       throw new functions.https.HttpsError(
@@ -74,7 +74,7 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId, nameT
       );
     }
 
-    const paymentForPlayer = Number(tournament.paymentForPlayer || 0);
+    const paymentForPlayer = Number(tournament.settings?.paymentPerPlayer || tournament.paymentForPlayer || 0);
     const expectedAmount = 0;
     const paidAmount = 0;
     const pendingAmount = expectedAmount;
@@ -167,7 +167,7 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
       }
 
       const acceptedTeamsCount = Number(tournament.acceptedTeamsCount || 0);
-      if (acceptedTeamsCount >= Number(tournament.maxTeams || 0)) {
+      if (acceptedTeamsCount >= Number(tournament.settings?.maxTeams || tournament.maxTeams || 0)) {
         throw new functions.https.HttpsError(
           "failed-precondition",
           "El torneo alcanzó el máximo de equipos"
@@ -204,16 +204,6 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
         paymentDate: registration.paymentDate || null,
         paymentVerifiedBy: registration.paymentVerifiedBy || null,
         paymentVerifiedAt: registration.paymentVerifiedAt || null,
-        groupLabel: 0,
-        stats: {
-          played: 0,
-          won: 0,
-          draw: 0,
-          lost: 0,
-          points: 0,
-          setsFor: 0,
-          setsAgainst: 0,
-        },
         status: "aceptado",
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),

@@ -1,65 +1,43 @@
 const functions = require("firebase-functions/v1");
 const { db } = require("../src/firebase");
 const { assertIsAdmin } = require("../src/services/adminAccessService");
-const { assertTournamentAdmin } = require("../src/services/tournamentService");
-const {
-  generateTournamentFixture,
-  assertValidFixtureTeamCount,
-} = require("../src/services/tournamentFixtureService");
+const { assertTournamentAdmin, PHASE_TYPES } = require("../src/services/tournamentService");
+const { generateKnockoutBracket, generateRoundRobinMatches, assertValidFixtureTeamCount } = require("../src/services/tournamentFixtureService");
+const { getTournamentAndPhase } = require("../src/services/tournamentPhaseService");
 
 module.exports = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "No autenticado");
-  }
-
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "No autenticado");
   const uid = context.auth.uid;
   await assertIsAdmin(uid);
 
   const tournamentId = typeof data?.tournamentId === "string" ? data.tournamentId.trim() : "";
-  if (!tournamentId) {
-    throw new functions.https.HttpsError("invalid-argument", "tournamentId inválido");
-  }
-
+  const phaseId = typeof data?.phaseId === "string" ? data.phaseId.trim() : "";
+  if (!tournamentId) throw new functions.https.HttpsError("invalid-argument", "tournamentId inválido");
   const providedSeed = data?.seed;
-  if (providedSeed !== undefined && !Number.isInteger(providedSeed)) {
-    throw new functions.https.HttpsError("invalid-argument", "seed inválido");
-  }
+  if (providedSeed !== undefined && !Number.isInteger(providedSeed)) throw new functions.https.HttpsError("invalid-argument", "seed inválido");
 
-  const tournamentRef = db.collection("tournaments").doc(tournamentId);
-  const tournamentSnap = await tournamentRef.get();
-
-  if (!tournamentSnap.exists) {
-    throw new functions.https.HttpsError("not-found", "El torneo no existe");
-  }
-
-  const tournament = { id: tournamentSnap.id, ...tournamentSnap.data() };
+  const { tournament, phase } = await getTournamentAndPhase({ tournamentId, phaseId, allowedTypes: [PHASE_TYPES.GROUP_STAGE, PHASE_TYPES.ROUND_ROBIN, PHASE_TYPES.KNOCKOUT] });
   assertTournamentAdmin(tournament, uid);
+  if (tournament.status !== "inscripciones_cerradas" && tournament.status !== "activo") throw new functions.https.HttpsError("failed-precondition", "El torneo debe estar organizado para generar fixture");
 
-  if (tournament.status !== "inscripciones_cerradas") {
-    throw new functions.https.HttpsError(
-      "failed-precondition",
-      "El torneo debe estar en estado inscripciones_cerradas"
-    );
-  }
-
-  if (tournament.format === "mixto" && (!Array.isArray(tournament.groups) || tournament.groups.length === 0)) {
-    throw new functions.https.HttpsError(
-      "failed-precondition",
-      "Debés confirmar grupos antes de generar fixture"
-    );
-  }
-
-  const teamsSnap = await db
-    .collection("tournamentTeams")
-    .where("tournamentId", "==", tournamentId)
-    .where("status", "==", "aceptado")
-    .get();
-
+  const teamsSnap = await db.collection("tournamentTeams").where("tournamentId", "==", tournamentId).where("status", "==", "aceptado").get();
   const teams = teamsSnap.docs.map((teamDoc) => ({ id: teamDoc.id, ...teamDoc.data() }));
   assertValidFixtureTeamCount(tournament, teams);
 
-  const seed = providedSeed ?? Math.floor(Math.random() * 1000000000);
-  const matches = generateTournamentFixture(tournament, teams, seed);
+  let matches = [];
+  if (phase.type === PHASE_TYPES.GROUP_STAGE) {
+    const sourceGroups = Array.isArray(phase.config?.groups) ? phase.config.groups : [];
+    if (!sourceGroups.length) throw new functions.https.HttpsError("failed-precondition", "Debés confirmar grupos antes de generar fixture");
+    const teamById = new Map(teams.map((team) => [team.id, team]));
+    matches = sourceGroups.flatMap((group, index) => {
+      const groupTeams = (group.teamIds || []).map((teamId) => teamById.get(teamId)).filter(Boolean);
+      return generateRoundRobinMatches(tournament, groupTeams, index * 100 + 1, phase.type, { phaseId: phase.id, phaseType: phase.type, groupLabel: group.name });
+    });
+  } else if (phase.type === PHASE_TYPES.ROUND_ROBIN) {
+    matches = generateRoundRobinMatches(tournament, teams, 1, phase.type, { phaseId: phase.id, phaseType: phase.type });
+  } else {
+    matches = generateKnockoutBracket(tournament, teams, 1, phase.type, { phaseId: phase.id, phaseType: phase.type });
+  }
 
-  return { seed, matches };
+  return { seed: providedSeed ?? Math.floor(Math.random() * 1000000000), matches, phaseId: phase.id };
 });

@@ -355,12 +355,15 @@ async function addTournamentAdmin({ uid, tournamentId, adminUserId }) { /* uncha
   return { ok: true };
 }
 
-async function syncRegistrationPhaseStatus(trx, tournamentId, nextStatus) {
+async function getRegistrationPhaseDoc(trx, tournamentId) {
   const phaseQuery = db.collection("tournamentPhases").where("tournamentId", "==", tournamentId).where("type", "==", PHASE_TYPES.REGISTRATION).limit(1);
   const phaseSnap = await trx.get(phaseQuery);
-  if (!phaseSnap.empty) {
-    trx.update(phaseSnap.docs[0].ref, { status: nextStatus, updatedAt: FieldValue.serverTimestamp(), ...(nextStatus === PHASE_STATUS.COMPLETED ? { completedAt: FieldValue.serverTimestamp() } : {}) });
-  }
+  return phaseSnap.empty ? null : phaseSnap.docs[0];
+}
+
+function syncRegistrationPhaseStatus(trx, registrationPhaseDoc, nextStatus) {
+  if (!registrationPhaseDoc) return;
+  trx.update(registrationPhaseDoc.ref, { status: nextStatus, updatedAt: FieldValue.serverTimestamp(), ...(nextStatus === PHASE_STATUS.COMPLETED ? { completedAt: FieldValue.serverTimestamp() } : {}) });
 }
 
 async function openTournamentRegistrations({ uid, tournamentId }) {
@@ -369,11 +372,12 @@ async function openTournamentRegistrations({ uid, tournamentId }) {
   await db.runTransaction(async (trx) => {
     const tournamentSnap = await trx.get(tournamentRef);
     if (!tournamentSnap.exists) throw new functions.https.HttpsError("not-found", "El torneo no existe");
+    const registrationPhaseDoc = await getRegistrationPhaseDoc(trx, tournamentId);
     const tournament = tournamentSnap.data();
     assertTournamentAdmin(tournament, uid);
     if (tournament.status !== TOURNAMENT_STATUS.DRAFT) throw new functions.https.HttpsError("failed-precondition", "Solo se pueden abrir inscripciones desde estado draft");
     trx.update(tournamentRef, { status: TOURNAMENT_STATUS.OPEN, updatedBy: uid, updatedAt: FieldValue.serverTimestamp() });
-    await syncRegistrationPhaseStatus(trx, tournamentId, PHASE_STATUS.ACTIVE);
+    syncRegistrationPhaseStatus(trx, registrationPhaseDoc, PHASE_STATUS.ACTIVE);
   });
   return { ok: true };
 }
@@ -384,6 +388,7 @@ async function closeTournamentRegistrations({ uid, tournamentId }) {
   await db.runTransaction(async (trx) => {
     const tournamentSnap = await trx.get(tournamentRef);
     if (!tournamentSnap.exists) throw new functions.https.HttpsError("not-found", "El torneo no existe");
+    const phasesSnap = await trx.get(db.collection("tournamentPhases").where("tournamentId", "==", tournamentId));
     const tournament = tournamentSnap.data();
     assertTournamentAdmin(tournament, uid);
     if (tournament.status !== TOURNAMENT_STATUS.OPEN) throw new functions.https.HttpsError("failed-precondition", "Solo se pueden cerrar inscripciones desde estado inscripciones_abiertas");
@@ -392,8 +397,8 @@ async function closeTournamentRegistrations({ uid, tournamentId }) {
     const maxTeams = Number(tournament.settings?.maxTeams || tournament.maxTeams || 0);
     if (acceptedTeamsCount < minTeams || acceptedTeamsCount > maxTeams) throw new functions.https.HttpsError("failed-precondition", "El torneo debe tener una cantidad de equipos aceptados entre minTeams y maxTeams");
 
-    const phasesSnap = await trx.get(db.collection("tournamentPhases").where("tournamentId", "==", tournamentId));
-    const phases = phasesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })).sort((a, b) => a.order - b.order);
+    const phases = phasesSnap.docs.map((doc) => ({ id: doc.id, ref: doc.ref, ...doc.data() })).sort((a, b) => a.order - b.order);
+    const registrationPhaseDoc = phasesSnap.docs.find((doc) => doc.data().type === PHASE_TYPES.REGISTRATION) || null;
     const nextPhase = phases.find((phase) => phase.type !== PHASE_TYPES.REGISTRATION);
 
     trx.update(tournamentRef, {
@@ -402,9 +407,9 @@ async function closeTournamentRegistrations({ uid, tournamentId }) {
       updatedBy: uid,
       updatedAt: FieldValue.serverTimestamp(),
     });
-    await syncRegistrationPhaseStatus(trx, tournamentId, PHASE_STATUS.COMPLETED);
+    syncRegistrationPhaseStatus(trx, registrationPhaseDoc, PHASE_STATUS.COMPLETED);
     if (nextPhase) {
-      trx.update(db.collection("tournamentPhases").doc(nextPhase.id), { status: PHASE_STATUS.ACTIVE, updatedAt: FieldValue.serverTimestamp() });
+      trx.update(nextPhase.ref, { status: PHASE_STATUS.ACTIVE, updatedAt: FieldValue.serverTimestamp() });
     }
   });
   return { ok: true };

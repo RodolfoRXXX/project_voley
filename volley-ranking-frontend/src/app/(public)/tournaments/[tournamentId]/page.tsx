@@ -3,30 +3,44 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { tournamentStatusLabel, type Tournament } from "@/types/tournament";
+import {
+  tournamentPhaseStatusLabel,
+  tournamentPhaseTypeLabel,
+  tournamentStatusLabel,
+  type Tournament,
+  type TournamentPhase,
+} from "@/types/tournament";
+import { type TournamentStanding } from "@/types/tournamentStanding";
+import { getTournamentById, getTournamentMatches, getTournamentPhases, getTournamentStandings } from "@/services/tournaments/tournamentQueries";
 
 type TeamRow = {
   id: string;
   nameTeam?: string;
+  name?: string;
   groupLabel?: string;
-  stats?: { points?: number; matchesPlayed?: number };
 };
 
 export default function PublicTournamentDetailPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
   const [tournament, setTournament] = useState<Tournament | null>(null);
+  const [currentPhase, setCurrentPhase] = useState<TournamentPhase | null>(null);
   const [teams, setTeams] = useState<TeamRow[]>([]);
+  const [matchesCount, setMatchesCount] = useState(0);
+  const [standings, setStandings] = useState<TournamentStanding[]>([]);
 
   useEffect(() => {
     const load = async () => {
       if (!tournamentId) return;
 
-      const tournamentSnap = await getDoc(doc(db, "tournaments", tournamentId));
-      if (tournamentSnap.exists()) {
-        setTournament({ id: tournamentSnap.id, ...(tournamentSnap.data() as Omit<Tournament, "id">) });
-      }
+      const tournamentData = await getTournamentById(tournamentId);
+      if (!tournamentData) return;
+      setTournament(tournamentData);
+
+      const phases = await getTournamentPhases(tournamentId);
+      const resolvedPhase = phases.find((phase) => phase.id === tournamentData.currentPhaseId) || null;
+      setCurrentPhase(resolvedPhase);
 
       const teamSnap = await getDocs(
         query(collection(db, "tournamentTeams"), where("tournamentId", "==", tournamentId))
@@ -38,6 +52,19 @@ export default function PublicTournamentDetailPage() {
           ...(item.data() as Omit<TeamRow, "id">),
         }))
       );
+
+      if (resolvedPhase) {
+        const [phaseMatches, phaseStandings] = await Promise.all([
+          getTournamentMatches({ tournamentId, phaseId: resolvedPhase.id }),
+          getTournamentStandings({ tournamentId, phaseId: resolvedPhase.id }),
+        ]);
+
+        setMatchesCount(phaseMatches.length);
+        setStandings(phaseStandings.sort((a, b) => a.position - b.position));
+      } else {
+        setMatchesCount(0);
+        setStandings([]);
+      }
     };
 
     load();
@@ -57,6 +84,16 @@ export default function PublicTournamentDetailPage() {
         <span className="inline-block text-xs rounded-full px-2 py-1 bg-orange-100 text-orange-700">
           {tournamentStatusLabel[tournament.status]}
         </span>
+        <div className="grid gap-2 text-sm text-neutral-700 sm:grid-cols-3">
+          <p><b>Formato:</b> {tournament.format}</p>
+          <p><b>Equipos aceptados:</b> {tournament.acceptedTeamsCount || 0}/{tournament.maxTeams}</p>
+          <p><b>Fase actual:</b> {currentPhase ? tournamentPhaseTypeLabel[currentPhase.type] : "Sin fase activa"}</p>
+        </div>
+        {currentPhase && (
+          <p className="text-sm text-neutral-700">
+            <b>Estado de fase:</b> {tournamentPhaseStatusLabel[currentPhase.status]}
+          </p>
+        )}
       </header>
 
       <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
@@ -67,11 +104,38 @@ export default function PublicTournamentDetailPage() {
           <ul className="space-y-2 text-sm text-neutral-700">
             {teams.map((team) => (
               <li key={team.id} className="rounded-lg border border-neutral-200 p-3">
-                <p><b>Equipo:</b> {team.nameTeam || team.id}</p>
+                <p><b>Equipo:</b> {team.nameTeam || team.name || team.id}</p>
                 <p><b>Grupo:</b> {team.groupLabel || "-"}</p>
-                <p><b>Puntos:</b> {team.stats?.points ?? 0}</p>
               </li>
             ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+        <h2 className="text-base font-semibold text-neutral-900">Resumen competitivo</h2>
+        <p className="text-sm text-neutral-700">
+          <b>Partidos generados para la fase actual:</b> {matchesCount}
+        </p>
+
+        {standings.length === 0 ? (
+          <p className="text-sm text-neutral-500">Todavía no hay tabla de posiciones para la fase actual.</p>
+        ) : (
+          <ul className="space-y-2 text-sm text-neutral-700">
+            {standings.map((standing) => {
+              const team = teams.find((teamItem) => teamItem.id === standing.teamId);
+
+              return (
+                <li key={standing.id} className="rounded-lg border border-neutral-200 p-3">
+                  <p><b>Posición:</b> {standing.position}</p>
+                  <p><b>Equipo:</b> {team?.nameTeam || team?.name || standing.teamId}</p>
+                  <p><b>Grupo:</b> {standing.groupLabel || "-"}</p>
+                  <p><b>Puntos:</b> {standing.stats.points}</p>
+                  <p><b>Sets:</b> {standing.stats.setsFor}-{standing.stats.setsAgainst}</p>
+                  <p><b>Clasificado:</b> {standing.qualified ? "Sí" : "No"}</p>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

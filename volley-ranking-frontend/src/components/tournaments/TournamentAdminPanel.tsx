@@ -4,30 +4,31 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "@/lib/firebase";
-import { Tournament, TournamentGroup } from "@/types/tournament";
+import {
+  Tournament,
+  TournamentGroup,
+  TournamentPhase,
+  tournamentPhaseStatusLabel,
+  tournamentPhaseTypeLabel,
+} from "@/types/tournament";
 import { getAdminAction } from "@/lib/tournamentAdmin";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
-
-type Match = {
-  id: string;
-  tournamentId: string;
-  phase: string;
-  round: number;
-  groupId?: string | null;
-  homeTeamId?: string | null;
-  awayTeamId?: string | null;
-  status: "pending";
-};
+import { TournamentMatch } from "@/types/tournamentMatch";
+import {
+  getConfirmedGroupsFromTournamentContext,
+  toTournamentMatch,
+} from "@/services/tournaments/tournamentAdapters";
+import { getTournamentPhases } from "@/services/tournaments/tournamentQueries";
 
 type GroupedMatches = {
   group: {
-    [groupId: string]: {
-      [round: string]: Match[];
+    [groupLabel: string]: {
+      [round: string]: TournamentMatch[];
     };
   };
   knockout: {
-    [round: string]: Match[];
+    [round: string]: TournamentMatch[];
   };
 };
 
@@ -43,26 +44,15 @@ const confirmGroupsFn = httpsCallable(functions, "confirmGroups");
 const previewFixtureFn = httpsCallable(functions, "previewFixture");
 const confirmFixtureFn = httpsCallable(functions, "confirmFixture");
 
-function getGroupIdFromMatch(match: Match) {
-  if (match.groupId) return String(match.groupId);
-
-  if (match.phase.startsWith("grupos_")) {
-    const groupName = match.phase.replace("grupos_", "");
-    return `Grupo ${groupName}`;
-  }
-
-  if (match.phase === "group") {
-    return "Grupo";
-  }
-
-  return null;
+function getGroupIdFromMatch(match: TournamentMatch) {
+  return match.groupLabel ? `Grupo ${match.groupLabel}` : null;
 }
 
-function isKnockoutPhase(phase: string) {
-  return ["eliminacion", "knockout"].includes(phase);
+function isKnockoutPhase(phaseType: TournamentMatch["phaseType"]) {
+  return phaseType === "knockout" || phaseType === "final";
 }
 
-function groupMatches(matches: Match[]): GroupedMatches {
+function groupMatches(matches: TournamentMatch[]): GroupedMatches {
   return matches.reduce<GroupedMatches>(
     (acc, match) => {
       const groupId = getGroupIdFromMatch(match);
@@ -75,7 +65,7 @@ function groupMatches(matches: Match[]): GroupedMatches {
         return acc;
       }
 
-      if (isKnockoutPhase(match.phase)) {
+      if (isKnockoutPhase(match.phaseType)) {
         const roundKey = String(match.round);
         if (!acc.knockout[roundKey]) acc.knockout[roundKey] = [];
         acc.knockout[roundKey].push(match);
@@ -90,7 +80,7 @@ function groupMatches(matches: Match[]): GroupedMatches {
   );
 }
 
-function sortRoundEntries(rounds: Record<string, Match[]>) {
+function sortRoundEntries(rounds: Record<string, TournamentMatch[]>) {
   return Object.entries(rounds).sort((a, b) => Number(a[0]) - Number(b[0]));
 }
 
@@ -146,13 +136,15 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   const confirmedFixtureRef = useRef<HTMLDivElement | null>(null);
 
   const [busyAction, setBusyAction] = useState(false);
+  const [phases, setPhases] = useState<TournamentPhase[]>([]);
+  const [loadingPhases, setLoadingPhases] = useState(false);
   const [previewGroups, setPreviewGroups] = useState<TournamentGroup[] | null>(null);
   const [groupsSeed, setGroupsSeed] = useState<number | null>(null);
   const [loadingGroupsPreview, setLoadingGroupsPreview] = useState(false);
   const [confirmingGroups, setConfirmingGroups] = useState(false);
 
-  const [previewMatches, setPreviewMatches] = useState<Match[] | null>(null);
-  const [confirmedMatches, setConfirmedMatches] = useState<Match[]>([]);
+  const [previewMatches, setPreviewMatches] = useState<TournamentMatch[] | null>(null);
+  const [confirmedMatches, setConfirmedMatches] = useState<TournamentMatch[]>([]);
   const [seed, setSeed] = useState<number | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [confirmingFixture, setConfirmingFixture] = useState(false);
@@ -160,9 +152,28 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   const [teamNames, setTeamNames] = useState<Record<string, string>>({});
 
   const action = getAdminAction(tournament);
-  const confirmedGroups = tournament.groups || [];
+  const currentPhase = useMemo(
+    () => phases.find((phase) => phase.id === tournament.currentPhaseId) || null,
+    [phases, tournament.currentPhaseId]
+  );
+  const confirmedGroups = getConfirmedGroupsFromTournamentContext({
+    phase: currentPhase,
+    tournament,
+  });
   const hasConfirmedGroups = confirmedGroups.length > 0;
   const hasConfirmedFixture = confirmedMatches.length > 0;
+
+  const loadPhases = useCallback(async () => {
+    setLoadingPhases(true);
+    try {
+      const nextPhases = await getTournamentPhases(tournament.id);
+      setPhases(nextPhases);
+    } catch (error) {
+      handleFirebaseError(error, showToast, "No se pudieron cargar las fases del torneo");
+    } finally {
+      setLoadingPhases(false);
+    }
+  }, [showToast, tournament.id]);
 
   const loadConfirmedMatches = useCallback(async () => {
     setLoadingConfirmed(true);
@@ -172,10 +183,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
         where("tournamentId", "==", tournament.id)
       );
       const matchesSnap = await getDocs(matchesQuery);
-      const nextMatches = matchesSnap.docs.map((matchDoc) => ({
-        id: matchDoc.id,
-        ...(matchDoc.data() as Omit<Match, "id">),
-      }));
+      const nextMatches = matchesSnap.docs.map((matchDoc) => toTournamentMatch(matchDoc.id, matchDoc.data()));
       setConfirmedMatches(nextMatches);
     } catch (error) {
       handleFirebaseError(error, showToast, "No se pudo cargar el fixture confirmado");
@@ -204,9 +212,10 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
   useEffect(() => {
     onTournamentRefresh();
+    loadPhases();
     loadConfirmedMatches();
     loadTournamentTeams();
-  }, [loadConfirmedMatches, loadTournamentTeams, onTournamentRefresh]);
+  }, [loadConfirmedMatches, loadPhases, loadTournamentTeams, onTournamentRefresh]);
 
   const onMainAction = async () => {
     if (!action.nextStatus) return;
@@ -237,6 +246,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     try {
       const response = await previewGroupsFn({
         tournamentId: tournament.id,
+        ...(currentPhase ? { phaseId: currentPhase.id } : {}),
         ...(previewGroups ? { seed: Math.floor(Math.random() * 1000000000) } : {}),
       });
 
@@ -259,6 +269,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     try {
       await confirmGroupsFn({
         tournamentId: tournament.id,
+        ...(currentPhase ? { phaseId: currentPhase.id } : {}),
         groups: previewGroups,
       });
 
@@ -266,6 +277,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       setPreviewGroups(null);
       setGroupsSeed(null);
       await onTournamentRefresh();
+      await loadPhases();
     } catch (error) {
       handleFirebaseError(error, showToast, "No se pudieron confirmar los grupos");
     } finally {
@@ -279,10 +291,11 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     try {
       const response = await previewFixtureFn({
         tournamentId: tournament.id,
+        ...(currentPhase ? { phaseId: currentPhase.id } : {}),
         ...(previewMatches ? { seed: Math.floor(Math.random() * 1000000000) } : {}),
       });
 
-      const data = response.data as { seed: number; matches: Match[] };
+      const data = response.data as { seed: number; matches: TournamentMatch[] };
       setSeed(data.seed);
       setPreviewMatches(data.matches);
       showToast({ type: "success", message: "Fixture generado en memoria" });
@@ -301,10 +314,12 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     try {
       await confirmFixtureFn({
         tournamentId: tournament.id,
+        ...(currentPhase ? { phaseId: currentPhase.id } : {}),
         matches: previewMatches,
       });
 
       await onTournamentRefresh();
+      await loadPhases();
       await loadConfirmedMatches();
       setPreviewMatches(null);
       setSeed(null);
@@ -319,10 +334,14 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
   const groupedPreview = useMemo(() => groupMatches(previewMatches || []), [previewMatches]);
   const groupedConfirmed = useMemo(() => groupMatches(confirmedMatches), [confirmedMatches]);
-  const canOrganizeTournament = tournament.status === "inscripciones_cerradas";
-  const showGroupActions = tournament.status === "inscripciones_cerradas" && !hasConfirmedGroups;
+  const canOrganizeTournament =
+    currentPhase?.type === "group_stage" && (tournament.status === "inscripciones_cerradas" || tournament.status === "activo");
+  const showGroupActions = currentPhase?.type === "group_stage" && !hasConfirmedGroups;
   const showFixtureActions =
-    tournament.status === "inscripciones_cerradas" && hasConfirmedGroups && !hasConfirmedFixture;
+    currentPhase !== null &&
+    ["group_stage", "round_robin", "knockout", "final"].includes(currentPhase.type) &&
+    (currentPhase.type !== "group_stage" || hasConfirmedGroups) &&
+    !hasConfirmedFixture;
   const showGroupsSection = canOrganizeTournament || Boolean(previewGroups) || hasConfirmedGroups;
   const showFixtureSection =
     showFixtureActions ||
@@ -333,6 +352,21 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   return (
     <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4 dark:border-neutral-800 dark:bg-neutral-950">
       <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Gestión del torneo</h2>
+
+      <div className="rounded-lg border border-neutral-200 p-3 text-sm text-neutral-700 dark:border-neutral-700 dark:text-neutral-200">
+        <p>
+          <b>Fase actual:</b>{" "}
+          {currentPhase ? tournamentPhaseTypeLabel[currentPhase.type] : "Sin fase cargada"}
+        </p>
+        <p>
+          <b>Estado de fase:</b>{" "}
+          {currentPhase ? tournamentPhaseStatusLabel[currentPhase.status] : "-"}
+        </p>
+        <p>
+          <b>Tipo backend:</b> {tournament.currentPhaseType || "-"}
+        </p>
+        {loadingPhases && <p className="text-xs text-neutral-500">Cargando fases...</p>}
+      </div>
 
       {action.nextStatus && (
         <div className="flex justify-start">

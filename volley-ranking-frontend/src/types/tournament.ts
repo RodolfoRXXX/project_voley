@@ -6,9 +6,43 @@ export type TournamentStatus =
   | "finalizado"
   | "cancelado";
 
+export type TournamentPhaseType =
+  | "registration"
+  | "group_stage"
+  | "round_robin"
+  | "knockout"
+  | "final";
+
+export type TournamentPhaseStatus =
+  | "pending"
+  | "active"
+  | "preview"
+  | "confirmed"
+  | "completed";
+
 export type TournamentGroup = {
   name: string;
   teamIds: string[];
+};
+
+export type TournamentPhase = {
+  id: string;
+  tournamentId: string;
+  type: TournamentPhaseType;
+  order: number;
+  status: TournamentPhaseStatus;
+  config?: {
+    groupCount?: number;
+    rounds?: number;
+    qualifyPerGroup?: number;
+    bracketSize?: number | null;
+    startFrom?: "octavos" | "cuartos" | "semi" | "final";
+    groups?: TournamentGroup[];
+  };
+  confirmedAt?: { seconds: number } | null;
+  completedAt?: { seconds: number } | null;
+  createdAt?: { seconds: number };
+  updatedAt?: { seconds: number };
 };
 
 export type Tournament = {
@@ -23,7 +57,7 @@ export type Tournament = {
     pointsDraw?: number;
     pointsLose?: number;
   };
-  groups?: TournamentGroup[];
+  groups?: TournamentGroup[]; // legacy fallback
   structure?: {
     groupStage?: {
       enabled?: boolean;
@@ -38,6 +72,24 @@ export type Tournament = {
   status: TournamentStatus;
   ownerAdminId: string;
   adminIds: string[];
+  settings?: {
+    minTeams?: number;
+    maxTeams?: number;
+    minPlayers?: number;
+    maxPlayers?: number;
+    paymentPerPlayer?: number;
+    setsToWin?: number;
+    pointsWin?: number;
+    pointsDraw?: number;
+    pointsLose?: number;
+  };
+  phaseOrder?: Array<{
+    type: TournamentPhaseType;
+    order: number;
+  }>;
+  phaseDefinitions?: TournamentPhase[];
+  currentPhaseId?: string;
+  currentPhaseType?: TournamentPhaseType;
   minTeams: number;
   maxTeams: number;
   minPlayers: number;
@@ -57,4 +109,20 @@ export const tournamentStatusLabel: Record<TournamentStatus, string> = {
   activo: "Activo",
   finalizado: "Finalizado",
   cancelado: "Cancelado",
+};
+
+export const tournamentPhaseTypeLabel: Record<TournamentPhaseType, string> = {
+  registration: "Inscripción",
+  group_stage: "Fase de grupos",
+  round_robin: "Liga",
+  knockout: "Eliminación",
+  final: "Final",
+};
+
+export const tournamentPhaseStatusLabel: Record<TournamentPhaseStatus, string> = {
+  pending: "Pendiente",
+  active: "Activa",
+  preview: "Vista previa",
+  confirmed: "Confirmada",
+  completed: "Completada",
 };

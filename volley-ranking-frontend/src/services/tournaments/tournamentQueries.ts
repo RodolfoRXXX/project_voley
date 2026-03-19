@@ -8,6 +8,8 @@ import type {
   TournamentEntrySource,
   TournamentMatch,
   TournamentPhase,
+  TournamentPhaseStatus,
+  TournamentPhaseType,
   TournamentRegistration,
   TournamentRegistrationStatus,
   TournamentStanding,
@@ -35,10 +37,31 @@ export type TournamentTeamRow = {
   status?: string;
 };
 
+export type TournamentProgressMetrics = {
+  acceptedTeamsCount: number;
+  maxTeams: number;
+  occupancyPercent: number;
+  matchesCount: number;
+  completedMatchesCount: number;
+  standingsCount: number;
+  qualifiedTeamsCount: number;
+  groupedTeamsCount: number;
+};
+
+export type TournamentPhaseSnapshot = {
+  id: string;
+  type: TournamentPhaseType;
+  status: TournamentPhaseStatus;
+  order: number;
+  hasActivePhase: boolean;
+};
+
 export type PublicTournamentListItem = {
   tournament: Tournament;
   currentPhase: TournamentPhase | null;
   acceptedTeamsCount: number;
+  metrics: TournamentProgressMetrics;
+  phaseSnapshot: TournamentPhaseSnapshot | null;
 };
 
 export type PublicTournamentTeamSummary = {
@@ -57,6 +80,9 @@ export type PublicTournamentDetailView = {
   teams: PublicTournamentTeamSummary[];
   matchesCount: number;
   standings: PublicTournamentStandingRow[];
+  metrics: TournamentProgressMetrics;
+  phaseSnapshot: TournamentPhaseSnapshot | null;
+  topStanding: PublicTournamentStandingRow | null;
 };
 
 export type ProfileTournamentListRow = {
@@ -66,6 +92,9 @@ export type ProfileTournamentListRow = {
   registrationStatus: TournamentRegistrationStatus;
   source: TournamentEntrySource;
   entryId: string;
+  currentPhase: TournamentPhase | null;
+  metrics: TournamentProgressMetrics;
+  phaseSnapshot: TournamentPhaseSnapshot | null;
 };
 
 export type ProfileTournamentDetailView = {
@@ -79,6 +108,75 @@ export type AdminTournamentRegistrationsView = {
   registrations: TournamentRegistration[];
   acceptedTeams: TournamentRegistration[];
 };
+
+function buildTournamentProgressMetrics(params: {
+  tournament: Tournament;
+  teams: TournamentTeamRow[];
+  matches: TournamentMatch[];
+  standings: TournamentStanding[];
+}): TournamentProgressMetrics {
+  const acceptedTeamsCount = params.tournament.acceptedTeamsCount || 0;
+  const maxTeams = Number(params.tournament.maxTeams || 0);
+  const safeMaxTeams = maxTeams > 0 ? maxTeams : acceptedTeamsCount || 1;
+  const groupedTeamsCount = params.teams.filter((team) => Boolean(team.groupId || team.groupLabel)).length;
+  const completedMatchesCount = params.matches.filter((match) => match.status === "completed").length;
+
+  return {
+    acceptedTeamsCount,
+    maxTeams,
+    occupancyPercent: Math.min(100, Math.round((acceptedTeamsCount / safeMaxTeams) * 100)),
+    matchesCount: params.matches.length,
+    completedMatchesCount,
+    standingsCount: params.standings.length,
+    qualifiedTeamsCount: params.standings.filter((standing) => standing.qualified).length,
+    groupedTeamsCount,
+  };
+}
+
+function toPhaseSnapshot(currentPhase: TournamentPhase | null): TournamentPhaseSnapshot | null {
+  if (!currentPhase) return null;
+
+  return {
+    id: currentPhase.id,
+    type: currentPhase.type,
+    status: currentPhase.status,
+    order: currentPhase.order,
+    hasActivePhase: currentPhase.status === "active",
+  };
+}
+
+async function getTournamentPhaseContext(tournament: Tournament): Promise<{
+  currentPhase: TournamentPhase | null;
+  teams: TournamentTeamRow[];
+  matches: TournamentMatch[];
+  standings: TournamentStanding[];
+}> {
+  const [currentPhase, teams] = await Promise.all([
+    getCurrentTournamentPhase(tournament),
+    getTournamentTeams(tournament.id),
+  ]);
+
+  if (!currentPhase) {
+    return {
+      currentPhase: null,
+      teams,
+      matches: [],
+      standings: [],
+    };
+  }
+
+  const [matches, standings] = await Promise.all([
+    getTournamentMatches({ tournamentId: tournament.id, phaseId: currentPhase.id }),
+    getTournamentStandings({ tournamentId: tournament.id, phaseId: currentPhase.id }),
+  ]);
+
+  return {
+    currentPhase,
+    teams,
+    matches,
+    standings,
+  };
+}
 
 export async function getTournamentById(tournamentId: string): Promise<Tournament | null> {
   const snap = await getDoc(doc(db, "tournaments", tournamentId));
@@ -161,11 +259,22 @@ export async function getPublicTournamentListView(): Promise<PublicTournamentLis
   const tournaments = await getPublicActiveTournaments();
 
   const rows = await Promise.all(
-    tournaments.map(async (tournament) => ({
-      tournament,
-      currentPhase: tournament.currentPhaseId ? await getCurrentTournamentPhase(tournament) : null,
-      acceptedTeamsCount: tournament.acceptedTeamsCount || 0,
-    }))
+    tournaments.map(async (tournament) => {
+      const { currentPhase, teams, matches, standings } = await getTournamentPhaseContext(tournament);
+
+      return {
+        tournament,
+        currentPhase,
+        acceptedTeamsCount: tournament.acceptedTeamsCount || 0,
+        metrics: buildTournamentProgressMetrics({
+          tournament,
+          teams,
+          matches,
+          standings,
+        }),
+        phaseSnapshot: toPhaseSnapshot(currentPhase),
+      };
+    })
   );
 
   return rows;
@@ -175,47 +284,34 @@ export async function getPublicTournamentDetailView(tournamentId: string): Promi
   const tournament = await getTournamentById(tournamentId);
   if (!tournament) return null;
 
-  const [currentPhase, teams] = await Promise.all([
-    getCurrentTournamentPhase(tournament),
-    getTournamentTeams(tournamentId),
-  ]);
-
-  if (!currentPhase) {
-    return {
-      tournament,
-      currentPhase: null,
-      teams: teams.map((team) => ({
-        id: team.id,
-        name: team.nameTeam || team.name || team.id,
-        groupLabel: team.groupLabel || null,
-      })),
-      matchesCount: 0,
-      standings: [],
-    };
-  }
-
-  const [phaseMatches, phaseStandings] = await Promise.all([
-    getTournamentMatches({ tournamentId, phaseId: currentPhase.id }),
-    getTournamentStandings({ tournamentId, phaseId: currentPhase.id }),
-  ]);
-
+  const { currentPhase, teams, matches, standings } = await getTournamentPhaseContext(tournament);
   const teamNames = new Map(teams.map((team) => [team.id, team.nameTeam || team.name || team.id]));
+  const normalizedTeams = teams.map((team) => ({
+    id: team.id,
+    name: team.nameTeam || team.name || team.id,
+    groupLabel: team.groupLabel || null,
+  }));
+  const normalizedStandings = standings
+    .sort((a, b) => a.position - b.position)
+    .map((standing) => ({
+      ...standing,
+      teamName: teamNames.get(standing.teamId) || standing.teamId,
+    }));
 
   return {
     tournament,
     currentPhase,
-    teams: teams.map((team) => ({
-      id: team.id,
-      name: team.nameTeam || team.name || team.id,
-      groupLabel: team.groupLabel || null,
-    })),
-    matchesCount: phaseMatches.length,
-    standings: phaseStandings
-      .sort((a, b) => a.position - b.position)
-      .map((standing) => ({
-        ...standing,
-        teamName: teamNames.get(standing.teamId) || standing.teamId,
-      })),
+    teams: normalizedTeams,
+    matchesCount: matches.length,
+    standings: normalizedStandings,
+    metrics: buildTournamentProgressMetrics({
+      tournament,
+      teams,
+      matches,
+      standings,
+    }),
+    phaseSnapshot: toPhaseSnapshot(currentPhase),
+    topStanding: normalizedStandings[0] || null,
   };
 }
 
@@ -364,17 +460,40 @@ export async function getProfileTournamentListView(
       .map((record) => `${record.tournamentId}::${record.groupId}`)
   );
 
-  return records
-    .filter((record) => {
-      if (record.source !== "registration") return true;
-      const status = record.status || "pendiente";
-      if (status !== "aceptado") return true;
+  const visibleRecords = records.filter((record) => {
+    if (record.source !== "registration") return true;
+    const status = record.status || "pendiente";
+    if (status !== "aceptado") return true;
 
-      return !acceptedTeamKeys.has(`${record.tournamentId}::${record.groupId}`);
-    })
+    return !acceptedTeamKeys.has(`${record.tournamentId}::${record.groupId}`);
+  });
+
+  const metricsByTournamentId = new Map(
+    await Promise.all(
+      Array.from(tournamentsById.values()).map(async (tournament) => {
+        const { currentPhase, teams, matches, standings } = await getTournamentPhaseContext(tournament);
+        return [
+          tournament.id,
+          {
+            currentPhase,
+            metrics: buildTournamentProgressMetrics({
+              tournament,
+              teams,
+              matches,
+              standings,
+            }),
+            phaseSnapshot: toPhaseSnapshot(currentPhase),
+          },
+        ] as const;
+      })
+    )
+  );
+
+  return visibleRecords
     .map((record) => {
       const tournament = tournamentsById.get(record.tournamentId);
       if (!tournament) return null;
+      const tournamentMetrics = metricsByTournamentId.get(tournament.id);
 
       return {
         id: `${record.source}-${record.id}`,
@@ -383,6 +502,14 @@ export async function getProfileTournamentListView(
         registrationStatus: record.status || "pendiente",
         source: record.source,
         entryId: record.id,
+        currentPhase: tournamentMetrics?.currentPhase || null,
+        metrics: tournamentMetrics?.metrics || buildTournamentProgressMetrics({
+          tournament,
+          teams: [],
+          matches: [],
+          standings: [],
+        }),
+        phaseSnapshot: tournamentMetrics?.phaseSnapshot || null,
       };
     })
     .filter((row): row is ProfileTournamentListRow => Boolean(row));

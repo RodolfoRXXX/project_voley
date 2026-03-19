@@ -223,3 +223,78 @@ Objetivos:
 - documentar decisiones y convenciones finales en docs/tournaments/type-domain-migration-events.md
 Al final corré checks, commit y dejá si queda deuda residual.
 ```
+
+
+### 12. Cierre de separación estructural Match vs TournamentMatch
+
+Se completó una pasada específica para eliminar ambigüedad residual entre el dominio social y el dominio de torneos.
+
+Cambios aplicados:
+
+- Se extrajo `src/components/tournaments/admin/TournamentMatchSections.tsx` para encapsular la presentación y el agrupado de `TournamentMatch` dentro del dominio de torneos.
+- `src/components/tournaments/admin/TournamentAdminPhaseSections.tsx` quedó enfocado sólo en bloques neutrales de fase (`groups` y `standings`), sin mezclar rendering específico de partidos.
+- `TournamentAdminPanel` dejó de usar nombres genéricos para estado local de fixture y ahora usa `previewTournamentMatches` / `confirmedTournamentMatches`.
+- Se reemplazó el componente ambiguo `TournamentMatchList` por `TournamentMatchSummaryList`, dejando explícito que renderiza partidos de torneo y no partidos sociales.
+- El dashboard público pasó a consumir `Match` desde `src/types/match.ts` en lugar de redefinir un type inline, reforzando que `Match` pertenece al dominio social.
+
+Decisión:
+
+- Dentro de `src/components/tournaments/**`, cualquier componente o helper que opere sobre partidos debe incluir `TournamentMatch` en el nombre cuando la intención no sea obvia por contexto inmediato.
+- Se preserva `getTournamentMatches()` como nombre de query porque su namespace ya lo vuelve inequívoco; la convención se endurece sobre todo en nombres de componentes, estados locales y helpers de presentación.
+
+### 13. Convenciones finales de naming
+
+Convenciones vigentes después del paso 5:
+
+- `Match` = partido social/comunitario (`src/types/match.ts`).
+- `TournamentMatch` = partido de torneo (`src/types/tournaments/tournamentMatch.ts`).
+- En carpetas sociales se permite `MatchCard`, `MatchHeader`, `MatchActions`, etc.
+- En carpetas de torneos se prefiere `TournamentMatch*` para componentes de UI, helpers y estado derivado cuando el nombre pueda salir del contexto local.
+- Variables locales tipo `matches` sólo se toleran si el scope ya está completamente encapsulado dentro de services de torneos; en UI/orquestación se prioriza `tournamentMatches`.
+
+### 14. Deuda residual y concordancia frontend/backend
+
+Estado actual frente al formato nuevo de torneo:
+
+- **Alineado** para creación/edición del torneo, preview/confirmación de grupos y preview/confirmación de fixture.
+- **Alineado** para lectura del formato nuevo basado en `phases`, `currentPhaseId`, `currentPhaseType` y `tournamentMatches.result`.
+- **Pendiente en frontend** exponer una operación de carga de resultados de `TournamentMatch` que invoque la callable `recordMatchResult` del backend.
+- **Pendiente en frontend** una UI explícita para transición de fase asistida por resultados (aunque el backend ya avanza/finaliza durante `recordMatchResult` según la fase siguiente disponible).
+
+Decisión final de este bloque:
+
+- No inventar una mutación frontend nueva hasta diseñar la experiencia operativa de carga de resultados.
+- Tomar como fuente de verdad para cambio de fase la callable de backend que registra resultados y recalcula standings/avance.
+
+## Próximos pasos operativos sugeridos
+
+### Cargar resultados de partidos
+
+Para quedar totalmente en concordancia con backend, el frontend debería agregar:
+
+1. una mutation `recordTournamentMatchResult()` en `src/services/tournaments/tournamentMutations.ts` que envuelva la callable `recordMatchResult`;
+2. un formulario/admin action para editar `result.homeSets`, `result.awaySets`, `result.homePoints`, `result.awayPoints` y opcionalmente `result.winnerId`;
+3. refresco posterior de `tournamentMatches`, `standings`, `tournamentPhases` y `tournament` para reflejar avance automático.
+
+Payload mínimo esperado por backend para cada partido:
+
+- `matchId`
+- `result.homeSets`
+- `result.awaySets`
+- `result.homePoints[]`
+- `result.awayPoints[]`
+- `result.winnerId` (opcional, backend lo infiere si falta)
+
+### Cambio de fase
+
+Con el backend actual, el cambio de fase no debería ser una acción manual separada si el flujo normal es:
+
+1. confirmar grupos (si aplica);
+2. confirmar fixture de la fase actual;
+3. cargar resultados de todos los `TournamentMatch` pendientes de esa fase;
+4. dejar que backend recalculé standings y:
+   - genere la siguiente fase si existe;
+   - actualice `currentPhaseId` y `currentPhaseType`;
+   - o marque el torneo como `finalizado` si ya no hay fase siguiente.
+
+Si negocio necesita override manual, eso sería un paso nuevo y explícito, no parte de este cierre de naming/dominio.

@@ -22,63 +22,16 @@ import {
   previewTournamentGroups,
 } from "@/services/tournaments/tournamentMutations";
 import { TournamentPhaseShell, TournamentPhaseTimeline } from "@/components/tournaments/admin/TournamentPhaseShell";
+import { TournamentGroupsList, TournamentStandingsTable } from "@/components/tournaments/admin/TournamentAdminPhaseSections";
 import {
-  TournamentGroupsList,
-  TournamentMatchList,
-  TournamentStandingsTable,
-} from "@/components/tournaments/admin/TournamentAdminPhaseSections";
-
-type GroupedMatches = {
-  group: {
-    [groupLabel: string]: {
-      [round: string]: TournamentMatch[];
-    };
-  };
-  knockout: {
-    [round: string]: TournamentMatch[];
-  };
-};
+  groupTournamentMatches,
+  TournamentMatchSummaryList,
+} from "@/components/tournaments/admin/TournamentMatchSections";
 
 type TournamentAdminPanelProps = {
   tournament: Tournament;
   onTournamentRefresh: () => Promise<void>;
 };
-
-function getGroupIdFromMatch(match: TournamentMatch) {
-  return match.groupLabel ? `Grupo ${match.groupLabel}` : null;
-}
-
-function isKnockoutPhase(phaseType: TournamentMatch["phaseType"]) {
-  return phaseType === "knockout" || phaseType === "final";
-}
-
-function groupMatches(matches: TournamentMatch[]): GroupedMatches {
-  return matches.reduce<GroupedMatches>(
-    (acc, match) => {
-      const groupId = getGroupIdFromMatch(match);
-
-      if (groupId) {
-        const roundKey = String(match.round);
-        if (!acc.group[groupId]) acc.group[groupId] = {};
-        if (!acc.group[groupId][roundKey]) acc.group[groupId][roundKey] = [];
-        acc.group[groupId][roundKey].push(match);
-        return acc;
-      }
-
-      if (isKnockoutPhase(match.phaseType)) {
-        const roundKey = String(match.round);
-        if (!acc.knockout[roundKey]) acc.knockout[roundKey] = [];
-        acc.knockout[roundKey].push(match);
-      }
-
-      return acc;
-    },
-    {
-      group: {},
-      knockout: {},
-    }
-  );
-}
 
 function PreviewCard({
   title,
@@ -122,8 +75,8 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   const [loadingGroupsPreview, setLoadingGroupsPreview] = useState(false);
   const [confirmingGroups, setConfirmingGroups] = useState(false);
 
-  const [previewMatches, setPreviewMatches] = useState<TournamentMatch[] | null>(null);
-  const [confirmedMatches, setConfirmedMatches] = useState<TournamentMatch[]>([]);
+  const [previewTournamentMatches, setPreviewTournamentMatches] = useState<TournamentMatch[] | null>(null);
+  const [confirmedTournamentMatches, setConfirmedTournamentMatches] = useState<TournamentMatch[]>([]);
   const [seed, setSeed] = useState<number | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [confirmingFixture, setConfirmingFixture] = useState(false);
@@ -139,7 +92,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   );
   const confirmedGroups = getConfirmedGroupsFromTournamentContext({ phase: currentPhase, tournament });
   const hasConfirmedGroups = confirmedGroups.length > 0;
-  const hasConfirmedFixture = confirmedMatches.length > 0;
+  const hasConfirmedFixture = confirmedTournamentMatches.length > 0;
 
   const loadPhases = useCallback(async () => {
     setLoadingPhases(true);
@@ -157,7 +110,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     setLoadingConfirmed(true);
     try {
       const nextMatches = await getTournamentMatches({ tournamentId: tournament.id });
-      setConfirmedMatches(nextMatches);
+      setConfirmedTournamentMatches(nextMatches);
     } catch (error) {
       handleFirebaseError(error, showToast, "No se pudo cargar el fixture confirmado");
     } finally {
@@ -279,10 +232,10 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       const data = await previewTournamentFixture({
         tournamentId: tournament.id,
         ...(currentPhase ? { phaseId: currentPhase.id } : {}),
-        ...(previewMatches ? { seed: Math.floor(Math.random() * 1000000000) } : {}),
+        ...(previewTournamentMatches ? { seed: Math.floor(Math.random() * 1000000000) } : {}),
       });
       setSeed(data.seed);
-      setPreviewMatches(data.matches);
+      setPreviewTournamentMatches(data.matches);
       showToast({ type: "success", message: "Fixture generado en memoria" });
     } catch (error) {
       handleFirebaseError(error, showToast, "No se pudo generar el fixture");
@@ -292,7 +245,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   };
 
   const onConfirmFixture = async () => {
-    if (!previewMatches || previewMatches.length === 0) return;
+    if (!previewTournamentMatches || previewTournamentMatches.length === 0) return;
 
     setConfirmingFixture(true);
 
@@ -300,14 +253,14 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       await confirmTournamentFixture({
         tournamentId: tournament.id,
         ...(currentPhase ? { phaseId: currentPhase.id } : {}),
-        matches: previewMatches,
+        matches: previewTournamentMatches,
       });
 
       await onTournamentRefresh();
       await loadPhases();
       await loadConfirmedMatches();
       await loadStandings(currentPhase?.id);
-      setPreviewMatches(null);
+      setPreviewTournamentMatches(null);
       setSeed(null);
       showToast({ type: "success", message: "Fixture confirmado correctamente" });
       confirmedFixtureRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -318,8 +271,8 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     }
   };
 
-  const groupedPreview = useMemo(() => groupMatches(previewMatches || []), [previewMatches]);
-  const groupedConfirmed = useMemo(() => groupMatches(confirmedMatches), [confirmedMatches]);
+  const groupedPreviewTournamentMatches = useMemo(() => groupTournamentMatches(previewTournamentMatches || []), [previewTournamentMatches]);
+  const groupedConfirmedTournamentMatches = useMemo(() => groupTournamentMatches(confirmedTournamentMatches), [confirmedTournamentMatches]);
   const canOrganizeTournament =
     currentPhase?.type === "group_stage" && (tournament.status === "inscripciones_cerradas" || tournament.status === "activo");
   const showGroupActions = currentPhase?.type === "group_stage" && !hasConfirmedGroups;
@@ -330,7 +283,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     !hasConfirmedFixture;
   const showGroupsSection = canOrganizeTournament || Boolean(previewGroups) || hasConfirmedGroups;
   const showFixtureSection =
-    showFixtureActions || previewMatches !== null || hasConfirmedFixture || (loadingConfirmed && hasConfirmedGroups);
+    showFixtureActions || previewTournamentMatches !== null || hasConfirmedFixture || (loadingConfirmed && hasConfirmedGroups);
 
   return (
     <TournamentPhaseShell
@@ -406,7 +359,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
                 </button>
                 <button
                   onClick={onConfirmFixture}
-                  disabled={confirmingFixture || !previewMatches || previewMatches.length === 0}
+                  disabled={confirmingFixture || !previewTournamentMatches || previewTournamentMatches.length === 0}
                   className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
                 >
                   {confirmingFixture ? "Confirmando..." : "Confirmar fixture"}
@@ -417,21 +370,21 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
           <p className="text-sm text-neutral-600 dark:text-neutral-300">Seed actual: <b>{seed ?? "-"}</b></p>
 
-          {!hasConfirmedFixture && previewMatches !== null && (
+          {!hasConfirmedFixture && previewTournamentMatches !== null && (
             <PreviewCard title="Vista previa del fixture" tone="preview">
-              <TournamentMatchList groupedMatches={groupedPreview} teamNames={teamNames} />
+              <TournamentMatchSummaryList groupedTournamentMatches={groupedPreviewTournamentMatches} teamNames={teamNames} />
             </PreviewCard>
           )}
 
-          {confirmedMatches.length > 0 && (
+          {confirmedTournamentMatches.length > 0 && (
             <div ref={confirmedFixtureRef}>
               <PreviewCard title="Fixture confirmado" tone="confirmed">
-                <TournamentMatchList groupedMatches={groupedConfirmed} teamNames={teamNames} />
+                <TournamentMatchSummaryList groupedTournamentMatches={groupedConfirmedTournamentMatches} teamNames={teamNames} />
               </PreviewCard>
             </div>
           )}
 
-          {!loadingConfirmed && previewMatches === null && confirmedMatches.length === 0 && (
+          {!loadingConfirmed && previewTournamentMatches === null && confirmedTournamentMatches.length === 0 && (
             <p className="text-sm text-neutral-500 dark:text-neutral-400">Aún no hay fixture en vista previa ni confirmado.</p>
           )}
         </div>

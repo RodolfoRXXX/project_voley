@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import TournamentAdminPanel from "@/components/tournaments/TournamentAdminPanel";
+import { TournamentDetailsCard, TournamentEditForm, type TournamentFormValues } from "@/components/tournaments/admin/TournamentEditForm";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 import { Tournament, tournamentStatusLabel } from "@/types/tournaments";
 import useToast from "@/components/ui/toast/useToast";
@@ -14,31 +15,6 @@ import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 
 import { addTournamentAdmin, editTournament } from "@/services/tournaments/tournamentMutations";
 import { getAdminTournamentRegistrationsView, getTournamentById } from "@/services/tournaments/tournamentQueries";
-
-type TournamentForm = {
-  name: string;
-  description: string;
-  format: "liga" | "eliminacion" | "mixto";
-  minTeams: number;
-  maxTeams: number;
-  minPlayers: number;
-  maxPlayers: number;
-  paymentForPlayer: number;
-  rules: {
-    setsToWin: number;
-  };
-  structure: {
-    groupStage: {
-      enabled: boolean;
-      groupCount: number;
-      rounds: number;
-    };
-    knockoutStage: {
-      enabled: boolean;
-      startFrom: "octavos" | "cuartos" | "semi" | "final";
-    };
-  };
-};
 
 function statusVariant(status: Tournament["status"]): StatusVariant {
   switch (status) {
@@ -55,20 +31,6 @@ function statusVariant(status: Tournament["status"]): StatusVariant {
   }
 }
 
-function formatLabel(format: Tournament["format"]) {
-  if (format === "mixto") return "Normal";
-  if (format === "eliminacion") return "Eliminación";
-  return "Liga";
-}
-
-function knockoutLabel(startFrom?: "octavos" | "cuartos" | "semi" | "final") {
-  if (startFrom === "octavos") return "Octavos";
-  if (startFrom === "cuartos") return "Cuartos";
-  if (startFrom === "semi") return "Semifinal";
-  if (startFrom === "final") return "Final";
-  return "-";
-}
-
 export default function AdminTournamentDetailPage() {
   const params = useParams<{ tournamentId: string }>();
   const tournamentId = params?.tournamentId;
@@ -83,7 +45,7 @@ export default function AdminTournamentDetailPage() {
   const [saving, setSaving] = useState(false);
   const [selectedRegistration, setSelectedRegistration] = useState<TournamentRegistrationItem | null>(null);
 
-  const [editForm, setEditForm] = useState<TournamentForm>({
+  const [editForm, setEditForm] = useState<TournamentFormValues>({
     name: "",
     description: "",
     format: "mixto",
@@ -277,10 +239,6 @@ export default function AdminTournamentDetailPage() {
     return <p className="text-sm text-neutral-500">Torneo no encontrado.</p>;
   }
 
-  const isLeague = tournament.format === "liga";
-  const isNormal = tournament.format === "mixto";
-  const hasGroups = tournament.structure?.groupStage?.enabled;
-  const hasKnockout = tournament.structure?.knockoutStage?.enabled;
 
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
@@ -313,284 +271,23 @@ export default function AdminTournamentDetailPage() {
 
 
       {editing && (
-        <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
-          <h2 className="text-base font-semibold">Editar torneo</h2>
-          {isActiveTournament && (
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              Torneo activo: solo se permiten cambios en pago por jugador, cupos de equipos, máximo de jugadores, sets para ganar, cantidad de grupos y vueltas.
-            </p>
-          )}
-
-          <form onSubmit={onSaveEdit} className="space-y-3">
-            <div>
-              <label className="text-sm font-medium">Nombre</label>
-              <input
-                value={editForm.name}
-                disabled={isActiveTournament}
-                onChange={(e) =>
-                  setEditForm((prev) => ({ ...prev, name: e.target.value }))
-                }
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Descripción</label>
-              <textarea
-                value={editForm.description}
-                disabled={isActiveTournament}
-                onChange={(e) =>
-                  setEditForm((prev) => ({ ...prev, description: e.target.value }))
-                }
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div className="grid sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-sm font-medium">Formato</label>
-                <select
-                  value={editForm.format}
-                  disabled={isActiveTournament}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({ ...prev, format: e.target.value as TournamentForm["format"] }))
-                  }
-                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                >
-                  <option value="liga">Liga</option>
-                  <option value="eliminacion">Eliminación</option>
-                  <option value="mixto">Normal</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Min equipos</label>
-                <input
-                  type="number"
-                  value={editForm.minTeams}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      minTeams: Number(e.target.value),
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Max equipos</label>
-                <input
-                  type="number"
-                  value={editForm.maxTeams}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      maxTeams: Number(e.target.value),
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium">Min jugadores por equipo</label>
-                <input
-                  type="number"
-                  value={editForm.minPlayers}
-                  disabled={isActiveTournament}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      minPlayers: Number(e.target.value),
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Max jugadores por equipo</label>
-                <input
-                  type="number"
-                  value={editForm.maxPlayers}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      maxPlayers: Number(e.target.value),
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="grid sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-sm font-medium">Pago por jugador</label>
-                <input
-                  type="number"
-                  value={editForm.paymentForPlayer}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      paymentForPlayer: Number(e.target.value),
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Sets para ganar</label>
-                <input
-                  type="number"
-                  value={editForm.rules.setsToWin}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      rules: {
-                        ...prev.rules,
-                        setsToWin: Number(e.target.value),
-                      },
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium">Cantidad de grupos</label>
-                <input
-                  type="number"
-                  value={editForm.structure.groupStage.groupCount}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      structure: {
-                        ...prev.structure,
-                        groupStage: {
-                          ...prev.structure.groupStage,
-                          enabled: true,
-                          groupCount: Number(e.target.value),
-                        },
-                      },
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Vueltas de liga</label>
-                <input
-                  type="number"
-                  value={editForm.structure.groupStage.rounds}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      structure: {
-                        ...prev.structure,
-                        groupStage: {
-                          ...prev.structure.groupStage,
-                          rounds: Number(e.target.value),
-                        },
-                      },
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Etapa de eliminación (si aplica)</label>
-              <select
-                value={editForm.structure.knockoutStage.startFrom}
-                disabled={isActiveTournament}
-                onChange={(e) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    structure: {
-                      ...prev.structure,
-                      knockoutStage: {
-                        enabled: prev.format !== "liga",
-                        startFrom: e.target.value as TournamentForm["structure"]["knockoutStage"]["startFrom"],
-                      },
-                    },
-                  }))
-                }
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-              >
-                <option value="octavos">Octavos</option>
-                <option value="cuartos">Cuartos</option>
-                <option value="semi">Semifinal</option>
-                <option value="final">Final</option>
-              </select>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                disabled={saving}
-                className="px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm dark:bg-neutral-200 dark:text-neutral-900"
-              >
-                {saving ? "Guardando..." : "Guardar cambios"}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setEditing(false)}
-                className="px-4 py-2 rounded-lg border text-sm"
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </section>
+        <TournamentEditForm
+          values={editForm}
+          isActiveTournament={isActiveTournament}
+          saving={saving}
+          onChange={setEditForm}
+          onCancel={() => setEditing(false)}
+          onSubmit={onSaveEdit}
+        />
       )}
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-neutral-900">Información del torneo</h2>
-          {!editing && (
-            <button
-              onClick={startEdit}
-              disabled={!canEdit || isLockedTournament}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium border hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Editar
-            </button>
-          )}
-        </div>
-        <div className="text-sm text-neutral-600 grid sm:grid-cols-2 gap-2">
-          <p>Formato: <b>{formatLabel(tournament.format)}</b></p>
-          <p>Deporte: <b>{tournament.sport}</b></p>
-          <p>Equipos mínimos: <b>{tournament.minTeams}</b></p>
-          <p>Equipos máximos: <b>{tournament.maxTeams}</b></p>
-          <p>Equipos aceptados: <b>{tournament.acceptedTeamsCount || 0}</b></p>
-          <p>Jugadores mínimos por equipo: <b>{tournament.minPlayers || 1}</b></p>
-          <p>Jugadores máximos por equipo: <b>{tournament.maxPlayers || 1}</b></p>
-          <p>Admins asignados: <b>{tournament.adminIds?.length || 0}</b></p>
-          <p>Sets para ganar: <b>{tournament.rules?.setsToWin || "-"}</b></p>
-          <p>¿Tiene grupos?: <b>{hasGroups ? "Sí" : "No"}</b></p>
-          {hasGroups && (
-            <>
-              <p>Cantidad de grupos: <b>{tournament.structure?.groupStage?.groupCount || "-"}</b></p>
-              <p>Vueltas: <b>{tournament.structure?.groupStage?.rounds || "-"}</b></p>
-            </>
-          )}
-          {isNormal && hasKnockout && (
-            <p>Eliminación desde: <b>{knockoutLabel(tournament.structure?.knockoutStage?.startFrom)}</b></p>
-          )}
-          {isLeague && (
-            <p>Tipo de fase: <b>Liga</b></p>
-          )}
-        </div>
-      </section>
+      <TournamentDetailsCard
+        tournament={tournament}
+        editing={editing}
+        canEdit={canEdit}
+        isLockedTournament={isLockedTournament}
+        onEdit={startEdit}
+      />
 
       <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-6">
         <h2 className="text-base font-semibold text-neutral-900">

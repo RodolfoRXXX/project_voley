@@ -117,6 +117,20 @@ Resultado:
 - el detalle público agrega un overview de fase y destaca el líder si existe standings;
 - el listado de perfil reutiliza la misma card enriquecida, conservando el badge de estado de inscripción/equipo.
 
+### 11. Refactor del admin de torneos por shell de fase
+
+Se dividió la experiencia de admin entre edición del torneo y operación de la fase actual.
+
+Cambios aplicados:
+
+- `TournamentAdminPanel` pasó a orquestar estado y fetch, delegando la presentación en subcomponentes de `src/components/tournaments/admin/`.
+- Se agregó `TournamentPhaseShell` para encapsular contexto de fase actual + timeline de fases.
+- Se extrajeron bloques específicos de operación (`groups`, `fixture`, `standings`) a piezas de UI reutilizables.
+- La página admin del torneo separó explícitamente `TournamentEditForm` de `TournamentDetailsCard`, evitando mezclar edición general con acciones operativas de fase.
+- Se aprovechó el shape ya disponible para mostrar standings de la fase actual y timeline completo sin agregar contratos nuevos de backend.
+
+Decisión: mantener el fetch en el panel/page actual y no introducir un nuevo view-model admin todavía. Con el estado actual, la prioridad fue cortar responsabilidades de render, no rediseñar todavía el flujo de datos.
+
 ## Impacto esperado
 
 - Menos imports ambiguos.
@@ -153,9 +167,9 @@ El paso 3 decía “migrar listado público y perfil a servicios”, pero eso ya
 
 ### Revisión del paso 4 original
 
-**Sigue siendo válido.**
+**Completado en esta iteración.**
 
-Después de consolidar lecturas, el siguiente foco lógico sigue siendo separar `TournamentAdminPanel` por fase y aprovechar mejor el estado ya disponible.
+El admin quedó separado entre edición general del torneo y operación de fase actual, con timeline y standings incorporados sobre los datos ya disponibles.
 
 ### Revisión del paso 5 original
 
@@ -186,20 +200,13 @@ Al final corré checks, commit y dejá próximos prompts.
 
 ### Paso 4 — refactor admin por fase
 
-**Objetivo:** separar edición general del torneo de la operación de la fase actual.
+**Estado:** completado en esta iteración.
 
-**Prompt sugerido:**
+Resultado:
 
-```text
-Sigamos con el paso 4. Quiero refactorizar el admin de torneos en subcomponentes por fase.
-Objetivos:
-- dividir TournamentAdminPanel
-- crear un shell por fase actual
-- separar editar torneo de operar la fase
-- incorporar standings y timeline de fases si los datos ya están listos
-- documentar eventos y decisiones en docs/tournaments/type-domain-migration-events.md
-Al final corré checks, commit y dejá próximos prompts.
-```
+- el admin ahora tiene shell de fase actual, timeline de fases y bloque de standings;
+- `TournamentAdminPanel` dejó de concentrar toda la UI;
+- la página separa edición de torneo vs operación competitiva.
 
 ### Paso 5 — separación estructural social vs tournament matches
 
@@ -210,8 +217,8 @@ Al final corré checks, commit y dejá próximos prompts.
 ```text
 Sigamos con el paso 5. Quiero cerrar la separación entre social matches y tournament matches.
 Objetivos:
-- revisar carpetas e imports
-- crear o mover componentes específicos de TournamentMatch
+- revisar carpetas e imports que todavía mezclen ambos dominios
+- crear o mover componentes específicos de TournamentMatch donde siga habiendo ambigüedad
 - reforzar por naming que Match = social y TournamentMatch = torneo
 - documentar decisiones y convenciones finales en docs/tournaments/type-domain-migration-events.md
 Al final corré checks, commit y dejá si queda deuda residual.

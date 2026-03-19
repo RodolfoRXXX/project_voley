@@ -1,19 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Tournament } from "@/types/tournaments";
-import {
-  type TournamentGroup,
-  type TournamentPhase,
-  tournamentPhaseStatusLabel,
-  tournamentPhaseTypeLabel,
-} from "@/types/tournaments";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { Tournament, TournamentGroup, TournamentMatch, TournamentPhase, TournamentStanding } from "@/types/tournaments";
 import { getAdminAction } from "@/lib/tournamentAdmin";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
-import type { TournamentMatch } from "@/types/tournaments";
 import { getConfirmedGroupsFromTournamentContext } from "@/services/tournaments/tournamentAdapters";
-import { getTournamentPhases, getTournamentTeams, type TournamentTeamRow, getTournamentMatches } from "@/services/tournaments/tournamentQueries";
+import {
+  getTournamentMatches,
+  getTournamentPhases,
+  getTournamentStandings,
+  getTournamentTeams,
+  type TournamentTeamRow,
+} from "@/services/tournaments/tournamentQueries";
 import {
   closeTournamentRegistrations,
   confirmTournamentFixture,
@@ -22,6 +21,12 @@ import {
   previewTournamentFixture,
   previewTournamentGroups,
 } from "@/services/tournaments/tournamentMutations";
+import { TournamentPhaseShell, TournamentPhaseTimeline } from "@/components/tournaments/admin/TournamentPhaseShell";
+import {
+  TournamentGroupsList,
+  TournamentMatchList,
+  TournamentStandingsTable,
+} from "@/components/tournaments/admin/TournamentAdminPhaseSections";
 
 type GroupedMatches = {
   group: {
@@ -38,7 +43,6 @@ type TournamentAdminPanelProps = {
   tournament: Tournament;
   onTournamentRefresh: () => Promise<void>;
 };
-
 
 function getGroupIdFromMatch(match: TournamentMatch) {
   return match.groupLabel ? `Grupo ${match.groupLabel}` : null;
@@ -76,53 +80,32 @@ function groupMatches(matches: TournamentMatch[]): GroupedMatches {
   );
 }
 
-function sortRoundEntries(rounds: Record<string, TournamentMatch[]>) {
-  return Object.entries(rounds).sort((a, b) => Number(a[0]) - Number(b[0]));
-}
-
-function MatchList({
-  groupedMatches,
-  teamNames,
+function PreviewCard({
+  title,
+  tone,
+  children,
 }: {
-  groupedMatches: GroupedMatches;
-  teamNames: Record<string, string>;
+  title: string;
+  tone: "preview" | "confirmed";
+  children: ReactNode;
 }) {
-  return (
-    <div className="space-y-4">
-      {Object.entries(groupedMatches.group)
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([groupId, rounds]) => (
-          <div key={groupId} className="space-y-2">
-            <h4 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">{groupId}</h4>
-            {sortRoundEntries(rounds).map(([round, matches]) => (
-              <div key={`${groupId}-${round}`} className="space-y-1 pl-3 border-l border-neutral-200 dark:border-neutral-700">
-                <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Round {round}</p>
-                {matches.map((match) => (
-                  <p key={match.id} className="text-sm text-neutral-700 dark:text-neutral-200">
-                    {teamNames[match.homeTeamId || ""] || "Por definir"} vs {teamNames[match.awayTeamId || ""] || "Por definir"}
-                  </p>
-                ))}
-              </div>
-            ))}
-          </div>
-        ))}
-    </div>
-  );
-}
+  const styles = tone === "preview"
+    ? "border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30"
+    : "border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-950/30";
+  const badge = tone === "preview" ? "PREVIEW" : "CONFIRMADO";
+  const badgeStyles = tone === "preview"
+    ? "bg-amber-200 text-amber-900 dark:bg-amber-800/70 dark:text-amber-100"
+    : "bg-green-200 text-green-900 dark:bg-green-800/70 dark:text-green-100";
 
-function GroupsList({ groups, teamNames }: { groups: TournamentGroup[]; teamNames: Record<string, string> }) {
   return (
-    <div className="space-y-3">
-      {groups.map((group) => (
-        <div key={group.name} className="rounded border border-neutral-200 p-3 dark:border-neutral-700 dark:bg-neutral-900/60">
-          <h5 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Grupo {group.name}</h5>
-          <ul className="mt-2 space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
-            {group.teamIds.map((teamId) => (
-              <li key={`${group.name}-${teamId}`}>• {teamNames[teamId] || `Equipo ${teamId.slice(0, 6)}`}</li>
-            ))}
-          </ul>
-        </div>
-      ))}
+    <div className={`space-y-3 rounded-lg border p-3 ${styles}`}>
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{title}</h4>
+        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${badgeStyles}`}>
+          {badge}
+        </span>
+      </div>
+      {children}
     </div>
   );
 }
@@ -146,16 +129,15 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   const [confirmingFixture, setConfirmingFixture] = useState(false);
   const [loadingConfirmed, setLoadingConfirmed] = useState(false);
   const [teamNames, setTeamNames] = useState<Record<string, string>>({});
+  const [standings, setStandings] = useState<TournamentStanding[]>([]);
+  const [loadingStandings, setLoadingStandings] = useState(false);
 
   const action = getAdminAction(tournament);
   const currentPhase = useMemo(
     () => phases.find((phase) => phase.id === tournament.currentPhaseId) || null,
     [phases, tournament.currentPhaseId]
   );
-  const confirmedGroups = getConfirmedGroupsFromTournamentContext({
-    phase: currentPhase,
-    tournament,
-  });
+  const confirmedGroups = getConfirmedGroupsFromTournamentContext({ phase: currentPhase, tournament });
   const hasConfirmedGroups = confirmedGroups.length > 0;
   const hasConfirmedFixture = confirmedMatches.length > 0;
 
@@ -196,12 +178,33 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     }
   }, [tournament.id]);
 
+  const loadStandings = useCallback(async (phaseId?: string | null) => {
+    if (!phaseId) {
+      setStandings([]);
+      return;
+    }
+
+    setLoadingStandings(true);
+    try {
+      const nextStandings = await getTournamentStandings({ tournamentId: tournament.id, phaseId });
+      setStandings(nextStandings);
+    } catch (error) {
+      handleFirebaseError(error, showToast, "No se pudieron cargar los standings de la fase actual");
+    } finally {
+      setLoadingStandings(false);
+    }
+  }, [showToast, tournament.id]);
+
   useEffect(() => {
     onTournamentRefresh();
     loadPhases();
     loadConfirmedMatches();
     loadTournamentTeams();
   }, [loadConfirmedMatches, loadPhases, loadTournamentTeams, onTournamentRefresh]);
+
+  useEffect(() => {
+    loadStandings(tournament.currentPhaseId);
+  }, [loadStandings, tournament.currentPhaseId]);
 
   const onMainAction = async () => {
     if (!action.nextStatus) return;
@@ -303,6 +306,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       await onTournamentRefresh();
       await loadPhases();
       await loadConfirmedMatches();
+      await loadStandings(currentPhase?.id);
       setPreviewMatches(null);
       setSeed(null);
       showToast({ type: "success", message: "Fixture confirmado correctamente" });
@@ -326,36 +330,21 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     !hasConfirmedFixture;
   const showGroupsSection = canOrganizeTournament || Boolean(previewGroups) || hasConfirmedGroups;
   const showFixtureSection =
-    showFixtureActions ||
-    previewMatches !== null ||
-    hasConfirmedFixture ||
-    (loadingConfirmed && hasConfirmedGroups);
+    showFixtureActions || previewMatches !== null || hasConfirmedFixture || (loadingConfirmed && hasConfirmedGroups);
 
   return (
-    <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4 dark:border-neutral-800 dark:bg-neutral-950">
-      <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Gestión del torneo</h2>
-
-      <div className="rounded-lg border border-neutral-200 p-3 text-sm text-neutral-700 dark:border-neutral-700 dark:text-neutral-200">
-        <p>
-          <b>Fase actual:</b>{" "}
-          {currentPhase ? tournamentPhaseTypeLabel[currentPhase.type] : "Sin fase cargada"}
-        </p>
-        <p>
-          <b>Estado de fase:</b>{" "}
-          {currentPhase ? tournamentPhaseStatusLabel[currentPhase.status] : "-"}
-        </p>
-        <p>
-          <b>Tipo backend:</b> {tournament.currentPhaseType || "-"}
-        </p>
-        {loadingPhases && <p className="text-xs text-neutral-500">Cargando fases...</p>}
-      </div>
-
+    <TournamentPhaseShell
+      currentPhase={currentPhase}
+      currentPhaseType={tournament.currentPhaseType}
+      loadingPhases={loadingPhases}
+      timeline={<TournamentPhaseTimeline phases={phases} currentPhaseId={tournament.currentPhaseId} loading={loadingPhases} />}
+    >
       {action.nextStatus && (
         <div className="flex justify-start">
           <button
             onClick={onMainAction}
             disabled={busyAction || action.disabled}
-            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-900 text-white disabled:opacity-60"
+            className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
           >
             {busyAction ? "Procesando..." : action.label}
           </button>
@@ -363,73 +352,62 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       )}
 
       {showGroupsSection && (
-        <div className="space-y-4 border-t border-neutral-200 pt-4 dark:border-neutral-800">
-          <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Organización del torneo</h3>
-
-          {showGroupActions && (
-            <div className="flex gap-2">
-              <button
-                onClick={onPreviewGroups}
-                disabled={loadingGroupsPreview}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium border border-neutral-300 disabled:opacity-60"
-              >
-                {loadingGroupsPreview ? "Generando..." : previewGroups ? "Regenerar grupos" : "Generar grupos"}
-              </button>
-              <button
-                onClick={onConfirmGroups}
-                disabled={confirmingGroups || !previewGroups || previewGroups.length === 0}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-900 text-white disabled:opacity-60"
-              >
-                {confirmingGroups ? "Confirmando..." : "Confirmar grupos"}
-              </button>
-            </div>
-          )}
+        <div className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Organización de grupos</h3>
+            {showGroupActions && (
+              <div className="flex gap-2">
+                <button
+                  onClick={onPreviewGroups}
+                  disabled={loadingGroupsPreview}
+                  className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium disabled:opacity-60"
+                >
+                  {loadingGroupsPreview ? "Generando..." : previewGroups ? "Regenerar grupos" : "Generar grupos"}
+                </button>
+                <button
+                  onClick={onConfirmGroups}
+                  disabled={confirmingGroups || !previewGroups || previewGroups.length === 0}
+                  className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+                >
+                  {confirmingGroups ? "Confirmando..." : "Confirmar grupos"}
+                </button>
+              </div>
+            )}
+          </div>
 
           <p className="text-sm text-neutral-600 dark:text-neutral-300">Seed de grupos: <b>{groupsSeed ?? "-"}</b></p>
 
           {previewGroups && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-3 dark:border-amber-700 dark:bg-amber-950/30">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Vista previa de grupos</h4>
-                <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 bg-amber-200 text-amber-900 dark:bg-amber-800/70 dark:text-amber-100">
-                  PREVIEW
-                </span>
-              </div>
-              <GroupsList groups={previewGroups} teamNames={teamNames} />
-            </div>
+            <PreviewCard title="Vista previa de grupos" tone="preview">
+              <TournamentGroupsList groups={previewGroups} teamNames={teamNames} />
+            </PreviewCard>
           )}
 
           {confirmedGroups.length > 0 && (
-            <div className="rounded-lg border border-green-200 bg-green-50 p-3 space-y-3 dark:border-green-700 dark:bg-green-950/30">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Grupos confirmados</h4>
-                <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 bg-green-200 text-green-900 dark:bg-green-800/70 dark:text-green-100">
-                  CONFIRMADO
-                </span>
-              </div>
-              <GroupsList groups={confirmedGroups} teamNames={teamNames} />
-            </div>
+            <PreviewCard title="Grupos confirmados" tone="confirmed">
+              <TournamentGroupsList groups={confirmedGroups} teamNames={teamNames} />
+            </PreviewCard>
           )}
         </div>
       )}
 
       {showFixtureSection && (
-        <div className="space-y-4 border-t border-neutral-200 pt-4 dark:border-neutral-800">
+        <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Acciones de fixture</h3>
+            <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Operación de fixture</h3>
             {showFixtureActions && (
               <div className="flex gap-2">
                 <button
                   onClick={onPreviewFixture}
                   disabled={loadingPreview}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium border border-neutral-300 disabled:opacity-60"
+                  className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium disabled:opacity-60"
                 >
                   {loadingPreview ? "Generando..." : "Generar fixture"}
                 </button>
                 <button
                   onClick={onConfirmFixture}
                   disabled={confirmingFixture || !previewMatches || previewMatches.length === 0}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-900 text-white disabled:opacity-60"
+                  className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
                 >
                   {confirmingFixture ? "Confirmando..." : "Confirmar fixture"}
                 </button>
@@ -440,29 +418,16 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           <p className="text-sm text-neutral-600 dark:text-neutral-300">Seed actual: <b>{seed ?? "-"}</b></p>
 
           {!hasConfirmedFixture && previewMatches !== null && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-3 dark:border-amber-700 dark:bg-amber-950/30">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Vista previa del fixture</h4>
-                <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 bg-amber-200 text-amber-900 dark:bg-amber-800/70 dark:text-amber-100">
-                  Preview (no confirmado)
-                </span>
-              </div>
-              <MatchList groupedMatches={groupedPreview} teamNames={teamNames} />
-            </div>
+            <PreviewCard title="Vista previa del fixture" tone="preview">
+              <TournamentMatchList groupedMatches={groupedPreview} teamNames={teamNames} />
+            </PreviewCard>
           )}
 
           {confirmedMatches.length > 0 && (
-            <div
-              ref={confirmedFixtureRef}
-              className="rounded-lg border border-green-200 bg-green-50 p-3 space-y-3 dark:border-green-700 dark:bg-green-950/30"
-            >
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Fixture confirmado</h4>
-                <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 bg-green-200 text-green-900 dark:bg-green-800/70 dark:text-green-100">
-                  Confirmado
-                </span>
-              </div>
-              <MatchList groupedMatches={groupedConfirmed} teamNames={teamNames} />
+            <div ref={confirmedFixtureRef}>
+              <PreviewCard title="Fixture confirmado" tone="confirmed">
+                <TournamentMatchList groupedMatches={groupedConfirmed} teamNames={teamNames} />
+              </PreviewCard>
             </div>
           )}
 
@@ -471,6 +436,14 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           )}
         </div>
       )}
-    </section>
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Standings de la fase actual</h3>
+          {loadingStandings ? <span className="text-xs text-neutral-500 dark:text-neutral-400">Cargando...</span> : null}
+        </div>
+        <TournamentStandingsTable standings={standings} teamNames={teamNames} />
+      </div>
+    </TournamentPhaseShell>
   );
 }

@@ -3,9 +3,7 @@
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "@/lib/firebase";
-import type { TournamentGroup } from "@/types/tournaments";
-import type { TournamentMatch } from "@/types/tournaments";
-import type { TournamentEntrySource, TournamentPaymentStatus } from "@/types/tournaments";
+import type { TournamentEntrySource, TournamentGroup, TournamentMatch, TournamentPaymentStatus } from "@/types/tournaments";
 
 const openRegistrationsFn = httpsCallable(functions, "openTournamentRegistrations");
 const closeRegistrationsFn = httpsCallable(functions, "closeTournamentRegistrations");
@@ -16,6 +14,29 @@ const confirmFixtureFn = httpsCallable(functions, "confirmFixture");
 const addTournamentAdminFn = httpsCallable(functions, "addTournamentAdmin");
 const editTournamentFn = httpsCallable(functions, "editTournament");
 const createTournamentFn = httpsCallable(functions, "createTournament");
+
+export type TournamentEntryPaymentSummary = {
+  expectedAmount: number;
+  pendingAmount: number;
+  paymentStatus: TournamentPaymentStatus;
+};
+
+export function buildTournamentEntryPaymentSummary(params: {
+  playerIds: string[];
+  paymentForPlayer: number;
+  paidAmount?: number;
+}): TournamentEntryPaymentSummary {
+  const expectedAmount = params.playerIds.length * Number(params.paymentForPlayer || 0);
+  const paidAmount = Number(params.paidAmount ?? 0);
+  const pendingAmount = Math.max(expectedAmount - paidAmount, 0);
+
+  let paymentStatus: TournamentPaymentStatus = paidAmount <= 0 ? "pendiente" : pendingAmount === 0 ? "pagado" : "parcial";
+  if (expectedAmount > paidAmount) {
+    paymentStatus = "pendiente";
+  }
+
+  return { expectedAmount, pendingAmount, paymentStatus };
+}
 
 export async function openTournamentRegistrations(tournamentId: string) {
   return openRegistrationsFn({ tournamentId });
@@ -80,23 +101,18 @@ export async function updateTournamentEntryPlayers(params: {
   paidAmount?: number;
 }) {
   const collectionName = params.source === "registration" ? "tournamentRegistrations" : "tournamentTeams";
-  const expectedAmount = params.playerIds.length * Number(params.paymentForPlayer || 0);
-  const paidAmount = Number(params.paidAmount ?? 0);
-  const pendingAmount = Math.max(expectedAmount - paidAmount, 0);
-
-  let paymentStatus: TournamentPaymentStatus = paidAmount <= 0 ? "pendiente" : pendingAmount === 0 ? "pagado" : "parcial";
-  if (expectedAmount > paidAmount) {
-    paymentStatus = "pendiente";
-  }
+  const paymentSummary = buildTournamentEntryPaymentSummary({
+    playerIds: params.playerIds,
+    paymentForPlayer: params.paymentForPlayer,
+    paidAmount: params.paidAmount,
+  });
 
   await updateDoc(doc(db, collectionName, params.entryId), {
     playerIds: params.playerIds,
     playersIds: params.playerIds,
-    expectedAmount,
-    pendingAmount,
-    paymentStatus,
+    ...paymentSummary,
     updatedAt: serverTimestamp(),
   });
 
-  return { expectedAmount, pendingAmount, paymentStatus };
+  return paymentSummary;
 }

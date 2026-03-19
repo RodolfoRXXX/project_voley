@@ -13,7 +13,7 @@ import { TournamentRegistrationItem } from "@/components/tournamentRegistrationS
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 
 import { addTournamentAdmin, editTournament } from "@/services/tournaments/tournamentMutations";
-import { getTournamentById, getTournamentRegistrations, getTournamentTeams } from "@/services/tournaments/tournamentQueries";
+import { getAdminTournamentRegistrationsView, getTournamentById } from "@/services/tournaments/tournamentQueries";
 
 type TournamentForm = {
   name: string;
@@ -130,22 +130,10 @@ export default function AdminTournamentDetailPage() {
 
     setLoadingRegistrations(true);
 
-    const [registrationData, tournamentTeams] = await Promise.all([
-      getTournamentRegistrations(tournamentId),
-      getTournamentTeams(tournamentId),
-    ]);
-
-    const acceptedTeamsData: TournamentRegistrationItem[] = tournamentTeams.map((teamData) => ({
-      ...teamData,
-      id: teamData.id,
-      source: "team",
-      status: (teamData.status as "aceptado" | "rechazado") || "aceptado",
-      registrationId: teamData.registrationId || teamData.id,
-      nameTeam: teamData.nameTeam || teamData.name,
-    }));
+    const { registrations: registrationData, acceptedTeams: acceptedTeamsData } = await getAdminTournamentRegistrationsView(tournamentId);
 
     setRegistrations(registrationData);
-    setAcceptedTeams(acceptedTeamsData);
+    setAcceptedTeams(acceptedTeamsData as TournamentRegistrationItem[]);
     setLoadingRegistrations(false);
   }, [tournamentId]);
 

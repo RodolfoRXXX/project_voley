@@ -3,86 +3,32 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { tournamentStatusLabel, type Tournament } from "@/types/tournaments";
-import { type ProfileTournamentEntry, type TournamentRegistrationStatus } from "@/types/tournaments";
+import { tournamentStatusLabel } from "@/types/tournaments";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
-import { getProfileTournamentEntries, getTournamentById } from "@/services/tournaments/tournamentQueries";
+import { getProfileTournamentListView, type ProfileTournamentListRow } from "@/services/tournaments/tournamentQueries";
 
-type Row = {
-  id: string;
-  tournament: Tournament;
-  nameTeam: string;
-  registrationStatus: TournamentRegistrationStatus;
-  source: "registration" | "team";
-  entryId: string;
-};
-
-const registrationStatusLabel: Record<TournamentRegistrationStatus, string> = {
+const registrationStatusLabel = {
   pendiente: "Pendiente",
   aceptado: "Aceptado",
   rechazado: "Rechazado",
-};
+} as const;
 
-const registrationStatusClass: Record<TournamentRegistrationStatus, string> = {
+const registrationStatusClass = {
   pendiente: "bg-yellow-100 text-yellow-700",
   aceptado: "bg-green-100 text-green-700",
   rechazado: "bg-red-100 text-red-700",
-};
+} as const;
 
 export default function ProfileTournamentsPage() {
   const { firebaseUser, userDoc } = useAuth();
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<ProfileTournamentListRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       if (!firebaseUser) return;
 
-      const records = await getProfileTournamentEntries(firebaseUser.uid, userDoc?.roles);
-      const tournamentIds = Array.from(new Set(records.map((record) => record.tournamentId).filter(Boolean)));
-
-      const tournamentsById = new Map<string, Tournament>();
-      await Promise.all(
-        tournamentIds.map(async (tournamentId) => {
-          const tournament = await getTournamentById(tournamentId);
-          if (tournament) {
-            tournamentsById.set(tournamentId, tournament);
-          }
-        })
-      );
-
-      const acceptedTeamKeys = new Set(
-        records
-          .filter((record) => record.source === "team")
-          .map((record) => `${record.tournamentId}::${record.groupId}`)
-      );
-
-      const nextRows: Row[] = records
-        .filter((record: ProfileTournamentEntry) => {
-          if (record.source !== "registration") return true;
-          const status = record.status || "pendiente";
-          if (status !== "aceptado") return true;
-
-          return !acceptedTeamKeys.has(`${record.tournamentId}::${record.groupId}`);
-        })
-        .map((record) => {
-          const tournament = tournamentsById.get(record.tournamentId);
-          if (!tournament) return null;
-
-          const status = record.status || "pendiente";
-
-          return {
-            id: `${record.source}-${record.id}`,
-            tournament,
-            nameTeam: record.nameTeam || record.name || "Equipo sin nombre",
-            registrationStatus: status,
-            source: record.source,
-            entryId: record.id,
-          };
-        })
-        .filter(Boolean) as Row[];
-
-      setRows(nextRows);
+      setRows(await getProfileTournamentListView(firebaseUser.uid, userDoc?.roles));
       setLoading(false);
     };
 

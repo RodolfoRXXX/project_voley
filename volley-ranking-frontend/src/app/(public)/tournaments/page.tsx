@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
-import { Tournament, tournamentStatusLabel } from "@/types/tournaments";
+import { tournamentPhaseTypeLabel, tournamentStatusLabel } from "@/types/tournaments";
 import RegisterTournamentModal from "@/components/registerTournamentModal/RegisterTournamentModal";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { useAuth } from "@/hooks/useAuth";
 import { canRegister } from "@/lib/tournamentAdmin";
-import { getPublicActiveTournaments } from "@/services/tournaments/tournamentQueries";
+import { getPublicTournamentListView, type PublicTournamentListItem } from "@/services/tournaments/tournamentQueries";
 
 function TournamentsSkeleton() {
   return (
@@ -33,14 +33,14 @@ function TournamentsSkeleton() {
 export default function TorneosPage() {
   const { userDoc } = useAuth();
 
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [rows, setRows] = useState<PublicTournamentListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [registerModalTournamentId, setRegisterModalTournamentId] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
-      const rows = await getPublicActiveTournaments();
-      setTournaments(rows);
+      const nextRows = await getPublicTournamentListView();
+      setRows(nextRows);
       setLoading(false);
     };
 
@@ -64,12 +64,12 @@ export default function TorneosPage() {
         <p className="text-sm text-neutral-500">Explorá torneos vigentes y su estado actual.</p>
       </div>
 
-      {tournaments.length === 0 && (
+      {rows.length === 0 && (
         <p className="text-sm text-neutral-500">No hay torneos vigentes por el momento.</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {tournaments.map((tournament) => (
+        {rows.map(({ tournament, currentPhase, acceptedTeamsCount }) => (
           <article key={tournament.id} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
             <div className="flex items-start justify-between gap-2">
               <h2 className="text-lg font-semibold text-neutral-900">{tournament.name}</h2>
@@ -78,9 +78,12 @@ export default function TorneosPage() {
               </span>
             </div>
             <p className="text-sm text-neutral-600">{tournament.description || "Sin descripción"}</p>
-            <div className="text-xs text-neutral-500 flex gap-4">
-              <span>Formato: <b>{tournament.format}</b></span>
-              <span>Equipos: <b>{tournament.acceptedTeamsCount || 0}/{tournament.maxTeams}</b></span>
+            <div className="space-y-1 text-xs text-neutral-500">
+              <div className="flex gap-4">
+                <span>Formato: <b>{tournament.format}</b></span>
+                <span>Equipos: <b>{acceptedTeamsCount}/{tournament.maxTeams}</b></span>
+              </div>
+              <p>Fase actual: <b>{currentPhase ? tournamentPhaseTypeLabel[currentPhase.type] : "Sin fase activa"}</b></p>
             </div>
 
             <div className="flex items-center justify-between pt-2">

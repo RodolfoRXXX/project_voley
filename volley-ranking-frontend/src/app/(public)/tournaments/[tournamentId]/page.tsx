@@ -6,53 +6,28 @@ import { useParams } from "next/navigation";
 import {
   tournamentPhaseStatusLabel,
   tournamentPhaseTypeLabel,
-  type TournamentPhase,
 } from "@/types/tournaments";
-import { tournamentStatusLabel, type Tournament } from "@/types/tournaments";
-import { type TournamentStanding } from "@/types/tournaments";
-import { getTournamentById, getTournamentMatches, getTournamentPhases, getTournamentStandings, getTournamentTeams, type TournamentTeamRow } from "@/services/tournaments/tournamentQueries";
+import { tournamentStatusLabel } from "@/types/tournaments";
+import { getPublicTournamentDetailView, type PublicTournamentDetailView } from "@/services/tournaments/tournamentQueries";
 
 export default function PublicTournamentDetailPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
-  const [tournament, setTournament] = useState<Tournament | null>(null);
-  const [currentPhase, setCurrentPhase] = useState<TournamentPhase | null>(null);
-  const [teams, setTeams] = useState<TournamentTeamRow[]>([]);
-  const [matchesCount, setMatchesCount] = useState(0);
-  const [standings, setStandings] = useState<TournamentStanding[]>([]);
+  const [view, setView] = useState<PublicTournamentDetailView | null>(null);
 
   useEffect(() => {
     const load = async () => {
       if (!tournamentId) return;
-
-      const tournamentData = await getTournamentById(tournamentId);
-      if (!tournamentData) return;
-      setTournament(tournamentData);
-
-      const phases = await getTournamentPhases(tournamentId);
-      const resolvedPhase = phases.find((phase) => phase.id === tournamentData.currentPhaseId) || null;
-      setCurrentPhase(resolvedPhase);
-      setTeams(await getTournamentTeams(tournamentId));
-
-      if (resolvedPhase) {
-        const [phaseMatches, phaseStandings] = await Promise.all([
-          getTournamentMatches({ tournamentId, phaseId: resolvedPhase.id }),
-          getTournamentStandings({ tournamentId, phaseId: resolvedPhase.id }),
-        ]);
-
-        setMatchesCount(phaseMatches.length);
-        setStandings(phaseStandings.sort((a, b) => a.position - b.position));
-      } else {
-        setMatchesCount(0);
-        setStandings([]);
-      }
+      setView(await getPublicTournamentDetailView(tournamentId));
     };
 
     load();
   }, [tournamentId]);
 
-  if (!tournament) {
+  if (!view) {
     return <p className="text-sm text-neutral-500">Cargando torneo...</p>;
   }
+
+  const { tournament, currentPhase, teams, matchesCount, standings } = view;
 
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
@@ -84,7 +59,7 @@ export default function PublicTournamentDetailPage() {
           <ul className="space-y-2 text-sm text-neutral-700">
             {teams.map((team) => (
               <li key={team.id} className="rounded-lg border border-neutral-200 p-3">
-                <p><b>Equipo:</b> {team.nameTeam || team.name || team.id}</p>
+                <p><b>Equipo:</b> {team.name}</p>
                 <p><b>Grupo:</b> {team.groupLabel || "-"}</p>
               </li>
             ))}
@@ -102,20 +77,16 @@ export default function PublicTournamentDetailPage() {
           <p className="text-sm text-neutral-500">Todavía no hay tabla de posiciones para la fase actual.</p>
         ) : (
           <ul className="space-y-2 text-sm text-neutral-700">
-            {standings.map((standing) => {
-              const team = teams.find((teamItem) => teamItem.id === standing.teamId);
-
-              return (
-                <li key={standing.id} className="rounded-lg border border-neutral-200 p-3">
-                  <p><b>Posición:</b> {standing.position}</p>
-                  <p><b>Equipo:</b> {team?.nameTeam || team?.name || standing.teamId}</p>
-                  <p><b>Grupo:</b> {standing.groupLabel || "-"}</p>
-                  <p><b>Puntos:</b> {standing.stats.points}</p>
-                  <p><b>Sets:</b> {standing.stats.setsFor}-{standing.stats.setsAgainst}</p>
-                  <p><b>Clasificado:</b> {standing.qualified ? "Sí" : "No"}</p>
-                </li>
-              );
-            })}
+            {standings.map((standing) => (
+              <li key={standing.id} className="rounded-lg border border-neutral-200 p-3">
+                <p><b>Posición:</b> {standing.position}</p>
+                <p><b>Equipo:</b> {standing.teamName}</p>
+                <p><b>Grupo:</b> {standing.groupLabel || "-"}</p>
+                <p><b>Puntos:</b> {standing.stats.points}</p>
+                <p><b>Sets:</b> {standing.stats.setsFor}-{standing.stats.setsAgainst}</p>
+                <p><b>Clasificado:</b> {standing.qualified ? "Sí" : "No"}</p>
+              </li>
+            ))}
           </ul>
         )}
       </section>

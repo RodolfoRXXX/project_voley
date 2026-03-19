@@ -79,6 +79,44 @@ En este paso ya quedaron usando helpers agregados:
 
 Con esto el paso originalmente planteado como “migrar listado público y perfil a servicios” quedó parcialmente absorbido por esta iteración.
 
+
+
+### 8. Enriquecimiento de vistas públicas y de perfil sobre helpers consolidados
+
+Se profundizó el paso 3 sin mover la responsabilidad de fetch fuera de `src/services/tournaments/tournamentQueries.ts`.
+
+Cambios aplicados:
+
+- Se agregaron métricas derivadas reutilizables (`TournamentProgressMetrics`) para cupos, ocupación, partidos completados, filas de standings, clasificados y equipos agrupados.
+- Se agregó `TournamentPhaseSnapshot` para exponer a UI el estado mínimo de la fase actual sin replicar composición en cada página.
+- `getPublicTournamentListView()`, `getPublicTournamentDetailView()` y `getProfileTournamentListView()` ahora devuelven esas métricas ya resueltas desde servicios.
+- `getPublicTournamentDetailView()` además expone `topStanding` para destacar líder actual sin recalcularlo en la página.
+
+Decisión: mantener estas derivaciones en la capa de queries porque siguen siendo lectura + normalización de shape, y así evitamos que las páginas vuelvan a inspeccionar `matches`, `standings` o `teams` para construir KPIs.
+
+### 9. Extracción de presentación repetida para cards y resúmenes
+
+Se extrajo presentación compartida a componentes de `src/components/tournaments/`:
+
+- `TournamentSummaryCard.tsx` para cards/listados con estado, fase, barra de ocupación y métricas clave.
+- `TournamentPhaseOverview.tsx` para el bloque de resumen competitivo del detalle público.
+
+Decisión: la UI comparte layout y copy, pero no recibe responsabilidades de fetch. Los componentes sólo consumen view-models ya compuestos por servicios.
+
+### 10. Páginas alineadas al nuevo nivel de detalle
+
+Se actualizaron:
+
+- `app/(public)/tournaments/page.tsx`
+- `app/(public)/tournaments/[tournamentId]/page.tsx`
+- `app/(protected)/profile/tournaments/page.tsx`
+
+Resultado:
+
+- el listado público muestra progreso de cupos, estado de fase y métricas competitivas resumidas;
+- el detalle público agrega un overview de fase y destaca el líder si existe standings;
+- el listado de perfil reutiliza la misma card enriquecida, conservando el badge de estado de inscripción/equipo.
+
 ## Impacto esperado
 
 - Menos imports ambiguos.
@@ -129,18 +167,21 @@ La separación estructural entre social matches y tournament matches continúa s
 
 ### Paso 3 — enriquecer vistas públicas y de perfil sobre helpers ya consolidados
 
-**Objetivo:** aprovechar la nueva capa de servicios para mejorar presentación y evitar lógica residual en UI.
+**Estado:** completado en esta iteración.
 
-**Prompt sugerido:**
+Se resolvió el enriquecimiento visual apoyándose en métricas y snapshots compuestos desde servicios, y se extrajo la presentación repetida en componentes compartidos.
+
+**Siguiente prompt recomendado:**
 
 ```text
-Sigamos con el paso 3. Quiero enriquecer app/(public)/tournaments/page.tsx, app/(public)/tournaments/[tournamentId]/page.tsx y app/(protected)/profile/tournaments/page.tsx sobre la capa consolidada.
+Sigamos con el paso 4. Quiero refactorizar el admin de torneos en subcomponentes por fase.
 Objetivos:
-- mostrar mejor fase actual, progreso o métricas disponibles desde los helpers
-- extraer presentación repetida si aparecen cards/resúmenes compartidos
-- mantener la lógica de fetch/composición en servicios
+- dividir TournamentAdminPanel
+- crear un shell por fase actual
+- separar editar torneo de operar la fase
+- incorporar standings y timeline de fases si los datos ya están listos
 - documentar eventos y decisiones en docs/tournaments/type-domain-migration-events.md
-Al final corré checks, commit y dejá el próximo prompt recomendado.
+Al final corré checks, commit y dejá próximos prompts.
 ```
 
 ### Paso 4 — refactor admin por fase

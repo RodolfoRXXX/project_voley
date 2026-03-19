@@ -3,11 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import {
-  tournamentPhaseStatusLabel,
-  tournamentPhaseTypeLabel,
-} from "@/types/tournaments";
-import { tournamentStatusLabel } from "@/types/tournaments";
+import { TournamentPhaseOverview } from "@/components/tournaments/TournamentPhaseOverview";
+import { TournamentSummaryCard } from "@/components/tournaments/TournamentSummaryCard";
 import { getPublicTournamentDetailView, type PublicTournamentDetailView } from "@/services/tournaments/tournamentQueries";
 
 export default function PublicTournamentDetailPage() {
@@ -27,68 +24,75 @@ export default function PublicTournamentDetailPage() {
     return <p className="text-sm text-neutral-500">Cargando torneo...</p>;
   }
 
-  const { tournament, currentPhase, teams, matchesCount, standings } = view;
+  const { tournament, teams, standings, metrics, phaseSnapshot, topStanding } = view;
 
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
       <Link href="/tournaments" className="text-sm text-neutral-600 hover:underline">← Volver a torneos</Link>
 
-      <header className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
-        <h1 className="text-2xl font-bold text-neutral-900">{tournament.name}</h1>
-        <p className="text-sm text-neutral-600">{tournament.description || "Sin descripción"}</p>
-        <span className="inline-block text-xs rounded-full px-2 py-1 bg-orange-100 text-orange-700">
-          {tournamentStatusLabel[tournament.status]}
-        </span>
-        <div className="grid gap-2 text-sm text-neutral-700 sm:grid-cols-3">
-          <p><b>Formato:</b> {tournament.format}</p>
-          <p><b>Equipos aceptados:</b> {tournament.acceptedTeamsCount || 0}/{tournament.maxTeams}</p>
-          <p><b>Fase actual:</b> {currentPhase ? tournamentPhaseTypeLabel[currentPhase.type] : "Sin fase activa"}</p>
-        </div>
-        {currentPhase && (
-          <p className="text-sm text-neutral-700">
-            <b>Estado de fase:</b> {tournamentPhaseStatusLabel[currentPhase.status]}
-          </p>
-        )}
-      </header>
+      <TournamentSummaryCard
+        tournament={tournament}
+        metrics={metrics}
+        phaseSnapshot={phaseSnapshot}
+        description={tournament.description || "Seguimiento público del torneo y sus métricas principales."}
+      />
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
-        <h2 className="text-base font-semibold text-neutral-900">Equipos del torneo</h2>
-        {teams.length === 0 ? (
-          <p className="text-sm text-neutral-500">Aún no hay equipos publicados.</p>
-        ) : (
-          <ul className="space-y-2 text-sm text-neutral-700">
-            {teams.map((team) => (
-              <li key={team.id} className="rounded-lg border border-neutral-200 p-3">
-                <p><b>Equipo:</b> {team.name}</p>
-                <p><b>Grupo:</b> {team.groupLabel || "-"}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <TournamentPhaseOverview metrics={metrics} phaseSnapshot={phaseSnapshot} topStanding={topStanding} />
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
-        <h2 className="text-base font-semibold text-neutral-900">Resumen competitivo</h2>
-        <p className="text-sm text-neutral-700">
-          <b>Partidos generados para la fase actual:</b> {matchesCount}
-        </p>
+      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold text-neutral-900">Equipos del torneo</h2>
+            <span className="text-xs text-neutral-500">{teams.length} publicados</span>
+          </div>
+          {teams.length === 0 ? (
+            <p className="text-sm text-neutral-500">Aún no hay equipos publicados.</p>
+          ) : (
+            <ul className="space-y-2 text-sm text-neutral-700">
+              {teams.map((team) => (
+                <li key={team.id} className="rounded-lg border border-neutral-200 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p><b>Equipo:</b> {team.name}</p>
+                    <span className="text-xs rounded-full bg-neutral-100 px-2 py-1 text-neutral-600">
+                      {team.groupLabel || "Sin grupo"}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-        {standings.length === 0 ? (
-          <p className="text-sm text-neutral-500">Todavía no hay tabla de posiciones para la fase actual.</p>
-        ) : (
-          <ul className="space-y-2 text-sm text-neutral-700">
-            {standings.map((standing) => (
-              <li key={standing.id} className="rounded-lg border border-neutral-200 p-3">
-                <p><b>Posición:</b> {standing.position}</p>
-                <p><b>Equipo:</b> {standing.teamName}</p>
-                <p><b>Grupo:</b> {standing.groupLabel || "-"}</p>
-                <p><b>Puntos:</b> {standing.stats.points}</p>
-                <p><b>Sets:</b> {standing.stats.setsFor}-{standing.stats.setsAgainst}</p>
-                <p><b>Clasificado:</b> {standing.qualified ? "Sí" : "No"}</p>
-              </li>
-            ))}
-          </ul>
-        )}
+        <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold text-neutral-900">Tabla actual</h2>
+            <span className="text-xs text-neutral-500">{standings.length} filas</span>
+          </div>
+
+          {standings.length === 0 ? (
+            <p className="text-sm text-neutral-500">Todavía no hay tabla de posiciones para la fase actual.</p>
+          ) : (
+            <ul className="space-y-2 text-sm text-neutral-700">
+              {standings.map((standing) => (
+                <li key={standing.id} className="rounded-lg border border-neutral-200 p-3 space-y-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-medium text-neutral-900">#{standing.position} {standing.teamName}</p>
+                    <span className={`text-xs rounded-full px-2 py-1 ${standing.qualified ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-600"}`}>
+                      {standing.qualified ? "Clasificado" : "En competencia"}
+                    </span>
+                  </div>
+                  <p><b>Grupo:</b> {standing.groupLabel || "-"}</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-neutral-600 sm:grid-cols-4">
+                    <span>Puntos: <b>{standing.stats.points}</b></span>
+                    <span>PJ: <b>{standing.stats.played}</b></span>
+                    <span>Sets: <b>{standing.stats.setsFor}-{standing.stats.setsAgainst}</b></span>
+                    <span>Dif. sets: <b>{standing.stats.setsDiff}</b></span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </section>
     </main>
   );

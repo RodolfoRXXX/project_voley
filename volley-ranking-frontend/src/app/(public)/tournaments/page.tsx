@@ -2,14 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
-import { Tournament, tournamentStatusLabel } from "@/types/tournament";
+import { Tournament, tournamentStatusLabel } from "@/types/tournaments/tournament";
 import RegisterTournamentModal from "@/components/registerTournamentModal/RegisterTournamentModal";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { useAuth } from "@/hooks/useAuth";
 import { canRegister } from "@/lib/tournamentAdmin";
+import { getPublicActiveTournaments } from "@/services/tournaments/tournamentQueries";
 
 function TournamentsSkeleton() {
   return (
@@ -40,18 +39,7 @@ export default function TorneosPage() {
 
   useEffect(() => {
     const load = async () => {
-      const tournamentsRef = collection(db, "tournaments");
-      const q = query(
-        tournamentsRef,
-        where("status", "in", ["inscripciones_abiertas", "activo"])
-      );
-
-      const snap = await getDocs(q);
-      const rows = snap.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Tournament, "id">),
-      }));
-
+      const rows = await getPublicActiveTournaments();
       setTournaments(rows);
       setLoading(false);
     };

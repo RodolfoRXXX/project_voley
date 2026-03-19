@@ -3,30 +3,20 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import {
   tournamentPhaseStatusLabel,
   tournamentPhaseTypeLabel,
-  tournamentStatusLabel,
-  type Tournament,
   type TournamentPhase,
-} from "@/types/tournament";
-import { type TournamentStanding } from "@/types/tournamentStanding";
-import { getTournamentById, getTournamentMatches, getTournamentPhases, getTournamentStandings } from "@/services/tournaments/tournamentQueries";
-
-type TeamRow = {
-  id: string;
-  nameTeam?: string;
-  name?: string;
-  groupLabel?: string;
-};
+} from "@/types/tournaments/tournamentPhase";
+import { tournamentStatusLabel, type Tournament } from "@/types/tournaments/tournament";
+import { type TournamentStanding } from "@/types/tournaments/tournamentStanding";
+import { getTournamentById, getTournamentMatches, getTournamentPhases, getTournamentStandings, getTournamentTeams, type TournamentTeamRow } from "@/services/tournaments/tournamentQueries";
 
 export default function PublicTournamentDetailPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [currentPhase, setCurrentPhase] = useState<TournamentPhase | null>(null);
-  const [teams, setTeams] = useState<TeamRow[]>([]);
+  const [teams, setTeams] = useState<TournamentTeamRow[]>([]);
   const [matchesCount, setMatchesCount] = useState(0);
   const [standings, setStandings] = useState<TournamentStanding[]>([]);
 
@@ -41,17 +31,7 @@ export default function PublicTournamentDetailPage() {
       const phases = await getTournamentPhases(tournamentId);
       const resolvedPhase = phases.find((phase) => phase.id === tournamentData.currentPhaseId) || null;
       setCurrentPhase(resolvedPhase);
-
-      const teamSnap = await getDocs(
-        query(collection(db, "tournamentTeams"), where("tournamentId", "==", tournamentId))
-      );
-
-      setTeams(
-        teamSnap.docs.map((item) => ({
-          id: item.id,
-          ...(item.data() as Omit<TeamRow, "id">),
-        }))
-      );
+      setTeams(await getTournamentTeams(tournamentId));
 
       if (resolvedPhase) {
         const [phaseMatches, phaseStandings] = await Promise.all([

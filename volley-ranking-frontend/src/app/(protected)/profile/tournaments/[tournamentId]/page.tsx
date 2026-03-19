@@ -3,32 +3,17 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
-import { tournamentStatusLabel, type Tournament } from "@/types/tournament";
-
-type TeamRow = {
-  id: string;
-  nameTeam?: string;
-  groupId?: string;
-  points?: number;
-  stats?: { points?: number; matchesPlayed?: number };
-};
-
-type Registration = {
-  id: string;
-  groupId: string;
-  nameTeam?: string;
-  status?: string;
-};
+import { tournamentStatusLabel, type Tournament } from "@/types/tournaments/tournament";
+import type { TournamentRegistration } from "@/types/tournaments/tournamentRegistration";
+import { getTournamentById, getTournamentRegistrations, getTournamentTeams, getUserTournamentGroupIds, type TournamentTeamRow } from "@/services/tournaments/tournamentQueries";
 
 export default function ProfileTournamentDetailPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
   const { firebaseUser } = useAuth();
   const [tournament, setTournament] = useState<Tournament | null>(null);
-  const [teams, setTeams] = useState<TeamRow[]>([]);
-  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [teams, setTeams] = useState<TournamentTeamRow[]>([]);
+  const [registrations, setRegistrations] = useState<TournamentRegistration[]>([]);
   const [myGroupIds, setMyGroupIds] = useState<string[]>([]);
 
   const visibleTeams = useMemo(() => {
@@ -36,41 +21,17 @@ export default function ProfileTournamentDetailPage() {
   }, [teams, myGroupIds]);
 
   const visibleRegistrations = useMemo(() => {
-    return registrations.filter((registration) => myGroupIds.includes(registration.groupId));
+    return registrations.filter((registration) => registration.groupId && myGroupIds.includes(registration.groupId));
   }, [registrations, myGroupIds]);
 
   useEffect(() => {
     const load = async () => {
       if (!firebaseUser || !tournamentId) return;
 
-      const byMemberQ = query(collection(db, "groups"), where("memberIds", "array-contains", firebaseUser.uid));
-      const byAdminQ = query(collection(db, "groups"), where("adminIds", "array-contains", firebaseUser.uid));
-      const [memberSnap, adminSnap] = await Promise.all([getDocs(byMemberQ), getDocs(byAdminQ)]);
-      const groups = Array.from(new Set([...memberSnap.docs, ...adminSnap.docs].map((item) => item.id)));
-      setMyGroupIds(groups);
-
-      const tournamentSnap = await getDoc(doc(db, "tournaments", tournamentId));
-      if (tournamentSnap.exists()) {
-        setTournament({ id: tournamentSnap.id, ...(tournamentSnap.data() as Omit<Tournament, "id">) });
-      }
-
-      const teamSnap = await getDocs(query(collection(db, "tournamentTeams"), where("tournamentId", "==", tournamentId)));
-      setTeams(
-        teamSnap.docs.map((item) => ({
-          id: item.id,
-          ...(item.data() as Omit<TeamRow, "id">),
-        }))
-      );
-
-      const registrationSnap = await getDocs(
-        query(collection(db, "tournamentRegistrations"), where("tournamentId", "==", tournamentId))
-      );
-      setRegistrations(
-        registrationSnap.docs.map((item) => ({
-          id: item.id,
-          ...(item.data() as Omit<Registration, "id">),
-        }))
-      );
+      setMyGroupIds(await getUserTournamentGroupIds(firebaseUser.uid));
+      setTournament(await getTournamentById(tournamentId));
+      setTeams(await getTournamentTeams(tournamentId));
+      setRegistrations(await getTournamentRegistrations(tournamentId));
     };
 
     load();

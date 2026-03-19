@@ -1,17 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Tournament } from "@/types/tournaments/tournament";
+import type { Tournament } from "@/types/tournaments";
 import {
   type TournamentGroup,
   type TournamentPhase,
   tournamentPhaseStatusLabel,
   tournamentPhaseTypeLabel,
-} from "@/types/tournaments/tournamentPhase";
+} from "@/types/tournaments";
 import { getAdminAction } from "@/lib/tournamentAdmin";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
-import type { TournamentMatch } from "@/types/tournaments/tournamentMatch";
+import type { TournamentMatch } from "@/types/tournaments";
 import { getConfirmedGroupsFromTournamentContext } from "@/services/tournaments/tournamentAdapters";
 import { getTournamentPhases, getTournamentTeams, type TournamentTeamRow, getTournamentMatches } from "@/services/tournaments/tournamentQueries";
 import {

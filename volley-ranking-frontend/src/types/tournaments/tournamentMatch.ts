@@ -1,5 +1,7 @@
-import { TournamentPhaseType } from "@/types/tournaments/tournamentPhase";
+import type { TournamentPhaseType } from "./tournamentPhase";
 
+// TournamentMatch is reserved for tournament play.
+// Social/community matches must keep using the `Match` type from `src/types/match.ts`.
 export type TournamentMatchStatus = "scheduled" | "completed";
 
 export type TournamentMatchResult = {

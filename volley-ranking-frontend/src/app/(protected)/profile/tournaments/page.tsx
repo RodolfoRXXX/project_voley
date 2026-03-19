@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { tournamentStatusLabel, type Tournament } from "@/types/tournaments/tournament";
-import { type ProfileTournamentEntry, type TournamentRegistrationStatus } from "@/types/tournaments/tournamentRegistration";
+import { tournamentStatusLabel, type Tournament } from "@/types/tournaments";
+import { type ProfileTournamentEntry, type TournamentRegistrationStatus } from "@/types/tournaments";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { getProfileTournamentEntries, getTournamentById } from "@/services/tournaments/tournamentQueries";
 

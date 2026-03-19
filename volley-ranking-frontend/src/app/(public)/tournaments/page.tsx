@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
-import { Tournament, tournamentStatusLabel } from "@/types/tournaments/tournament";
+import { Tournament, tournamentStatusLabel } from "@/types/tournaments";
 import RegisterTournamentModal from "@/components/registerTournamentModal/RegisterTournamentModal";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { useAuth } from "@/hooks/useAuth";

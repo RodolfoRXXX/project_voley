@@ -3,9 +3,9 @@
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "@/lib/firebase";
-import type { TournamentGroup } from "@/types/tournaments/tournamentPhase";
-import type { TournamentMatch } from "@/types/tournaments/tournamentMatch";
-import type { TournamentEntrySource, TournamentPaymentStatus } from "@/types/tournaments/tournamentRegistration";
+import type { TournamentGroup } from "@/types/tournaments";
+import type { TournamentMatch } from "@/types/tournaments";
+import type { TournamentEntrySource, TournamentPaymentStatus } from "@/types/tournaments";
 
 const openRegistrationsFn = httpsCallable(functions, "openTournamentRegistrations");
 const closeRegistrationsFn = httpsCallable(functions, "closeTournamentRegistrations");

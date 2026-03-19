@@ -1,4 +1,4 @@
-import { TournamentPhaseType } from "@/types/tournaments/tournamentPhase";
+import type { TournamentPhaseType } from "./tournamentPhase";
 
 export type TournamentStandingStats = {
   played: number;

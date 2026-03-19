@@ -1,4 +1,8 @@
-import { TournamentGroup, TournamentPhase, TournamentPhaseType } from "@/types/tournaments/tournamentPhase";
+import type {
+  TournamentGroup,
+  TournamentPhase,
+  TournamentPhaseType,
+} from "./tournamentPhase";
 
 export type TournamentStatus =
   | "draft"
@@ -20,7 +24,7 @@ export type Tournament = {
     pointsDraw?: number;
     pointsLose?: number;
   };
-  groups?: TournamentGroup[]; // legacy fallback
+  groups?: TournamentGroup[]; // legacy fallback while old tournament documents are migrated
   structure?: {
     groupStage?: {
       enabled?: boolean;

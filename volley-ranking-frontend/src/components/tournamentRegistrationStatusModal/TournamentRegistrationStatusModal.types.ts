@@ -2,7 +2,7 @@ import type {
   TournamentPaymentStatus as PaymentStatus,
   TournamentRegistration as TournamentRegistrationItem,
   TournamentRegistrationStatus as RegistrationStatus,
-} from "@/types/tournaments/tournamentRegistration";
+} from "@/types/tournaments";
 
 export type { PaymentStatus, RegistrationStatus, TournamentRegistrationItem };
 

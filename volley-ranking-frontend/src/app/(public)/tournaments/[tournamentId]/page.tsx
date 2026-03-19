@@ -7,9 +7,9 @@ import {
   tournamentPhaseStatusLabel,
   tournamentPhaseTypeLabel,
   type TournamentPhase,
-} from "@/types/tournaments/tournamentPhase";
-import { tournamentStatusLabel, type Tournament } from "@/types/tournaments/tournament";
-import { type TournamentStanding } from "@/types/tournaments/tournamentStanding";
+} from "@/types/tournaments";
+import { tournamentStatusLabel, type Tournament } from "@/types/tournaments";
+import { type TournamentStanding } from "@/types/tournaments";
 import { getTournamentById, getTournamentMatches, getTournamentPhases, getTournamentStandings, getTournamentTeams, type TournamentTeamRow } from "@/services/tournaments/tournamentQueries";
 
 export default function PublicTournamentDetailPage() {

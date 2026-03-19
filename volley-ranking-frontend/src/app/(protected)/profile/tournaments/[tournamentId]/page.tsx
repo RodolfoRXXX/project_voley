@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { tournamentStatusLabel, type Tournament } from "@/types/tournaments/tournament";
-import type { TournamentRegistration } from "@/types/tournaments/tournamentRegistration";
+import { tournamentStatusLabel, type Tournament } from "@/types/tournaments";
+import type { TournamentRegistration } from "@/types/tournaments";
 import { getTournamentById, getTournamentRegistrations, getTournamentTeams, getUserTournamentGroupIds, type TournamentTeamRow } from "@/services/tournaments/tournamentQueries";
 
 export default function ProfileTournamentDetailPage() {

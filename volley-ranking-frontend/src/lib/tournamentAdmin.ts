@@ -1,4 +1,4 @@
-import { Tournament } from "@/types/tournaments/tournament";
+import { Tournament } from "@/types/tournaments";
 
 export type AdminAction = {
   label: string;

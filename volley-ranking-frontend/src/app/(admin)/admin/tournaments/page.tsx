@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
-import { Tournament, tournamentStatusLabel } from "@/types/tournaments/tournament";
+import { Tournament, tournamentStatusLabel } from "@/types/tournaments";
 import StatusPill from "@/components/ui/status/StatusPill";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { getAdminTournaments } from "@/services/tournaments/tournamentQueries";

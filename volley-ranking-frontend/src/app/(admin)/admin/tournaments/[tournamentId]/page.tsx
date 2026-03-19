@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import TournamentAdminPanel from "@/components/tournaments/TournamentAdminPanel";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
-import { Tournament, tournamentStatusLabel } from "@/types/tournaments/tournament";
+import { Tournament, tournamentStatusLabel } from "@/types/tournaments";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import StatusPill, { type StatusVariant } from "@/components/ui/status/StatusPill";

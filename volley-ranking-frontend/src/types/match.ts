@@ -1,3 +1,5 @@
+// `Match` is the social/community match model.
+// Tournament play must use `TournamentMatch` from `src/types/tournaments`.
 export type MatchEstado =
   | "abierto"
   | "verificando"

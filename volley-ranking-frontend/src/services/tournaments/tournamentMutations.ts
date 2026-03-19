@@ -3,7 +3,7 @@
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "@/lib/firebase";
-import type { TournamentEntrySource, TournamentGroup, TournamentMatch, TournamentPaymentStatus } from "@/types/tournaments";
+import type { TournamentEntrySource, TournamentGroup, TournamentMatch, TournamentMatchResult, TournamentPaymentStatus } from "@/types/tournaments";
 
 const openRegistrationsFn = httpsCallable(functions, "openTournamentRegistrations");
 const closeRegistrationsFn = httpsCallable(functions, "closeTournamentRegistrations");
@@ -14,6 +14,7 @@ const confirmFixtureFn = httpsCallable(functions, "confirmFixture");
 const addTournamentAdminFn = httpsCallable(functions, "addTournamentAdmin");
 const editTournamentFn = httpsCallable(functions, "editTournament");
 const createTournamentFn = httpsCallable(functions, "createTournament");
+const recordMatchResultFn = httpsCallable(functions, "recordMatchResult");
 
 export type TournamentEntryPaymentSummary = {
   expectedAmount: number;
@@ -91,6 +92,14 @@ export async function editTournament(params: Record<string, unknown> & { tournam
 export async function createTournament(params: Record<string, unknown>) {
   const response = await createTournamentFn(params);
   return response.data as { tournamentId: string };
+}
+
+export async function recordTournamentMatchResult(params: {
+  matchId: string;
+  result: NonNullable<TournamentMatchResult>;
+}) {
+  const response = await recordMatchResultFn(params);
+  return response.data as { ok: true; phaseCompleted: boolean };
 }
 
 export async function updateTournamentEntryPlayers(params: {

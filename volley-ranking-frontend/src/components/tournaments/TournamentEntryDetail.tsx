@@ -2,35 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
-import { tournamentStatusLabel, type Tournament } from "@/types/tournament";
+import { tournamentStatusLabel, type Tournament } from "@/types/tournaments/tournament";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 
-type EntrySource = "registration" | "team";
-type RegistrationStatus = "pendiente" | "aceptado" | "rechazado";
-type PaymentStatus = "pendiente" | "parcial" | "pagado";
-
-type EntryDoc = {
-  id: string;
-  tournamentId: string;
-  groupId: string;
-  registrationId?: string;
-  name?: string;
-  nameTeam?: string;
-  playersIds?: string[];
-  status?: RegistrationStatus;
-  paymentStatus?: PaymentStatus;
-  expectedAmount?: number;
-  paidAmount?: number;
-  pendingAmount?: number;
-  paymentForPlayer?: number;
-  playerIds?: string[];
-  groupLabel?: string;
-};
+import type { TournamentEntrySource as EntrySource, TournamentPaymentStatus as PaymentStatus, TournamentRegistration as EntryDoc, TournamentRegistrationStatus as RegistrationStatus } from "@/types/tournaments/tournamentRegistration";
+import { getGroupById, getTournamentById, getTournamentRegistrationById, getUserTournamentGroupIds, getUsersByIds } from "@/services/tournaments/tournamentQueries";
+import { updateTournamentEntryPlayers } from "@/services/tournaments/tournamentMutations";
 
 type GroupDoc = {
   nombre?: string;
@@ -119,16 +99,12 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
     const load = async () => {
       if (!entryId || !firebaseUser) return;
 
-      const collectionName = source === "registration" ? "tournamentRegistrations" : "tournamentTeams";
-      const entryRef = doc(db, collectionName, entryId);
-      const entrySnap = await getDoc(entryRef);
+      const entryData = await getTournamentRegistrationById(entryId, source);
 
-      if (!entrySnap.exists()) {
+      if (!entryData) {
         setLoading(false);
         return;
       }
-
-      const entryData = { id: entrySnap.id, ...(entrySnap.data() as Omit<EntryDoc, "id">) };
       const normalizedPlayers = Array.isArray(entryData.playerIds)
         ? entryData.playerIds
         : Array.isArray(entryData.playersIds)
@@ -143,40 +119,27 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
         status: safeStatus,
       });
 
-      const [groupSnap, tournamentSnap] = await Promise.all([
-        getDoc(doc(db, "groups", entryData.groupId)),
-        getDoc(doc(db, "tournaments", entryData.tournamentId)),
+      const [allowedGroupIds, tournamentData] = await Promise.all([
+        getUserTournamentGroupIds(firebaseUser.uid),
+        getTournamentById(entryData.tournamentId),
       ]);
 
-      if (!groupSnap.exists() || !tournamentSnap.exists()) {
+      if (!entryData.groupId || !allowedGroupIds.includes(entryData.groupId) || !tournamentData) {
         setLoading(false);
         return;
       }
 
-      const groupData = groupSnap.data() as GroupDoc;
-      const isAllowed =
-        groupData.adminIds?.includes(firebaseUser.uid) || groupData.memberIds?.includes(firebaseUser.uid);
-
-      if (!isAllowed) {
+      const groupData = await getGroupById(entryData.groupId);
+      if (!groupData) {
         setLoading(false);
         return;
       }
 
       setGroup(groupData);
-      setTournament({ id: tournamentSnap.id, ...(tournamentSnap.data() as Omit<Tournament, "id">) });
+      setTournament(tournamentData);
 
       const uniqueMemberIds = Array.from(new Set([...(groupData.adminIds || []), ...(groupData.memberIds || [])]));
-      const users = await Promise.all(
-        uniqueMemberIds.map(async (uid) => {
-          const userSnap = await getDoc(doc(db, "users", uid));
-          return {
-            id: uid,
-            ...(userSnap.exists() ? (userSnap.data() as UserDoc) : {}),
-          };
-        })
-      );
-
-      setMembers(users);
+      setMembers(await getUsersByIds(uniqueMemberIds));
       setLoading(false);
     };
 
@@ -219,14 +182,12 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
 
     setSaving(playerId);
 
-    const collectionName = source === "registration" ? "tournamentRegistrations" : "tournamentTeams";
-    await updateDoc(doc(db, collectionName, entry.id), {
+    await updateTournamentEntryPlayers({
+      source,
+      entryId: entry.id,
       playerIds: next,
-      playersIds: next,
-      expectedAmount: nextExpectedAmount,
-      pendingAmount,
-      paymentStatus,
-      updatedAt: serverTimestamp(),
+      paymentForPlayer: Number(tournament.paymentForPlayer || 0),
+      paidAmount,
     });
 
     setEntry((prev) => (prev ? {

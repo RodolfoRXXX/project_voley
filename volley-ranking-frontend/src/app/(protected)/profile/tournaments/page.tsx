@@ -2,41 +2,28 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
-import { tournamentStatusLabel, type Tournament } from "@/types/tournament";
+import { tournamentStatusLabel, type Tournament } from "@/types/tournaments/tournament";
+import { type ProfileTournamentEntry, type TournamentRegistrationStatus } from "@/types/tournaments/tournamentRegistration";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
-
-type RegistrationStatus = "pendiente" | "aceptado" | "rechazado";
-
-type TournamentEntryRecord = {
-  id: string;
-  tournamentId: string;
-  groupId: string;
-  name?: string;
-  nameTeam?: string;
-  status?: RegistrationStatus;
-  playerIds?: string[];
-  source: "registration" | "team";
-};
+import { getProfileTournamentEntries, getTournamentById } from "@/services/tournaments/tournamentQueries";
 
 type Row = {
   id: string;
   tournament: Tournament;
   nameTeam: string;
-  registrationStatus: RegistrationStatus;
+  registrationStatus: TournamentRegistrationStatus;
   source: "registration" | "team";
   entryId: string;
 };
 
-const registrationStatusLabel: Record<RegistrationStatus, string> = {
+const registrationStatusLabel: Record<TournamentRegistrationStatus, string> = {
   pendiente: "Pendiente",
   aceptado: "Aceptado",
   rechazado: "Rechazado",
 };
 
-const registrationStatusClass: Record<RegistrationStatus, string> = {
+const registrationStatusClass: Record<TournamentRegistrationStatus, string> = {
   pendiente: "bg-yellow-100 text-yellow-700",
   aceptado: "bg-green-100 text-green-700",
   rechazado: "bg-red-100 text-red-700",
@@ -51,80 +38,16 @@ export default function ProfileTournamentsPage() {
     const load = async () => {
       if (!firebaseUser) return;
 
-      const groupIds = new Set<string>();
-
-      if (userDoc?.roles === "admin") {
-        const byAdminQ = query(collection(db, "groups"), where("adminIds", "array-contains", firebaseUser.uid));
-        const adminSnap = await getDocs(byAdminQ);
-        adminSnap.docs.forEach((row) => groupIds.add(row.id));
-      }
-
-      const records: TournamentEntryRecord[] = [];
-
-      if (userDoc?.roles === "admin") {
-        await Promise.all(
-          Array.from(groupIds).map(async (groupId) => {
-            const [registrationSnap, teamsSnap] = await Promise.all([
-              getDocs(query(collection(db, "tournamentRegistrations"), where("groupId", "==", groupId))),
-              getDocs(query(collection(db, "tournamentTeams"), where("groupId", "==", groupId))),
-            ]);
-
-            registrationSnap.docs.forEach((item) => {
-              records.push({
-                id: item.id,
-                ...(item.data() as Omit<TournamentEntryRecord, "id" | "source">),
-                source: "registration",
-              });
-            });
-
-            teamsSnap.docs.forEach((item) => {
-              const data = item.data() as Omit<TournamentEntryRecord, "id" | "source">;
-              records.push({
-                id: item.id,
-                ...data,
-                source: "team",
-                status: data.status || "aceptado",
-              });
-            });
-          })
-        );
-      } else {
-        const [registrationSnap, teamsSnap] = await Promise.all([
-          getDocs(query(collection(db, "tournamentRegistrations"), where("playerIds", "array-contains", firebaseUser.uid))),
-          getDocs(query(collection(db, "tournamentTeams"), where("playerIds", "array-contains", firebaseUser.uid))),
-        ]);
-
-        registrationSnap.docs.forEach((item) => {
-          records.push({
-            id: item.id,
-            ...(item.data() as Omit<TournamentEntryRecord, "id" | "source">),
-            source: "registration",
-          });
-        });
-
-        teamsSnap.docs.forEach((item) => {
-          const data = item.data() as Omit<TournamentEntryRecord, "id" | "source">;
-          records.push({
-            id: item.id,
-            ...data,
-            source: "team",
-            status: data.status || "aceptado",
-          });
-        });
-      }
-
+      const records = await getProfileTournamentEntries(firebaseUser.uid, userDoc?.roles);
       const tournamentIds = Array.from(new Set(records.map((record) => record.tournamentId).filter(Boolean)));
 
       const tournamentsById = new Map<string, Tournament>();
       await Promise.all(
         tournamentIds.map(async (tournamentId) => {
-          const tournamentSnap = await getDoc(doc(db, "tournaments", tournamentId));
-          if (!tournamentSnap.exists()) return;
-
-          tournamentsById.set(tournamentId, {
-            id: tournamentSnap.id,
-            ...(tournamentSnap.data() as Omit<Tournament, "id">),
-          });
+          const tournament = await getTournamentById(tournamentId);
+          if (tournament) {
+            tournamentsById.set(tournamentId, tournament);
+          }
         })
       );
 
@@ -135,7 +58,7 @@ export default function ProfileTournamentsPage() {
       );
 
       const nextRows: Row[] = records
-        .filter((record) => {
+        .filter((record: ProfileTournamentEntry) => {
           if (record.source !== "registration") return true;
           const status = record.status || "pendiente";
           if (status !== "aceptado") return true;

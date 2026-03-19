@@ -1,25 +1,27 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
-import { db, functions } from "@/lib/firebase";
+import type { Tournament } from "@/types/tournaments/tournament";
 import {
-  Tournament,
-  TournamentGroup,
-  TournamentPhase,
+  type TournamentGroup,
+  type TournamentPhase,
   tournamentPhaseStatusLabel,
   tournamentPhaseTypeLabel,
-} from "@/types/tournament";
+} from "@/types/tournaments/tournamentPhase";
 import { getAdminAction } from "@/lib/tournamentAdmin";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
-import { TournamentMatch } from "@/types/tournamentMatch";
+import type { TournamentMatch } from "@/types/tournaments/tournamentMatch";
+import { getConfirmedGroupsFromTournamentContext } from "@/services/tournaments/tournamentAdapters";
+import { getTournamentPhases, getTournamentTeams, type TournamentTeamRow, getTournamentMatches } from "@/services/tournaments/tournamentQueries";
 import {
-  getConfirmedGroupsFromTournamentContext,
-  toTournamentMatch,
-} from "@/services/tournaments/tournamentAdapters";
-import { getTournamentPhases } from "@/services/tournaments/tournamentQueries";
+  closeTournamentRegistrations,
+  confirmTournamentFixture,
+  confirmTournamentGroups,
+  openTournamentRegistrations,
+  previewTournamentFixture,
+  previewTournamentGroups,
+} from "@/services/tournaments/tournamentMutations";
 
 type GroupedMatches = {
   group: {
@@ -37,12 +39,6 @@ type TournamentAdminPanelProps = {
   onTournamentRefresh: () => Promise<void>;
 };
 
-const openRegistrationsFn = httpsCallable(functions, "openTournamentRegistrations");
-const closeRegistrationsFn = httpsCallable(functions, "closeTournamentRegistrations");
-const previewGroupsFn = httpsCallable(functions, "previewGroups");
-const confirmGroupsFn = httpsCallable(functions, "confirmGroups");
-const previewFixtureFn = httpsCallable(functions, "previewFixture");
-const confirmFixtureFn = httpsCallable(functions, "confirmFixture");
 
 function getGroupIdFromMatch(match: TournamentMatch) {
   return match.groupLabel ? `Grupo ${match.groupLabel}` : null;
@@ -178,12 +174,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   const loadConfirmedMatches = useCallback(async () => {
     setLoadingConfirmed(true);
     try {
-      const matchesQuery = query(
-        collection(db, "tournamentMatches"),
-        where("tournamentId", "==", tournament.id)
-      );
-      const matchesSnap = await getDocs(matchesQuery);
-      const nextMatches = matchesSnap.docs.map((matchDoc) => toTournamentMatch(matchDoc.id, matchDoc.data()));
+      const nextMatches = await getTournamentMatches({ tournamentId: tournament.id });
       setConfirmedMatches(nextMatches);
     } catch (error) {
       handleFirebaseError(error, showToast, "No se pudo cargar el fixture confirmado");
@@ -194,14 +185,9 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
   const loadTournamentTeams = useCallback(async () => {
     try {
-      const teamsQuery = query(
-        collection(db, "tournamentTeams"),
-        where("tournamentId", "==", tournament.id)
-      );
-      const teamsSnap = await getDocs(teamsQuery);
-      const namesMap = teamsSnap.docs.reduce<Record<string, string>>((acc, teamDoc) => {
-        const teamData = teamDoc.data() as { nameTeam?: string; name?: string };
-        acc[teamDoc.id] = teamData.nameTeam || teamData.name || `Equipo ${teamDoc.id.slice(0, 6)}`;
+      const tournamentTeams = await getTournamentTeams(tournament.id);
+      const namesMap = tournamentTeams.reduce<Record<string, string>>((acc, teamDoc: TournamentTeamRow) => {
+        acc[teamDoc.id] = teamDoc.nameTeam || teamDoc.name || `Equipo ${teamDoc.id.slice(0, 6)}`;
         return acc;
       }, {});
       setTeamNames(namesMap);
@@ -224,11 +210,11 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
     try {
       if (action.nextStatus === "inscripciones_abiertas") {
-        await openRegistrationsFn({ tournamentId: tournament.id });
+        await openTournamentRegistrations(tournament.id);
       }
 
       if (action.nextStatus === "inscripciones_cerradas") {
-        await closeRegistrationsFn({ tournamentId: tournament.id });
+        await closeTournamentRegistrations(tournament.id);
       }
 
       showToast({ type: "success", message: `${action.label} correctamente` });
@@ -244,13 +230,11 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     setLoadingGroupsPreview(true);
 
     try {
-      const response = await previewGroupsFn({
+      const data = await previewTournamentGroups({
         tournamentId: tournament.id,
         ...(currentPhase ? { phaseId: currentPhase.id } : {}),
         ...(previewGroups ? { seed: Math.floor(Math.random() * 1000000000) } : {}),
       });
-
-      const data = response.data as { seed: number; groups: TournamentGroup[] };
       setGroupsSeed(data.seed);
       setPreviewGroups(data.groups);
       showToast({ type: "success", message: "Vista previa de grupos generada" });
@@ -267,7 +251,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     setConfirmingGroups(true);
 
     try {
-      await confirmGroupsFn({
+      await confirmTournamentGroups({
         tournamentId: tournament.id,
         ...(currentPhase ? { phaseId: currentPhase.id } : {}),
         groups: previewGroups,
@@ -289,13 +273,11 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     setLoadingPreview(true);
 
     try {
-      const response = await previewFixtureFn({
+      const data = await previewTournamentFixture({
         tournamentId: tournament.id,
         ...(currentPhase ? { phaseId: currentPhase.id } : {}),
         ...(previewMatches ? { seed: Math.floor(Math.random() * 1000000000) } : {}),
       });
-
-      const data = response.data as { seed: number; matches: TournamentMatch[] };
       setSeed(data.seed);
       setPreviewMatches(data.matches);
       showToast({ type: "success", message: "Fixture generado en memoria" });
@@ -312,7 +294,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     setConfirmingFixture(true);
 
     try {
-      await confirmFixtureFn({
+      await confirmTournamentFixture({
         tournamentId: tournament.id,
         ...(currentPhase ? { phaseId: currentPhase.id } : {}),
         matches: previewMatches,

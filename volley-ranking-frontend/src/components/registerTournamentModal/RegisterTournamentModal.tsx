@@ -4,16 +4,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
-import { db, functions } from "@/lib/firebase";
+import { functions } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import StatusPill, { type StatusVariant } from "@/components/ui/status/StatusPill";
 import { RegisterTournamentModalProps } from "./RegisterTournamentModal.types";
+import { getTournamentById, getTournamentRegistrations, getUserManagedGroups } from "@/services/tournaments/tournamentQueries";
 
 type GroupOption = {
   id: string;
@@ -73,24 +73,7 @@ export default function RegisterTournamentModal({
     if (!open || !firebaseUser || !tournamentId) return;
 
     const loadRegistrations = async () => {
-      const registrationsRef = collection(db, "tournamentRegistrations");
-
-      const q = query(
-        registrationsRef,
-        where("tournamentId", "==", tournamentId)
-      );
-
-      const snap = await getDocs(q);
-
-      const rows = snap.docs.map((doc) => {
-        const data = doc.data() as Omit<RegistrationOption, "id">;
-
-        return {
-          id: doc.id,
-          ...data,
-        };
-      });
-
+      const rows = await getTournamentRegistrations(tournamentId);
       setRegistrations(rows);
     };
 
@@ -103,11 +86,10 @@ export default function RegisterTournamentModal({
     if (!open || !tournamentId) return;
 
     const loadTournament = async () => {
-      const tournamentSnap = await getDoc(doc(db, "tournaments", tournamentId));
+      const tournament = await getTournamentById(tournamentId);
 
-      if (tournamentSnap.exists()) {
-        const data = tournamentSnap.data() as { minPlayers?: number };
-        setMinPlayers(Number(data.minPlayers || 1));
+      if (tournament) {
+        setMinPlayers(Number(tournament.minPlayers || 1));
       }
     };
 
@@ -123,24 +105,13 @@ export default function RegisterTournamentModal({
 
     const loadGroups = async () => {
       try {
-        const groupsRef = collection(db, "groups");
+        const managedGroups = await getUserManagedGroups(firebaseUser.uid);
 
-        const q = query(
-          groupsRef,
-          where("adminIds", "array-contains", firebaseUser.uid)
-        );
-
-        const snap = await getDocs(q);
-
-        const rows = snap.docs.map((doc) => {
-          const groupData = doc.data() as { nombre?: string; memberIds?: string[] };
-
-          return {
-            id: doc.id,
-            nombre: groupData.nombre || "Grupo sin nombre",
-            memberCount: Array.isArray(groupData.memberIds) ? groupData.memberIds.length : 0,
-          };
-        });
+        const rows = managedGroups.map((groupData) => ({
+          id: groupData.id,
+          nombre: groupData.nombre || "Grupo sin nombre",
+          memberCount: Array.isArray(groupData.memberIds) ? groupData.memberIds.length : 0,
+        }));
 
         setGroups(rows);
 

@@ -1,13 +1,10 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { useParams } from "next/navigation";
-import { httpsCallable } from "firebase/functions";
-import { db, functions } from "@/lib/firebase";
 import TournamentAdminPanel from "@/components/tournaments/TournamentAdminPanel";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
-import { Tournament, tournamentStatusLabel } from "@/types/tournament";
+import { Tournament, tournamentStatusLabel } from "@/types/tournaments/tournament";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import StatusPill, { type StatusVariant } from "@/components/ui/status/StatusPill";
@@ -15,8 +12,8 @@ import TournamentRegistrationStatusModal from "@/components/tournamentRegistrati
 import { TournamentRegistrationItem } from "@/components/tournamentRegistrationStatusModal/TournamentRegistrationStatusModal.types";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 
-const addTournamentAdminFn = httpsCallable(functions, "addTournamentAdmin");
-const editTournamentFn = httpsCallable(functions, "editTournament");
+import { addTournamentAdmin, editTournament } from "@/services/tournaments/tournamentMutations";
+import { getTournamentById, getTournamentRegistrations, getTournamentTeams } from "@/services/tournaments/tournamentQueries";
 
 type TournamentForm = {
   name: string;
@@ -122,14 +119,8 @@ export default function AdminTournamentDetailPage() {
 
   const loadTournament = useCallback(async () => {
     if (!tournamentId) return;
-    const ref = doc(db, "tournaments", tournamentId);
-    const snap = await getDoc(ref);
-
-    if (snap.exists()) {
-      setTournament({ id: snap.id, ...(snap.data() as Omit<Tournament, "id">) });
-    } else {
-      setTournament(null);
-    }
+    const nextTournament = await getTournamentById(tournamentId);
+    setTournament(nextTournament);
 
     setLoading(false);
   }, [tournamentId]);
@@ -139,38 +130,19 @@ export default function AdminTournamentDetailPage() {
 
     setLoadingRegistrations(true);
 
-    const registrationsQuery = query(
-      collection(db, "tournamentRegistrations"),
-      where("tournamentId", "==", tournamentId)
-    );
-
-    const teamsQuery = query(
-      collection(db, "tournamentTeams"),
-      where("tournamentId", "==", tournamentId)
-    );
-
-    const [registrationsSnap, teamsSnap] = await Promise.all([
-      getDocs(registrationsQuery),
-      getDocs(teamsQuery),
+    const [registrationData, tournamentTeams] = await Promise.all([
+      getTournamentRegistrations(tournamentId),
+      getTournamentTeams(tournamentId),
     ]);
 
-    const registrationData = registrationsSnap.docs.map((currentDoc) => ({
-      id: currentDoc.id,
-      source: "registration" as const,
-      ...(currentDoc.data() as Omit<TournamentRegistrationItem, "id" | "source">),
+    const acceptedTeamsData: TournamentRegistrationItem[] = tournamentTeams.map((teamData) => ({
+      ...teamData,
+      id: teamData.id,
+      source: "team",
+      status: (teamData.status as "aceptado" | "rechazado") || "aceptado",
+      registrationId: teamData.registrationId || teamData.id,
+      nameTeam: teamData.nameTeam || teamData.name,
     }));
-
-    const acceptedTeamsData = teamsSnap.docs.map((currentDoc) => {
-      const teamData = currentDoc.data() as Omit<TournamentRegistrationItem, "id" | "source">;
-      return {
-        id: currentDoc.id,
-        source: "team" as const,
-        status: (teamData.status as "aceptado" | "rechazado") || "aceptado",
-        registrationId: teamData.registrationId || currentDoc.id,
-        nameTeam: teamData.nameTeam || teamData.name,
-        ...teamData,
-      };
-    });
 
     setRegistrations(registrationData);
     setAcceptedTeams(acceptedTeamsData);
@@ -263,7 +235,7 @@ export default function AdminTournamentDetailPage() {
     setSaving(true);
 
     try {
-      await editTournamentFn({
+      await editTournament({
         tournamentId,
         ...payload,
       });
@@ -288,7 +260,7 @@ export default function AdminTournamentDetailPage() {
 
     setAddingAdmin(true);
     try {
-      await addTournamentAdminFn({
+      await addTournamentAdmin({
         tournamentId,
         adminUserId: adminUserId.trim(),
       });

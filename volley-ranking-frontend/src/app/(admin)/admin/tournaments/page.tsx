@@ -2,52 +2,32 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
-import { Tournament, tournamentStatusLabel } from "@/types/tournament";
+import { Tournament, tournamentStatusLabel } from "@/types/tournaments/tournament";
 import StatusPill from "@/components/ui/status/StatusPill";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
-
-/* =====================
-   SKELETON
-===================== */
+import { getAdminTournaments } from "@/services/tournaments/tournamentQueries";
 
 function TournamentsSkeleton() {
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
-
-      {/* Breadcrumb */}
       <SkeletonSoft className="h-4 w-40" />
-
-      {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
           <Skeleton className="h-6 w-36" />
           <SkeletonSoft className="h-4 w-60" />
         </div>
-
         <Skeleton className="h-9 w-32 rounded-lg" />
       </div>
-
-      {/* Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col gap-3"
-          >
-            {/* Header */}
+          <div key={i} className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col gap-3">
             <div className="flex items-start justify-between gap-3">
               <Skeleton className="h-4 w-1/2" />
               <Skeleton className="h-7 w-20 rounded-lg" />
             </div>
-
-            {/* Description */}
             <SkeletonSoft className="h-3 w-2/3" />
-
-            {/* Footer */}
             <div className="flex items-center justify-between pt-2">
               <Skeleton className="h-6 w-28 rounded-full" />
               <SkeletonSoft className="h-3 w-20" />
@@ -55,7 +35,6 @@ function TournamentsSkeleton() {
           </div>
         ))}
       </div>
-
     </main>
   );
 }
@@ -69,21 +48,7 @@ export default function AdminTournamentsPage() {
     if (authLoading || !firebaseUser) return;
 
     const loadTournaments = async () => {
-      const tournamentsRef = collection(db, "tournaments");
-      const snap = await getDocs(
-        query(
-          tournamentsRef,
-          where("adminIds", "array-contains", firebaseUser.uid),
-          orderBy("updatedAt", "desc")
-        )
-      );
-
-      const rows = snap.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Tournament, "id">),
-      }));
-
-      setTournaments(rows);
+      setTournaments(await getAdminTournaments(firebaseUser.uid));
       setLoading(false);
     };
 
@@ -120,7 +85,6 @@ export default function AdminTournamentsPage() {
             key={tournament.id}
             className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col gap-3"
           >
-            {/* Header */}
             <div className="flex items-start justify-between gap-4">
               <h2 className="text-base font-semibold text-neutral-900">
                 {tournament.name}
@@ -134,12 +98,10 @@ export default function AdminTournamentsPage() {
               </Link>
             </div>
 
-            {/* Description */}
             <p className="text-sm text-neutral-600">
               {tournament.description || "Sin descripción"}
             </p>
 
-            {/* Footer info full width */}
             <div className="flex items-center justify-between pt-2 text-sm">
               <StatusPill
                 label={tournamentStatusLabel[tournament.status]}
@@ -147,10 +109,7 @@ export default function AdminTournamentsPage() {
               />
 
               <span className="text-neutral-600">
-                Equipos{" "}
-                <b>
-                  {tournament.acceptedTeamsCount || 0}/{tournament.maxTeams}
-                </b>
+                Equipos <b>{tournament.acceptedTeamsCount || 0}/{tournament.maxTeams}</b>
               </span>
             </div>
           </article>

@@ -2,14 +2,12 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
-import { httpsCallable } from "firebase/functions";
-import { functions } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 
-const createTournamentFn = httpsCallable(functions, "createTournament");
+import { createTournament } from "@/services/tournaments/tournamentMutations";
 
 type TournamentForm = {
   name: string;
@@ -142,7 +140,7 @@ export default function NewTournamentPage() {
     }
 
     try {
-      const result = await createTournamentFn({
+      const result = await createTournament({
         name: form.name,
         description: form.description,
         sport: "voley",
@@ -178,7 +176,7 @@ export default function NewTournamentPage() {
         },
       });
 
-      const tournamentId = (result.data as { tournamentId: string }).tournamentId;
+      const tournamentId = result.tournamentId;
 
       showToast({
         type: "success",

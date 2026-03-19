@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
-import { tournamentPhaseTypeLabel, tournamentStatusLabel } from "@/types/tournaments";
 import RegisterTournamentModal from "@/components/registerTournamentModal/RegisterTournamentModal";
 import { ActionButton } from "@/components/ui/action/ActionButton";
+import { TournamentSummaryCard } from "@/components/tournaments/TournamentSummaryCard";
 import { useAuth } from "@/hooks/useAuth";
 import { canRegister } from "@/lib/tournamentAdmin";
 import { getPublicTournamentListView, type PublicTournamentListItem } from "@/services/tournaments/tournamentQueries";
@@ -61,53 +60,32 @@ export default function TorneosPage() {
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
       <div className="space-y-1">
         <h1 className="text-3xl font-bold text-neutral-900 dark:text-[var(--foreground)]">Torneos</h1>
-        <p className="text-sm text-neutral-500">Explorá torneos vigentes y su estado actual.</p>
+        <p className="text-sm text-neutral-500">Explorá torneos vigentes, su fase actual y el avance competitivo disponible.</p>
       </div>
 
       {rows.length === 0 && (
         <p className="text-sm text-neutral-500">No hay torneos vigentes por el momento.</p>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {rows.map(({ tournament, currentPhase, acceptedTeamsCount }) => (
-          <article key={tournament.id} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <h2 className="text-lg font-semibold text-neutral-900">{tournament.name}</h2>
-              <span className="text-xs rounded-full px-2 py-1 bg-orange-100 text-orange-700">
-                {tournamentStatusLabel[tournament.status]}
-              </span>
-            </div>
-            <p className="text-sm text-neutral-600">{tournament.description || "Sin descripción"}</p>
-            <div className="space-y-1 text-xs text-neutral-500">
-              <div className="flex gap-4">
-                <span>Formato: <b>{tournament.format}</b></span>
-                <span>Equipos: <b>{acceptedTeamsCount}/{tournament.maxTeams}</b></span>
-              </div>
-              <p>Fase actual: <b>{currentPhase ? tournamentPhaseTypeLabel[currentPhase.type] : "Sin fase activa"}</b></p>
-            </div>
-
-            <div className="flex items-center justify-between pt-2">
-              {userDoc?.roles === "admin" ? (
-                <ActionButton
-                  onClick={() => openRegisterModal(tournament.id)}
-                  variant="success"
-                  compact
-                  disabled={!canRegister(tournament)}
-                >
-                  Inscribirme
-                </ActionButton>
-              ) : (
-                <span />
-              )}
-
-              <Link
-                href={`/tournaments/${tournament.id}`}
-                className="text-sm font-medium text-orange-600 hover:text-orange-700"
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {rows.map(({ tournament, metrics, phaseSnapshot }) => (
+          <TournamentSummaryCard
+            key={tournament.id}
+            tournament={tournament}
+            metrics={metrics}
+            phaseSnapshot={phaseSnapshot}
+            href={`/tournaments/${tournament.id}`}
+            footer={userDoc?.roles === "admin" ? (
+              <ActionButton
+                onClick={() => openRegisterModal(tournament.id)}
+                variant="success"
+                compact
+                disabled={!canRegister(tournament)}
               >
-                Ver detalle →
-              </Link>
-            </div>
-          </article>
+                Inscribirme
+              </ActionButton>
+            ) : undefined}
+          />
         ))}
       </div>
       <RegisterTournamentModal

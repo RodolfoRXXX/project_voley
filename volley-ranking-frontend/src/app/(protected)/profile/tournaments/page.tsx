@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { TournamentSummaryCard } from "@/components/tournaments/TournamentSummaryCard";
 import { useAuth } from "@/hooks/useAuth";
-import { tournamentStatusLabel } from "@/types/tournaments";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { getProfileTournamentListView, type ProfileTournamentListRow } from "@/services/tournaments/tournamentQueries";
 
@@ -48,25 +48,28 @@ export default function ProfileTournamentsPage() {
 
   return (
     <section className="space-y-4">
-      <h1 className="text-2xl font-bold text-neutral-900">Mis torneos</h1>
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold text-neutral-900">Mis torneos</h1>
+        <p className="text-sm text-neutral-500">Seguimiento rápido de tus inscripciones, equipos y del estado competitivo de cada torneo.</p>
+      </div>
 
       {rows.length === 0 ? (
         <p className="text-sm text-neutral-500">No tienes inscripciones o equipos de torneos todavía.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {rows.map((row) => (
-            <article key={row.id} className="relative rounded-xl border border-neutral-200 bg-white p-4 space-y-2">
-              <span
-                className={`absolute right-4 top-4 text-xs rounded-full px-2 py-1 ${registrationStatusClass[row.registrationStatus]}`}
-              >
-                {registrationStatusLabel[row.registrationStatus]}
-              </span>
-
-              <h2 className="pr-24 text-base font-semibold text-neutral-900">{row.tournament.name}</h2>
-              <p className="text-sm text-neutral-600">{tournamentStatusLabel[row.tournament.status]}</p>
-              <p className="text-sm text-neutral-800">{row.nameTeam}</p>
-
-              {row.registrationStatus === "rechazado" ? (
+            <TournamentSummaryCard
+              key={row.id}
+              tournament={row.tournament}
+              metrics={row.metrics}
+              phaseSnapshot={row.phaseSnapshot}
+              description={`Tu equipo: ${row.nameTeam}`}
+              titleSuffix={(
+                <span className={`text-xs rounded-full px-2 py-1 ${registrationStatusClass[row.registrationStatus]}`}>
+                  {registrationStatusLabel[row.registrationStatus]}
+                </span>
+              )}
+              footer={row.registrationStatus === "rechazado" ? (
                 <span className="inline-block text-sm font-medium text-neutral-400 cursor-not-allowed">
                   Ver detalle
                 </span>
@@ -82,7 +85,7 @@ export default function ProfileTournamentsPage() {
                   Ver detalle
                 </Link>
               )}
-            </article>
+            />
           ))}
         </div>
       )}

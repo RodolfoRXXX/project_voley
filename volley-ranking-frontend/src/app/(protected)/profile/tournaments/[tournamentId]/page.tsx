@@ -1,45 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { tournamentStatusLabel, type Tournament } from "@/types/tournaments";
-import type { TournamentRegistration } from "@/types/tournaments";
-import { getTournamentById, getTournamentRegistrations, getTournamentTeams, getUserTournamentGroupIds, type TournamentTeamRow } from "@/services/tournaments/tournamentQueries";
+import { tournamentStatusLabel } from "@/types/tournaments";
+import { getProfileTournamentDetailView, type ProfileTournamentDetailView } from "@/services/tournaments/tournamentQueries";
 
 export default function ProfileTournamentDetailPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
   const { firebaseUser } = useAuth();
-  const [tournament, setTournament] = useState<Tournament | null>(null);
-  const [teams, setTeams] = useState<TournamentTeamRow[]>([]);
-  const [registrations, setRegistrations] = useState<TournamentRegistration[]>([]);
-  const [myGroupIds, setMyGroupIds] = useState<string[]>([]);
-
-  const visibleTeams = useMemo(() => {
-    return teams.filter((team) => team.groupId && myGroupIds.includes(team.groupId));
-  }, [teams, myGroupIds]);
-
-  const visibleRegistrations = useMemo(() => {
-    return registrations.filter((registration) => registration.groupId && myGroupIds.includes(registration.groupId));
-  }, [registrations, myGroupIds]);
+  const [view, setView] = useState<ProfileTournamentDetailView | null>(null);
 
   useEffect(() => {
     const load = async () => {
       if (!firebaseUser || !tournamentId) return;
-
-      setMyGroupIds(await getUserTournamentGroupIds(firebaseUser.uid));
-      setTournament(await getTournamentById(tournamentId));
-      setTeams(await getTournamentTeams(tournamentId));
-      setRegistrations(await getTournamentRegistrations(tournamentId));
+      setView(await getProfileTournamentDetailView(tournamentId, firebaseUser.uid));
     };
 
     load();
   }, [firebaseUser, tournamentId]);
 
-  if (!tournament) {
+  if (!view) {
     return <p className="text-sm text-neutral-500">Cargando torneo...</p>;
   }
+
+  const { tournament, teams, registrations } = view;
 
   return (
     <section className="space-y-5">
@@ -55,11 +41,11 @@ export default function ProfileTournamentDetailPage() {
 
       <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
         <h2 className="text-base font-semibold text-neutral-900">Equipos (tournamentTeams)</h2>
-        {visibleTeams.length === 0 ? (
+        {teams.length === 0 ? (
           <p className="text-sm text-neutral-500">Sin datos en tournamentTeams para tus grupos.</p>
         ) : (
           <ul className="space-y-2 text-sm text-neutral-700">
-            {visibleTeams.map((team) => (
+            {teams.map((team) => (
               <li key={team.id} className="rounded-lg border border-neutral-200 p-3">
                 <p><b>Equipo:</b> {team.nameTeam || team.id}</p>
                 <p><b>Grupo:</b> {team.groupId || "-"}</p>
@@ -72,11 +58,11 @@ export default function ProfileTournamentDetailPage() {
 
       <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
         <h2 className="text-base font-semibold text-neutral-900">Inscripciones relacionadas</h2>
-        {visibleRegistrations.length === 0 ? (
+        {registrations.length === 0 ? (
           <p className="text-sm text-neutral-500">No hay inscripciones de tus grupos en este torneo.</p>
         ) : (
           <ul className="space-y-2 text-sm text-neutral-700">
-            {visibleRegistrations.map((registration) => (
+            {registrations.map((registration) => (
               <li key={registration.id} className="rounded-lg border border-neutral-200 p-3">
                 <p><b>Equipo:</b> {registration.nameTeam || registration.id}</p>
                 <p><b>Grupo:</b> {registration.groupId}</p>

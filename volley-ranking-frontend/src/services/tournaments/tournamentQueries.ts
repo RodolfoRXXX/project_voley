@@ -2,15 +2,16 @@
 
 import { collection, doc, getDoc, getDocs, orderBy, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Tournament } from "@/types/tournaments";
-import type { TournamentPhase } from "@/types/tournaments";
-import type { TournamentMatch } from "@/types/tournaments";
 import type {
   ProfileTournamentEntry,
+  Tournament,
   TournamentEntrySource,
+  TournamentMatch,
+  TournamentPhase,
   TournamentRegistration,
+  TournamentRegistrationStatus,
+  TournamentStanding,
 } from "@/types/tournaments";
-import type { TournamentStanding } from "@/types/tournaments";
 import {
   toTournament,
   toTournamentMatch,
@@ -32,6 +33,51 @@ export type TournamentTeamRow = {
   stats?: { points?: number; matchesPlayed?: number };
   registrationId?: string;
   status?: string;
+};
+
+export type PublicTournamentListItem = {
+  tournament: Tournament;
+  currentPhase: TournamentPhase | null;
+  acceptedTeamsCount: number;
+};
+
+export type PublicTournamentTeamSummary = {
+  id: string;
+  name: string;
+  groupLabel: string | null;
+};
+
+export type PublicTournamentStandingRow = TournamentStanding & {
+  teamName: string;
+};
+
+export type PublicTournamentDetailView = {
+  tournament: Tournament;
+  currentPhase: TournamentPhase | null;
+  teams: PublicTournamentTeamSummary[];
+  matchesCount: number;
+  standings: PublicTournamentStandingRow[];
+};
+
+export type ProfileTournamentListRow = {
+  id: string;
+  tournament: Tournament;
+  nameTeam: string;
+  registrationStatus: TournamentRegistrationStatus;
+  source: TournamentEntrySource;
+  entryId: string;
+};
+
+export type ProfileTournamentDetailView = {
+  tournament: Tournament;
+  teams: TournamentTeamRow[];
+  registrations: TournamentRegistration[];
+  myGroupIds: string[];
+};
+
+export type AdminTournamentRegistrationsView = {
+  registrations: TournamentRegistration[];
+  acceptedTeams: TournamentRegistration[];
 };
 
 export async function getTournamentById(tournamentId: string): Promise<Tournament | null> {
@@ -111,6 +157,68 @@ export async function getPublicActiveTournaments(): Promise<Tournament[]> {
   return snap.docs.map((tournamentDoc) => toTournament(tournamentDoc.id, tournamentDoc.data() as Omit<Tournament, "id">));
 }
 
+export async function getPublicTournamentListView(): Promise<PublicTournamentListItem[]> {
+  const tournaments = await getPublicActiveTournaments();
+
+  const rows = await Promise.all(
+    tournaments.map(async (tournament) => ({
+      tournament,
+      currentPhase: tournament.currentPhaseId ? await getCurrentTournamentPhase(tournament) : null,
+      acceptedTeamsCount: tournament.acceptedTeamsCount || 0,
+    }))
+  );
+
+  return rows;
+}
+
+export async function getPublicTournamentDetailView(tournamentId: string): Promise<PublicTournamentDetailView | null> {
+  const tournament = await getTournamentById(tournamentId);
+  if (!tournament) return null;
+
+  const [currentPhase, teams] = await Promise.all([
+    getCurrentTournamentPhase(tournament),
+    getTournamentTeams(tournamentId),
+  ]);
+
+  if (!currentPhase) {
+    return {
+      tournament,
+      currentPhase: null,
+      teams: teams.map((team) => ({
+        id: team.id,
+        name: team.nameTeam || team.name || team.id,
+        groupLabel: team.groupLabel || null,
+      })),
+      matchesCount: 0,
+      standings: [],
+    };
+  }
+
+  const [phaseMatches, phaseStandings] = await Promise.all([
+    getTournamentMatches({ tournamentId, phaseId: currentPhase.id }),
+    getTournamentStandings({ tournamentId, phaseId: currentPhase.id }),
+  ]);
+
+  const teamNames = new Map(teams.map((team) => [team.id, team.nameTeam || team.name || team.id]));
+
+  return {
+    tournament,
+    currentPhase,
+    teams: teams.map((team) => ({
+      id: team.id,
+      name: team.nameTeam || team.name || team.id,
+      groupLabel: team.groupLabel || null,
+    })),
+    matchesCount: phaseMatches.length,
+    standings: phaseStandings
+      .sort((a, b) => a.position - b.position)
+      .map((standing) => ({
+        ...standing,
+        teamName: teamNames.get(standing.teamId) || standing.teamId,
+      })),
+  };
+}
+
 export async function getAdminTournaments(adminUserId: string): Promise<Tournament[]> {
   const q = query(
     collection(db, "tournaments"),
@@ -121,11 +229,30 @@ export async function getAdminTournaments(adminUserId: string): Promise<Tourname
   return snap.docs.map((tournamentDoc) => toTournament(tournamentDoc.id, tournamentDoc.data() as Omit<Tournament, "id">));
 }
 
+export async function getAdminTournamentRegistrationsView(tournamentId: string): Promise<AdminTournamentRegistrationsView> {
+  const [registrations, tournamentTeams] = await Promise.all([
+    getTournamentRegistrations(tournamentId),
+    getTournamentTeams(tournamentId),
+  ]);
+
+  const acceptedTeams = tournamentTeams.map((teamData) => ({
+    ...teamData,
+    source: "team" as const,
+    status: (teamData.status as TournamentRegistrationStatus | undefined) || "aceptado",
+    registrationId: teamData.registrationId || teamData.id,
+    nameTeam: teamData.nameTeam || teamData.name,
+  }));
+
+  return {
+    registrations,
+    acceptedTeams,
+  };
+}
+
 export async function getUserManagedGroups(userId: string): Promise<Array<{ id: string; nombre?: string; memberIds?: string[]; adminIds?: string[] }>> {
   const snap = await getDocs(query(collection(db, "groups"), where("adminIds", "array-contains", userId)));
   return snap.docs.map((groupDoc) => ({ id: groupDoc.id, ...(groupDoc.data() as Omit<{ id: string; nombre?: string; memberIds?: string[]; adminIds?: string[] }, "id">) }));
 }
-
 
 export async function getGroupById(groupId: string): Promise<{ id: string; nombre?: string; descripcion?: string; memberIds?: string[]; adminIds?: string[] } | null> {
   const snap = await getDoc(doc(db, "groups", groupId));
@@ -144,6 +271,7 @@ export async function getUsersByIds(userIds: string[]): Promise<Array<{ id: stri
     })
   );
 }
+
 export async function getUserTournamentGroupIds(userId: string): Promise<string[]> {
   const [memberSnap, adminSnap] = await Promise.all([
     getDocs(query(collection(db, "groups"), where("memberIds", "array-contains", userId))),
@@ -216,4 +344,67 @@ export async function getProfileTournamentEntries(
   });
 
   return records;
+}
+
+export async function getProfileTournamentListView(
+  userId: string,
+  role?: string
+): Promise<ProfileTournamentListRow[]> {
+  const records = await getProfileTournamentEntries(userId, role);
+  const tournamentIds = Array.from(new Set(records.map((record) => record.tournamentId).filter(Boolean)));
+
+  const tournaments = await Promise.all(tournamentIds.map((tournamentId) => getTournamentById(tournamentId)));
+  const tournamentsById = new Map(
+    tournaments.filter((tournament): tournament is Tournament => Boolean(tournament)).map((tournament) => [tournament.id, tournament])
+  );
+
+  const acceptedTeamKeys = new Set(
+    records
+      .filter((record) => record.source === "team")
+      .map((record) => `${record.tournamentId}::${record.groupId}`)
+  );
+
+  return records
+    .filter((record) => {
+      if (record.source !== "registration") return true;
+      const status = record.status || "pendiente";
+      if (status !== "aceptado") return true;
+
+      return !acceptedTeamKeys.has(`${record.tournamentId}::${record.groupId}`);
+    })
+    .map((record) => {
+      const tournament = tournamentsById.get(record.tournamentId);
+      if (!tournament) return null;
+
+      return {
+        id: `${record.source}-${record.id}`,
+        tournament,
+        nameTeam: record.nameTeam || record.name || "Equipo sin nombre",
+        registrationStatus: record.status || "pendiente",
+        source: record.source,
+        entryId: record.id,
+      };
+    })
+    .filter((row): row is ProfileTournamentListRow => Boolean(row));
+}
+
+export async function getProfileTournamentDetailView(
+  tournamentId: string,
+  userId: string
+): Promise<ProfileTournamentDetailView | null> {
+  const [myGroupIds, tournament, teams, registrations] = await Promise.all([
+    getUserTournamentGroupIds(userId),
+    getTournamentById(tournamentId),
+    getTournamentTeams(tournamentId),
+    getTournamentRegistrations(tournamentId),
+  ]);
+
+  if (!tournament) return null;
+
+  return {
+    tournament,
+    myGroupIds,
+    teams: teams.filter((team) => team.groupId && myGroupIds.includes(team.groupId)),
+    registrations: registrations.filter((registration) => registration.groupId && myGroupIds.includes(registration.groupId)),
+  };
 }

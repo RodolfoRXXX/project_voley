@@ -10,7 +10,7 @@ import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 
 import type { TournamentEntrySource as EntrySource, TournamentPaymentStatus as PaymentStatus, TournamentRegistration as EntryDoc, TournamentRegistrationStatus as RegistrationStatus } from "@/types/tournaments";
 import { getGroupById, getTournamentById, getTournamentRegistrationById, getUserTournamentGroupIds, getUsersByIds } from "@/services/tournaments/tournamentQueries";
-import { updateTournamentEntryPlayers } from "@/services/tournaments/tournamentMutations";
+import { buildTournamentEntryPaymentSummary, updateTournamentEntryPlayers } from "@/services/tournaments/tournamentMutations";
 
 type GroupDoc = {
   nombre?: string;
@@ -171,14 +171,11 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
     if (exists && current.length <= minPlayers) return;
 
     const next = exists ? current.filter((id) => id !== playerId) : [...current, playerId];
-    const nextExpectedAmount = next.length * Number(tournament.paymentForPlayer || 0);
-    const paidAmount = Number(entry.paidAmount ?? 0);
-    const pendingAmount = Math.max(nextExpectedAmount - paidAmount, 0);
-
-    let paymentStatus: PaymentStatus = paidAmount <= 0 ? "pendiente" : pendingAmount === 0 ? "pagado" : "parcial";
-    if (nextExpectedAmount > paidAmount) {
-      paymentStatus = "pendiente";
-    }
+    const paymentSummary = buildTournamentEntryPaymentSummary({
+      playerIds: next,
+      paymentForPlayer: Number(tournament.paymentForPlayer || 0),
+      paidAmount: Number(entry.paidAmount ?? 0),
+    });
 
     setSaving(playerId);
 
@@ -187,16 +184,14 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
       entryId: entry.id,
       playerIds: next,
       paymentForPlayer: Number(tournament.paymentForPlayer || 0),
-      paidAmount,
+      paidAmount: Number(entry.paidAmount ?? 0),
     });
 
     setEntry((prev) => (prev ? {
       ...prev,
       playerIds: next,
       playersIds: next,
-      expectedAmount: nextExpectedAmount,
-      pendingAmount,
-      paymentStatus,
+      ...paymentSummary,
     } : prev));
     setSaving(null);
   };

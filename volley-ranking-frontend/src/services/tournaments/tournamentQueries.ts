@@ -2,15 +2,15 @@
 
 import { collection, doc, getDoc, getDocs, orderBy, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Tournament } from "@/types/tournaments/tournament";
-import type { TournamentPhase } from "@/types/tournaments/tournamentPhase";
-import type { TournamentMatch } from "@/types/tournaments/tournamentMatch";
+import type { Tournament } from "@/types/tournaments";
+import type { TournamentPhase } from "@/types/tournaments";
+import type { TournamentMatch } from "@/types/tournaments";
 import type {
   ProfileTournamentEntry,
   TournamentEntrySource,
   TournamentRegistration,
-} from "@/types/tournaments/tournamentRegistration";
-import type { TournamentStanding } from "@/types/tournaments/tournamentStanding";
+} from "@/types/tournaments";
+import type { TournamentStanding } from "@/types/tournaments";
 import {
   toTournament,
   toTournamentMatch,

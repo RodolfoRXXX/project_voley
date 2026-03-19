@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
-import { tournamentStatusLabel, type Tournament } from "@/types/tournaments/tournament";
+import { tournamentStatusLabel, type Tournament } from "@/types/tournaments";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 
-import type { TournamentEntrySource as EntrySource, TournamentPaymentStatus as PaymentStatus, TournamentRegistration as EntryDoc, TournamentRegistrationStatus as RegistrationStatus } from "@/types/tournaments/tournamentRegistration";
+import type { TournamentEntrySource as EntrySource, TournamentPaymentStatus as PaymentStatus, TournamentRegistration as EntryDoc, TournamentRegistrationStatus as RegistrationStatus } from "@/types/tournaments";
 import { getGroupById, getTournamentById, getTournamentRegistrationById, getUserTournamentGroupIds, getUsersByIds } from "@/services/tournaments/tournamentQueries";
 import { updateTournamentEntryPlayers } from "@/services/tournaments/tournamentMutations";
 

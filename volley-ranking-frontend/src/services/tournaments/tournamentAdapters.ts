@@ -1,12 +1,12 @@
-import type { Tournament } from "@/types/tournaments/tournament";
+import type { Tournament } from "@/types/tournaments";
 import type {
   TournamentGroup,
   TournamentPhase,
   TournamentPhaseType,
-} from "@/types/tournaments/tournamentPhase";
-import type { TournamentMatch } from "@/types/tournaments/tournamentMatch";
-import type { TournamentRegistration } from "@/types/tournaments/tournamentRegistration";
-import type { TournamentStanding } from "@/types/tournaments/tournamentStanding";
+} from "@/types/tournaments";
+import type { TournamentMatch } from "@/types/tournaments";
+import type { TournamentRegistration } from "@/types/tournaments";
+import type { TournamentStanding } from "@/types/tournaments";
 
 export function toTournament(id: string, data: Omit<Tournament, "id">): Tournament {
   return { id, ...data };

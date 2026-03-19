@@ -11,22 +11,12 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import MatchCard from "@/components/matchCard/MatchCard";
 import { Skeleton } from "@/components/ui/skeleton/Skeleton";
+import type { Match } from "@/types/match";
 
-type Match = {
-  id: string;
-  groupId: string;
-  visibility?: "group_only" | "public";
-  estado: string;
-  formacion: string;
-  horaInicio: Timestamp;
-  cantidadEquipos: number;
-  cantidadSuplentes: number;
-  posicionesObjetivo: Record<string, number>;
-};
+const SOCIAL_MATCH_STATUSES = ["abierto", "verificando", "cerrado", "cancelado"] as const;
 
 export default function DashboardPage() {
   const { firebaseUser, userDoc } = useAuth();
-  const estadosPermitidos = ["abierto", "verificando", "cerrado", "cancelado"];
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +26,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const q = query(
       collection(db, "matches"),
-      where("estado", "in", estadosPermitidos)
+      where("estado", "in", [...SOCIAL_MATCH_STATUSES])
     );
 
     const unsub = onSnapshot(q, async (snap) => {

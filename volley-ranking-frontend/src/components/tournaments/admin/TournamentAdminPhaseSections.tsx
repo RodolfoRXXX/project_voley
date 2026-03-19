@@ -1,19 +1,4 @@
-import type { TournamentGroup, TournamentMatch, TournamentStanding } from "@/types/tournaments";
-
-type GroupedMatches = {
-  group: {
-    [groupLabel: string]: {
-      [round: string]: TournamentMatch[];
-    };
-  };
-  knockout: {
-    [round: string]: TournamentMatch[];
-  };
-};
-
-function sortRoundEntries(rounds: Record<string, TournamentMatch[]>) {
-  return Object.entries(rounds).sort((a, b) => Number(a[0]) - Number(b[0]));
-}
+import type { TournamentGroup, TournamentStanding } from "@/types/tournaments";
 
 export function TournamentGroupsList({
   groups,
@@ -34,54 +19,6 @@ export function TournamentGroupsList({
           </ul>
         </div>
       ))}
-    </div>
-  );
-}
-
-export function TournamentMatchList({
-  groupedMatches,
-  teamNames,
-}: {
-  groupedMatches: GroupedMatches;
-  teamNames: Record<string, string>;
-}) {
-  const knockoutRounds = sortRoundEntries(groupedMatches.knockout);
-
-  return (
-    <div className="space-y-4">
-      {Object.entries(groupedMatches.group)
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([groupId, rounds]) => (
-          <div key={groupId} className="space-y-2">
-            <h4 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">{groupId}</h4>
-            {sortRoundEntries(rounds).map(([round, matches]) => (
-              <div key={`${groupId}-${round}`} className="space-y-1 border-l border-neutral-200 pl-3 dark:border-neutral-700">
-                <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Round {round}</p>
-                {matches.map((match) => (
-                  <p key={match.id} className="text-sm text-neutral-700 dark:text-neutral-200">
-                    {teamNames[match.homeTeamId || ""] || "Por definir"} vs {teamNames[match.awayTeamId || ""] || "Por definir"}
-                  </p>
-                ))}
-              </div>
-            ))}
-          </div>
-        ))}
-
-      {knockoutRounds.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Cuadro eliminatorio</h4>
-          {knockoutRounds.map(([round, matches]) => (
-            <div key={`knockout-${round}`} className="space-y-1 border-l border-neutral-200 pl-3 dark:border-neutral-700">
-              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Round {round}</p>
-              {matches.map((match) => (
-                <p key={match.id} className="text-sm text-neutral-700 dark:text-neutral-200">
-                  {teamNames[match.homeTeamId || ""] || "Por definir"} vs {teamNames[match.awayTeamId || ""] || "Por definir"}
-                </p>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

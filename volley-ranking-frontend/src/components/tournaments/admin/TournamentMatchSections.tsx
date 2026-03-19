@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { TournamentMatch } from "@/types/tournaments";
 
 export type GroupedTournamentMatches = {
@@ -21,6 +22,25 @@ function isKnockoutTournamentPhase(phaseType: TournamentMatch["phaseType"]) {
 
 function sortRoundEntries(rounds: Record<string, TournamentMatch[]>) {
   return Object.entries(rounds).sort((a, b) => Number(a[0]) - Number(b[0]));
+}
+
+function TournamentMatchSummaryItem({
+  tournamentMatch,
+  teamNames,
+  renderMatchDetails,
+}: {
+  tournamentMatch: TournamentMatch;
+  teamNames: Record<string, string>;
+  renderMatchDetails?: (tournamentMatch: TournamentMatch) => ReactNode;
+}) {
+  return (
+    <div key={tournamentMatch.id} className="rounded-md border border-neutral-200 px-3 py-2 dark:border-neutral-700">
+      <p className="text-sm text-neutral-700 dark:text-neutral-200">
+        {teamNames[tournamentMatch.homeTeamId || ""] || "Por definir"} vs {teamNames[tournamentMatch.awayTeamId || ""] || "Por definir"}
+      </p>
+      {renderMatchDetails ? <div className="mt-2">{renderMatchDetails(tournamentMatch)}</div> : null}
+    </div>
+  );
 }
 
 export function groupTournamentMatches(tournamentMatches: TournamentMatch[]): GroupedTournamentMatches {
@@ -54,9 +74,11 @@ export function groupTournamentMatches(tournamentMatches: TournamentMatch[]): Gr
 export function TournamentMatchSummaryList({
   groupedTournamentMatches,
   teamNames,
+  renderMatchDetails,
 }: {
   groupedTournamentMatches: GroupedTournamentMatches;
   teamNames: Record<string, string>;
+  renderMatchDetails?: (tournamentMatch: TournamentMatch) => ReactNode;
 }) {
   const knockoutRounds = sortRoundEntries(groupedTournamentMatches.knockout);
 
@@ -68,12 +90,15 @@ export function TournamentMatchSummaryList({
           <div key={groupId} className="space-y-2">
             <h4 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">{groupId}</h4>
             {sortRoundEntries(rounds).map(([round, tournamentMatches]) => (
-              <div key={`${groupId}-${round}`} className="space-y-1 border-l border-neutral-200 pl-3 dark:border-neutral-700">
+              <div key={`${groupId}-${round}`} className="space-y-2 border-l border-neutral-200 pl-3 dark:border-neutral-700">
                 <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Round {round}</p>
                 {tournamentMatches.map((tournamentMatch) => (
-                  <p key={tournamentMatch.id} className="text-sm text-neutral-700 dark:text-neutral-200">
-                    {teamNames[tournamentMatch.homeTeamId || ""] || "Por definir"} vs {teamNames[tournamentMatch.awayTeamId || ""] || "Por definir"}
-                  </p>
+                  <TournamentMatchSummaryItem
+                    key={tournamentMatch.id}
+                    tournamentMatch={tournamentMatch}
+                    teamNames={teamNames}
+                    renderMatchDetails={renderMatchDetails}
+                  />
                 ))}
               </div>
             ))}
@@ -84,12 +109,15 @@ export function TournamentMatchSummaryList({
         <div className="space-y-2">
           <h4 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Cuadro eliminatorio</h4>
           {knockoutRounds.map(([round, tournamentMatches]) => (
-            <div key={`knockout-${round}`} className="space-y-1 border-l border-neutral-200 pl-3 dark:border-neutral-700">
+            <div key={`knockout-${round}`} className="space-y-2 border-l border-neutral-200 pl-3 dark:border-neutral-700">
               <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Round {round}</p>
               {tournamentMatches.map((tournamentMatch) => (
-                <p key={tournamentMatch.id} className="text-sm text-neutral-700 dark:text-neutral-200">
-                  {teamNames[tournamentMatch.homeTeamId || ""] || "Por definir"} vs {teamNames[tournamentMatch.awayTeamId || ""] || "Por definir"}
-                </p>
+                <TournamentMatchSummaryItem
+                  key={tournamentMatch.id}
+                  tournamentMatch={tournamentMatch}
+                  teamNames={teamNames}
+                  renderMatchDetails={renderMatchDetails}
+                />
               ))}
             </div>
           ))}

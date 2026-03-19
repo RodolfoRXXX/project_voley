@@ -298,3 +298,44 @@ Con el backend actual, el cambio de fase no debería ser una acción manual sepa
    - o marque el torneo como `finalizado` si ya no hay fase siguiente.
 
 Si negocio necesita override manual, eso sería un paso nuevo y explícito, no parte de este cierre de naming/dominio.
+
+### 15. Carga operativa de resultados desde admin
+
+Se cerró el primer tramo pendiente de concordancia frontend/backend para resultados de `TournamentMatch`.
+
+#### Cambios implementados
+
+- Se agregó `recordTournamentMatchResult()` en `src/services/tournaments/tournamentMutations.ts` como wrapper tipado de la callable `recordMatchResult`.
+- `TournamentAdminPanel` ahora expone una UI operativa dentro de `Fixture confirmado` para cada partido del torneo, con edición de:
+  - `homeSets`
+  - `awaySets`
+  - `homePoints[]`
+  - `awayPoints[]`
+  - `winnerId` opcional con modo `Inferir por sets`
+- Después de guardar un resultado se refrescan explícitamente:
+  - `tournament`
+  - `tournamentPhases`
+  - `tournamentMatches`
+  - `standings`
+- `TournamentMatchSummaryList` pasó a aceptar un bloque opcional de detalle por partido para reutilizar el render del fixture sin mezclar lógica social y lógica de operación admin.
+
+#### Decisiones de implementación
+
+- La carga de resultados vive en el bloque de `Fixture confirmado` porque ahí ya existe el contexto operativo del partido y evita introducir una pantalla nueva antes de validar la experiencia.
+- Se soporta edición de resultados ya cargados para permitir correcciones operativas sin abrir una mutación adicional.
+- `winnerId` sigue siendo opcional en frontend; si el usuario deja `Inferir por sets`, el backend mantiene la fuente de verdad para resolver el ganador.
+- La entrada de puntos por set se resuelve como texto separado por comas para no sobrediseñar todavía una grilla dinámica por cantidad de sets.
+
+#### Estado resultante
+
+- **Alineado** el frontend con backend para registrar resultados de `TournamentMatch` vía callable.
+- **Alineado** el refresco post-submit para reflejar avance automático de fase/finalización del torneo.
+- **Pendiente** mejorar la experiencia visual de transición de fase con feedback más explícito cuando el backend genera una nueva fase o finaliza el torneo.
+
+#### Próximos pasos sugeridos
+
+1. Mostrar feedback contextual post-submit cuando `recordMatchResult` complete una fase (por ejemplo: “fase completada”, “siguiente fase generada”, “torneo finalizado”).
+2. Resaltar en el timeline y en el shell admin cuando cambie `currentPhaseId/currentPhaseType` después de cargar el último resultado pendiente.
+3. Evaluar una UI más estructurada para puntos por set (inputs por set) si operación necesita validaciones más estrictas que la entrada por CSV.
+4. Definir si hace falta bloquear edición de resultados ya confirmados o auditar cambios con historial visible para admins.
+

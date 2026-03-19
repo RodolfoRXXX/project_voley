@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Tournament, TournamentGroup, TournamentMatch, TournamentPhase, TournamentStanding } from "@/types/tournaments";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import type { Tournament, TournamentGroup, TournamentMatch, TournamentMatchResult, TournamentPhase, TournamentStanding } from "@/types/tournaments";
 import { getAdminAction } from "@/lib/tournamentAdmin";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
@@ -20,6 +20,7 @@ import {
   openTournamentRegistrations,
   previewTournamentFixture,
   previewTournamentGroups,
+  recordTournamentMatchResult,
 } from "@/services/tournaments/tournamentMutations";
 import { TournamentPhaseShell, TournamentPhaseTimeline } from "@/components/tournaments/admin/TournamentPhaseShell";
 import { TournamentGroupsList, TournamentStandingsTable } from "@/components/tournaments/admin/TournamentAdminPhaseSections";
@@ -31,6 +32,14 @@ import {
 type TournamentAdminPanelProps = {
   tournament: Tournament;
   onTournamentRefresh: () => Promise<void>;
+};
+
+type MatchResultDraft = {
+  homeSets: string;
+  awaySets: string;
+  homePointsText: string;
+  awayPointsText: string;
+  winnerId: string;
 };
 
 function PreviewCard({
@@ -63,6 +72,46 @@ function PreviewCard({
   );
 }
 
+function pointsToText(points?: number[]) {
+  return Array.isArray(points) ? points.join(", ") : "";
+}
+
+function buildMatchResultDraft(tournamentMatch: TournamentMatch): MatchResultDraft {
+  return {
+    homeSets: tournamentMatch.result?.homeSets != null ? String(tournamentMatch.result.homeSets) : "",
+    awaySets: tournamentMatch.result?.awaySets != null ? String(tournamentMatch.result.awaySets) : "",
+    homePointsText: pointsToText(tournamentMatch.result?.homePoints),
+    awayPointsText: pointsToText(tournamentMatch.result?.awayPoints),
+    winnerId: tournamentMatch.result?.winnerId || "",
+  };
+}
+
+function parsePointsList(value: string) {
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => Number(entry));
+}
+
+function sanitizeResultDraft(tournamentMatch: TournamentMatch, draft: MatchResultDraft): NonNullable<TournamentMatchResult> {
+  const homePoints = parsePointsList(draft.homePointsText);
+  const awayPoints = parsePointsList(draft.awayPointsText);
+  const winnerId = draft.winnerId || undefined;
+
+  return {
+    homeSets: Number(draft.homeSets || 0),
+    awaySets: Number(draft.awaySets || 0),
+    homePoints,
+    awayPoints,
+    ...(winnerId && [tournamentMatch.homeTeamId, tournamentMatch.awayTeamId].includes(winnerId) ? { winnerId } : {}),
+  };
+}
+
+function hasInvalidPointsList(value: string) {
+  return parsePointsList(value).some((point) => Number.isNaN(point));
+}
+
 export default function TournamentAdminPanel({ tournament, onTournamentRefresh }: TournamentAdminPanelProps) {
   const { showToast } = useToast();
   const confirmedFixtureRef = useRef<HTMLDivElement | null>(null);
@@ -84,6 +133,8 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   const [teamNames, setTeamNames] = useState<Record<string, string>>({});
   const [standings, setStandings] = useState<TournamentStanding[]>([]);
   const [loadingStandings, setLoadingStandings] = useState(false);
+  const [matchResultDrafts, setMatchResultDrafts] = useState<Record<string, MatchResultDraft>>({});
+  const [savingMatchIds, setSavingMatchIds] = useState<Record<string, boolean>>({});
 
   const action = getAdminAction(tournament);
   const currentPhase = useMemo(
@@ -158,6 +209,30 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   useEffect(() => {
     loadStandings(tournament.currentPhaseId);
   }, [loadStandings, tournament.currentPhaseId]);
+
+  useEffect(() => {
+    setMatchResultDrafts((currentDrafts) => {
+      const nextDrafts = { ...currentDrafts };
+      let changed = false;
+
+      confirmedTournamentMatches.forEach((tournamentMatch) => {
+        const existingDraft = currentDrafts[tournamentMatch.id];
+        if (!existingDraft || tournamentMatch.status === "completed") {
+          nextDrafts[tournamentMatch.id] = buildMatchResultDraft(tournamentMatch);
+          changed = true;
+        }
+      });
+
+      Object.keys(nextDrafts).forEach((matchId) => {
+        if (!confirmedTournamentMatches.some((tournamentMatch) => tournamentMatch.id === matchId)) {
+          delete nextDrafts[matchId];
+          changed = true;
+        }
+      });
+
+      return changed ? nextDrafts : currentDrafts;
+    });
+  }, [confirmedTournamentMatches]);
 
   const onMainAction = async () => {
     if (!action.nextStatus) return;
@@ -271,6 +346,146 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     }
   };
 
+  const onMatchResultDraftChange = (matchId: string, field: keyof MatchResultDraft) => (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const value = event.target.value;
+    setMatchResultDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [matchId]: {
+        ...(currentDrafts[matchId] || {
+          homeSets: "",
+          awaySets: "",
+          homePointsText: "",
+          awayPointsText: "",
+          winnerId: "",
+        }),
+        [field]: value,
+      },
+    }));
+  };
+
+  const onRecordMatchResult = async (tournamentMatch: TournamentMatch) => {
+    const draft = matchResultDrafts[tournamentMatch.id] || buildMatchResultDraft(tournamentMatch);
+
+    if (hasInvalidPointsList(draft.homePointsText) || hasInvalidPointsList(draft.awayPointsText)) {
+      showToast({ type: "error", message: "Los puntos por set deben ser números separados por coma" });
+      return;
+    }
+
+    setSavingMatchIds((current) => ({ ...current, [tournamentMatch.id]: true }));
+
+    try {
+      await recordTournamentMatchResult({
+        matchId: tournamentMatch.id,
+        result: sanitizeResultDraft(tournamentMatch, draft),
+      });
+
+      await onTournamentRefresh();
+      await Promise.all([
+        loadPhases(),
+        loadConfirmedMatches(),
+        loadStandings(tournament.currentPhaseId),
+      ]);
+
+      showToast({ type: "success", message: "Resultado registrado y panel refrescado" });
+    } catch (error) {
+      handleFirebaseError(error, showToast, "No se pudo registrar el resultado del partido");
+    } finally {
+      setSavingMatchIds((current) => ({ ...current, [tournamentMatch.id]: false }));
+    }
+  };
+
+  const renderConfirmedMatchDetails = (tournamentMatch: TournamentMatch) => {
+    const draft = matchResultDrafts[tournamentMatch.id] || buildMatchResultDraft(tournamentMatch);
+    const isSaving = Boolean(savingMatchIds[tournamentMatch.id]);
+    const isCompleted = tournamentMatch.status === "completed";
+    const winnerValue = draft.winnerId || "auto";
+
+    return (
+      <div className="space-y-3 rounded-md bg-white/70 p-3 dark:bg-neutral-900/40">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+          <span className={`rounded-full px-2 py-1 font-semibold ${isCompleted ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-200" : "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-200"}`}>
+            {isCompleted ? "Resultado cargado" : "Pendiente"}
+          </span>
+          <span>ID partido: {tournamentMatch.id}</span>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
+            <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Sets local</span>
+            <input
+              type="number"
+              min="0"
+              value={draft.homeSets}
+              onChange={onMatchResultDraftChange(tournamentMatch.id, "homeSets")}
+              disabled={isSaving}
+              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+            />
+          </label>
+          <label className="space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
+            <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Sets visitante</span>
+            <input
+              type="number"
+              min="0"
+              value={draft.awaySets}
+              onChange={onMatchResultDraftChange(tournamentMatch.id, "awaySets")}
+              disabled={isSaving}
+              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+            />
+          </label>
+          <label className="space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
+            <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Puntos local por set</span>
+            <input
+              type="text"
+              value={draft.homePointsText}
+              onChange={onMatchResultDraftChange(tournamentMatch.id, "homePointsText")}
+              disabled={isSaving}
+              placeholder="25, 22, 15"
+              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+            />
+          </label>
+          <label className="space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
+            <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Puntos visitante por set</span>
+            <input
+              type="text"
+              value={draft.awayPointsText}
+              onChange={onMatchResultDraftChange(tournamentMatch.id, "awayPointsText")}
+              disabled={isSaving}
+              placeholder="18, 25, 10"
+              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+            />
+          </label>
+        </div>
+
+        <label className="space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
+          <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Ganador</span>
+          <select
+            value={winnerValue}
+            onChange={onMatchResultDraftChange(tournamentMatch.id, "winnerId")}
+            disabled={isSaving}
+            className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+          >
+            <option value="auto">Inferir por sets</option>
+            <option value={tournamentMatch.homeTeamId}>{teamNames[tournamentMatch.homeTeamId] || "Equipo local"}</option>
+            <option value={tournamentMatch.awayTeamId}>{teamNames[tournamentMatch.awayTeamId] || "Equipo visitante"}</option>
+          </select>
+        </label>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Al guardar se refrescan partidos, standings, fases y torneo para reflejar el avance automático del backend.
+          </p>
+          <button
+            onClick={() => onRecordMatchResult(tournamentMatch)}
+            disabled={isSaving}
+            className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+          >
+            {isSaving ? "Guardando..." : isCompleted ? "Actualizar resultado" : "Guardar resultado"}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const groupedPreviewTournamentMatches = useMemo(() => groupTournamentMatches(previewTournamentMatches || []), [previewTournamentMatches]);
   const groupedConfirmedTournamentMatches = useMemo(() => groupTournamentMatches(confirmedTournamentMatches), [confirmedTournamentMatches]);
   const canOrganizeTournament =
@@ -379,7 +594,11 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           {confirmedTournamentMatches.length > 0 && (
             <div ref={confirmedFixtureRef}>
               <PreviewCard title="Fixture confirmado" tone="confirmed">
-                <TournamentMatchSummaryList groupedTournamentMatches={groupedConfirmedTournamentMatches} teamNames={teamNames} />
+                <TournamentMatchSummaryList
+                  groupedTournamentMatches={groupedConfirmedTournamentMatches}
+                  teamNames={teamNames}
+                  renderMatchDetails={renderConfirmedMatchDetails}
+                />
               </PreviewCard>
             </div>
           )}

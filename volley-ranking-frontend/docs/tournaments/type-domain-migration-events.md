@@ -339,3 +339,253 @@ Se cerró el primer tramo pendiente de concordancia frontend/backend para result
 3. Evaluar una UI más estructurada para puntos por set (inputs por set) si operación necesita validaciones más estrictas que la entrada por CSV.
 4. Definir si hace falta bloquear edición de resultados ya confirmados o auditar cambios con historial visible para admins.
 
+
+
+### 16. Definición funcional pendiente antes de seguir con código
+
+Se revisó el estado actual del módulo de torneos y, antes de seguir implementando cambios de UI/flujo, se acordó dejar documentados los pendientes funcionales y de producto que definen cómo debería evolucionar la experiencia.
+
+#### Pendientes operativos del módulo de torneos
+
+Estos puntos se consideran abiertos aunque ya exista base técnica parcial en backend/frontend:
+
+1. **Permisos finos por torneo**
+   - revisar que todas las operaciones sensibles validen no sólo `admin` global sino también pertenencia a `adminIds` del torneo;
+   - confirmar especialmente la carga de resultados y cualquier transición de fase.
+2. **Cierre real del torneo**
+   - definir y luego implementar `finalizeTournament` como cierre explícito;
+   - persistir `podiumTeamIds` y criterio de podio por formato (`liga`, `eliminacion`, `mixto`).
+3. **Avance de fase basado en reglas configurables**
+   - dejar de depender de criterios hardcodeados (por ejemplo clasificar siempre top 2);
+   - usar `tournamentAdvancementRules`, `qualifyPerGroup`, criterios de seeding y desempates reales.
+4. **Operación completa de eliminación directa**
+   - definir cómo se construyen semifinal/final/tercer puesto o rondas sucesivas dentro del cuadro;
+   - aclarar si cada ronda es una fase o si la fase `knockout` genera internamente nuevas llaves.
+5. **Programación operativa del fixture**
+   - definir edición de `scheduledDate`, `location` y orden operativo de partidos;
+   - incorporar si la agenda es sólo informativa o también parte del control de avance.
+6. **Cierre del flujo de inscripción del equipo**
+   - definir cuándo queda congelado el roster;
+   - calcular monto esperado con roster confirmado y no sólo con edición manual posterior;
+   - evitar depender de escrituras directas desde cliente para datos críticos de roster/pago.
+7. **Gestión completa de admins del torneo**
+   - sumar quitar admin, restricciones sobre owner y reglas para no dejar torneos sin responsable.
+8. **Cobertura de testing**
+   - sumar casos de creación, inscripción, aceptación/rechazo, fixture, standings, resultados, avance y permisos.
+
+#### Revisión funcional: card de “Mis torneos”
+
+Situación observada:
+
+- La card hoy prioriza **estado del torneo** + **fase actual** + métricas generales de ocupación/avance competitivo.
+- Para el caso de “Mis torneos”, eso resulta útil pero insuficiente porque el usuario también necesita saber el **estado operativo de su equipo/inscripción**.
+
+Decisión de producto propuesta:
+
+- Mantener la misma base visual de card compartida para no duplicar diseño.
+- En la variante de perfil (`Mis torneos`) agregar una capa específica de **estado de mi equipo** o **estado de mi inscripción**.
+- Esa información no debería ocupar el lugar principal del estado del torneo, sino convivir con él en un bloque adicional y claramente separado.
+
+#### Información recomendada para mostrar en la card de “Mis torneos”
+
+Se propone que cada card de perfil muestre, además del estado del torneo:
+
+1. **Estado de la inscripción/equipo**
+   - `Pendiente`, `Aceptado`, `Rechazado`, `Equipo confirmado`, etc.
+2. **Estado de elegibilidad para quedar listo**
+   - `Listo para inscribirse`;
+   - `Faltan jugadores`;
+   - `Pago pendiente`;
+   - `Pago parcial`;
+   - `Listo pero pendiente de aprobación admin`.
+3. **Resumen corto de roster**
+   - `Jugadores cargados: X / mínimo Y`.
+4. **Resumen corto de pago**
+   - `Pago: pendiente / parcial / completo`.
+   - opcionalmente: `$pagado / $esperado`.
+5. **Próxima acción sugerida**
+   - `Completá jugadores`;
+   - `Registrar pago`;
+   - `Esperando revisión del torneo`;
+   - `Ver detalle del equipo`.
+
+#### Estados derivados sugeridos para la card de perfil
+
+Para evitar mostrar demasiados datos crudos, conviene derivar un estado resumen por equipo/inscripción:
+
+- **No listo**: no cumple mínimo de jugadores.
+- **Listo con pago pendiente**: cumple roster pero falta pago.
+- **Listo para revisión**: cumple roster + pago y espera aceptación.
+- **Aceptado / activo en torneo**: ya existe `tournamentTeam` aceptado.
+- **Observado / rechazado**: quedó rechazado o necesita corrección.
+
+La recomendación es que este estado derivado sea el mensaje dominante del bloque “mi equipo”, y que debajo se apoye con 1 o 2 datos objetivos (jugadores y pago).
+
+#### Reutilización de cards entre secciones
+
+Sí: la base del bloque está **reutilizada**.
+
+Decisión registrada:
+
+- La presentación compartida de cards/listados vive en `TournamentSummaryCard`.
+- Esa card se usa como base tanto para listado público como para listado de perfil.
+- La evolución recomendada no es duplicar la card, sino agregarle una **variante o slot específico de contexto** para perfil/admin cuando haga falta mostrar información del equipo propio.
+
+Criterio sugerido:
+
+- **Público**: foco en torneo, fase, cupos, progreso competitivo.
+- **Perfil**: foco en torneo + estado de mi inscripción/equipo.
+- **Admin**: si se reutiliza en el futuro, foco en operación y alertas pendientes.
+
+#### Revisión funcional: admin de torneo “liga”
+
+Observación reportada:
+
+- En torneos `liga`, no se visualiza claramente ni grupo ni fixture; en algunos casos aparece sólo el título del bloque de fixture y el contenido queda vacío.
+
+Hipótesis funcional a validar antes de programar:
+
+1. Si el formato es `liga` con **un único grupo implícito**, la UI no debería intentar vender la idea de “grupos” como concepto principal.
+2. Si sólo existe un grupo, la experiencia debería renombrar/contextualizar:
+   - en vez de “Organización de grupos”, mostrar algo como `Participantes de la liga` o `Equipos confirmados`;
+   - en vez de esconder el fixture, mostrar directamente el calendario/round robin de esa liga.
+3. Si el fixture está vacío, el estado vacío debería explicarlo explícitamente:
+   - `Todavía no se generó el fixture de la liga`;
+   - `Confirmá equipos para generar las fechas`;
+   - `Esta fase no usa grupos múltiples`.
+
+Decisión sugerida:
+
+- Diseñar una variante explícita para `round_robin`/liga donde:
+  - no se fuerce la semántica de grupos múltiples;
+  - el fixture se muestre como eje principal de la fase;
+  - el estado vacío sea descriptivo y accionable.
+
+#### Revisión funcional: carga de resultados mediante modal
+
+Se considera mejor mover la carga de resultados a un **modal operativo** por partido.
+
+Objetivos del modal:
+
+- reducir ruido en el bloque de fixture confirmado;
+- mejorar foco del operador;
+- permitir copy más claro sobre local/visitante y sets/puntos.
+
+Información mínima recomendada dentro del modal:
+
+1. **Encabezado del partido**
+   - nombre del torneo;
+   - fase y ronda;
+   - etiqueta visible de `Local` y `Visitante`.
+2. **Descripción corta del cruce**
+   - `Local: Equipo A`;
+   - `Visitante: Equipo B`.
+3. **Campos de sets con naming explícito**
+   - `Sets ganados por Equipo A (local)`;
+   - `Sets ganados por Equipo B (visitante)`.
+4. **Campos de puntos por set con naming explícito**
+   - `Puntos por set de Equipo A`;
+   - `Puntos por set de Equipo B`.
+5. **Ganador opcional**
+   - mantener opción de inferencia automática, pero con labels por nombre real de equipo.
+6. **Resumen/validación previa al submit**
+   - indicar si el ganador se inferirá por sets;
+   - remarcar si faltan datos o hay empate inválido en sets.
+
+Decisión sugerida:
+
+- Dejar la ficha resumida del partido en el fixture.
+- Mover la edición/carga de resultados al modal disparado por CTA (`Cargar resultado` / `Editar resultado`).
+- Aprovechar el modal para reforzar identidad de local/visitante y reducir errores de carga.
+
+#### Revisión funcional: status bars por etapa
+
+Situación actual:
+
+- Las barras muestran principalmente porcentaje de equipos inscriptos/cupos cubiertos.
+- Eso sirve para inscripción, pero no representa bien el avance de otras etapas.
+
+Decisión de producto sugerida:
+
+- Mantener una barra general sólo donde el indicador sea realmente significativo.
+- Para las etapas competitivas, usar una métrica propia de la etapa actual.
+
+Parámetros sugeridos por etapa:
+
+1. **Inscripción / registration**
+   - `% de cupos cubiertos`;
+   - `equipos aceptados / máximo`.
+2. **Armado de grupos**
+   - `% de equipos asignados a grupos`;
+   - `grupos confirmados / grupos esperados`.
+3. **Fixture confirmado**
+   - `% de partidos generados/programados`;
+   - `partidos confirmados / partidos esperados`.
+4. **Fase en juego (liga o grupos)**
+   - `% de partidos completados`.
+5. **Knockout / eliminación**
+   - `% de cruces resueltos`;
+   - o `equipos clasificados a la siguiente ronda / equipos en competencia`.
+6. **Finalizado**
+   - barra completa o reemplazo por estado de cierre + podio.
+
+Criterio general:
+
+- La barra debe responder a la pregunta: **“qué significa progreso en esta fase concreta”**.
+- Si no hay una barra clara, conviene reemplazarla por KPIs puntuales en lugar de forzar un porcentaje ambiguo.
+
+#### Revisión funcional: detalle del torneo por eliminación
+
+Observación:
+
+- En eliminación directa, mostrar “puntos” puede no ser el KPI más útil si la fase no se resuelve por tabla.
+
+Decisión sugerida:
+
+- En torneos/fases de eliminación, cambiar el foco del detalle competitivo:
+  - mostrar cruces, ganadores y clasificados;
+  - destacar qué equipos avanzan de ronda;
+  - usar puntos sólo si existe una estadística secundaria relevante, no como eje principal.
+
+Información recomendada para detalle de eliminación:
+
+1. **Bracket o lista de cruces por ronda**.
+2. **Estado de cada cruce** (`pendiente`, `en juego`, `completado`).
+3. **Equipo clasificado / ganador del cruce**.
+4. **Próxima ronda o próximo rival**, si ya está definido.
+5. **Camino al título** o resumen de avance cuando el cuadro sea corto.
+
+#### Próximos pasos definidos para la siguiente iteración de diseño/implementación
+
+Antes de escribir código nuevo, la próxima iteración debería resolver este orden:
+
+1. **Definir view-model de card de perfil**
+   - qué estados derivados del equipo se mostrarán;
+   - qué datos mínimos aparecen siempre;
+   - qué CTA principal tendrá cada estado.
+2. **Definir estrategia de reutilización de `TournamentSummaryCard`**
+   - confirmar si se resuelve con `variant`, `slot`, `footer` o sub-bloque contextual.
+3. **Diseñar experiencia específica de admin para `liga`**
+   - variante sin grupos múltiples;
+   - estado vacío claro para fixture;
+   - prioridad visual del round robin.
+4. **Diseñar modal de carga de resultados**
+   - contenido, copy, validaciones y CTA;
+   - cómo queda la tarjeta resumida del partido después de mover la edición fuera del bloque expandido.
+5. **Redefinir progress/status bars por fase**
+   - tabla de KPIs por `registration`, `group_stage`, `round_robin`, `knockout`, `final`.
+6. **Definir detalle competitivo para eliminación**
+   - qué reemplaza a la lectura basada en puntos;
+   - cómo mostrar clasificados/ganadores de cada cruce.
+7. **Recién después** pasar a implementación de UI + ajuste de queries/view-models.
+
+#### Resultado esperado de esta definición previa
+
+Si se sigue este orden, la próxima etapa de código debería poder avanzar con menos retrabajo porque ya quedarían definidos:
+
+- el mensaje principal de las cards de perfil;
+- qué partes de UI se reutilizan entre público y perfil;
+- cómo se representa una liga con un solo grupo implícito;
+- cómo se opera la carga de resultados sin saturar el panel admin;
+- qué significa “progreso” en cada fase del torneo;
+- cómo se cuenta el avance competitivo en eliminación directa.

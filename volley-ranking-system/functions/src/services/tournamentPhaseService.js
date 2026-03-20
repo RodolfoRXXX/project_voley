@@ -156,12 +156,35 @@ async function recordMatchResult({ matchId, result }) {
     const winnerId = result.winnerId || (homeSets > awaySets ? match.homeTeamId : match.awayTeamId);
     const homeStandingRef = db.collection("tournamentStandings").doc(`${match.tournamentId}_${match.phaseId}_${match.homeTeamId}`);
     const awayStandingRef = db.collection("tournamentStandings").doc(`${match.tournamentId}_${match.phaseId}_${match.awayTeamId}`);
-    const [homeStandingSnap, awayStandingSnap] = await Promise.all([trx.get(homeStandingRef), trx.get(awayStandingRef)]);
+    const matchesQuery = db.collection("tournamentMatches").where("phaseId", "==", match.phaseId);
+    const [homeStandingSnap, awayStandingSnap, matchesSnap] = await Promise.all([
+      trx.get(homeStandingRef),
+      trx.get(awayStandingRef),
+      trx.get(matchesQuery),
+    ]);
+
+    if (homeSets === awaySets) {
+      throw new functions.https.HttpsError("invalid-argument", "El resultado no puede terminar empatado en sets");
+    }
+
+    if (![match.homeTeamId, match.awayTeamId].includes(winnerId)) {
+      throw new functions.https.HttpsError("invalid-argument", "winnerId inválido");
+    }
+
+    const homePointsList = Array.isArray(result.homePoints) ? result.homePoints.map((value) => Number(value || 0)) : [];
+    const awayPointsList = Array.isArray(result.awayPoints) ? result.awayPoints.map((value) => Number(value || 0)) : [];
+
+    if (homePointsList.length !== awayPointsList.length) {
+      throw new functions.https.HttpsError("invalid-argument", "Los puntos por set de ambos equipos deben tener la misma cantidad de sets");
+    }
+
+    const maxRecordedSets = Math.max(homeSets, awaySets, homePointsList.length, awayPointsList.length);
+    if (homePointsList.length > 0 && maxRecordedSets !== homePointsList.length) {
+      throw new functions.https.HttpsError("invalid-argument", "La cantidad de puntos por set debe coincidir con la cantidad de sets informados");
+    }
 
     const homeStats = { ...(homeStandingSnap.data()?.stats || {}) };
     const awayStats = { ...(awayStandingSnap.data()?.stats || {}) };
-    const homePointsList = Array.isArray(result.homePoints) ? result.homePoints : [];
-    const awayPointsList = Array.isArray(result.awayPoints) ? result.awayPoints : [];
     const sum = (list) => list.reduce((acc, value) => acc + Number(value || 0), 0);
     const homeWon = winnerId === match.homeTeamId;
     const awayWon = winnerId === match.awayTeamId;
@@ -198,7 +221,6 @@ async function recordMatchResult({ matchId, result }) {
     trx.set(homeStandingRef, { ...buildStandingsDoc({ tournamentId: match.tournamentId, phase, teamId: match.homeTeamId, groupLabel: match.groupLabel || null }), stats: nextHome }, { merge: true });
     trx.set(awayStandingRef, { ...buildStandingsDoc({ tournamentId: match.tournamentId, phase, teamId: match.awayTeamId, groupLabel: match.groupLabel || null }), stats: nextAway }, { merge: true });
 
-    const matchesSnap = await trx.get(db.collection("tournamentMatches").where("phaseId", "==", match.phaseId));
     phaseCompleted = matchesSnap.docs.every((doc) => {
       if (doc.id === match.id) return true;
       return doc.data().status === "completed";

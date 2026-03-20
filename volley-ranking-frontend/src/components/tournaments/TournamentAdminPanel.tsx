@@ -371,6 +371,16 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       return;
     }
 
+    if (draft.homeSets.trim() === "" || draft.awaySets.trim() === "") {
+      showToast({ type: "error", message: "Completá al menos los sets ganados por local y visitante" });
+      return;
+    }
+
+    if (Number(draft.homeSets) === Number(draft.awaySets)) {
+      showToast({ type: "error", message: "El resultado no puede terminar empatado en sets" });
+      return;
+    }
+
     setSavingMatchIds((current) => ({ ...current, [tournamentMatch.id]: true }));
 
     try {
@@ -409,6 +419,15 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           <span>ID partido: {tournamentMatch.id}</span>
         </div>
 
+        <div className="rounded-md border border-sky-200 bg-sky-50/80 p-3 text-sm text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+          <p className="font-medium">Cómo cargar el resultado</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-xs sm:text-sm">
+            <li><b>Obligatorio:</b> solo necesitás informar cuántos sets ganó cada equipo.</li>
+            <li><b>Opcional:</b> los puntos por set sirven para estadísticas y desempates finos.</li>
+            <li>Si no elegís ganador, el sistema lo <b>infiere automáticamente</b> según quién tenga más sets.</li>
+          </ul>
+        </div>
+
         <div className="grid gap-3 md:grid-cols-2">
           <label className="space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
             <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Sets local</span>
@@ -433,7 +452,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
             />
           </label>
           <label className="space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
-            <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Puntos local por set</span>
+            <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Puntos local por set (opcional)</span>
             <input
               type="text"
               value={draft.homePointsText}
@@ -444,7 +463,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
             />
           </label>
           <label className="space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
-            <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Puntos visitante por set</span>
+            <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Puntos visitante por set (opcional)</span>
             <input
               type="text"
               value={draft.awayPointsText}
@@ -457,7 +476,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
         </div>
 
         <label className="space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
-          <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Ganador</span>
+          <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Ganador (opcional)</span>
           <select
             value={winnerValue}
             onChange={onMatchResultDraftChange(tournamentMatch.id, "winnerId")}
@@ -472,7 +491,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Al guardar se refrescan partidos, standings, fases y torneo para reflejar el avance automático del backend.
+            Recomendado: cargá primero los sets. Los puntos por set solo completalos si querés conservar ese detalle en el torneo.
           </p>
           <button
             onClick={() => onRecordMatchResult(tournamentMatch)}

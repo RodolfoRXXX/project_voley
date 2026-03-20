@@ -22,6 +22,7 @@ import {
   toTournamentStanding,
   toTournamentTeam,
 } from "@/services/tournaments/tournamentAdapters";
+import { getUserTournamentState, type UserTournamentState } from "@/services/tournaments/tournamentViewModels";
 
 export type TournamentTeamRow = {
   id: string;
@@ -95,6 +96,7 @@ export type ProfileTournamentListRow = {
   currentPhase: TournamentPhase | null;
   metrics: TournamentProgressMetrics;
   phaseSnapshot: TournamentPhaseSnapshot | null;
+  userState: UserTournamentState;
 };
 
 export type ProfileTournamentDetailView = {
@@ -460,6 +462,18 @@ export async function getProfileTournamentListView(
       .map((record) => `${record.tournamentId}::${record.groupId}`)
   );
 
+  const registrationByTournamentGroup = new Map<string, ProfileTournamentEntry>(
+    records
+      .filter((record) => record.source === "registration")
+      .map((record) => [`${record.tournamentId}::${record.groupId}`, record])
+  );
+
+  const teamByTournamentGroup = new Map<string, ProfileTournamentEntry>(
+    records
+      .filter((record) => record.source === "team")
+      .map((record) => [`${record.tournamentId}::${record.groupId}`, record])
+  );
+
   const visibleRecords = records.filter((record) => {
     if (record.source !== "registration") return true;
     const status = record.status || "pendiente";
@@ -495,10 +509,14 @@ export async function getProfileTournamentListView(
       if (!tournament) return null;
       const tournamentMetrics = metricsByTournamentId.get(tournament.id);
 
+      const relationKey = `${record.tournamentId}::${record.groupId}`;
+      const registration = registrationByTournamentGroup.get(relationKey) || null;
+      const team = teamByTournamentGroup.get(relationKey) || null;
+
       return {
         id: `${record.source}-${record.id}`,
         tournament,
-        nameTeam: record.nameTeam || record.name || "Equipo sin nombre",
+        nameTeam: record.nameTeam || record.name || team?.nameTeam || registration?.nameTeam || "Equipo sin nombre",
         registrationStatus: record.status || "pendiente",
         source: record.source,
         entryId: record.id,
@@ -510,6 +528,11 @@ export async function getProfileTournamentListView(
           standings: [],
         }),
         phaseSnapshot: tournamentMetrics?.phaseSnapshot || null,
+        userState: getUserTournamentState({
+          tournament,
+          registration,
+          team,
+        }),
       };
     })
     .filter((row): row is ProfileTournamentListRow => Boolean(row));

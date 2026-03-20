@@ -69,6 +69,8 @@ export default function ProfileTournamentsPage() {
                   {registrationStatusLabel[row.registrationStatus]}
                 </span>
               )}
+              variant="profile"
+              userState={row.userState}
               footer={row.registrationStatus === "rechazado" ? (
                 <span className="inline-block text-sm font-medium text-neutral-400 cursor-not-allowed">
                   Ver detalle

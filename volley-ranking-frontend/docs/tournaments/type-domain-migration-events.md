@@ -589,3 +589,27 @@ Si se sigue este orden, la próxima etapa de código debería poder avanzar con 
 - cómo se opera la carga de resultados sin saturar el panel admin;
 - qué significa “progreso” en cada fase del torneo;
 - cómo se cuenta el avance competitivo en eliminación directa.
+
+
+### 17. Paso 1 implementado: view-model de estado del usuario en “Mis torneos”
+
+Fecha: 2026-03-20
+
+Se implementó `getUserTournamentState(params)` en `src/services/tournaments/tournamentViewModels.ts` para derivar un resumen de estado del usuario a partir de `tournament`, `registration` y `team`.
+
+Cambios registrados:
+
+- `getProfileTournamentListView()` ahora agrega `userState` a cada fila del listado de perfil.
+- La composición cruza `registration` y `team` por `tournamentId::groupId` para no perder el contexto del usuario cuando la vista deduplica una inscripción aceptada frente a su equipo final.
+- `TournamentSummaryCard` suma `variant="profile"` y renderiza un bloque específico con badge de estado, jugadores, pago y próxima acción.
+
+Estados derivados implementados en esta iteración:
+
+- `NOT_READY`: faltan jugadores para llegar al mínimo requerido.
+- `READY_PENDING_PAYMENT`: el roster ya está listo, pero el pago sigue pendiente o parcial.
+- `UNDER_REVIEW`: roster y pago completos, a la espera de revisión.
+- `ACCEPTED`: el equipo ya fue aceptado / confirmado en el torneo.
+
+Resultado esperado:
+
+- el usuario entra a “Mis torneos” y entiende rápido si ya está adentro, qué le falta y cuál es la próxima acción sugerida.

@@ -41,5 +41,12 @@ export type ProfileTournamentEntry = {
   nameTeam?: string;
   status?: TournamentRegistrationStatus;
   playerIds?: string[];
+  playersIds?: string[];
+  paymentStatus?: TournamentPaymentStatus;
+  expectedAmount?: number;
+  paidAmount?: number;
+  pendingAmount?: number;
+  paymentForPlayer?: number;
+  teamMembersCount?: number;
   source: TournamentEntrySource;
 };

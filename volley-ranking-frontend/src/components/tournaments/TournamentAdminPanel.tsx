@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Tournament, TournamentGroup, TournamentMatch, TournamentMatchResult, TournamentPhase, TournamentStanding } from "@/types/tournaments";
 import { getAdminAction } from "@/lib/tournamentAdmin";
 import useToast from "@/components/ui/toast/useToast";
@@ -24,6 +24,7 @@ import {
 } from "@/services/tournaments/tournamentMutations";
 import { TournamentPhaseShell, TournamentPhaseTimeline } from "@/components/tournaments/admin/TournamentPhaseShell";
 import { TournamentGroupsList, TournamentStandingsTable } from "@/components/tournaments/admin/TournamentAdminPhaseSections";
+import { MatchResultModal, type MatchResultDraft } from "@/components/tournaments/admin/MatchResultModal";
 import {
   groupTournamentMatches,
   TournamentMatchSummaryList,
@@ -32,14 +33,6 @@ import {
 type TournamentAdminPanelProps = {
   tournament: Tournament;
   onTournamentRefresh: () => Promise<void>;
-};
-
-type MatchResultDraft = {
-  homeSets: string;
-  awaySets: string;
-  homePointsText: string;
-  awayPointsText: string;
-  winnerId: string;
 };
 
 function PreviewCard({
@@ -135,6 +128,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   const [loadingStandings, setLoadingStandings] = useState(false);
   const [matchResultDrafts, setMatchResultDrafts] = useState<Record<string, MatchResultDraft>>({});
   const [savingMatchIds, setSavingMatchIds] = useState<Record<string, boolean>>({});
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
   const action = getAdminAction(tournament);
   const currentPhase = useMemo(
@@ -346,8 +340,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     }
   };
 
-  const onMatchResultDraftChange = (matchId: string, field: keyof MatchResultDraft) => (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = event.target.value;
+  const onMatchResultDraftChange = (matchId: string, field: keyof MatchResultDraft, value: string) => {
     setMatchResultDrafts((currentDrafts) => ({
       ...currentDrafts,
       [matchId]: {
@@ -362,6 +355,11 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       },
     }));
   };
+
+  const selectedTournamentMatch = useMemo(
+    () => confirmedTournamentMatches.find((tournamentMatch) => tournamentMatch.id === selectedMatchId) || null,
+    [confirmedTournamentMatches, selectedMatchId]
+  );
 
   const onRecordMatchResult = async (tournamentMatch: TournamentMatch) => {
     const draft = matchResultDrafts[tournamentMatch.id] || buildMatchResultDraft(tournamentMatch);
@@ -381,6 +379,19 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       return;
     }
 
+    const maxSetsPerMatch = Number(tournament.rules?.setsToWin || tournament.settings?.setsToWin || 0);
+    if (maxSetsPerMatch > 0 && Number(draft.homeSets) + Number(draft.awaySets) > maxSetsPerMatch) {
+      showToast({ type: "error", message: `La suma de sets no puede superar ${maxSetsPerMatch}` });
+      return;
+    }
+
+    const homePointsCount = parsePointsList(draft.homePointsText).length;
+    const awayPointsCount = parsePointsList(draft.awayPointsText).length;
+    if (homePointsCount !== awayPointsCount) {
+      showToast({ type: "error", message: "Local y visitante deben tener la misma cantidad de puntos por set" });
+      return;
+    }
+
     setSavingMatchIds((current) => ({ ...current, [tournamentMatch.id]: true }));
 
     try {
@@ -397,6 +408,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       ]);
 
       showToast({ type: "success", message: "Resultado registrado y panel refrescado" });
+      setSelectedMatchId(null);
     } catch (error) {
       handleFirebaseError(error, showToast, "No se pudo registrar el resultado del partido");
     } finally {
@@ -406,100 +418,49 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
   const renderConfirmedMatchDetails = (tournamentMatch: TournamentMatch) => {
     const draft = matchResultDrafts[tournamentMatch.id] || buildMatchResultDraft(tournamentMatch);
-    const isSaving = Boolean(savingMatchIds[tournamentMatch.id]);
     const isCompleted = tournamentMatch.status === "completed";
-    const winnerValue = draft.winnerId || "auto";
+    const homeSets = Number(draft.homeSets || 0);
+    const awaySets = Number(draft.awaySets || 0);
+    const inferredWinner =
+      draft.winnerId ||
+      (homeSets === awaySets ? "" : homeSets > awaySets ? tournamentMatch.homeTeamId : tournamentMatch.awayTeamId);
+    const winnerLabel = inferredWinner
+      ? teamNames[inferredWinner] || (inferredWinner === tournamentMatch.homeTeamId ? "Equipo local" : "Equipo visitante")
+      : "Sin definir";
 
     return (
       <div className="space-y-3 rounded-md bg-white/70 p-3 dark:bg-neutral-900/40">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
           <span className={`rounded-full px-2 py-1 font-semibold ${isCompleted ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-200" : "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-200"}`}>
             {isCompleted ? "Resultado cargado" : "Pendiente"}
           </span>
-          <span>ID partido: {tournamentMatch.id}</span>
-        </div>
-
-        <div className="rounded-md border border-sky-200 bg-sky-50/80 p-3 text-sm text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
-          <p className="font-medium">Cómo cargar el resultado</p>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-xs sm:text-sm">
-            <li><b>Obligatorio:</b> solo necesitás informar cuántos sets ganó cada equipo.</li>
-            <li><b>Opcional:</b> los puntos por set sirven para estadísticas y desempates finos.</li>
-            <li>Si no elegís ganador, el sistema lo <b>infiere automáticamente</b> según quién tenga más sets.</li>
-          </ul>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2">
-          <label className="space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
-            <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Sets local</span>
-            <input
-              type="number"
-              min="0"
-              value={draft.homeSets}
-              onChange={onMatchResultDraftChange(tournamentMatch.id, "homeSets")}
-              disabled={isSaving}
-              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
-            />
-          </label>
-          <label className="space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
-            <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Sets visitante</span>
-            <input
-              type="number"
-              min="0"
-              value={draft.awaySets}
-              onChange={onMatchResultDraftChange(tournamentMatch.id, "awaySets")}
-              disabled={isSaving}
-              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
-            />
-          </label>
-          <label className="space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
-            <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Puntos local por set (opcional)</span>
-            <input
-              type="text"
-              value={draft.homePointsText}
-              onChange={onMatchResultDraftChange(tournamentMatch.id, "homePointsText")}
-              disabled={isSaving}
-              placeholder="25, 22, 15"
-              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
-            />
-          </label>
-          <label className="space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
-            <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Puntos visitante por set (opcional)</span>
-            <input
-              type="text"
-              value={draft.awayPointsText}
-              onChange={onMatchResultDraftChange(tournamentMatch.id, "awayPointsText")}
-              disabled={isSaving}
-              placeholder="18, 25, 10"
-              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
-            />
-          </label>
-        </div>
-
-        <label className="space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
-          <span className="block text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Ganador (opcional)</span>
-          <select
-            value={winnerValue}
-            onChange={onMatchResultDraftChange(tournamentMatch.id, "winnerId")}
-            disabled={isSaving}
-            className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
-          >
-            <option value="auto">Inferir por sets</option>
-            <option value={tournamentMatch.homeTeamId}>{teamNames[tournamentMatch.homeTeamId] || "Equipo local"}</option>
-            <option value={tournamentMatch.awayTeamId}>{teamNames[tournamentMatch.awayTeamId] || "Equipo visitante"}</option>
-          </select>
-        </label>
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Recomendado: cargá primero los sets. Los puntos por set solo completalos si querés conservar ese detalle en el torneo.
-          </p>
+            <span>ID partido: {tournamentMatch.id}</span>
+          </div>
           <button
-            onClick={() => onRecordMatchResult(tournamentMatch)}
-            disabled={isSaving}
-            className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+            type="button"
+            onClick={() => setSelectedMatchId(tournamentMatch.id)}
+            className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:border-neutral-700 dark:text-neutral-200"
           >
-            {isSaving ? "Guardando..." : isCompleted ? "Actualizar resultado" : "Guardar resultado"}
+            {isCompleted ? "Editar resultado" : "Cargar resultado"}
           </button>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-700">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Sets</p>
+            <p className="mt-1 text-sm font-medium text-neutral-900 dark:text-neutral-100">{homeSets} - {awaySets}</p>
+          </div>
+          <div className="rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-700">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Ganador</p>
+            <p className="mt-1 text-sm font-medium text-neutral-900 dark:text-neutral-100">{winnerLabel}</p>
+          </div>
+          <div className="rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-700">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Puntos por set</p>
+            <p className="mt-1 text-sm font-medium text-neutral-900 dark:text-neutral-100">
+              {draft.homePointsText || draft.awayPointsText ? `${draft.homePointsText || "-"} / ${draft.awayPointsText || "-"}` : "Sin detalle"}
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -635,6 +596,25 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
         </div>
         <TournamentStandingsTable standings={standings} teamNames={teamNames} />
       </div>
+
+      <MatchResultModal
+        open={Boolean(selectedTournamentMatch)}
+        tournament={tournament}
+        phase={currentPhase}
+        tournamentMatch={selectedTournamentMatch}
+        teamNames={teamNames}
+        draft={selectedTournamentMatch ? (matchResultDrafts[selectedTournamentMatch.id] || buildMatchResultDraft(selectedTournamentMatch)) : null}
+        saving={selectedTournamentMatch ? Boolean(savingMatchIds[selectedTournamentMatch.id]) : false}
+        onClose={() => setSelectedMatchId(null)}
+        onDraftChange={(field, value) => {
+          if (!selectedTournamentMatch) return;
+          onMatchResultDraftChange(selectedTournamentMatch.id, field, value);
+        }}
+        onSubmit={() => {
+          if (!selectedTournamentMatch) return;
+          onRecordMatchResult(selectedTournamentMatch);
+        }}
+      />
     </TournamentPhaseShell>
   );
 }

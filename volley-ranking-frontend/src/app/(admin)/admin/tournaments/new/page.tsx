@@ -398,7 +398,7 @@ export default function NewTournamentPage() {
           <h2 className="text-sm font-semibold text-neutral-800">Reglas</h2>
 
           <div>
-            <label className="text-sm font-medium">Sets para ganar</label>
+            <label className="text-sm font-medium">Sets máximos por partido</label>
             <input
               type="number"
               min={1}
@@ -414,6 +414,9 @@ export default function NewTournamentPage() {
                 }))
               }
             />
+            <p className="mt-1 text-xs text-neutral-500">
+              Este valor define cuántos sets puede tener como máximo cada partido y luego se valida al cargar resultados.
+            </p>
           </div>
 
           {!isKnockout && (

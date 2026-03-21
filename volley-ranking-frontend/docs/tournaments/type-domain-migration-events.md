@@ -312,25 +312,34 @@ Se cerró el primer tramo pendiente de concordancia frontend/backend para result
   - `homePoints[]`
   - `awayPoints[]`
   - `winnerId` opcional con modo `Inferir por sets`
+- Se extrajo `src/components/tournaments/admin/MatchResultModal.tsx` para concentrar la operación de carga/edición de resultados en un modal específico y evitar saturar cada card del fixture.
 - Después de guardar un resultado se refrescan explícitamente:
   - `tournament`
   - `tournamentPhases`
   - `tournamentMatches`
   - `standings`
 - `TournamentMatchSummaryList` pasó a aceptar un bloque opcional de detalle por partido para reutilizar el render del fixture sin mezclar lógica social y lógica de operación admin.
+- La configuración `rules.setsToWin` / `settings.setsToWin` quedó documentada en UI como **sets máximos por partido**: al cargar resultados se valida que `homeSets + awaySets` sea igual o menor a ese valor.
 
 #### Decisiones de implementación
 
-- La carga de resultados vive en el bloque de `Fixture confirmado` porque ahí ya existe el contexto operativo del partido y evita introducir una pantalla nueva antes de validar la experiencia.
+- La carga de resultados sigue viviendo en el bloque de `Fixture confirmado`, pero la edición concreta se abrió en un modal para mantener la lista limpia y reducir errores de operación.
 - Se soporta edición de resultados ya cargados para permitir correcciones operativas sin abrir una mutación adicional.
 - `winnerId` sigue siendo opcional en frontend; si el usuario deja `Inferir por sets`, el backend mantiene la fuente de verdad para resolver el ganador.
 - La entrada de puntos por set se resuelve como texto separado por comas para no sobrediseñar todavía una grilla dinámica por cantidad de sets.
+- El modal muestra ayuda explícita sobre:
+  - cómo completar sets;
+  - que los puntos por set deben coincidir en cantidad entre local y visitante;
+  - cómo se infiere el ganador;
+  - y un preview del ganador antes de guardar.
 
 #### Estado resultante
 
 - **Alineado** el frontend con backend para registrar resultados de `TournamentMatch` vía callable.
 - **Alineado** el refresco post-submit para reflejar avance automático de fase/finalización del torneo.
+- **Alineado** el flujo admin con una UI más simple: botón `Cargar resultado` / `Editar resultado` en cada partido y modal contextual con validaciones básicas.
 - **Pendiente** mejorar la experiencia visual de transición de fase con feedback más explícito cuando el backend genera una nueva fase o finaliza el torneo.
+- **Pendiente** decidir si los puntos por set deben pasar de CSV libre a inputs por set generados dinámicamente según la cantidad final de sets cargados.
 
 #### Próximos pasos sugeridos
 
@@ -338,6 +347,7 @@ Se cerró el primer tramo pendiente de concordancia frontend/backend para result
 2. Resaltar en el timeline y en el shell admin cuando cambie `currentPhaseId/currentPhaseType` después de cargar el último resultado pendiente.
 3. Evaluar una UI más estructurada para puntos por set (inputs por set) si operación necesita validaciones más estrictas que la entrada por CSV.
 4. Definir si hace falta bloquear edición de resultados ya confirmados o auditar cambios con historial visible para admins.
+5. Revisar si conviene renombrar técnicamente `setsToWin` en backend/frontend para que el nombre del campo también refleje que hoy representa sets máximos del partido y no “sets para ganar”.
 
 
 

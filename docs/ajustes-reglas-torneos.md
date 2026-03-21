@@ -8,6 +8,9 @@ El objetivo es que sirva como guía de implementación y seguimiento a medida qu
 
 ## 1. Torneo de Liga (todos contra todos / round robin)
 
+> Estado actualizado: **implementado** en backend + frontend.  
+> Se genera todo el fixture desde el inicio con metadata por vuelta/jornada, la tabla queda como fuente de verdad del campeón y la UI de liga ya no muestra grupos.
+
 ### Reglas funcionales objetivo
 - No debe haber grupos.
 - Todos los equipos juegan contra todos.
@@ -19,6 +22,8 @@ El objetivo es que sirva como guía de implementación y seguimiento a medida qu
 ### Backend: qué modificar
 
 #### 1.1. Hacer que la configuración `rounds` impacte realmente en el fixture
+**Estado:** ✅ realizado.
+
 Hoy el torneo de liga guarda `rounds`, pero la generación del fixture no replica los cruces según ese valor.
 
 **Cambio necesario:**
@@ -32,6 +37,8 @@ Hoy el torneo de liga guarda `rounds`, pero la generación del fixture no replic
   - `matches[]`
 
 #### 1.2. Separar el concepto de “ronda de liga” del concepto de “partido individual”
+**Estado:** ✅ realizado.
+
 Hoy el campo `round` termina funcionando como un contador de partidos. En una liga debería representar una **fecha**.
 
 **Cambio necesario:**
@@ -43,6 +50,8 @@ Hoy el campo `round` termina funcionando como un contador de partidos. En una li
 - El generador de fixture debe construir fechas balanceadas (por ejemplo, algoritmo circle method para round robin).
 
 #### 1.3. Permitir avance interno por jornadas sin cambiar de fase
+**Estado:** ✅ realizado con generación completa del calendario.
+
 Tu regla funcional habla de terminar una ronda y organizar la próxima. En liga eso no implica cambiar de fase, sino completar la misma fase `round_robin`.
 
 **Cambio necesario:**
@@ -57,7 +66,14 @@ Tu regla funcional habla de terminar una ronda y organizar la próxima. En liga 
 **Recomendación técnica:**
 - Generar todo el fixture desde el inicio, pero con metadata clara (`matchdayNumber`, `roundCycle`) para simplificar consultas, visualización y carga de resultados.
 
+**Resolución aplicada:**
+- El sistema genera el calendario completo al confirmar fixture.
+- La fase guarda metadata de fixture generado (`generationMode`, `totalRounds`, `totalMatchdays`).
+- La UI calcula progreso por jornadas completadas sin cambiar de fase.
+
 #### 1.4. Mantener la tabla de posiciones como fuente de verdad para el campeón
+**Estado:** ✅ realizado.
+
 La lógica de standings ya existe, pero debe quedar formalmente asociada al cierre de toda la fase de liga.
 
 **Cambio necesario:**
@@ -66,6 +82,8 @@ La lógica de standings ya existe, pero debe quedar formalmente asociada al cier
 - Si existiera una etapa posterior en un futuro, dejar el cálculo preparado para reutilización.
 
 #### 1.5. Revisar tie-breakers de liga
+**Estado:** ✅ realizado.
+
 Si el campeón se define por puntos, hace falta que el orden de la tabla responda exactamente al reglamento esperado.
 
 **Cambio necesario:**
@@ -79,6 +97,8 @@ Si el campeón se define por puntos, hace falta que el orden de la tabla respond
 ### Frontend: qué modificar
 
 #### 1.6. Eliminar cualquier referencia visual a grupos en Liga
+**Estado:** ✅ realizado.
+
 Aunque técnicamente la fase ya no usa `group_stage`, la UI todavía arrastra el concepto de grupos.
 
 **Cambio necesario:**
@@ -91,6 +111,8 @@ Aunque técnicamente la fase ya no usa `group_stage`, la UI todavía arrastra el
   - cantidad de fechas.
 
 #### 1.7. Mostrar jornadas/fechas de forma explícita
+**Estado:** ✅ realizado.
+
 El usuario de una liga necesita leer el fixture por fecha, no por lista general.
 
 **Cambio necesario:**
@@ -100,6 +122,8 @@ El usuario de una liga necesita leer el fixture por fecha, no por lista general.
 - En el detalle admin y público, reemplazar el render actual por agrupación por jornadas.
 
 #### 1.8. Mostrar la tabla de posiciones como elemento central
+**Estado:** ✅ realizado.
+
 En una liga, la tabla no es secundaria: es el corazón del torneo.
 
 **Cambio necesario:**
@@ -242,6 +266,8 @@ Hoy el render actual sirve para listar partidos, pero no para representar un pla
 ### Backend: qué modificar
 
 #### 3.1. Hacer que la fase de grupos respete `rounds`
+**Estado:** ✅ realizado al reutilizar el generador round robin corregido.
+
 Hoy el mixto guarda `rounds`, pero la fase de grupos se genera como una sola vuelta.
 
 **Cambio necesario:**
@@ -250,6 +276,8 @@ Hoy el mixto guarda `rounds`, pero la fase de grupos se genera como una sola vue
   - una sola vuelta;
   - ida y vuelta;
   - múltiples vueltas si así se define.
+
+**Verificación de vigencia:** ya no hace falta seguir modificando este punto tal como figuraba, porque la fase `group_stage` ahora usa la misma generación de fixture con `roundCycle` y `matchdayNumber`.
 
 #### 3.2. Volver configurable la clasificación a playoffs
 Hoy la lógica está fija en “clasifican los 2 mejores de cada grupo”.
@@ -451,4 +479,3 @@ Cuando estas modificaciones estén implementadas:
 - **Liga** va a funcionar como un verdadero todos-contra-todos con jornadas y campeón por tabla.
 - **Eliminación directa** va a funcionar como un bracket real hasta la final.
 - **Mixto** va a permitir grupos + clasificación configurable + playoff real, respetando la estructura elegida por el administrador.
-

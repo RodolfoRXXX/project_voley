@@ -79,6 +79,7 @@ export type PublicTournamentDetailView = {
   tournament: Tournament;
   currentPhase: TournamentPhase | null;
   teams: PublicTournamentTeamSummary[];
+  matches: TournamentMatch[];
   matchesCount: number;
   standings: PublicTournamentStandingRow[];
   metrics: TournamentProgressMetrics;
@@ -304,6 +305,12 @@ export async function getPublicTournamentDetailView(tournamentId: string): Promi
     tournament,
     currentPhase,
     teams: normalizedTeams,
+    matches: matches
+      .sort((a, b) =>
+        Number(a.roundCycle || 1) - Number(b.roundCycle || 1)
+        || Number(a.matchdayNumber || a.round || 0) - Number(b.matchdayNumber || b.round || 0)
+        || Number(a.sequence || 0) - Number(b.sequence || 0)
+      ),
     matchesCount: matches.length,
     standings: normalizedStandings,
     metrics: buildTournamentProgressMetrics({

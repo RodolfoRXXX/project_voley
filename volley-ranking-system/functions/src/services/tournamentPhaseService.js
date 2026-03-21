@@ -45,13 +45,52 @@ function buildStandingsDoc({ tournamentId, phase, teamId, groupLabel = null }) {
   };
 }
 
-function sortStandingsRows(rows) {
+function sortStandingsRows(rows, matches = []) {
+  const directMatchComparator = (teamAId, teamBId) => {
+    const directMatches = matches.filter((match) => {
+      if (match.status !== "completed") return false;
+      return [match.homeTeamId, match.awayTeamId].includes(teamAId)
+        && [match.homeTeamId, match.awayTeamId].includes(teamBId);
+    });
+
+    if (!directMatches.length) return 0;
+
+    const summary = directMatches.reduce((acc, match) => {
+      const result = match.result || {};
+      const homeSets = Number(result.homeSets || 0);
+      const awaySets = Number(result.awaySets || 0);
+      const homePoints = Array.isArray(result.homePoints)
+        ? result.homePoints.reduce((sum, value) => sum + Number(value || 0), 0)
+        : 0;
+      const awayPoints = Array.isArray(result.awayPoints)
+        ? result.awayPoints.reduce((sum, value) => sum + Number(value || 0), 0)
+        : 0;
+
+      const aIsHome = match.homeTeamId === teamAId;
+      const teamASetsDiff = (aIsHome ? homeSets - awaySets : awaySets - homeSets);
+      const teamAPointsDiff = (aIsHome ? homePoints - awayPoints : awayPoints - homePoints);
+      const winnerId = result.winnerId || (homeSets > awaySets ? match.homeTeamId : match.awayTeamId);
+
+      return {
+        wins: acc.wins + (winnerId === teamAId ? 1 : 0),
+        losses: acc.losses + (winnerId === teamBId ? 1 : 0),
+        setsDiff: acc.setsDiff + teamASetsDiff,
+        pointsDiff: acc.pointsDiff + teamAPointsDiff,
+      };
+    }, { wins: 0, losses: 0, setsDiff: 0, pointsDiff: 0 });
+
+    return summary.wins - summary.losses
+      || summary.setsDiff
+      || summary.pointsDiff;
+  };
+
   return [...rows].sort((a, b) => {
     const aStats = a.stats || {};
     const bStats = b.stats || {};
     return (bStats.points || 0) - (aStats.points || 0)
       || (bStats.setsDiff || 0) - (aStats.setsDiff || 0)
       || (bStats.pointsDiff || 0) - (aStats.pointsDiff || 0)
+      || directMatchComparator(a.teamId, b.teamId) * -1
       || String(a.teamId).localeCompare(String(b.teamId));
   }).map((row, index) => ({ ...row, position: index + 1 }));
 }
@@ -63,10 +102,24 @@ async function advancePhase({ tournament, phase }) {
   const nextPhase = currentIndex >= 0 ? phases[currentIndex + 1] : null;
 
   if (!nextPhase) {
+    const standingsSnap = await db.collection("tournamentStandings").where("phaseId", "==", phase.id).get();
+    const matchesSnap = await db.collection("tournamentMatches").where("phaseId", "==", phase.id).get();
+    const orderedStandings = sortStandingsRows(
+      standingsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      matchesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+    );
+
     await db.collection("tournaments").doc(tournament.id).update({
       status: TOURNAMENT_STATUS.FINISHED,
       currentPhaseId: phase.id,
       currentPhaseType: phase.type,
+      podiumTeamIds: orderedStandings.length
+        ? [
+            orderedStandings[0]?.teamId || null,
+            orderedStandings[1]?.teamId || null,
+            orderedStandings[2]?.teamId || null,
+          ]
+        : null,
       updatedAt: FieldValue.serverTimestamp(),
     });
     return { advanced: false, finished: true };
@@ -86,8 +139,16 @@ async function advancePhase({ tournament, phase }) {
 
   if (phase.type === PHASE_TYPES.GROUP_STAGE && nextPhase.type === PHASE_TYPES.KNOCKOUT) {
     const standingsSnap = await db.collection("tournamentStandings").where("phaseId", "==", phase.id).get();
+    const matchesSnap = await db.collection("tournamentMatches").where("phaseId", "==", phase.id).get();
     const standings = standingsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const matches = matchesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     const standingsByGroup = standings.reduce((acc, row) => {
+      const key = row.groupLabel || "_";
+      acc[key] = acc[key] || [];
+      acc[key].push(row);
+      return acc;
+    }, {});
+    const matchesByGroup = matches.reduce((acc, row) => {
       const key = row.groupLabel || "_";
       acc[key] = acc[key] || [];
       acc[key].push(row);
@@ -95,18 +156,23 @@ async function advancePhase({ tournament, phase }) {
     }, {});
 
     const qualified = Object.values(standingsByGroup)
-      .flatMap((rows) => sortStandingsRows(rows).slice(0, 2))
+      .flatMap((rows) => sortStandingsRows(rows, matchesByGroup[rows[0]?.groupLabel || "_"] || []).slice(0, 2))
       .map((row) => row.teamId);
 
     standings.forEach((row) => {
+      const groupKey = row.groupLabel || "_";
+      const groupRows = standingsByGroup[groupKey] || [];
       batch.update(db.collection("tournamentStandings").doc(row.id), {
         qualified: qualified.includes(row.teamId),
-        position: sortStandingsRows(standingsByGroup[row.groupLabel || "_"]).find((item) => item.id === row.id)?.position || row.position || 0,
+        position: sortStandingsRows(
+          groupRows,
+          matchesByGroup[groupKey] || []
+        ).find((item) => item.id === row.id)?.position || row.position || 0,
         updatedAt: FieldValue.serverTimestamp(),
       });
     });
 
-    const seededRows = sortStandingsRows(standings.filter((row) => qualified.includes(row.teamId)));
+    const seededRows = sortStandingsRows(standings.filter((row) => qualified.includes(row.teamId)), matches);
     const teams = seededRows.map((row) => ({ id: row.teamId }));
     const knockoutMatches = generateKnockoutBracket(tournament, teams, 1, nextPhase.type, { phaseId: nextPhase.id, phaseType: nextPhase.type });
     knockoutMatches.forEach((match) => {
@@ -157,10 +223,12 @@ async function recordMatchResult({ matchId, result }) {
     const homeStandingRef = db.collection("tournamentStandings").doc(`${match.tournamentId}_${match.phaseId}_${match.homeTeamId}`);
     const awayStandingRef = db.collection("tournamentStandings").doc(`${match.tournamentId}_${match.phaseId}_${match.awayTeamId}`);
     const matchesQuery = db.collection("tournamentMatches").where("phaseId", "==", match.phaseId);
-    const [homeStandingSnap, awayStandingSnap, matchesSnap] = await Promise.all([
+    const standingsQuery = db.collection("tournamentStandings").where("phaseId", "==", match.phaseId);
+    const [homeStandingSnap, awayStandingSnap, matchesSnap, standingsSnap] = await Promise.all([
       trx.get(homeStandingRef),
       trx.get(awayStandingRef),
       trx.get(matchesQuery),
+      trx.get(standingsQuery),
     ]);
 
     if (homeSets === awaySets) {
@@ -220,6 +288,56 @@ async function recordMatchResult({ matchId, result }) {
     trx.update(matchRef, { result: { ...result, winnerId }, status: "completed", updatedAt: FieldValue.serverTimestamp() });
     trx.set(homeStandingRef, { ...buildStandingsDoc({ tournamentId: match.tournamentId, phase, teamId: match.homeTeamId, groupLabel: match.groupLabel || null }), stats: nextHome }, { merge: true });
     trx.set(awayStandingRef, { ...buildStandingsDoc({ tournamentId: match.tournamentId, phase, teamId: match.awayTeamId, groupLabel: match.groupLabel || null }), stats: nextAway }, { merge: true });
+
+    const nextMatches = matchesSnap.docs.map((doc) => {
+      if (doc.id !== match.id) return { id: doc.id, ...doc.data() };
+      return {
+        id: doc.id,
+        ...doc.data(),
+        status: "completed",
+        result: { ...result, winnerId },
+      };
+    });
+    const nextRows = standingsSnap.docs.map((doc) => {
+      if (doc.id === homeStandingRef.id) {
+        return {
+          id: doc.id,
+          ...doc.data(),
+          teamId: match.homeTeamId,
+          groupLabel: match.groupLabel || null,
+          stats: nextHome,
+        };
+      }
+
+      if (doc.id === awayStandingRef.id) {
+        return {
+          id: doc.id,
+          ...doc.data(),
+          teamId: match.awayTeamId,
+          groupLabel: match.groupLabel || null,
+          stats: nextAway,
+        };
+      }
+
+      return { id: doc.id, ...doc.data() };
+    });
+
+    const rowsByGroup = nextRows.reduce((acc, row) => {
+      const key = row.groupLabel || "_";
+      acc[key] = acc[key] || [];
+      acc[key].push(row);
+      return acc;
+    }, {});
+
+    Object.entries(rowsByGroup).forEach(([groupKey, rows]) => {
+      const rankedRows = sortStandingsRows(
+        rows,
+        nextMatches.filter((nextMatch) => (nextMatch.groupLabel || "_") === groupKey)
+      );
+      rankedRows.forEach((row) => {
+        trx.set(db.collection("tournamentStandings").doc(row.id), { position: row.position, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      });
+    });
 
     phaseCompleted = matchesSnap.docs.every((doc) => {
       if (doc.id === match.id) return true;

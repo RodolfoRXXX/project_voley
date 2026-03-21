@@ -9,6 +9,25 @@ function isValidMatch(match) {
   return match && typeof match === "object" && typeof match.id === "string" && typeof match.phaseId === "string" && typeof match.phaseType === "string" && typeof match.homeTeamId === "string" && typeof match.awayTeamId === "string" && match.homeTeamId !== match.awayTeamId;
 }
 
+function buildFixtureSummary(matches = []) {
+  const roundCycles = new Set();
+  const matchdays = new Set();
+
+  matches.forEach((match) => {
+    const roundCycle = Number(match.roundCycle || 1);
+    const matchdayNumber = Number(match.matchdayNumber || match.round || 0);
+    if (roundCycle > 0) roundCycles.add(roundCycle);
+    if (matchdayNumber > 0) matchdays.add(`${roundCycle}:${matchdayNumber}`);
+  });
+
+  return {
+    generated: matches.length > 0,
+    generationMode: "full_schedule",
+    totalRounds: roundCycles.size || 1,
+    totalMatchdays: matchdays.size,
+  };
+}
+
 module.exports = functions.https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "No autenticado");
   const uid = context.auth.uid;
@@ -40,6 +59,9 @@ module.exports = functions.https.onCall(async (data, context) => {
       phaseType: phase.type,
       groupLabel: match.groupLabel || null,
       round: match.round,
+      matchdayNumber: Number(match.matchdayNumber || match.round || 1),
+      roundCycle: Number(match.roundCycle || 1),
+      sequence: Number(match.sequence || 1),
       homeTeamId: match.homeTeamId,
       awayTeamId: match.awayTeamId,
       status: "scheduled",
@@ -58,7 +80,15 @@ module.exports = functions.https.onCall(async (data, context) => {
     batch.set(db.collection("tournamentStandings").doc(standingId), standing, { merge: true });
   });
 
-  batch.update(phaseRef, { status: PHASE_STATUS.CONFIRMED, confirmedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
+  batch.update(phaseRef, {
+    status: PHASE_STATUS.CONFIRMED,
+    confirmedAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+    config: {
+      ...(phase.config || {}),
+      fixture: buildFixtureSummary(matches),
+    },
+  });
   batch.update(tournamentRef, { status: "activo", currentPhaseId: phase.id, currentPhaseType: phase.type, updatedBy: uid, updatedAt: FieldValue.serverTimestamp() });
   await batch.commit();
   return { ok: true, matchesCount: matches.length, phaseId: phase.id };

@@ -18,6 +18,9 @@ export type TournamentMatch = {
   phaseId: string;
   phaseType: TournamentPhaseType;
   round: number;
+  matchdayNumber?: number;
+  roundCycle?: number;
+  sequence?: number;
   groupLabel?: string | null;
   homeTeamId: string;
   awayTeamId: string;

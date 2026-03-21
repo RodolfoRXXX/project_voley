@@ -27,24 +27,75 @@ function normalizeRound(round) {
   return Number.isFinite(Number(round)) ? Number(round) : round;
 }
 
-function generateRoundRobinMatches(tournament, teams, startRound = 1, phase = "round_robin", options = {}) {
-  const matches = [];
-  for (let i = 0; i < teams.length; i += 1) {
-    for (let j = i + 1; j < teams.length; j += 1) {
-      matches.push({
-        id: `${options.phaseId || phase}-r${startRound + matches.length}`,
-        tournamentId: tournament.id,
-        phaseId: options.phaseId || null,
-        phaseType: options.phaseType || phase,
-        phase,
-        groupLabel: options.groupLabel || null,
-        round: normalizeRound(startRound + matches.length),
-        homeTeamId: teams[i].id,
-        awayTeamId: teams[j].id,
-        status: "scheduled",
-      });
+function rotateRoundRobinTeams(teamIds) {
+  if (teamIds.length <= 2) return [...teamIds];
+  const [anchor, ...rest] = teamIds;
+  const last = rest.pop();
+  return [anchor, last, ...rest];
+}
+
+function buildRoundRobinMatchdays(teamIds) {
+  const safeTeamIds = [...teamIds];
+  const hasBye = safeTeamIds.length % 2 !== 0;
+  if (hasBye) safeTeamIds.push(null);
+
+  const matchdays = [];
+  let rotating = [...safeTeamIds];
+  const totalMatchdays = Math.max(0, rotating.length - 1);
+
+  for (let matchdayIndex = 0; matchdayIndex < totalMatchdays; matchdayIndex += 1) {
+    const pairs = [];
+    const half = rotating.length / 2;
+
+    for (let pairIndex = 0; pairIndex < half; pairIndex += 1) {
+      const home = rotating[pairIndex];
+      const away = rotating[rotating.length - 1 - pairIndex];
+      if (!home || !away) continue;
+      pairs.push([home, away]);
     }
+
+    matchdays.push(pairs);
+    rotating = rotateRoundRobinTeams(rotating);
   }
+
+  return matchdays;
+}
+
+function generateRoundRobinMatches(tournament, teams, startRound = 1, phase = "round_robin", options = {}) {
+  const rounds = Math.max(1, Number(options.rounds || 1));
+  const matchdays = buildRoundRobinMatchdays(teams.map((team) => team.id));
+  const matches = [];
+  let globalSequence = 0;
+
+  for (let roundCycle = 1; roundCycle <= rounds; roundCycle += 1) {
+    matchdays.forEach((pairs, matchdayIndex) => {
+      const matchdayNumber = startRound + matchdayIndex;
+      pairs.forEach(([baseHomeTeamId, baseAwayTeamId], pairIndex) => {
+        const isEvenCycle = roundCycle % 2 === 0;
+        const homeTeamId = isEvenCycle ? baseAwayTeamId : baseHomeTeamId;
+        const awayTeamId = isEvenCycle ? baseHomeTeamId : baseAwayTeamId;
+        globalSequence += 1;
+
+        matches.push({
+          id: `${options.phaseId || phase}-c${roundCycle}-m${matchdayNumber}-s${pairIndex + 1}`,
+          tournamentId: tournament.id,
+          phaseId: options.phaseId || null,
+          phaseType: options.phaseType || phase,
+          phase,
+          groupLabel: options.groupLabel || null,
+          round: normalizeRound(matchdayNumber),
+          matchdayNumber,
+          roundCycle,
+          sequence: pairIndex + 1,
+          cycleSequence: globalSequence,
+          homeTeamId,
+          awayTeamId,
+          status: "scheduled",
+        });
+      });
+    });
+  }
+
   return matches;
 }
 

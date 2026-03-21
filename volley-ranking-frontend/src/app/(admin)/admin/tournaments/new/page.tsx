@@ -193,9 +193,12 @@ export default function NewTournamentPage() {
 
   const teams = form.maxTeams;
   const groups = form.structure.groupStage.groupCount;
+  const leagueRounds = Math.max(1, Number(form.structure.groupStage.rounds || 1));
 
   const teamsPerGroup =
     groups > 0 ? Math.floor(teams / groups) : 0;
+  const estimatedLeagueMatches = Math.max(0, (teams * (teams - 1)) / 2) * leagueRounds;
+  const estimatedLeagueMatchdays = Math.max(0, Math.max(teams - 1, 0) + (teams % 2 === 0 ? 0 : 1)) * leagueRounds;
 
   let knockoutPreview = "";
 
@@ -453,30 +456,31 @@ export default function NewTournamentPage() {
 
           {!isKnockout && (
             <>
-              <div>
-                <label className="text-sm font-medium">
-                  Cantidad de grupos
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  disabled={isLeague}
-                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                  value={form.structure.groupStage.groupCount}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      structure: {
-                        ...prev.structure,
-                        groupStage: {
-                          ...prev.structure.groupStage,
-                          groupCount: Number(e.target.value),
+              {!isLeague && (
+                <div>
+                  <label className="text-sm font-medium">
+                    Cantidad de grupos
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                    value={form.structure.groupStage.groupCount}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        structure: {
+                          ...prev.structure,
+                          groupStage: {
+                            ...prev.structure.groupStage,
+                            groupCount: Number(e.target.value),
+                          },
                         },
-                      },
-                    }))
-                  }
-                />
-              </div>
+                      }))
+                    }
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="text-sm font-medium">Rondas</label>
@@ -567,7 +571,22 @@ export default function NewTournamentPage() {
               <b>Pago por jugador:</b> ${form.paymentForPlayer}
             </p>
 
-            {!isKnockout && (
+            {isLeague ? (
+              <>
+                <p>
+                  <b>Participantes de liga:</b> hasta {teams} equipos
+                </p>
+                <p>
+                  <b>Vueltas:</b> {leagueRounds}
+                </p>
+                <p>
+                  <b>Partidos estimados:</b> {estimatedLeagueMatches}
+                </p>
+                <p>
+                  <b>Fechas estimadas:</b> {estimatedLeagueMatchdays}
+                </p>
+              </>
+            ) : (
               <p>
                 <b>Grupos:</b> {groups} grupos de {teamsPerGroup} equipos
               </p>
@@ -579,7 +598,7 @@ export default function NewTournamentPage() {
               </p>
             )}
 
-            {!isKnockout && (
+            {!isKnockout && !isLeague && (
               <p>
                 <b>Rondas fase grupos:</b> {form.structure.groupStage.rounds}
               </p>

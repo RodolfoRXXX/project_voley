@@ -41,6 +41,8 @@ export function TournamentEditForm({
   onCancel: () => void;
   onSubmit: (e: FormEvent<HTMLFormElement>) => Promise<void>;
 }) {
+  const isLeague = values.format === "liga";
+
   return (
     <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
       <h2 className="text-base font-semibold">Editar torneo</h2>
@@ -77,7 +79,24 @@ export function TournamentEditForm({
             <select
               value={values.format}
               disabled={isActiveTournament}
-              onChange={(e) => onChange({ ...values, format: e.target.value as TournamentFormValues["format"] })}
+              onChange={(e) => {
+                const format = e.target.value as TournamentFormValues["format"];
+                onChange({
+                  ...values,
+                  format,
+                  structure: {
+                    groupStage: {
+                      ...values.structure.groupStage,
+                      enabled: format !== "eliminacion",
+                      groupCount: format === "liga" ? 1 : values.structure.groupStage.groupCount,
+                    },
+                    knockoutStage: {
+                      ...values.structure.knockoutStage,
+                      enabled: format !== "liga",
+                    },
+                  },
+                });
+              }}
               className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
             >
               <option value="liga">Liga</option>
@@ -163,28 +182,30 @@ export function TournamentEditForm({
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="text-sm font-medium">Cantidad de grupos</label>
-            <input
-              type="number"
-              value={values.structure.groupStage.groupCount}
-              onChange={(e) =>
-                onChange({
-                  ...values,
-                  structure: {
-                    ...values.structure,
-                    groupStage: {
-                      ...values.structure.groupStage,
-                      enabled: true,
-                      groupCount: Number(e.target.value),
+        <div className={`grid gap-3 ${isLeague ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
+          {!isLeague && (
+            <div>
+              <label className="text-sm font-medium">Cantidad de grupos</label>
+              <input
+                type="number"
+                value={values.structure.groupStage.groupCount}
+                onChange={(e) =>
+                  onChange({
+                    ...values,
+                    structure: {
+                      ...values.structure,
+                      groupStage: {
+                        ...values.structure.groupStage,
+                        enabled: true,
+                        groupCount: Number(e.target.value),
+                      },
                     },
-                  },
-                })
-              }
-              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            />
-          </div>
+                  })
+                }
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              />
+            </div>
+          )}
 
           <div>
             <label className="text-sm font-medium">Vueltas de liga</label>
@@ -277,8 +298,12 @@ export function TournamentDetailsCard({
 }) {
   const isLeague = tournament.format === "liga";
   const isNormal = tournament.format === "mixto";
-  const hasGroups = tournament.structure?.groupStage?.enabled;
+  const hasGroups = tournament.structure?.groupStage?.enabled && !isLeague;
   const hasKnockout = tournament.structure?.knockoutStage?.enabled;
+  const maxTeams = Number(tournament.maxTeams || 0);
+  const rounds = Number(tournament.structure?.groupStage?.rounds || 1);
+  const estimatedLeagueMatches = isLeague ? Math.max(0, (maxTeams * (maxTeams - 1)) / 2) * rounds : null;
+  const estimatedLeagueMatchdays = isLeague ? Math.max(0, (maxTeams % 2 === 0 ? maxTeams - 1 : maxTeams) * rounds) : null;
 
   return (
     <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
@@ -314,7 +339,14 @@ export function TournamentDetailsCard({
         {isNormal && hasKnockout && (
           <p>Eliminación desde: <b>{knockoutLabel(tournament.structure?.knockoutStage?.startFrom)}</b></p>
         )}
-        {isLeague && <p>Tipo de fase: <b>Liga</b></p>}
+        {isLeague && (
+          <>
+            <p>Tipo de fase: <b>Liga todos contra todos</b></p>
+            <p>Vueltas: <b>{rounds}</b></p>
+            <p>Partidos estimados: <b>{estimatedLeagueMatches ?? "-"}</b></p>
+            <p>Fechas estimadas: <b>{estimatedLeagueMatchdays ?? "-"}</b></p>
+          </>
+        )}
       </div>
     </section>
   );

@@ -152,6 +152,17 @@ function validateTournamentPayload(data) {
   const cleanAdminIds = Array.isArray(adminIds) ? [...new Set(adminIds.filter((id) => typeof id === "string" && id.trim()))] : [];
   const phases = normalizePhases(data);
   const phaseOrder = phases.map(({ type, order }) => ({ type, order }));
+  const structure = {
+    groupStage: {
+      enabled: format !== "eliminacion",
+      groupCount: format === "liga" ? 1 : Number(data.structure?.groupStage?.groupCount || 2),
+      rounds: Number(data.structure?.groupStage?.rounds || 1),
+    },
+    knockoutStage: {
+      enabled: format !== "liga",
+      startFrom: data.structure?.knockoutStage?.startFrom || "semi",
+    },
+  };
 
   return {
     name: name.trim(),
@@ -182,6 +193,7 @@ function validateTournamentPayload(data) {
       pointsDraw: rules.pointsDraw,
       pointsLose: rules.pointsLose,
     },
+    structure,
     phaseOrder,
     phases,
     adminIds: cleanAdminIds,
@@ -201,6 +213,7 @@ function validateTournamentUpdate(data) {
   if (typeof data.endDateMillis === "number") update.endDate = Timestamp.fromMillis(data.endDateMillis);
   if (typeof data.format === "string") update.format = data.format;
   if (data.rules && typeof data.rules === "object") update.rules = Object.fromEntries(Object.entries(data.rules).filter(([, v]) => typeof v === "number"));
+  if (data.structure && typeof data.structure === "object") update.structure = data.structure;
   if (Array.isArray(data.phases) && data.phases.length) {
     const phases = normalizePhases(data);
     update.phaseOrder = phases.map(({ type, order }) => ({ type, order }));
@@ -234,6 +247,7 @@ async function createTournament({ data, uid }) {
     ...(payload.endDate ? { endDate: payload.endDate } : {}),
     rules: payload.rules,
     settings: payload.settings,
+    structure: payload.structure,
     minTeams: payload.minTeams,
     maxTeams: payload.maxTeams,
     minPlayers: payload.minPlayers,
@@ -315,6 +329,34 @@ async function editTournament({ uid, tournamentId, data }) {
         ...(typeof updatePayload.paymentForPlayer === "number" ? { paymentPerPlayer: updatePayload.paymentForPlayer } : {}),
         ...(updatePayload.rules || {}),
       };
+    }
+
+    if (updatePayload.structure) {
+      const currentStructure = tournament.structure || {};
+      const nextFormat = updatePayload.format || tournament.format;
+      nextPayload.structure = {
+        groupStage: {
+          ...(currentStructure.groupStage || {}),
+          ...(updatePayload.structure.groupStage || {}),
+          enabled: nextFormat !== "eliminacion",
+          groupCount: nextFormat === "liga"
+            ? 1
+            : Number(updatePayload.structure.groupStage?.groupCount || currentStructure.groupStage?.groupCount || 2),
+          rounds: Number(updatePayload.structure.groupStage?.rounds || currentStructure.groupStage?.rounds || 1),
+        },
+        knockoutStage: {
+          ...(currentStructure.knockoutStage || {}),
+          ...(updatePayload.structure.knockoutStage || {}),
+          enabled: nextFormat !== "liga",
+          startFrom: updatePayload.structure.knockoutStage?.startFrom || currentStructure.knockoutStage?.startFrom || "semi",
+        },
+      };
+    }
+
+    if (!updatePayload.phaseDefinitions && (updatePayload.structure || updatePayload.format)) {
+      const derivedPhases = buildDefaultPhases(updatePayload.format || tournament.format, nextPayload.structure || tournament.structure || {});
+      nextPayload.phaseDefinitions = derivedPhases;
+      nextPayload.phaseOrder = derivedPhases.map(({ type, order }) => ({ type, order }));
     }
 
     if (updatePayload.phaseDefinitions) {

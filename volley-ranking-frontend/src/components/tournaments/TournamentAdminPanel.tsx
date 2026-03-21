@@ -26,6 +26,7 @@ import { TournamentPhaseShell, TournamentPhaseTimeline } from "@/components/tour
 import { TournamentGroupsList, TournamentStandingsTable } from "@/components/tournaments/admin/TournamentAdminPhaseSections";
 import { MatchResultModal, type MatchResultDraft } from "@/components/tournaments/admin/MatchResultModal";
 import {
+  getTournamentLeagueProgress,
   groupTournamentMatches,
   TournamentMatchSummaryList,
 } from "@/components/tournaments/admin/TournamentMatchSections";
@@ -138,6 +139,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   const confirmedGroups = getConfirmedGroupsFromTournamentContext({ phase: currentPhase, tournament });
   const hasConfirmedGroups = confirmedGroups.length > 0;
   const hasConfirmedFixture = confirmedTournamentMatches.length > 0;
+  const isLeaguePhase = currentPhase?.type === "round_robin";
 
   const loadPhases = useCallback(async () => {
     setLoadingPhases(true);
@@ -468,6 +470,8 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
   const groupedPreviewTournamentMatches = useMemo(() => groupTournamentMatches(previewTournamentMatches || []), [previewTournamentMatches]);
   const groupedConfirmedTournamentMatches = useMemo(() => groupTournamentMatches(confirmedTournamentMatches), [confirmedTournamentMatches]);
+  const leagueProgress = useMemo(() => getTournamentLeagueProgress(confirmedTournamentMatches), [confirmedTournamentMatches]);
+  const leagueLeader = useMemo(() => standings.slice().sort((a, b) => a.position - b.position)[0] || null, [standings]);
   const canOrganizeTournament =
     currentPhase?.type === "group_stage" && (tournament.status === "inscripciones_cerradas" || tournament.status === "activo");
   const showGroupActions = currentPhase?.type === "group_stage" && !hasConfirmedGroups;
@@ -476,9 +480,44 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     ["group_stage", "round_robin", "knockout", "final"].includes(currentPhase.type) &&
     (currentPhase.type !== "group_stage" || hasConfirmedGroups) &&
     !hasConfirmedFixture;
-  const showGroupsSection = canOrganizeTournament || Boolean(previewGroups) || hasConfirmedGroups;
+  const showGroupsSection = !isLeaguePhase && (canOrganizeTournament || Boolean(previewGroups) || hasConfirmedGroups);
   const showFixtureSection =
-    showFixtureActions || previewTournamentMatches !== null || hasConfirmedFixture || (loadingConfirmed && hasConfirmedGroups);
+    showFixtureActions || previewTournamentMatches !== null || hasConfirmedFixture || (loadingConfirmed && (hasConfirmedGroups || isLeaguePhase));
+  const standingsSection = (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+          {isLeaguePhase ? "Tabla principal de la liga" : "Standings de la fase actual"}
+        </h3>
+        {loadingStandings ? <span className="text-xs text-neutral-500 dark:text-neutral-400">Cargando...</span> : null}
+      </div>
+
+      {isLeaguePhase && (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900/40">
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Líder actual</p>
+            <p className="mt-2 text-sm font-medium text-neutral-900 dark:text-neutral-100">
+              {leagueLeader ? `#${leagueLeader.position} ${teamNames[leagueLeader.teamId] || leagueLeader.teamId}` : "Sin datos"}
+            </p>
+          </div>
+          <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900/40">
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Partidos</p>
+            <p className="mt-2 text-sm font-medium text-neutral-900 dark:text-neutral-100">
+              {leagueProgress.completedMatches} jugados / {leagueProgress.pendingMatches} pendientes
+            </p>
+          </div>
+          <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900/40">
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Jornadas</p>
+            <p className="mt-2 text-sm font-medium text-neutral-900 dark:text-neutral-100">
+              {leagueProgress.completedMatchdays} de {leagueProgress.totalMatchdays} completas
+            </p>
+          </div>
+        </div>
+      )}
+
+      <TournamentStandingsTable standings={standings} teamNames={teamNames} />
+    </div>
+  );
 
   return (
     <TournamentPhaseShell
@@ -539,10 +578,14 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
         </div>
       )}
 
+      {isLeaguePhase ? standingsSection : null}
+
       {showFixtureSection && (
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Operación de fixture</h3>
+            <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+              {isLeaguePhase ? "Calendario de la liga" : "Operación de fixture"}
+            </h3>
             {showFixtureActions && (
               <div className="flex gap-2">
                 <button
@@ -584,18 +627,14 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           )}
 
           {!loadingConfirmed && previewTournamentMatches === null && confirmedTournamentMatches.length === 0 && (
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Aún no hay fixture en vista previa ni confirmado.</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              {isLeaguePhase ? "Todavía no se generó el calendario de la liga." : "Aún no hay fixture en vista previa ni confirmado."}
+            </p>
           )}
         </div>
       )}
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Standings de la fase actual</h3>
-          {loadingStandings ? <span className="text-xs text-neutral-500 dark:text-neutral-400">Cargando...</span> : null}
-        </div>
-        <TournamentStandingsTable standings={standings} teamNames={teamNames} />
-      </div>
+      {!isLeaguePhase ? standingsSection : null}
 
       <MatchResultModal
         open={Boolean(selectedTournamentMatch)}

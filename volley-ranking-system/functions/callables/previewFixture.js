@@ -31,10 +31,19 @@ module.exports = functions.https.onCall(async (data, context) => {
     const teamById = new Map(teams.map((team) => [team.id, team]));
     matches = sourceGroups.flatMap((group, index) => {
       const groupTeams = (group.teamIds || []).map((teamId) => teamById.get(teamId)).filter(Boolean);
-      return generateRoundRobinMatches(tournament, groupTeams, index * 100 + 1, phase.type, { phaseId: phase.id, phaseType: phase.type, groupLabel: group.name });
+      return generateRoundRobinMatches(tournament, groupTeams, 1, phase.type, {
+        phaseId: phase.id,
+        phaseType: phase.type,
+        groupLabel: group.name,
+        rounds: Number(phase.config?.rounds || 1),
+      });
     });
   } else if (phase.type === PHASE_TYPES.ROUND_ROBIN) {
-    matches = generateRoundRobinMatches(tournament, teams, 1, phase.type, { phaseId: phase.id, phaseType: phase.type });
+    matches = generateRoundRobinMatches(tournament, teams, 1, phase.type, {
+      phaseId: phase.id,
+      phaseType: phase.type,
+      rounds: Number(phase.config?.rounds || 1),
+    });
   } else {
     matches = generateKnockoutBracket(tournament, teams, 1, phase.type, { phaseId: phase.id, phaseType: phase.type });
   }

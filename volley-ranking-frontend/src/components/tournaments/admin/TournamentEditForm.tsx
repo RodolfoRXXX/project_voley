@@ -46,7 +46,7 @@ export function TournamentEditForm({
       <h2 className="text-base font-semibold">Editar torneo</h2>
       {isActiveTournament && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-          Torneo activo: solo se permiten cambios en pago por jugador, cupos de equipos, máximo de jugadores, sets para ganar, cantidad de grupos y vueltas.
+          Torneo activo: solo se permiten cambios en pago por jugador, cupos de equipos, máximo de jugadores, sets máximos por partido, cantidad de grupos y vueltas.
         </p>
       )}
 
@@ -142,7 +142,7 @@ export function TournamentEditForm({
           </div>
 
           <div>
-            <label className="text-sm font-medium">Sets para ganar</label>
+            <label className="text-sm font-medium">Sets máximos por partido</label>
             <input
               type="number"
               value={values.rules.setsToWin}
@@ -157,6 +157,9 @@ export function TournamentEditForm({
               }
               className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
             />
+            <p className="mt-1 text-xs text-neutral-500">
+              Se usa como tope de sets permitidos al registrar resultados de cada partido.
+            </p>
           </div>
         </div>
 
@@ -300,7 +303,7 @@ export function TournamentDetailsCard({
         <p>Jugadores mínimos por equipo: <b>{tournament.minPlayers || 1}</b></p>
         <p>Jugadores máximos por equipo: <b>{tournament.maxPlayers || 1}</b></p>
         <p>Admins asignados: <b>{tournament.adminIds?.length || 0}</b></p>
-        <p>Sets para ganar: <b>{tournament.rules?.setsToWin || "-"}</b></p>
+        <p>Sets máximos por partido: <b>{tournament.rules?.setsToWin || "-"}</b></p>
         <p>¿Tiene grupos?: <b>{hasGroups ? "Sí" : "No"}</b></p>
         {hasGroups && (
           <>

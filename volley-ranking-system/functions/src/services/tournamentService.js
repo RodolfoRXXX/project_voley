@@ -2,6 +2,7 @@ const functions = require("firebase-functions/v1");
 const { db } = require("../firebase");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getKnockoutBracketSize } = require("./tournamentFixtureService");
+const { buildDefaultAdvancementRules, validateMixedAdvancement } = require("./tournamentAdvancementService");
 
 const TOURNAMENT_STATUS = {
   DRAFT: "draft",
@@ -77,7 +78,7 @@ function buildDefaultPhases(format, structure = {}) {
       config: {
         groupCount: Number(structure.groupStage?.groupCount || 2),
         teamsPerGroup: null,
-        qualifyPerGroup: 2,
+        ...buildDefaultAdvancementRules(structure),
         fixtureType: "round_robin",
         rounds: Number(structure.groupStage?.rounds || 1),
         groups: [],
@@ -160,6 +161,11 @@ function validateTournamentPayload(data) {
       enabled: format !== "eliminacion",
       groupCount: format === "liga" ? 1 : Number(data.structure?.groupStage?.groupCount || 2),
       rounds: Number(data.structure?.groupStage?.rounds || 1),
+      qualifyPerGroup: Number(data.structure?.groupStage?.qualifyPerGroup || 0),
+      wildcardsCount: Number(data.structure?.groupStage?.wildcardsCount || 0),
+      seedingCriteria: data.structure?.groupStage?.seedingCriteria || "points",
+      crossGroupSeeding: data.structure?.groupStage?.crossGroupSeeding !== false,
+      bracketMatchup: data.structure?.groupStage?.bracketMatchup || "standard_seeded",
     },
     knockoutStage: {
       enabled: format !== "liga",
@@ -167,6 +173,10 @@ function validateTournamentPayload(data) {
       allowByes: false,
     },
   };
+
+  if (format === "mixto") {
+    validateMixedAdvancement({ structure, context: "crear el torneo mixto" });
+  }
 
   return {
     name: name.trim(),
@@ -285,16 +295,18 @@ async function createTournament({ data, uid }) {
     const knockoutPhase = payload.phases.find((phase) => phase.type === PHASE_TYPES.KNOCKOUT);
     if (groupPhase && knockoutPhase) {
       const rulesRef = db.collection("tournamentAdvancementRules").doc(`${docRef.id}_${groupPhase.type}_${knockoutPhase.type}`);
+      const advancementRules = buildDefaultAdvancementRules(payload.structure || {});
       batch.set(rulesRef, {
         tournamentId: docRef.id,
         fromPhaseType: groupPhase.type,
         toPhaseType: knockoutPhase.type,
         rules: {
-          qualifyPositions: [1, 2],
-          seedingCriteria: "points",
-          tiebreakers: ["setsDiff", "pointsDiff", "head2head"],
-          crossGroupSeeding: true,
-          bracketMatchup: "1A_vs_2B",
+          ...advancementRules,
+          qualifyPositions: advancementRules.qualifyPositions,
+          seedingCriteria: advancementRules.seedingCriteria,
+          tiebreakers: advancementRules.tiebreakers,
+          crossGroupSeeding: advancementRules.crossGroupSeeding,
+          bracketMatchup: advancementRules.bracketMatchup,
         },
         createdAt: now,
         updatedAt: now,
@@ -347,6 +359,11 @@ async function editTournament({ uid, tournamentId, data }) {
             ? 1
             : Number(updatePayload.structure.groupStage?.groupCount || currentStructure.groupStage?.groupCount || 2),
           rounds: Number(updatePayload.structure.groupStage?.rounds || currentStructure.groupStage?.rounds || 1),
+          qualifyPerGroup: Number(updatePayload.structure.groupStage?.qualifyPerGroup || currentStructure.groupStage?.qualifyPerGroup || 0),
+          wildcardsCount: Number(updatePayload.structure.groupStage?.wildcardsCount || currentStructure.groupStage?.wildcardsCount || 0),
+          seedingCriteria: updatePayload.structure.groupStage?.seedingCriteria || currentStructure.groupStage?.seedingCriteria || "points",
+          crossGroupSeeding: updatePayload.structure.groupStage?.crossGroupSeeding ?? currentStructure.groupStage?.crossGroupSeeding ?? true,
+          bracketMatchup: updatePayload.structure.groupStage?.bracketMatchup || currentStructure.groupStage?.bracketMatchup || "standard_seeded",
         },
         knockoutStage: {
           ...(currentStructure.knockoutStage || {}),
@@ -356,6 +373,10 @@ async function editTournament({ uid, tournamentId, data }) {
           allowByes: false,
         },
       };
+    }
+
+    if ((updatePayload.structure || updatePayload.format) && (updatePayload.format || tournament.format) === "mixto") {
+      validateMixedAdvancement({ structure: nextPayload.structure || tournament.structure || {}, context: "editar el torneo mixto" });
     }
 
     if (!updatePayload.phaseDefinitions && (updatePayload.structure || updatePayload.format)) {
@@ -376,6 +397,29 @@ async function editTournament({ uid, tournamentId, data }) {
         trx.update(db.collection("tournamentPhases").doc(existing.id), { config: phase.config || {}, order: phase.order, updatedAt: FieldValue.serverTimestamp() });
       }
       delete nextPayload.phaseDefinitions;
+    }
+
+    if ((updatePayload.format || tournament.format) === "mixto") {
+      const groupPhase = (nextPayload.phaseDefinitions || buildDefaultPhases(updatePayload.format || tournament.format, nextPayload.structure || tournament.structure || {})).find((phase) => phase.type === PHASE_TYPES.GROUP_STAGE);
+      const knockoutPhase = (nextPayload.phaseDefinitions || buildDefaultPhases(updatePayload.format || tournament.format, nextPayload.structure || tournament.structure || {})).find((phase) => phase.type === PHASE_TYPES.KNOCKOUT);
+      if (groupPhase && knockoutPhase) {
+        const rulesRef = db.collection("tournamentAdvancementRules").doc(`${tournamentId}_${groupPhase.type}_${knockoutPhase.type}`);
+        const advancementRules = buildDefaultAdvancementRules(nextPayload.structure || tournament.structure || {});
+        trx.set(rulesRef, {
+          tournamentId,
+          fromPhaseType: groupPhase.type,
+          toPhaseType: knockoutPhase.type,
+          rules: {
+            ...advancementRules,
+            qualifyPositions: advancementRules.qualifyPositions,
+            seedingCriteria: advancementRules.seedingCriteria,
+            tiebreakers: advancementRules.tiebreakers,
+            crossGroupSeeding: advancementRules.crossGroupSeeding,
+            bracketMatchup: advancementRules.bracketMatchup,
+          },
+          updatedAt: FieldValue.serverTimestamp(),
+        }, { merge: true });
+      }
     }
 
     trx.update(tournamentRef, nextPayload);

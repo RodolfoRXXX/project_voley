@@ -23,6 +23,8 @@ export type TournamentStanding = {
   groupLabel?: string | null;
   position: number;
   qualified: boolean;
+  qualificationType?: string | null;
+  seed?: number | null;
   stats: TournamentStandingStats;
   updatedAt?: { seconds: number };
 };

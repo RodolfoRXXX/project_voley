@@ -136,11 +136,18 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     () => phases.find((phase) => phase.id === tournament.currentPhaseId) || null,
     [phases, tournament.currentPhaseId]
   );
-  const confirmedGroups = getConfirmedGroupsFromTournamentContext({ phase: currentPhase, tournament });
+  const groupStagePhase = useMemo(() => phases.find((phase) => phase.type === "group_stage") || null, [phases]);
+  const knockoutPhase = useMemo(() => phases.find((phase) => phase.type === "knockout") || null, [phases]);
+  const confirmedGroups = getConfirmedGroupsFromTournamentContext({ phase: groupStagePhase || currentPhase, tournament });
   const hasConfirmedGroups = confirmedGroups.length > 0;
-  const hasConfirmedFixture = confirmedTournamentMatches.length > 0;
+  const currentPhaseMatches = useMemo(
+    () => confirmedTournamentMatches.filter((match) => match.phaseId === currentPhase?.id),
+    [confirmedTournamentMatches, currentPhase?.id]
+  );
+  const hasConfirmedFixture = currentPhaseMatches.length > 0;
   const isLeaguePhase = currentPhase?.type === "round_robin";
   const isKnockoutPhase = currentPhase?.type === "knockout" || currentPhase?.type === "final";
+  const isMixedTournament = tournament.format === "mixto";
 
   const loadPhases = useCallback(async () => {
     setLoadingPhases(true);
@@ -179,18 +186,13 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     }
   }, [tournament.id]);
 
-  const loadStandings = useCallback(async (phaseId?: string | null) => {
-    if (!phaseId) {
-      setStandings([]);
-      return;
-    }
-
+  const loadStandings = useCallback(async () => {
     setLoadingStandings(true);
     try {
-      const nextStandings = await getTournamentStandings({ tournamentId: tournament.id, phaseId });
+      const nextStandings = await getTournamentStandings({ tournamentId: tournament.id });
       setStandings(nextStandings);
     } catch (error) {
-      handleFirebaseError(error, showToast, "No se pudieron cargar los standings de la fase actual");
+      handleFirebaseError(error, showToast, "No se pudieron cargar los standings del torneo");
     } finally {
       setLoadingStandings(false);
     }
@@ -204,7 +206,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   }, [loadConfirmedMatches, loadPhases, loadTournamentTeams, onTournamentRefresh]);
 
   useEffect(() => {
-    loadStandings(tournament.currentPhaseId);
+    loadStandings();
   }, [loadStandings, tournament.currentPhaseId]);
 
   useEffect(() => {
@@ -331,7 +333,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       await onTournamentRefresh();
       await loadPhases();
       await loadConfirmedMatches();
-      await loadStandings(currentPhase?.id);
+      await loadStandings();
       setPreviewTournamentMatches(null);
       setSeed(null);
       showToast({ type: "success", message: "Fixture confirmado correctamente" });
@@ -407,7 +409,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       await Promise.all([
         loadPhases(),
         loadConfirmedMatches(),
-        loadStandings(tournament.currentPhaseId),
+        loadStandings(),
       ]);
 
       showToast({ type: "success", message: "Resultado registrado y panel refrescado" });
@@ -471,10 +473,34 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     );
   };
 
+  const currentStandings = useMemo(
+    () => standings.filter((standing) => standing.phaseId === currentPhase?.id).sort((a, b) => a.position - b.position),
+    [standings, currentPhase?.id]
+  );
+  const groupStageStandings = useMemo(
+    () => standings.filter((standing) => standing.phaseId === groupStagePhase?.id).sort((a, b) => (a.groupLabel || "").localeCompare(b.groupLabel || "") || a.position - b.position),
+    [standings, groupStagePhase?.id]
+  );
   const groupedPreviewTournamentMatches = useMemo(() => groupTournamentMatches(previewTournamentMatches || []), [previewTournamentMatches]);
-  const groupedConfirmedTournamentMatches = useMemo(() => groupTournamentMatches(confirmedTournamentMatches), [confirmedTournamentMatches]);
-  const leagueProgress = useMemo(() => getTournamentLeagueProgress(confirmedTournamentMatches), [confirmedTournamentMatches]);
-  const leagueLeader = useMemo(() => standings.slice().sort((a, b) => a.position - b.position)[0] || null, [standings]);
+  const groupedConfirmedTournamentMatches = useMemo(() => groupTournamentMatches(currentPhaseMatches), [currentPhaseMatches]);
+  const leagueProgress = useMemo(() => getTournamentLeagueProgress(currentPhaseMatches), [currentPhaseMatches]);
+  const leagueLeader = useMemo(() => currentStandings[0] || null, [currentStandings]);
+  const mixedGroupMatches = useMemo(
+    () => confirmedTournamentMatches.filter((match) => match.phaseId === groupStagePhase?.id),
+    [confirmedTournamentMatches, groupStagePhase?.id]
+  );
+  const mixedKnockoutMatches = useMemo(
+    () => confirmedTournamentMatches.filter((match) => match.phaseId === knockoutPhase?.id),
+    [confirmedTournamentMatches, knockoutPhase?.id]
+  );
+  const groupedMixedGroupMatches = useMemo(() => groupTournamentMatches(mixedGroupMatches), [mixedGroupMatches]);
+  const groupedMixedKnockoutMatches = useMemo(() => groupTournamentMatches(mixedKnockoutMatches), [mixedKnockoutMatches]);
+  const publishedQualifiedTeams = useMemo(() => {
+    if (Array.isArray(groupStagePhase?.config?.qualifiedTeamsPublished) && groupStagePhase.config.qualifiedTeamsPublished.length > 0) {
+      return [...groupStagePhase.config.qualifiedTeamsPublished].sort((a, b) => Number(a.seed || 0) - Number(b.seed || 0));
+    }
+    return groupStageStandings.filter((standing) => standing.qualified).sort((a, b) => Number(a.seed || 0) - Number(b.seed || 0) || a.position - b.position);
+  }, [groupStagePhase?.config?.qualifiedTeamsPublished, groupStageStandings]);
   const canOrganizeTournament =
     currentPhase?.type === "group_stage" && (tournament.status === "inscripciones_cerradas" || tournament.status === "activo");
   const showGroupActions = currentPhase?.type === "group_stage" && !hasConfirmedGroups;
@@ -524,7 +550,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
         </p>
       ) : null}
 
-      <TournamentStandingsTable standings={standings} teamNames={teamNames} />
+      <TournamentStandingsTable standings={currentStandings} teamNames={teamNames} />
     </div>
   );
 
@@ -644,6 +670,89 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       )}
 
       {!isLeaguePhase ? standingsSection : null}
+
+      {isMixedTournament && groupStagePhase && (
+        <div className="grid gap-6 xl:grid-cols-2">
+          <section className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-700 dark:bg-neutral-900/30">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">1. Fase de grupos</h3>
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">{groupStagePhase.status}</span>
+            </div>
+
+            {confirmedGroups.length > 0 ? (
+              <TournamentGroupsList groups={confirmedGroups} teamNames={teamNames} />
+            ) : (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">Todavía no hay grupos confirmados.</p>
+            )}
+
+            {groupStageStandings.length > 0 ? (
+              <TournamentStandingsTable standings={groupStageStandings} teamNames={teamNames} />
+            ) : (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">Los standings de grupos todavía no están disponibles.</p>
+            )}
+
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Clasificados publicados</h4>
+              {publishedQualifiedTeams.length > 0 ? (
+                <ul className="space-y-2 text-sm text-neutral-700 dark:text-neutral-200">
+                  {publishedQualifiedTeams.map((team) => (
+                    <li key={`${team.teamId}-${team.seed || team.position || 0}`} className="rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-700">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                          #{team.seed || team.position || "-"} {teamNames[team.teamId] || team.teamId}
+                        </span>
+                        <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                          {team.groupLabel ? `${team.groupLabel} · ` : ""}{team.qualificationType || "clasificado"}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">Se publicarán cuando la fase de grupos quede cerrada.</p>
+              )}
+            </div>
+
+            {mixedGroupMatches.length > 0 ? (
+              <TournamentMatchSummaryList groupedTournamentMatches={groupedMixedGroupMatches} teamNames={teamNames} />
+            ) : (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">Todavía no hay fixture confirmado de grupos.</p>
+            )}
+          </section>
+
+          <section className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-700 dark:bg-neutral-900/30">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">2. Playoffs</h3>
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">{knockoutPhase?.status || "pending"}</span>
+            </div>
+
+            {Array.isArray(knockoutPhase?.config?.qualifiedTeams) && knockoutPhase.config.qualifiedTeams.length > 0 ? (
+              <ul className="grid gap-2 sm:grid-cols-2 text-sm text-neutral-700 dark:text-neutral-200">
+                {knockoutPhase.config.qualifiedTeams.map((team) => (
+                  <li key={`${team.teamId}-${team.seed || 0}`} className="rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-700">
+                    <b>Seed {team.seed || "-"}</b>: {teamNames[team.teamId] || team.teamId}
+                    <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                      {team.groupLabel ? `${team.groupLabel} · ` : ""}pos. {team.position || "-"} · {team.qualificationType || "clasificado"}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">El playoff se poblará cuando termine la fase de grupos.</p>
+            )}
+
+            {mixedKnockoutMatches.length > 0 ? (
+              <TournamentMatchSummaryList
+                groupedTournamentMatches={groupedMixedKnockoutMatches}
+                teamNames={teamNames}
+                renderMatchDetails={renderConfirmedMatchDetails}
+              />
+            ) : (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">Todavía no hay bracket confirmado.</p>
+            )}
+          </section>
+        </div>
+      )}
 
       <MatchResultModal
         open={Boolean(selectedTournamentMatch)}

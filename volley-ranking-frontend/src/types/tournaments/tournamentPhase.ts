@@ -29,6 +29,16 @@ export type TournamentPhase = {
     qualifyPerGroup?: number;
     bracketSize?: number | null;
     startFrom?: "octavos" | "cuartos" | "semi" | "final";
+    allowByes?: boolean;
+    currentRoundLabel?: string | null;
+    fixture?: {
+      generated?: boolean;
+      generationMode?: string;
+      totalRounds?: number;
+      totalMatchdays?: number;
+      roundLabels?: string[];
+      matchesCount?: number;
+    };
     groups?: TournamentGroup[];
   };
   confirmedAt?: { seconds: number } | null;

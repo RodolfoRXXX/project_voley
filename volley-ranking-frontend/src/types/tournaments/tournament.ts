@@ -34,6 +34,7 @@ export type Tournament = {
     knockoutStage?: {
       enabled?: boolean;
       startFrom?: "octavos" | "cuartos" | "semi" | "final";
+      allowByes?: boolean;
     };
   };
   status: TournamentStatus;

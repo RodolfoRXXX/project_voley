@@ -8,7 +8,7 @@ El objetivo es que sirva como guía de implementación y seguimiento a medida qu
 
 ## 1. Torneo de Liga (todos contra todos / round robin)
 
-> Estado actualizado: **implementado** en backend + frontend.  
+> Estado actualizado: **implementado** en backend + frontend.
 > Se genera todo el fixture desde el inicio con metadata por vuelta/jornada, la tabla queda como fuente de verdad del campeón y la UI de liga ya no muestra grupos.
 
 ### Reglas funcionales objetivo
@@ -137,6 +137,9 @@ En una liga, la tabla no es secundaria: es el corazón del torneo.
 
 ## 2. Torneo de Eliminación Directa (knockout)
 
+> Estado actualizado: **implementado parcialmente con cuadro completo, avance automático y validación estricta de cupos** en backend + frontend.
+> Política vigente: **sin byes automáticos**. Para confirmar fixture se exige completar exactamente el tamaño de cuadro definido por `startFrom`.
+
 ### Reglas funcionales objetivo
 - No debe haber grupos.
 - No debe haber fase de liga previa.
@@ -148,106 +151,105 @@ En una liga, la tabla no es secundaria: es el corazón del torneo.
 ### Backend: qué modificar
 
 #### 2.1. Convertir `startFrom` en una configuración operativa real
-Hoy `startFrom` existe, pero no determina realmente la estructura del cuadro.
+**Estado:** ✅ realizado.
 
-**Cambio necesario:**
-- Mapear `startFrom` a tamaño de bracket:
-  - `final` → 2 equipos
-  - `semi` → 4 equipos
-  - `cuartos` → 8 equipos
-  - `octavos` → 16 equipos
-- Validar que la cantidad de equipos clasificados/aceptados sea compatible con ese tamaño.
-- Definir política cuando falten equipos:
-  - no permitir confirmar fixture, o
-  - permitir byes automáticos.
+`startFrom` ahora determina el tamaño del cuadro y se persiste también como `bracketSize` en la fase knockout.
+
+**Resolución aplicada:**
+- `final` → 2 equipos
+- `semi` → 4 equipos
+- `cuartos` → 8 equipos
+- `octavos` → 16 equipos
+- La validación del fixture ahora exige que la cantidad de equipos aceptados o clasificados coincida exactamente con ese tamaño.
+- Se definió política explícita de byes: **no permitidos**.
 
 #### 2.2. Generar un bracket completo, no solo la primera ronda
-Hoy el sistema arma cruces iniciales, pero no una estructura completa hasta la final.
+**Estado:** ✅ realizado.
 
-**Cambio necesario:**
-- Reescribir el generador de knockout para que cree:
-  - todos los partidos del bracket desde el inicio, o
-  - al menos una estructura de nodos con dependencias entre partidos.
-- Cada partido debe poder conocer:
-  - de qué partido anterior sale el local;
-  - de qué partido anterior sale el visitante;
-  - en qué instancia está (`QF`, `SF`, `F`, etc.).
+El generador knockout dejó de crear solo cruces iniciales y ahora arma la llave completa hasta la final.
 
-**Modelo sugerido:**
-- Agregar a `tournamentMatches` campos como:
-  - `roundLabel` (`octavos`, `cuartos`, `semi`, `final`)
+**Resolución aplicada:**
+- Se crean todos los partidos de la llave al confirmar fixture.
+- Cada partido puede incluir metadata de dependencia:
+  - `roundLabel`
   - `bracketIndex`
   - `sourceHomeMatchId`
   - `sourceAwayMatchId`
   - `sourceHomeSlot`
   - `sourceAwaySlot`
+- Los cruces futuros quedan visibles aunque todavía no tengan equipos definidos.
 
 #### 2.3. Implementar avance automático de ganadores
-El comportamiento clave del knockout es que los ganadores avancen y los perdedores queden eliminados.
+**Estado:** ✅ realizado.
 
-**Cambio necesario:**
-- Al registrar el resultado de un partido knockout:
-  - identificar el ganador;
-  - ubicarlo en el siguiente cruce correspondiente;
-  - marcar al perdedor como eliminado.
-- Cuando todos los partidos de una instancia estén completos, activar la siguiente.
-- Cuando se complete la final, cerrar torneo y definir campeón.
+Al registrar resultados de un partido knockout, el sistema ahora propaga automáticamente al ganador al siguiente cruce correspondiente.
+
+**Resolución aplicada:**
+- El ganador se copia al slot dependiente (`home` o `away`) del próximo partido.
+- El partido siguiente queda actualizado sin regenerar fixture.
+- La fase guarda `currentRoundLabel` para reflejar qué instancia está en juego.
+- Cuando se completa la final y no hay una fase posterior, el torneo se cierra y el campeón sale del resultado de la final, no de standings.
 
 #### 2.4. Manejar byes si el bracket no está completo
-Si el cuadro está pensado para 8 pero hay 6 equipos, el sistema necesita una política consistente.
+**Estado:** ✅ resuelto con política explícita.
 
-**Cambio necesario:**
-- Definir explícitamente si se permiten byes.
-- Si se permiten:
-  - crear seeds vacíos;
-  - avanzar automáticamente los equipos beneficiados.
-- Si no se permiten:
-  - bloquear la confirmación del fixture hasta completar el tamaño requerido.
+**Política adoptada:**
+- **No se permiten byes automáticos.**
+- Si faltan equipos para completar el cuadro, se bloquea la generación/confirmación del fixture.
+
+**Pendiente futuro opcional:**
+- Si en algún momento se quisiera soportar byes, habría que extender el generador para seeds vacíos y auto-avance. Hoy esa variante no está habilitada.
 
 #### 2.5. Ajustar standings o métricas para knockout
-En eliminación directa, la tabla no cumple el mismo rol que en liga.
+**Estado:** ✅ ajustado parcialmente.
 
-**Cambio necesario:**
-- Evaluar si `tournamentStandings` debe seguir existiendo para knockout o si conviene complementarlo con un resumen de bracket.
-- Si se conserva standings, usarlo para métricas mínimas, no como criterio principal de progreso.
+La tabla se conserva para estadísticas mínimas, pero ya no actúa como fuente de verdad del avance.
+
+**Resolución aplicada:**
+- La UI de eliminación presenta el bracket como eje principal.
+- Los standings quedan como apoyo estadístico mínimo.
+- El cierre del torneo se decide por la final del bracket.
 
 ### Frontend: qué modificar
 
 #### 2.6. Ocultar cualquier configuración de grupos o liga
+**Estado:** ✅ realizado para formato `eliminacion`.
 
-**Cambio necesario:**
-- En formato `eliminacion`, mostrar únicamente:
-  - tamaño del cuadro / `startFrom`;
-  - cantidad de equipos requerida;
-  - política de byes si aplica.
-- No mostrar ninguna UI relacionada con grupos o rondas de liga.
+**Resolución aplicada:**
+- En formato `eliminacion` solo se muestra:
+  - `startFrom`
+  - tamaño requerido del cuadro
+  - política de byes
+- La UI de grupos/liga queda reservada para `liga` o `mixto`.
 
 #### 2.7. Mostrar el cuadro como bracket real
-Hoy el render actual sirve para listar partidos, pero no para representar un playoff real.
+**Estado:** ✅ realizado.
 
-**Cambio necesario:**
-- Reemplazar la vista de knockout por una UI tipo bracket.
-- Mostrar columnas o bloques por instancia:
-  - octavos
-  - cuartos
-  - semifinal
-  - final
-- Mostrar cruces futuros aunque todavía no tengan equipos definidos.
+**Resolución aplicada:**
+- La vista knockout ahora se renderiza como bracket por columnas/instancias.
+- Se muestran bloques para `octavos`, `cuartos`, `semi` y `final` según corresponda.
+- Los cruces futuros aparecen aunque todavía tengan equipos por definir.
 
 #### 2.8. Mostrar el avance de clasificados
+**Estado:** ✅ realizado.
 
-**Cambio necesario:**
-- Después de cada resultado, la UI debe reflejar automáticamente:
-  - quién avanzó;
-  - quién quedó eliminado;
-  - cuál es el próximo cruce.
+**Resolución aplicada:**
+- Después de cargar un resultado, el siguiente cruce se actualiza automáticamente.
+- La UI resalta ganador/avance en el card del partido y muestra cuando un cruce sigue esperando clasificados.
 
 #### 2.9. Ajustar validaciones del formulario
+**Estado:** ✅ realizado.
 
-**Cambio necesario:**
-- Validar desde frontend que el tamaño del cuadro elegido tenga sentido con la cantidad mínima/máxima de equipos.
-- Si se elige `final`, permitir 2 equipos si ese caso de negocio es válido.
-- Si se elige `semi`, exigir o sugerir 4 equipos, etc.
+**Resolución aplicada:**
+- El frontend valida el tamaño de cuadro esperado según `startFrom`.
+- Para `final`, se admite el caso de negocio de 2 equipos.
+- Para `semi`, `cuartos` u `octavos`, se exige exactamente 4, 8 o 16 equipos cuando el formato es `eliminacion`.
+- En `mixto`, la UI informa cuántos clasificados necesita luego el playoff.
+
+### Próximos pasos sugeridos
+- Verificar que los torneos mixtos existentes queden configurados con una cantidad de clasificados compatible con el `startFrom` elegido.
+- Evaluar si vale la pena agregar soporte real de byes en una iteración posterior.
+- Si se quiere enriquecer la lectura pública, sumar una vista de campeón/subcampeón/semifinalistas basada en el bracket ya persistido.
 
 ---
 

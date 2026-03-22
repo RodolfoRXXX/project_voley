@@ -1,4 +1,5 @@
 import type { FormEvent } from "react";
+import { getKnockoutBracketSize, getKnockoutPreview, getKnockoutRoundLabel, type KnockoutStartFrom } from "@/lib/tournaments/knockout";
 import type { Tournament } from "@/types/tournaments";
 
 export type TournamentFormValues = {
@@ -21,7 +22,8 @@ export type TournamentFormValues = {
     };
     knockoutStage: {
       enabled: boolean;
-      startFrom: "octavos" | "cuartos" | "semi" | "final";
+      startFrom: KnockoutStartFrom;
+      allowByes?: boolean;
     };
   };
 };
@@ -42,13 +44,17 @@ export function TournamentEditForm({
   onSubmit: (e: FormEvent<HTMLFormElement>) => Promise<void>;
 }) {
   const isLeague = values.format === "liga";
+  const isKnockout = values.format === "eliminacion";
+  const isMixed = values.format === "mixto";
+  const requiredKnockoutTeams = getKnockoutBracketSize(values.structure.knockoutStage.startFrom);
+  const knockoutPreview = getKnockoutPreview(values.structure.knockoutStage.startFrom);
 
   return (
     <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
       <h2 className="text-base font-semibold">Editar torneo</h2>
       {isActiveTournament && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-          Torneo activo: solo se permiten cambios en pago por jugador, cupos de equipos, máximo de jugadores, sets máximos por partido, cantidad de grupos y vueltas.
+          Torneo activo: solo se permiten cambios en pago por jugador, cupos de equipos, máximo de jugadores, sets máximos por partido y configuración estructural todavía pendiente.
         </p>
       )}
 
@@ -81,9 +87,12 @@ export function TournamentEditForm({
               disabled={isActiveTournament}
               onChange={(e) => {
                 const format = e.target.value as TournamentFormValues["format"];
+                const nextBracketSize = getKnockoutBracketSize(values.structure.knockoutStage.startFrom);
                 onChange({
                   ...values,
                   format,
+                  minTeams: format === "eliminacion" ? nextBracketSize : Math.max(values.minTeams, 4),
+                  maxTeams: format === "eliminacion" ? nextBracketSize : Math.max(values.maxTeams, 4),
                   structure: {
                     groupStage: {
                       ...values.structure.groupStage,
@@ -93,6 +102,7 @@ export function TournamentEditForm({
                     knockoutStage: {
                       ...values.structure.knockoutStage,
                       enabled: format !== "liga",
+                      allowByes: false,
                     },
                   },
                 });
@@ -109,6 +119,7 @@ export function TournamentEditForm({
             <label className="text-sm font-medium">Min equipos</label>
             <input
               type="number"
+              min={isKnockout && values.structure.knockoutStage.startFrom === "final" ? 2 : 4}
               value={values.minTeams}
               onChange={(e) => onChange({ ...values, minTeams: Number(e.target.value) })}
               className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
@@ -119,6 +130,7 @@ export function TournamentEditForm({
             <label className="text-sm font-medium">Max equipos</label>
             <input
               type="number"
+              min={isKnockout && values.structure.knockoutStage.startFrom === "final" ? 2 : 4}
               value={values.maxTeams}
               onChange={(e) => onChange({ ...values, maxTeams: Number(e.target.value) })}
               className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
@@ -182,13 +194,37 @@ export function TournamentEditForm({
           </div>
         </div>
 
-        <div className={`grid gap-3 ${isLeague ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
-          {!isLeague && (
+        {!isKnockout && (
+          <div className={`grid gap-3 ${isLeague ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
+            {!isLeague && (
+              <div>
+                <label className="text-sm font-medium">Cantidad de grupos</label>
+                <input
+                  type="number"
+                  value={values.structure.groupStage.groupCount}
+                  onChange={(e) =>
+                    onChange({
+                      ...values,
+                      structure: {
+                        ...values.structure,
+                        groupStage: {
+                          ...values.structure.groupStage,
+                          enabled: true,
+                          groupCount: Number(e.target.value),
+                        },
+                      },
+                    })
+                  }
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                />
+              </div>
+            )}
+
             <div>
-              <label className="text-sm font-medium">Cantidad de grupos</label>
+              <label className="text-sm font-medium">Vueltas de liga</label>
               <input
                 type="number"
-                value={values.structure.groupStage.groupCount}
+                value={values.structure.groupStage.rounds}
                 onChange={(e) =>
                   onChange({
                     ...values,
@@ -196,8 +232,7 @@ export function TournamentEditForm({
                       ...values.structure,
                       groupStage: {
                         ...values.structure.groupStage,
-                        enabled: true,
-                        groupCount: Number(e.target.value),
+                        rounds: Number(e.target.value),
                       },
                     },
                   })
@@ -205,55 +240,64 @@ export function TournamentEditForm({
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
               />
             </div>
-          )}
-
-          <div>
-            <label className="text-sm font-medium">Vueltas de liga</label>
-            <input
-              type="number"
-              value={values.structure.groupStage.rounds}
-              onChange={(e) =>
-                onChange({
-                  ...values,
-                  structure: {
-                    ...values.structure,
-                    groupStage: {
-                      ...values.structure.groupStage,
-                      rounds: Number(e.target.value),
-                    },
-                  },
-                })
-              }
-              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            />
           </div>
-        </div>
+        )}
 
-        <div>
-          <label className="text-sm font-medium">Etapa de eliminación (si aplica)</label>
-          <select
-            value={values.structure.knockoutStage.startFrom}
-            disabled={isActiveTournament}
-            onChange={(e) =>
-              onChange({
-                ...values,
-                structure: {
-                  ...values.structure,
-                  knockoutStage: {
-                    enabled: values.format !== "liga",
-                    startFrom: e.target.value as TournamentFormValues["structure"]["knockoutStage"]["startFrom"],
-                  },
-                },
-              })
-            }
-            className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-          >
-            <option value="octavos">Octavos</option>
-            <option value="cuartos">Cuartos</option>
-            <option value="semi">Semifinal</option>
-            <option value="final">Final</option>
-          </select>
-        </div>
+        {(isKnockout || isMixed) && (
+          <div className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+            <div>
+              <label className="text-sm font-medium">Etapa de eliminación</label>
+              <select
+                value={values.structure.knockoutStage.startFrom}
+                disabled={isActiveTournament}
+                onChange={(e) => {
+                  const startFrom = e.target.value as TournamentFormValues["structure"]["knockoutStage"]["startFrom"];
+                  const nextBracketSize = getKnockoutBracketSize(startFrom);
+                  onChange({
+                    ...values,
+                    minTeams: values.format === "eliminacion" ? nextBracketSize : values.minTeams,
+                    maxTeams: values.format === "eliminacion" ? nextBracketSize : values.maxTeams,
+                    structure: {
+                      ...values.structure,
+                      knockoutStage: {
+                        enabled: values.format !== "liga",
+                        startFrom,
+                        allowByes: false,
+                      },
+                    },
+                  });
+                }}
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              >
+                <option value="octavos">Octavos</option>
+                <option value="cuartos">Cuartos</option>
+                <option value="semi">Semifinal</option>
+                <option value="final">Final</option>
+              </select>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Cuadro requerido</p>
+                <p className="mt-1 text-sm font-medium text-neutral-900">{requiredKnockoutTeams} equipos</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Byes</p>
+                <p className="mt-1 text-sm font-medium text-neutral-900">No permitidos</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Camino</p>
+                <p className="mt-1 text-sm font-medium text-neutral-900">{knockoutPreview}</p>
+              </div>
+            </div>
+
+            {isKnockout && (
+              <p className="text-xs text-neutral-500">
+                En eliminación directa pura no se permiten grupos ni liga previa: el fixture sólo se puede confirmar cuando el torneo tiene exactamente {requiredKnockoutTeams} equipos aceptados.
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="flex gap-2 pt-2">
           <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm text-white dark:bg-neutral-200 dark:text-neutral-900">
@@ -275,12 +319,8 @@ function formatLabel(format: Tournament["format"]) {
   return "Liga";
 }
 
-function knockoutLabel(startFrom?: "octavos" | "cuartos" | "semi" | "final") {
-  if (startFrom === "octavos") return "Octavos";
-  if (startFrom === "cuartos") return "Cuartos";
-  if (startFrom === "semi") return "Semifinal";
-  if (startFrom === "final") return "Final";
-  return "-";
+function knockoutLabel(startFrom?: KnockoutStartFrom) {
+  return getKnockoutRoundLabel(startFrom);
 }
 
 export function TournamentDetailsCard({
@@ -298,12 +338,15 @@ export function TournamentDetailsCard({
 }) {
   const isLeague = tournament.format === "liga";
   const isNormal = tournament.format === "mixto";
+  const isKnockout = tournament.format === "eliminacion";
   const hasGroups = tournament.structure?.groupStage?.enabled && !isLeague;
   const hasKnockout = tournament.structure?.knockoutStage?.enabled;
   const maxTeams = Number(tournament.maxTeams || 0);
   const rounds = Number(tournament.structure?.groupStage?.rounds || 1);
   const estimatedLeagueMatches = isLeague ? Math.max(0, (maxTeams * (maxTeams - 1)) / 2) * rounds : null;
   const estimatedLeagueMatchdays = isLeague ? Math.max(0, (maxTeams % 2 === 0 ? maxTeams - 1 : maxTeams) * rounds) : null;
+  const knockoutStartFrom = tournament.structure?.knockoutStage?.startFrom || "semi";
+  const knockoutBracketSize = getKnockoutBracketSize(knockoutStartFrom);
 
   return (
     <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
@@ -336,8 +379,12 @@ export function TournamentDetailsCard({
             <p>Vueltas: <b>{tournament.structure?.groupStage?.rounds || "-"}</b></p>
           </>
         )}
-        {isNormal && hasKnockout && (
-          <p>Eliminación desde: <b>{knockoutLabel(tournament.structure?.knockoutStage?.startFrom)}</b></p>
+        {(isNormal || isKnockout) && hasKnockout && (
+          <>
+            <p>Eliminación desde: <b>{knockoutLabel(knockoutStartFrom)}</b></p>
+            <p>Tamaño del cuadro: <b>{knockoutBracketSize} equipos</b></p>
+            <p>Byes: <b>No permitidos</b></p>
+          </>
         )}
         {isLeague && (
           <>

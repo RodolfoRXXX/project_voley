@@ -1,6 +1,7 @@
 const functions = require("firebase-functions/v1");
 const { db } = require("../firebase");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
+const { getKnockoutBracketSize } = require("./tournamentFixtureService");
 
 const TOURNAMENT_STATUS = {
   DRAFT: "draft",
@@ -62,8 +63,9 @@ function buildDefaultPhases(format, structure = {}) {
       type: PHASE_TYPES.KNOCKOUT,
       order: 1,
       config: {
-        bracketSize: null,
         startFrom: structure.knockoutStage?.startFrom || "semi",
+        bracketSize: getKnockoutBracketSize(structure.knockoutStage?.startFrom || "semi"),
+        allowByes: false,
       },
     });
   }
@@ -85,8 +87,9 @@ function buildDefaultPhases(format, structure = {}) {
       type: PHASE_TYPES.KNOCKOUT,
       order: 2,
       config: {
-        bracketSize: null,
         startFrom: structure.knockoutStage?.startFrom || "semi",
+        bracketSize: getKnockoutBracketSize(structure.knockoutStage?.startFrom || "semi"),
+        allowByes: false,
       },
     });
   }
@@ -161,6 +164,7 @@ function validateTournamentPayload(data) {
     knockoutStage: {
       enabled: format !== "liga",
       startFrom: data.structure?.knockoutStage?.startFrom || "semi",
+      allowByes: false,
     },
   };
 
@@ -349,6 +353,7 @@ async function editTournament({ uid, tournamentId, data }) {
           ...(updatePayload.structure.knockoutStage || {}),
           enabled: nextFormat !== "liga",
           startFrom: updatePayload.structure.knockoutStage?.startFrom || currentStructure.knockoutStage?.startFrom || "semi",
+          allowByes: false,
         },
       };
     }

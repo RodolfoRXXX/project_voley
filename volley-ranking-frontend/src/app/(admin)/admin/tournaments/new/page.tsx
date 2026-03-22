@@ -8,6 +8,7 @@ import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 
 import { createTournament } from "@/services/tournaments/tournamentMutations";
+import { getKnockoutBracketSize, getKnockoutPreview, type KnockoutStartFrom } from "@/lib/tournaments/knockout";
 
 type TournamentForm = {
   name: string;
@@ -33,7 +34,8 @@ type TournamentForm = {
     };
     knockoutStage: {
       enabled: boolean;
-      startFrom: "octavos" | "cuartos" | "semi" | "final";
+      startFrom: KnockoutStartFrom;
+      allowByes?: boolean;
     };
   };
 };
@@ -69,6 +71,7 @@ export default function NewTournamentPage() {
       knockoutStage: {
         enabled: false,
         startFrom: "semi",
+        allowByes: false,
       },
     },
   });
@@ -76,26 +79,32 @@ export default function NewTournamentPage() {
   const isLeague = form.format === "liga";
   const isKnockout = form.format === "eliminacion";
   const isMixed = form.format === "mixto";
-
-  const showStructure = !isKnockout;
-  const showKnockoutStart = isMixed;
+  const requiredKnockoutTeams = getKnockoutBracketSize(form.structure.knockoutStage.startFrom);
+  const minAllowedTeams = isKnockout && form.structure.knockoutStage.startFrom === "final" ? 2 : 4;
 
   const updateFormat = (format: TournamentForm["format"]) => {
-    setForm((prev) => ({
-      ...prev,
-      format,
-      structure: {
-        groupStage: {
-          ...prev.structure.groupStage,
-          enabled: format !== "eliminacion",
-          groupCount: format === "liga" ? 1 : prev.structure.groupStage.groupCount,
+    setForm((prev) => {
+      const nextStartFrom = prev.structure.knockoutStage.startFrom;
+      const nextBracketSize = getKnockoutBracketSize(nextStartFrom);
+      return {
+        ...prev,
+        format,
+        minTeams: format === "eliminacion" ? nextBracketSize : Math.max(prev.minTeams, 4),
+        maxTeams: format === "eliminacion" ? nextBracketSize : Math.max(prev.maxTeams, 4),
+        structure: {
+          groupStage: {
+            ...prev.structure.groupStage,
+            enabled: format !== "eliminacion",
+            groupCount: format === "liga" ? 1 : prev.structure.groupStage.groupCount,
+          },
+          knockoutStage: {
+            ...prev.structure.knockoutStage,
+            enabled: format !== "liga",
+            allowByes: false,
+          },
         },
-        knockoutStage: {
-          ...prev.structure.knockoutStage,
-          enabled: format !== "liga",
-        },
-      },
-    }));
+      };
+    });
   };
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -111,15 +120,25 @@ export default function NewTournamentPage() {
       return;
     }
 
-    if (form.minTeams < 4) {
+    if (form.minTeams < minAllowedTeams) {
       showToast({
         type: "error",
-        message: "Un torneo necesita al menos 4 equipos",
+        message: isKnockout && form.structure.knockoutStage.startFrom === "final"
+          ? "Una final directa admite 2 equipos, pero no menos"
+          : "Un torneo necesita al menos 4 equipos",
       });
       setLoading(false);
       return;
     }
 
+    if (isKnockout && (form.minTeams !== requiredKnockoutTeams || form.maxTeams !== requiredKnockoutTeams)) {
+      showToast({
+        type: "error",
+        message: `En eliminación directa sin byes el cuadro de ${form.structure.knockoutStage.startFrom} exige exactamente ${requiredKnockoutTeams} equipos.`,
+      });
+      setLoading(false);
+      return;
+    }
 
     if (form.minPlayers > form.maxPlayers) {
       showToast({
@@ -200,22 +219,7 @@ export default function NewTournamentPage() {
   const estimatedLeagueMatches = Math.max(0, (teams * (teams - 1)) / 2) * leagueRounds;
   const estimatedLeagueMatchdays = Math.max(0, Math.max(teams - 1, 0) + (teams % 2 === 0 ? 0 : 1)) * leagueRounds;
 
-  let knockoutPreview = "";
-
-  switch (form.structure.knockoutStage.startFrom) {
-    case "octavos":
-      knockoutPreview = "Octavos → Cuartos → Semifinal → Final";
-      break;
-    case "cuartos":
-      knockoutPreview = "Cuartos → Semifinal → Final";
-      break;
-    case "semi":
-      knockoutPreview = "Semifinal → Final";
-      break;
-    case "final":
-      knockoutPreview = "Final";
-      break;
-  }
+  const knockoutPreview = getKnockoutPreview(form.structure.knockoutStage.startFrom);
 
   return (
     <main className="max-w-3xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">
@@ -291,7 +295,7 @@ export default function NewTournamentPage() {
             <label className="text-sm font-medium">Mín. equipos</label>
             <input
               type="number"
-              min={4}
+              min={minAllowedTeams}
               className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
               value={form.minTeams}
               onChange={(e) =>
@@ -307,7 +311,7 @@ export default function NewTournamentPage() {
             <label className="text-sm font-medium">Máx. equipos</label>
             <input
               type="number"
-              min={4}
+              min={minAllowedTeams}
               className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
               value={form.maxTeams}
               onChange={(e) =>
@@ -445,7 +449,6 @@ export default function NewTournamentPage() {
 
         {/* estructura */}
 
-        {showStructure && (
         <section className="space-y-3 border-t border-neutral-200 pt-4">
 
           <h2 className="text-sm font-semibold text-neutral-800">
@@ -509,41 +512,67 @@ export default function NewTournamentPage() {
             </>
           )}
 
-          {/* inicio eliminación SOLO para mixto */}
+          {(isKnockout || isMixed) && (
+            <div className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+              <div>
+                <label className="text-sm font-medium">
+                  Inicio de eliminación
+                </label>
 
-          {showKnockoutStart && (
-            <div>
-              <label className="text-sm font-medium">
-                Inicio de eliminación
-              </label>
+                <select
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                  value={form.structure.knockoutStage.startFrom}
+                  onChange={(e) =>
+                    setForm((prev) => {
+                      const startFrom = e.target.value as TournamentForm["structure"]["knockoutStage"]["startFrom"];
+                      const bracketSize = getKnockoutBracketSize(startFrom);
+                      return {
+                        ...prev,
+                        minTeams: prev.format === "eliminacion" ? bracketSize : prev.minTeams,
+                        maxTeams: prev.format === "eliminacion" ? bracketSize : prev.maxTeams,
+                        structure: {
+                          ...prev.structure,
+                          knockoutStage: {
+                            ...prev.structure.knockoutStage,
+                            startFrom,
+                            allowByes: false,
+                          },
+                        },
+                      };
+                    })
+                  }
+                >
+                  <option value="octavos">Octavos</option>
+                  <option value="cuartos">Cuartos</option>
+                  <option value="semi">Semifinal</option>
+                  <option value="final">Final</option>
+                </select>
+              </div>
 
-              <select
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                value={form.structure.knockoutStage.startFrom}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    structure: {
-                      ...prev.structure,
-                      knockoutStage: {
-                        ...prev.structure.knockoutStage,
-                        startFrom:
-                          e.target.value as TournamentForm["structure"]["knockoutStage"]["startFrom"],
-                      },
-                    },
-                  }))
-                }
-              >
-                <option value="octavos">Octavos</option>
-                <option value="cuartos">Cuartos</option>
-                <option value="semi">Semifinal</option>
-                <option value="final">Final</option>
-              </select>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Tamaño de cuadro</p>
+                  <p className="mt-1 text-sm font-medium text-neutral-900">{requiredKnockoutTeams} equipos</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Byes</p>
+                  <p className="mt-1 text-sm font-medium text-neutral-900">No permitidos</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Flujo</p>
+                  <p className="mt-1 text-sm font-medium text-neutral-900">{knockoutPreview}</p>
+                </div>
+              </div>
+
+              {isKnockout && (
+                <p className="text-xs text-neutral-500">
+                  En torneos de eliminación directa pura no hay grupos ni liga previa. Para confirmar el fixture se debe completar exactamente el cuadro seleccionado.
+                </p>
+              )}
             </div>
           )}
 
         </section>
-        )}
 
         {/* preview */}
 
@@ -586,16 +615,30 @@ export default function NewTournamentPage() {
                   <b>Fechas estimadas:</b> {estimatedLeagueMatchdays}
                 </p>
               </>
+            ) : isKnockout ? (
+              <>
+                <p>
+                  <b>Cuadro:</b> {knockoutPreview}
+                </p>
+                <p>
+                  <b>Equipos requeridos:</b> {requiredKnockoutTeams}
+                </p>
+                <p>
+                  <b>Política de byes:</b> no permitidos
+                </p>
+              </>
             ) : (
-              <p>
-                <b>Grupos:</b> {groups} grupos de {teamsPerGroup} equipos
-              </p>
-            )}
-
-            {!isLeague && (
-              <p>
-                <b>Eliminación:</b> {knockoutPreview}
-              </p>
+              <>
+                <p>
+                  <b>Grupos:</b> {groups} grupos de {teamsPerGroup} equipos
+                </p>
+                <p>
+                  <b>Eliminación:</b> {knockoutPreview}
+                </p>
+                <p>
+                  <b>Clasificados requeridos para playoff:</b> {requiredKnockoutTeams}
+                </p>
+              </>
             )}
 
             {!isKnockout && !isLeague && (

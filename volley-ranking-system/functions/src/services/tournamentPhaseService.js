@@ -3,9 +3,11 @@ const { FieldValue } = require("firebase-admin/firestore");
 const { db } = require("../firebase");
 const { PHASE_STATUS, PHASE_TYPES, TOURNAMENT_STATUS } = require("./tournamentService");
 const {
-  generateBalancedGroups,
   generateKnockoutBracket,
   generateRoundRobinMatches,
+  getKnockoutConfig,
+  getKnockoutRoundLabels,
+  assertKnockoutTeamCount,
 } = require("./tournamentFixtureService");
 
 async function getTournamentAndPhase({ tournamentId, phaseId, allowedTypes = [] }) {
@@ -95,6 +97,25 @@ function sortStandingsRows(rows, matches = []) {
   }).map((row, index) => ({ ...row, position: index + 1 }));
 }
 
+function sortKnockoutMatches(matches = []) {
+  return [...matches].sort((a, b) => {
+    const aRound = Number(a.round || 0);
+    const bRound = Number(b.round || 0);
+    return aRound - bRound
+      || Number(a.bracketIndex || a.sequence || 0) - Number(b.bracketIndex || b.sequence || 0)
+      || String(a.id).localeCompare(String(b.id));
+  });
+}
+
+function getKnockoutPodium(matches = []) {
+  const completedMatches = matches.filter((match) => match.status === "completed" && match.result?.winnerId);
+  const finalMatch = sortKnockoutMatches(completedMatches).slice(-1)[0] || null;
+  if (!finalMatch) return null;
+  const winnerId = finalMatch.result?.winnerId || null;
+  const runnerUpId = winnerId === finalMatch.homeTeamId ? finalMatch.awayTeamId : finalMatch.homeTeamId;
+  return [winnerId || null, runnerUpId || null, null];
+}
+
 async function advancePhase({ tournament, phase }) {
   const phasesSnap = await db.collection("tournamentPhases").where("tournamentId", "==", tournament.id).get();
   const phases = phasesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })).sort((a, b) => a.order - b.order);
@@ -102,24 +123,32 @@ async function advancePhase({ tournament, phase }) {
   const nextPhase = currentIndex >= 0 ? phases[currentIndex + 1] : null;
 
   if (!nextPhase) {
-    const standingsSnap = await db.collection("tournamentStandings").where("phaseId", "==", phase.id).get();
-    const matchesSnap = await db.collection("tournamentMatches").where("phaseId", "==", phase.id).get();
-    const orderedStandings = sortStandingsRows(
-      standingsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
-      matchesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-    );
+    let podiumTeamIds = null;
 
-    await db.collection("tournaments").doc(tournament.id).update({
-      status: TOURNAMENT_STATUS.FINISHED,
-      currentPhaseId: phase.id,
-      currentPhaseType: phase.type,
-      podiumTeamIds: orderedStandings.length
+    if (phase.type === PHASE_TYPES.KNOCKOUT || phase.type === PHASE_TYPES.FINAL) {
+      const matchesSnap = await db.collection("tournamentMatches").where("phaseId", "==", phase.id).get();
+      podiumTeamIds = getKnockoutPodium(matchesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    } else {
+      const standingsSnap = await db.collection("tournamentStandings").where("phaseId", "==", phase.id).get();
+      const matchesSnap = await db.collection("tournamentMatches").where("phaseId", "==", phase.id).get();
+      const orderedStandings = sortStandingsRows(
+        standingsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+        matchesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      );
+      podiumTeamIds = orderedStandings.length
         ? [
             orderedStandings[0]?.teamId || null,
             orderedStandings[1]?.teamId || null,
             orderedStandings[2]?.teamId || null,
           ]
-        : null,
+        : null;
+    }
+
+    await db.collection("tournaments").doc(tournament.id).update({
+      status: TOURNAMENT_STATUS.FINISHED,
+      currentPhaseId: phase.id,
+      currentPhaseType: phase.type,
+      podiumTeamIds,
       updatedAt: FieldValue.serverTimestamp(),
     });
     return { advanced: false, finished: true };
@@ -128,8 +157,8 @@ async function advancePhase({ tournament, phase }) {
   const batch = db.batch();
   const tournamentRef = db.collection("tournaments").doc(tournament.id);
   const nextPhaseRef = db.collection("tournamentPhases").doc(nextPhase.id);
+  const nextPhaseUpdate = { status: PHASE_STATUS.ACTIVE, updatedAt: FieldValue.serverTimestamp() };
 
-  batch.update(nextPhaseRef, { status: PHASE_STATUS.ACTIVE, updatedAt: FieldValue.serverTimestamp() });
   batch.update(tournamentRef, {
     status: TOURNAMENT_STATUS.ACTIVE,
     currentPhaseId: nextPhase.id,
@@ -174,7 +203,15 @@ async function advancePhase({ tournament, phase }) {
 
     const seededRows = sortStandingsRows(standings.filter((row) => qualified.includes(row.teamId)), matches);
     const teams = seededRows.map((row) => ({ id: row.teamId }));
-    const knockoutMatches = generateKnockoutBracket(tournament, teams, 1, nextPhase.type, { phaseId: nextPhase.id, phaseType: nextPhase.type });
+    const startFrom = nextPhase.config?.startFrom || tournament.structure?.knockoutStage?.startFrom || "semi";
+    assertKnockoutTeamCount({ teamCount: teams.length, startFrom, allowByes: false, context: "armar la llave eliminatoria" });
+    const knockoutConfig = getKnockoutConfig(startFrom);
+    const knockoutMatches = generateKnockoutBracket(tournament, teams, 1, nextPhase.type, {
+      phaseId: nextPhase.id,
+      phaseType: nextPhase.type,
+      startFrom,
+      allowByes: false,
+    });
     knockoutMatches.forEach((match) => {
       const matchRef = db.collection("tournamentMatches").doc(match.id);
       batch.set(matchRef, {
@@ -183,16 +220,41 @@ async function advancePhase({ tournament, phase }) {
         phaseType: nextPhase.type,
         groupLabel: null,
         round: match.round,
-        homeTeamId: match.homeTeamId,
-        awayTeamId: match.awayTeamId,
+        roundLabel: match.roundLabel || null,
+        bracketIndex: Number(match.bracketIndex || match.sequence || 1),
+        homeTeamId: match.homeTeamId || null,
+        awayTeamId: match.awayTeamId || null,
+        sourceHomeMatchId: match.sourceHomeMatchId || null,
+        sourceAwayMatchId: match.sourceAwayMatchId || null,
+        sourceHomeSlot: match.sourceHomeSlot || null,
+        sourceAwaySlot: match.sourceAwaySlot || null,
         status: "scheduled",
         result: null,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });
     });
+
+    nextPhaseUpdate.config = {
+      ...(nextPhase.config || {}),
+      startFrom,
+      bracketSize: knockoutConfig.bracketSize,
+      allowByes: false,
+      currentRoundLabel: knockoutMatches[0]?.roundLabel || null,
+      fixture: {
+        generated: knockoutMatches.length > 0,
+        generationMode: "full_bracket",
+        totalRounds: knockoutConfig.roundLabels.length,
+        totalMatchdays: 0,
+        roundLabels: knockoutConfig.roundLabels,
+        matchesCount: knockoutMatches.length,
+      },
+    };
+    nextPhaseUpdate.confirmedAt = FieldValue.serverTimestamp();
+    nextPhaseUpdate.updatedAt = FieldValue.serverTimestamp();
   }
 
+  batch.update(nextPhaseRef, nextPhaseUpdate);
   await batch.commit();
   return { advanced: true, nextPhaseId: nextPhase.id, nextPhaseType: nextPhase.type };
 }
@@ -211,6 +273,10 @@ async function recordMatchResult({ matchId, result }) {
     if (!matchSnap.exists) throw new functions.https.HttpsError("not-found", "El partido no existe");
     const match = { id: matchSnap.id, ...matchSnap.data() };
 
+    if (!match.homeTeamId || !match.awayTeamId) {
+      throw new functions.https.HttpsError("failed-precondition", "El partido todavía no tiene ambos equipos definidos");
+    }
+
     const tournamentSnap = await trx.get(db.collection("tournaments").doc(match.tournamentId));
     const phaseSnap = await trx.get(db.collection("tournamentPhases").doc(match.phaseId));
     tournament = { id: tournamentSnap.id, ...tournamentSnap.data() };
@@ -220,6 +286,7 @@ async function recordMatchResult({ matchId, result }) {
     const homeSets = Number(result.homeSets || 0);
     const awaySets = Number(result.awaySets || 0);
     const winnerId = result.winnerId || (homeSets > awaySets ? match.homeTeamId : match.awayTeamId);
+    const loserId = winnerId === match.homeTeamId ? match.awayTeamId : match.homeTeamId;
     const homeStandingRef = db.collection("tournamentStandings").doc(`${match.tournamentId}_${match.phaseId}_${match.homeTeamId}`);
     const awayStandingRef = db.collection("tournamentStandings").doc(`${match.tournamentId}_${match.phaseId}_${match.awayTeamId}`);
     const matchesQuery = db.collection("tournamentMatches").where("phaseId", "==", match.phaseId);
@@ -322,6 +389,44 @@ async function recordMatchResult({ matchId, result }) {
       return { id: doc.id, ...doc.data() };
     });
 
+    const phaseUpdate = { updatedAt: FieldValue.serverTimestamp() };
+
+    if (phase.type === PHASE_TYPES.KNOCKOUT || phase.type === PHASE_TYPES.FINAL) {
+      nextMatches
+        .filter((nextMatch) => nextMatch.sourceHomeMatchId === match.id || nextMatch.sourceAwayMatchId === match.id)
+        .forEach((nextMatch) => {
+          const nextPayload = { updatedAt: FieldValue.serverTimestamp() };
+          if (nextMatch.sourceHomeMatchId === match.id) nextPayload.homeTeamId = winnerId;
+          if (nextMatch.sourceAwayMatchId === match.id) nextPayload.awayTeamId = winnerId;
+          trx.update(db.collection("tournamentMatches").doc(nextMatch.id), nextPayload);
+        });
+
+      const roundLabels = getKnockoutRoundLabels(phase.config?.startFrom || tournament.structure?.knockoutStage?.startFrom || "semi");
+      const updatedMatches = nextMatches.map((nextMatch) => {
+        if (nextMatch.id !== match.id) return nextMatch;
+        return { ...nextMatch, status: "completed", result: { ...result, winnerId } };
+      }).map((nextMatch) => {
+        if (nextMatch.sourceHomeMatchId === match.id) return { ...nextMatch, homeTeamId: winnerId };
+        if (nextMatch.sourceAwayMatchId === match.id) return { ...nextMatch, awayTeamId: winnerId };
+        return nextMatch;
+      });
+
+      const currentRoundLabel = match.roundLabel || roundLabels[0] || null;
+      const currentRoundCompleted = updatedMatches
+        .filter((nextMatch) => nextMatch.roundLabel === currentRoundLabel)
+        .every((nextMatch) => nextMatch.status === "completed");
+      const nextRoundLabel = currentRoundCompleted
+        ? roundLabels[roundLabels.indexOf(currentRoundLabel) + 1] || currentRoundLabel
+        : currentRoundLabel;
+
+      phaseUpdate.config = {
+        ...(phase.config || {}),
+        currentRoundLabel: nextRoundLabel,
+        lastWinnerTeamId: winnerId,
+        lastEliminatedTeamId: loserId,
+      };
+    }
+
     const rowsByGroup = nextRows.reduce((acc, row) => {
       const key = row.groupLabel || "_";
       acc[key] = acc[key] || [];
@@ -339,13 +444,15 @@ async function recordMatchResult({ matchId, result }) {
       });
     });
 
-    phaseCompleted = matchesSnap.docs.every((doc) => {
-      if (doc.id === match.id) return true;
-      return doc.data().status === "completed";
-    });
+    phaseCompleted = nextMatches.every((nextMatch) => nextMatch.status === "completed");
 
     if (phaseCompleted) {
-      trx.update(db.collection("tournamentPhases").doc(match.phaseId), { status: PHASE_STATUS.COMPLETED, completedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
+      phaseUpdate.status = PHASE_STATUS.COMPLETED;
+      phaseUpdate.completedAt = FieldValue.serverTimestamp();
+    }
+
+    if (Object.keys(phaseUpdate).length > 0) {
+      trx.update(db.collection("tournamentPhases").doc(match.phaseId), phaseUpdate);
     }
   });
 

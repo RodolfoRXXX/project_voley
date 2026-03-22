@@ -4,12 +4,37 @@ const { db } = require("../src/firebase");
 const { assertIsAdmin } = require("../src/services/adminAccessService");
 const { assertTournamentAdmin, PHASE_STATUS, PHASE_TYPES } = require("../src/services/tournamentService");
 const { buildStandingsDoc, getTournamentAndPhase } = require("../src/services/tournamentPhaseService");
+const { getKnockoutConfig } = require("../src/services/tournamentFixtureService");
+
+function isNullableTeamId(teamId) {
+  return teamId == null || typeof teamId === "string";
+}
 
 function isValidMatch(match) {
-  return match && typeof match === "object" && typeof match.id === "string" && typeof match.phaseId === "string" && typeof match.phaseType === "string" && typeof match.homeTeamId === "string" && typeof match.awayTeamId === "string" && match.homeTeamId !== match.awayTeamId;
+  return match
+    && typeof match === "object"
+    && typeof match.id === "string"
+    && typeof match.phaseId === "string"
+    && typeof match.phaseType === "string"
+    && isNullableTeamId(match.homeTeamId)
+    && isNullableTeamId(match.awayTeamId)
+    && (match.homeTeamId == null || match.awayTeamId == null || match.homeTeamId !== match.awayTeamId);
 }
 
 function buildFixtureSummary(matches = []) {
+  const isKnockout = matches.some((match) => typeof match.roundLabel === "string");
+  if (isKnockout) {
+    const roundLabels = [...new Set(matches.map((match) => match.roundLabel).filter(Boolean))];
+    return {
+      generated: matches.length > 0,
+      generationMode: "full_bracket",
+      totalRounds: roundLabels.length,
+      totalMatchdays: 0,
+      roundLabels,
+      matchesCount: matches.length,
+    };
+  }
+
   const roundCycles = new Set();
   const matchdays = new Set();
 
@@ -52,25 +77,32 @@ module.exports = functions.https.onCall(async (data, context) => {
 
   for (const match of matches) {
     if (match.phaseId !== phase.id || match.phaseType !== phase.type) throw new functions.https.HttpsError("invalid-argument", "El fixture no corresponde a la fase indicada");
-    if (!validTeamIds.has(match.homeTeamId) || !validTeamIds.has(match.awayTeamId)) throw new functions.https.HttpsError("failed-precondition", "El fixture contiene equipos que no pertenecen al torneo");
+    if (match.homeTeamId && !validTeamIds.has(match.homeTeamId)) throw new functions.https.HttpsError("failed-precondition", "El fixture contiene equipos que no pertenecen al torneo");
+    if (match.awayTeamId && !validTeamIds.has(match.awayTeamId)) throw new functions.https.HttpsError("failed-precondition", "El fixture contiene equipos que no pertenecen al torneo");
     batch.set(db.collection("tournamentMatches").doc(match.id), {
       tournamentId,
       phaseId: phase.id,
       phaseType: phase.type,
       groupLabel: match.groupLabel || null,
       round: match.round,
-      matchdayNumber: Number(match.matchdayNumber || match.round || 1),
-      roundCycle: Number(match.roundCycle || 1),
+      roundLabel: match.roundLabel || null,
+      bracketIndex: Number(match.bracketIndex || match.sequence || 1),
+      matchdayNumber: match.matchdayNumber == null ? null : Number(match.matchdayNumber || match.round || 1),
+      roundCycle: match.roundCycle == null ? null : Number(match.roundCycle || 1),
       sequence: Number(match.sequence || 1),
-      homeTeamId: match.homeTeamId,
-      awayTeamId: match.awayTeamId,
+      homeTeamId: match.homeTeamId || null,
+      awayTeamId: match.awayTeamId || null,
+      sourceHomeMatchId: match.sourceHomeMatchId || null,
+      sourceAwayMatchId: match.sourceAwayMatchId || null,
+      sourceHomeSlot: match.sourceHomeSlot || null,
+      sourceAwaySlot: match.sourceAwaySlot || null,
       status: "scheduled",
       result: null,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    [match.homeTeamId, match.awayTeamId].forEach((teamId) => {
+    [match.homeTeamId, match.awayTeamId].filter(Boolean).forEach((teamId) => {
       const standingId = `${tournamentId}_${phase.id}_${teamId}`;
       if (!standingSeeds.has(standingId)) standingSeeds.set(standingId, buildStandingsDoc({ tournamentId, phase, teamId, groupLabel: match.groupLabel || null }));
     });
@@ -80,12 +112,23 @@ module.exports = functions.https.onCall(async (data, context) => {
     batch.set(db.collection("tournamentStandings").doc(standingId), standing, { merge: true });
   });
 
+  const startFrom = phase.config?.startFrom || tournament.structure?.knockoutStage?.startFrom || null;
+  const knockoutConfig = phase.type === PHASE_TYPES.KNOCKOUT ? getKnockoutConfig(startFrom || "semi") : null;
+
   batch.update(phaseRef, {
     status: PHASE_STATUS.CONFIRMED,
     confirmedAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
     config: {
       ...(phase.config || {}),
+      ...(phase.type === PHASE_TYPES.KNOCKOUT
+        ? {
+            startFrom: startFrom || "semi",
+            bracketSize: knockoutConfig?.bracketSize || null,
+            allowByes: false,
+            currentRoundLabel: matches[0]?.roundLabel || null,
+          }
+        : {}),
       fixture: buildFixtureSummary(matches),
     },
   });

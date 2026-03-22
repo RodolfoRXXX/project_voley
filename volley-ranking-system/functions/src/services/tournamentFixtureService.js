@@ -1,5 +1,13 @@
 const functions = require("firebase-functions/v1");
 
+const KNOCKOUT_START_FROM_ORDER = ["final", "semi", "cuartos", "octavos"];
+const KNOCKOUT_BRACKET_SIZE_BY_START = {
+  final: 2,
+  semi: 4,
+  cuartos: 8,
+  octavos: 16,
+};
+
 function createSeededRandom(seed) {
   let value = Math.floor(seed) % 2147483647;
   if (value <= 0) value += 2147483646;
@@ -99,26 +107,94 @@ function generateRoundRobinMatches(tournament, teams, startRound = 1, phase = "r
   return matches;
 }
 
-function generateKnockoutBracket(tournament, teams, startRound = 1, phase = "knockout", options = {}) {
-  const matches = [];
-  const pairCount = Math.floor(teams.length / 2);
-  for (let i = 0; i < pairCount; i += 1) {
-    const homeTeamId = teams[i].id;
-    const awayTeamId = teams[teams.length - 1 - i].id;
-    if (!homeTeamId || !awayTeamId || homeTeamId === awayTeamId) continue;
-    matches.push({
-      id: `${options.phaseId || phase}-r${startRound + i}`,
-      tournamentId: tournament.id,
-      phaseId: options.phaseId || null,
-      phaseType: options.phaseType || phase,
-      phase,
-      groupLabel: null,
-      round: normalizeRound(startRound + i),
-      homeTeamId,
-      awayTeamId,
-      status: "scheduled",
-    });
+function getKnockoutBracketSize(startFrom = "semi") {
+  const normalized = typeof startFrom === "string" ? startFrom.trim().toLowerCase() : "semi";
+  const bracketSize = KNOCKOUT_BRACKET_SIZE_BY_START[normalized];
+  if (!bracketSize) {
+    throw new functions.https.HttpsError("invalid-argument", `startFrom inválido: ${startFrom}`);
   }
+  return bracketSize;
+}
+
+function getKnockoutRoundLabels(startFrom = "semi") {
+  const normalized = typeof startFrom === "string" ? startFrom.trim().toLowerCase() : "semi";
+  const startIndex = KNOCKOUT_START_FROM_ORDER.indexOf(normalized);
+  if (startIndex === -1) {
+    throw new functions.https.HttpsError("invalid-argument", `startFrom inválido: ${startFrom}`);
+  }
+  return [...KNOCKOUT_START_FROM_ORDER].slice(0, startIndex + 1).reverse();
+}
+
+function getKnockoutConfig(startFrom = "semi") {
+  return {
+    startFrom,
+    bracketSize: getKnockoutBracketSize(startFrom),
+    roundLabels: getKnockoutRoundLabels(startFrom),
+    allowByes: false,
+  };
+}
+
+function assertKnockoutTeamCount({ teamCount, startFrom, allowByes = false, context = "generar el cuadro" }) {
+  const bracketSize = getKnockoutBracketSize(startFrom);
+  if (allowByes) return bracketSize;
+  if (teamCount !== bracketSize) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      `Para ${context} en ${startFrom} se necesitan exactamente ${bracketSize} equipos y hoy hay ${teamCount}.`
+    );
+  }
+  return bracketSize;
+}
+
+function generateKnockoutBracket(tournament, teams, startRound = 1, phase = "knockout", options = {}) {
+  const startFrom = options.startFrom || tournament.structure?.knockoutStage?.startFrom || "semi";
+  const allowByes = Boolean(options.allowByes);
+  const { bracketSize, roundLabels } = getKnockoutConfig(startFrom);
+  assertKnockoutTeamCount({ teamCount: teams.length, startFrom, allowByes, context: "generar el cuadro" });
+
+  const seededTeams = [...teams].slice(0, bracketSize);
+  const matches = [];
+  const rounds = [];
+
+  roundLabels.forEach((roundLabel, roundOffset) => {
+    const matchesInRound = Math.max(1, bracketSize / (2 ** (roundOffset + 1)));
+    const currentRound = [];
+
+    for (let matchIndex = 0; matchIndex < matchesInRound; matchIndex += 1) {
+      const previousRound = rounds[roundOffset - 1] || [];
+      const sourceHomeMatch = previousRound[matchIndex * 2] || null;
+      const sourceAwayMatch = previousRound[matchIndex * 2 + 1] || null;
+      const isFirstRound = roundOffset === 0;
+      const homeSeed = isFirstRound ? seededTeams[matchIndex] || null : null;
+      const awaySeed = isFirstRound ? seededTeams[bracketSize - 1 - matchIndex] || null : null;
+      const match = {
+        id: `${options.phaseId || phase}-${roundLabel}-${matchIndex + 1}`,
+        tournamentId: tournament.id,
+        phaseId: options.phaseId || null,
+        phaseType: options.phaseType || phase,
+        phase,
+        groupLabel: null,
+        round: normalizeRound(startRound + roundOffset),
+        roundLabel,
+        bracketIndex: matchIndex + 1,
+        matchdayNumber: null,
+        roundCycle: null,
+        sequence: matchIndex + 1,
+        homeTeamId: homeSeed?.id || null,
+        awayTeamId: awaySeed?.id || null,
+        sourceHomeMatchId: sourceHomeMatch?.id || null,
+        sourceAwayMatchId: sourceAwayMatch?.id || null,
+        sourceHomeSlot: sourceHomeMatch ? "winner" : null,
+        sourceAwaySlot: sourceAwayMatch ? "winner" : null,
+        status: "scheduled",
+      };
+      currentRound.push(match);
+      matches.push(match);
+    }
+
+    rounds.push(currentRound);
+  });
+
   return matches;
 }
 
@@ -147,5 +223,9 @@ module.exports = {
   generateKnockoutBracket,
   generateBalancedGroups,
   assertValidFixtureTeamCount,
+  assertKnockoutTeamCount,
+  getKnockoutBracketSize,
+  getKnockoutRoundLabels,
+  getKnockoutConfig,
   matchKey,
 };

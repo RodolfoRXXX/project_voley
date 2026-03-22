@@ -19,6 +19,10 @@ function parsePointsList(value: string) {
     .map((entry) => Number(entry));
 }
 
+function getSafeTeamName(teamId: string | null | undefined, fallback: string, teamNames: Record<string, string>) {
+  return teamId ? teamNames[teamId] || fallback : fallback;
+}
+
 function getWinnerPreview(params: {
   tournamentMatch: TournamentMatch;
   draft: MatchResultDraft;
@@ -27,13 +31,15 @@ function getWinnerPreview(params: {
   const { tournamentMatch, draft, teamNames } = params;
   const homeSets = Number(draft.homeSets || 0);
   const awaySets = Number(draft.awaySets || 0);
+  const homeTeamName = getSafeTeamName(tournamentMatch.homeTeamId, "Equipo local", teamNames);
+  const awayTeamName = getSafeTeamName(tournamentMatch.awayTeamId, "Equipo visitante", teamNames);
 
   if (draft.winnerId === tournamentMatch.homeTeamId) {
-    return `${teamNames[tournamentMatch.homeTeamId] || "Equipo local"} (selección manual)`;
+    return `${homeTeamName} (selección manual)`;
   }
 
   if (draft.winnerId === tournamentMatch.awayTeamId) {
-    return `${teamNames[tournamentMatch.awayTeamId] || "Equipo visitante"} (selección manual)`;
+    return `${awayTeamName} (selección manual)`;
   }
 
   if (homeSets === awaySets) {
@@ -41,8 +47,8 @@ function getWinnerPreview(params: {
   }
 
   return homeSets > awaySets
-    ? `${teamNames[tournamentMatch.homeTeamId] || "Equipo local"} (inferido por sets)`
-    : `${teamNames[tournamentMatch.awayTeamId] || "Equipo visitante"} (inferido por sets)`;
+    ? `${homeTeamName} (inferido por sets)`
+    : `${awayTeamName} (inferido por sets)`;
 }
 
 export function MatchResultModal({
@@ -77,8 +83,8 @@ export function MatchResultModal({
   const totalSets = Number(draft.homeSets || 0) + Number(draft.awaySets || 0);
   const withinConfiguredSets = maxSetsPerMatch <= 0 || totalSets <= maxSetsPerMatch;
   const winnerPreview = getWinnerPreview({ tournamentMatch, draft, teamNames });
-  const homeTeamName = teamNames[tournamentMatch.homeTeamId] || "Equipo local";
-  const awayTeamName = teamNames[tournamentMatch.awayTeamId] || "Equipo visitante";
+  const homeTeamName = getSafeTeamName(tournamentMatch.homeTeamId, "Equipo local", teamNames);
+  const awayTeamName = getSafeTeamName(tournamentMatch.awayTeamId, "Equipo visitante", teamNames);
   const winnerValue = draft.winnerId || "auto";
 
   return (
@@ -185,8 +191,8 @@ export function MatchResultModal({
                 className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
               >
                 <option value="auto">Inferir por sets</option>
-                <option value={tournamentMatch.homeTeamId}>{homeTeamName}</option>
-                <option value={tournamentMatch.awayTeamId}>{awayTeamName}</option>
+                <option value={tournamentMatch.homeTeamId || ""}>{homeTeamName}</option>
+                <option value={tournamentMatch.awayTeamId || ""}>{awayTeamName}</option>
               </select>
             </label>
 

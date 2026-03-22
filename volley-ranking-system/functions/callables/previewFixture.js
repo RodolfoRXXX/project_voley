@@ -2,7 +2,13 @@ const functions = require("firebase-functions/v1");
 const { db } = require("../src/firebase");
 const { assertIsAdmin } = require("../src/services/adminAccessService");
 const { assertTournamentAdmin, PHASE_TYPES } = require("../src/services/tournamentService");
-const { generateKnockoutBracket, generateRoundRobinMatches, assertValidFixtureTeamCount } = require("../src/services/tournamentFixtureService");
+const {
+  generateKnockoutBracket,
+  generateRoundRobinMatches,
+  assertValidFixtureTeamCount,
+  assertKnockoutTeamCount,
+  getKnockoutConfig,
+} = require("../src/services/tournamentFixtureService");
 const { getTournamentAndPhase } = require("../src/services/tournamentPhaseService");
 
 module.exports = functions.https.onCall(async (data, context) => {
@@ -29,7 +35,7 @@ module.exports = functions.https.onCall(async (data, context) => {
     const sourceGroups = Array.isArray(phase.config?.groups) ? phase.config.groups : [];
     if (!sourceGroups.length) throw new functions.https.HttpsError("failed-precondition", "Debés confirmar grupos antes de generar fixture");
     const teamById = new Map(teams.map((team) => [team.id, team]));
-    matches = sourceGroups.flatMap((group, index) => {
+    matches = sourceGroups.flatMap((group) => {
       const groupTeams = (group.teamIds || []).map((teamId) => teamById.get(teamId)).filter(Boolean);
       return generateRoundRobinMatches(tournament, groupTeams, 1, phase.type, {
         phaseId: phase.id,
@@ -45,7 +51,25 @@ module.exports = functions.https.onCall(async (data, context) => {
       rounds: Number(phase.config?.rounds || 1),
     });
   } else {
-    matches = generateKnockoutBracket(tournament, teams, 1, phase.type, { phaseId: phase.id, phaseType: phase.type });
+    const startFrom = phase.config?.startFrom || tournament.structure?.knockoutStage?.startFrom || "semi";
+    const knockoutConfig = getKnockoutConfig(startFrom);
+    assertKnockoutTeamCount({ teamCount: teams.length, startFrom, allowByes: false, context: "confirmar el fixture" });
+    matches = generateKnockoutBracket(tournament, teams, 1, phase.type, {
+      phaseId: phase.id,
+      phaseType: phase.type,
+      startFrom,
+      allowByes: false,
+    });
+    return {
+      seed: providedSeed ?? Math.floor(Math.random() * 1000000000),
+      matches,
+      phaseId: phase.id,
+      knockout: {
+        startFrom,
+        bracketSize: knockoutConfig.bracketSize,
+        allowByes: knockoutConfig.allowByes,
+      },
+    };
   }
 
   return { seed: providedSeed ?? Math.floor(Math.random() * 1000000000), matches, phaseId: phase.id };

@@ -6,6 +6,7 @@ import TournamentAdminPanel from "@/components/tournaments/TournamentAdminPanel"
 import { TournamentDetailsCard, TournamentEditForm, type TournamentFormValues } from "@/components/tournaments/admin/TournamentEditForm";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 import { Tournament, tournamentStatusLabel } from "@/types/tournaments";
+import { getKnockoutBracketSize } from "@/lib/tournaments/knockout";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import StatusPill, { type StatusVariant } from "@/components/ui/status/StatusPill";
@@ -66,6 +67,7 @@ export default function AdminTournamentDetailPage() {
       knockoutStage: {
         enabled: false,
         startFrom: "semi",
+        allowByes: false,
       },
     },
   });
@@ -128,6 +130,7 @@ export default function AdminTournamentDetailPage() {
         knockoutStage: {
           enabled: tournament.structure?.knockoutStage?.enabled ?? tournament.format !== "liga",
           startFrom: tournament.structure?.knockoutStage?.startFrom || "semi",
+          allowByes: false,
         },
       },
     });
@@ -144,6 +147,16 @@ export default function AdminTournamentDetailPage() {
       showToast({
         type: "error",
         message: "El mínimo de jugadores no puede ser mayor al máximo",
+      });
+
+      return;
+    }
+
+    const requiredKnockoutTeams = getKnockoutBracketSize(editForm.structure.knockoutStage.startFrom);
+    if (editForm.format === "eliminacion" && (editForm.minTeams !== requiredKnockoutTeams || editForm.maxTeams !== requiredKnockoutTeams)) {
+      showToast({
+        type: "error",
+        message: `En eliminación directa sin byes el cuadro de ${editForm.structure.knockoutStage.startFrom} exige exactamente ${requiredKnockoutTeams} equipos.`,
       });
 
       return;
@@ -177,6 +190,7 @@ export default function AdminTournamentDetailPage() {
             knockoutStage: {
               enabled: editForm.structure.knockoutStage.enabled,
               startFrom: editForm.structure.knockoutStage.startFrom,
+              allowByes: false,
             },
           },
         }

@@ -33,6 +33,7 @@ export default function PublicTournamentDetailPage() {
   const isLeaguePhase = view.currentPhase?.type === "round_robin";
   const groupedMatches = groupTournamentMatches(matches);
   const leagueProgress = getTournamentLeagueProgress(matches);
+  const isKnockoutPhase = view.currentPhase?.type === "knockout" || view.currentPhase?.type === "final";
   const teamNames = teams.reduce<Record<string, string>>((acc, team) => {
     acc[team.id] = team.name;
     return acc;
@@ -54,7 +55,7 @@ export default function PublicTournamentDetailPage() {
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-base font-semibold text-neutral-900">{isLeaguePhase ? "Tabla principal" : "Tabla actual"}</h2>
+            <h2 className="text-base font-semibold text-neutral-900">{isLeaguePhase ? "Tabla principal" : isKnockoutPhase ? "Resumen mínimo" : "Tabla actual"}</h2>
             <span className="text-xs text-neutral-500">{standings.length} filas</span>
           </div>
 
@@ -81,6 +82,12 @@ export default function PublicTournamentDetailPage() {
             </div>
           )}
 
+          {isKnockoutPhase && (
+            <p className="text-sm text-neutral-500">
+              En eliminación directa el cuadro es la referencia principal. Esta tabla queda sólo como apoyo estadístico mínimo.
+            </p>
+          )}
+
           {standings.length === 0 ? (
             <p className="text-sm text-neutral-500">Todavía no hay tabla de posiciones para la fase actual.</p>
           ) : (
@@ -93,7 +100,7 @@ export default function PublicTournamentDetailPage() {
                       {standing.qualified ? "Clasificado" : "En competencia"}
                     </span>
                   </div>
-                  {!isLeaguePhase && <p><b>Grupo:</b> {standing.groupLabel || "-"}</p>}
+                  {!isLeaguePhase && !isKnockoutPhase && <p><b>Grupo:</b> {standing.groupLabel || "-"}</p>}
                   <div className="grid grid-cols-2 gap-2 text-xs text-neutral-600 sm:grid-cols-4">
                     <span>Puntos: <b>{standing.stats.points}</b></span>
                     <span>PJ: <b>{standing.stats.played}</b></span>
@@ -119,7 +126,7 @@ export default function PublicTournamentDetailPage() {
                 <li key={team.id} className="rounded-lg border border-neutral-200 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <p><b>Equipo:</b> {team.name}</p>
-                    {!isLeaguePhase && (
+                    {!isLeaguePhase && !isKnockoutPhase && (
                       <span className="text-xs rounded-full bg-neutral-100 px-2 py-1 text-neutral-600">
                         {team.groupLabel || "Sin grupo"}
                       </span>
@@ -135,7 +142,7 @@ export default function PublicTournamentDetailPage() {
       <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-neutral-900">
-            {isLeaguePhase ? "Fixture por jornadas" : "Fixture de la fase actual"}
+            {isLeaguePhase ? "Fixture por jornadas" : isKnockoutPhase ? "Bracket de la fase actual" : "Fixture de la fase actual"}
           </h2>
           <span className="text-xs text-neutral-500">{matches.length} partidos</span>
         </div>

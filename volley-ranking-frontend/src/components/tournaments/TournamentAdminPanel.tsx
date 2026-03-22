@@ -140,6 +140,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   const hasConfirmedGroups = confirmedGroups.length > 0;
   const hasConfirmedFixture = confirmedTournamentMatches.length > 0;
   const isLeaguePhase = currentPhase?.type === "round_robin";
+  const isKnockoutPhase = currentPhase?.type === "knockout" || currentPhase?.type === "final";
 
   const loadPhases = useCallback(async () => {
     setLoadingPhases(true);
@@ -421,6 +422,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   const renderConfirmedMatchDetails = (tournamentMatch: TournamentMatch) => {
     const draft = matchResultDrafts[tournamentMatch.id] || buildMatchResultDraft(tournamentMatch);
     const isCompleted = tournamentMatch.status === "completed";
+    const hasDefinedTeams = Boolean(tournamentMatch.homeTeamId && tournamentMatch.awayTeamId);
     const homeSets = Number(draft.homeSets || 0);
     const awaySets = Number(draft.awaySets || 0);
     const inferredWinner =
@@ -442,9 +444,10 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           <button
             type="button"
             onClick={() => setSelectedMatchId(tournamentMatch.id)}
-            className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:border-neutral-700 dark:text-neutral-200"
+            disabled={!hasDefinedTeams}
+            className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-200"
           >
-            {isCompleted ? "Editar resultado" : "Cargar resultado"}
+            {!hasDefinedTeams ? "Esperando clasificados" : isCompleted ? "Editar resultado" : "Cargar resultado"}
           </button>
         </div>
 
@@ -514,6 +517,12 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           </div>
         </div>
       )}
+
+      {isKnockoutPhase ? (
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          En eliminación directa la llave es la fuente principal del progreso. Esta tabla se mantiene solo como apoyo estadístico mínimo.
+        </p>
+      ) : null}
 
       <TournamentStandingsTable standings={standings} teamNames={teamNames} />
     </div>

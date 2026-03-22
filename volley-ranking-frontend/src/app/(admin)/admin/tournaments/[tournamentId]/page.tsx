@@ -7,6 +7,7 @@ import { TournamentDetailsCard, TournamentEditForm, type TournamentFormValues } 
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 import { Tournament, tournamentStatusLabel } from "@/types/tournaments";
 import { getKnockoutBracketSize } from "@/lib/tournaments/knockout";
+import { getMixedConfigurationMessage, getMixedQualificationSummary } from "@/lib/tournaments/mixed";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import StatusPill, { type StatusVariant } from "@/components/ui/status/StatusPill";
@@ -63,6 +64,11 @@ export default function AdminTournamentDetailPage() {
         enabled: true,
         groupCount: 2,
         rounds: 1,
+        qualifyPerGroup: 2,
+        wildcardsCount: 0,
+        seedingCriteria: "points",
+        crossGroupSeeding: true,
+        bracketMatchup: "1A_vs_2B",
       },
       knockoutStage: {
         enabled: false,
@@ -126,6 +132,11 @@ export default function AdminTournamentDetailPage() {
           enabled: tournament.structure?.groupStage?.enabled ?? tournament.format !== "eliminacion",
           groupCount: tournament.structure?.groupStage?.groupCount || 1,
           rounds: tournament.structure?.groupStage?.rounds || 1,
+          qualifyPerGroup: tournament.structure?.groupStage?.qualifyPerGroup || 1,
+          wildcardsCount: tournament.structure?.groupStage?.wildcardsCount || 0,
+          seedingCriteria: tournament.structure?.groupStage?.seedingCriteria || "points",
+          crossGroupSeeding: tournament.structure?.groupStage?.crossGroupSeeding !== false,
+          bracketMatchup: tournament.structure?.groupStage?.bracketMatchup || "1A_vs_2B",
         },
         knockoutStage: {
           enabled: tournament.structure?.knockoutStage?.enabled ?? tournament.format !== "liga",
@@ -153,6 +164,25 @@ export default function AdminTournamentDetailPage() {
     }
 
     const requiredKnockoutTeams = getKnockoutBracketSize(editForm.structure.knockoutStage.startFrom);
+    const mixedSummary = getMixedQualificationSummary({
+      groupCount: editForm.structure.groupStage.groupCount,
+      rounds: editForm.structure.groupStage.rounds,
+      qualifyPerGroup: editForm.structure.groupStage.qualifyPerGroup,
+      wildcardsCount: editForm.structure.groupStage.wildcardsCount,
+      startFrom: editForm.structure.knockoutStage.startFrom,
+      seedingCriteria: editForm.structure.groupStage.seedingCriteria,
+      crossGroupSeeding: editForm.structure.groupStage.crossGroupSeeding,
+      bracketMatchup: editForm.structure.groupStage.bracketMatchup,
+    });
+    if (editForm.format === "mixto" && !mixedSummary.configurationValid) {
+      showToast({
+        type: "error",
+        message: getMixedConfigurationMessage(mixedSummary),
+      });
+
+      return;
+    }
+
     if (editForm.format === "eliminacion" && (editForm.minTeams !== requiredKnockoutTeams || editForm.maxTeams !== requiredKnockoutTeams)) {
       showToast({
         type: "error",
@@ -186,6 +216,11 @@ export default function AdminTournamentDetailPage() {
               enabled: true,
               groupCount: editForm.structure.groupStage.groupCount,
               rounds: editForm.structure.groupStage.rounds,
+              qualifyPerGroup: editForm.structure.groupStage.qualifyPerGroup,
+              wildcardsCount: editForm.structure.groupStage.wildcardsCount,
+              seedingCriteria: editForm.structure.groupStage.seedingCriteria,
+              crossGroupSeeding: editForm.structure.groupStage.crossGroupSeeding,
+              bracketMatchup: editForm.structure.groupStage.bracketMatchup,
             },
             knockoutStage: {
               enabled: editForm.structure.knockoutStage.enabled,

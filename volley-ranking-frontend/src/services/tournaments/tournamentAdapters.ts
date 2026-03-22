@@ -50,6 +50,8 @@ export function toTournamentStanding(id: string, data: Record<string, unknown>):
     groupLabel: typeof data.groupLabel === "string" ? data.groupLabel : null,
     position: Number(data.position || 0),
     qualified: Boolean(data.qualified),
+    qualificationType: typeof data.qualificationType === "string" ? data.qualificationType : null,
+    seed: data.seed == null ? null : Number(data.seed || 0),
     stats: {
       played: Number((data.stats as Record<string, unknown> | undefined)?.played || 0),
       won: Number((data.stats as Record<string, unknown> | undefined)?.won || 0),

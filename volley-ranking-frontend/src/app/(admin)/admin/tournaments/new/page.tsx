@@ -9,6 +9,7 @@ import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 
 import { createTournament } from "@/services/tournaments/tournamentMutations";
 import { getKnockoutBracketSize, getKnockoutPreview, type KnockoutStartFrom } from "@/lib/tournaments/knockout";
+import { getMixedConfigurationMessage, getMixedQualificationSummary } from "@/lib/tournaments/mixed";
 
 type TournamentForm = {
   name: string;
@@ -31,6 +32,11 @@ type TournamentForm = {
       enabled: boolean;
       groupCount: number;
       rounds: number;
+      qualifyPerGroup: number;
+      wildcardsCount: number;
+      seedingCriteria: "points" | "group_position" | "setsDiff" | "pointsDiff";
+      crossGroupSeeding: boolean;
+      bracketMatchup: "standard_seeded" | "1A_vs_2B";
     };
     knockoutStage: {
       enabled: boolean;
@@ -67,6 +73,11 @@ export default function NewTournamentPage() {
         enabled: true,
         groupCount: 2,
         rounds: 1,
+        qualifyPerGroup: 2,
+        wildcardsCount: 0,
+        seedingCriteria: "points",
+        crossGroupSeeding: true,
+        bracketMatchup: "1A_vs_2B",
       },
       knockoutStage: {
         enabled: false,
@@ -131,6 +142,15 @@ export default function NewTournamentPage() {
       return;
     }
 
+    if (isMixed && !mixedSummary.configurationValid) {
+      showToast({
+        type: "error",
+        message: getMixedConfigurationMessage(mixedSummary),
+      });
+      setLoading(false);
+      return;
+    }
+
     if (isKnockout && (form.minTeams !== requiredKnockoutTeams || form.maxTeams !== requiredKnockoutTeams)) {
       showToast({
         type: "error",
@@ -184,6 +204,11 @@ export default function NewTournamentPage() {
               : {
                   groupCount: Number(form.structure.groupStage.groupCount),
                   rounds: Number(form.structure.groupStage.rounds),
+                  qualifyPerGroup: Number(form.structure.groupStage.qualifyPerGroup),
+                  wildcardsCount: Number(form.structure.groupStage.wildcardsCount),
+                  seedingCriteria: form.structure.groupStage.seedingCriteria,
+                  crossGroupSeeding: form.structure.groupStage.crossGroupSeeding,
+                  bracketMatchup: form.structure.groupStage.bracketMatchup,
                 }),
           },
           knockoutStage: {
@@ -216,6 +241,16 @@ export default function NewTournamentPage() {
 
   const teamsPerGroup =
     groups > 0 ? Math.floor(teams / groups) : 0;
+  const mixedSummary = getMixedQualificationSummary({
+    groupCount: groups,
+    rounds: leagueRounds,
+    qualifyPerGroup: form.structure.groupStage.qualifyPerGroup,
+    wildcardsCount: form.structure.groupStage.wildcardsCount,
+    startFrom: form.structure.knockoutStage.startFrom,
+    seedingCriteria: form.structure.groupStage.seedingCriteria,
+    crossGroupSeeding: form.structure.groupStage.crossGroupSeeding,
+    bracketMatchup: form.structure.groupStage.bracketMatchup,
+  });
   const estimatedLeagueMatches = Math.max(0, (teams * (teams - 1)) / 2) * leagueRounds;
   const estimatedLeagueMatchdays = Math.max(0, Math.max(teams - 1, 0) + (teams % 2 === 0 ? 0 : 1)) * leagueRounds;
 
@@ -485,29 +520,55 @@ export default function NewTournamentPage() {
                 </div>
               )}
 
-              <div>
-                <label className="text-sm font-medium">Rondas</label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="text-sm font-medium">Rondas</label>
 
-                <select
-                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                  value={form.structure.groupStage.rounds}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      structure: {
-                        ...prev.structure,
-                        groupStage: {
-                          ...prev.structure.groupStage,
-                          rounds: Number(e.target.value),
+                  <select
+                    className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                    value={form.structure.groupStage.rounds}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        structure: {
+                          ...prev.structure,
+                          groupStage: {
+                            ...prev.structure.groupStage,
+                            rounds: Number(e.target.value),
+                          },
                         },
-                      },
-                    }))
-                  }
-                >
-                  <option value={1}>Una ronda</option>
-                  <option value={2}>Ida y vuelta</option>
-                  <option value={3}>Tres rondas</option>
-                </select>
+                      }))
+                    }
+                  >
+                    <option value={1}>Una ronda</option>
+                    <option value={2}>Ida y vuelta</option>
+                    <option value={3}>Tres rondas</option>
+                  </select>
+                </div>
+
+                {isMixed && (
+                  <div>
+                    <label className="text-sm font-medium">Clasifican por grupo</label>
+                    <input
+                      type="number"
+                      min={1}
+                      className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                      value={form.structure.groupStage.qualifyPerGroup}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          structure: {
+                            ...prev.structure,
+                            groupStage: {
+                              ...prev.structure.groupStage,
+                              qualifyPerGroup: Number(e.target.value),
+                            },
+                          },
+                        }))
+                      }
+                    />
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -563,6 +624,103 @@ export default function NewTournamentPage() {
                   <p className="mt-1 text-sm font-medium text-neutral-900">{knockoutPreview}</p>
                 </div>
               </div>
+
+              {isMixed && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium">Wildcards</label>
+                    <input
+                      type="number"
+                      min={0}
+                      className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                      value={form.structure.groupStage.wildcardsCount}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          structure: {
+                            ...prev.structure,
+                            groupStage: {
+                              ...prev.structure.groupStage,
+                              wildcardsCount: Number(e.target.value),
+                            },
+                          },
+                        }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Criterio de seed</label>
+                    <select
+                      className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                      value={form.structure.groupStage.seedingCriteria}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          structure: {
+                            ...prev.structure,
+                            groupStage: {
+                              ...prev.structure.groupStage,
+                              seedingCriteria: e.target.value as TournamentForm["structure"]["groupStage"]["seedingCriteria"],
+                            },
+                          },
+                        }))
+                      }
+                    >
+                      <option value="points">Puntos</option>
+                      <option value="group_position">Posición de grupo</option>
+                      <option value="setsDiff">Dif. de sets</option>
+                      <option value="pointsDiff">Dif. de puntos</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Patrón de cruce</label>
+                    <select
+                      className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                      value={form.structure.groupStage.bracketMatchup}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          structure: {
+                            ...prev.structure,
+                            groupStage: {
+                              ...prev.structure.groupStage,
+                              bracketMatchup: e.target.value as TournamentForm["structure"]["groupStage"]["bracketMatchup"],
+                            },
+                          },
+                        }))
+                      }
+                    >
+                      <option value="1A_vs_2B">Cruce 1° vs 2°</option>
+                      <option value="standard_seeded">Ranking global</option>
+                    </select>
+                  </div>
+                  <label className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700">
+                    <input
+                      type="checkbox"
+                      checked={form.structure.groupStage.crossGroupSeeding}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          structure: {
+                            ...prev.structure,
+                            groupStage: {
+                              ...prev.structure.groupStage,
+                              crossGroupSeeding: e.target.checked,
+                            },
+                          },
+                        }))
+                      }
+                    />
+                    Seed cruzado entre grupos
+                  </label>
+                </div>
+              )}
+
+              {isMixed && (
+                <p className={`text-xs ${mixedSummary.configurationValid ? "text-emerald-700" : "text-amber-700"}`}>
+                  {getMixedConfigurationMessage(mixedSummary)}
+                </p>
+              )}
 
               {isKnockout && (
                 <p className="text-xs text-neutral-500">
@@ -633,10 +791,19 @@ export default function NewTournamentPage() {
                   <b>Grupos:</b> {groups} grupos de {teamsPerGroup} equipos
                 </p>
                 <p>
+                  <b>Clasifican por grupo:</b> {form.structure.groupStage.qualifyPerGroup}
+                </p>
+                <p>
+                  <b>Wildcards:</b> {form.structure.groupStage.wildcardsCount}
+                </p>
+                <p>
                   <b>Eliminación:</b> {knockoutPreview}
                 </p>
                 <p>
-                  <b>Clasificados requeridos para playoff:</b> {requiredKnockoutTeams}
+                  <b>Clasificados esperados:</b> {mixedSummary.totalQualified} / {mixedSummary.requiredQualified}
+                </p>
+                <p>
+                  <b>Criterio de seed:</b> {form.structure.groupStage.seedingCriteria}
                 </p>
               </>
             )}

@@ -4,11 +4,15 @@ const { db } = require("../firebase");
 const { PHASE_STATUS, PHASE_TYPES, TOURNAMENT_STATUS } = require("./tournamentService");
 const {
   generateKnockoutBracket,
-  generateRoundRobinMatches,
   getKnockoutConfig,
   getKnockoutRoundLabels,
   assertKnockoutTeamCount,
 } = require("./tournamentFixtureService");
+const {
+  buildAdvancementSummary,
+  buildDefaultAdvancementRules,
+  normalizeTiebreakers,
+} = require("./tournamentAdvancementService");
 
 async function getTournamentAndPhase({ tournamentId, phaseId, allowedTypes = [] }) {
   const tournamentSnap = await db.collection("tournaments").doc(tournamentId).get();
@@ -43,12 +47,14 @@ function buildStandingsDoc({ tournamentId, phase, teamId, groupLabel = null }) {
       pointsFor: 0, pointsAgainst: 0, pointsDiff: 0,
     },
     qualified: false,
+    qualificationType: null,
+    seed: null,
     updatedAt: FieldValue.serverTimestamp(),
   };
 }
 
-function sortStandingsRows(rows, matches = []) {
-  const directMatchComparator = (teamAId, teamBId) => {
+function buildDirectMatchComparator(matches = []) {
+  return (teamAId, teamBId) => {
     const directMatches = matches.filter((match) => {
       if (match.status !== "completed") return false;
       return [match.homeTeamId, match.awayTeamId].includes(teamAId)
@@ -85,15 +91,36 @@ function sortStandingsRows(rows, matches = []) {
       || summary.setsDiff
       || summary.pointsDiff;
   };
+}
+
+function sortStandingsRows(rows, matches = [], options = {}) {
+  const tiebreakers = normalizeTiebreakers(options.tiebreakers);
+  const directMatchComparator = buildDirectMatchComparator(matches);
+
+  const comparisons = {
+    points: (aStats, bStats) => (bStats.points || 0) - (aStats.points || 0),
+    setsDiff: (aStats, bStats) => (bStats.setsDiff || 0) - (aStats.setsDiff || 0),
+    pointsDiff: (aStats, bStats) => (bStats.pointsDiff || 0) - (aStats.pointsDiff || 0),
+    head2head: (a, b) => directMatchComparator(a.teamId, b.teamId) * -1,
+  };
 
   return [...rows].sort((a, b) => {
     const aStats = a.stats || {};
     const bStats = b.stats || {};
-    return (bStats.points || 0) - (aStats.points || 0)
-      || (bStats.setsDiff || 0) - (aStats.setsDiff || 0)
-      || (bStats.pointsDiff || 0) - (aStats.pointsDiff || 0)
-      || directMatchComparator(a.teamId, b.teamId) * -1
-      || String(a.teamId).localeCompare(String(b.teamId));
+
+    const baseResult = comparisons.points(aStats, bStats);
+    if (baseResult !== 0) return baseResult;
+
+    for (const criterion of tiebreakers) {
+      const comparator = comparisons[criterion] || comparisons[criterion === "head_to_head" || criterion === "headToHead" ? "head2head" : criterion];
+      if (!comparator) continue;
+      const result = criterion === "head2head" || criterion === "head_to_head" || criterion === "headToHead"
+        ? comparator(a, b)
+        : comparator(aStats, bStats);
+      if (result !== 0) return result;
+    }
+
+    return String(a.teamId).localeCompare(String(b.teamId));
   }).map((row, index) => ({ ...row, position: index + 1 }));
 }
 
@@ -167,43 +194,50 @@ async function advancePhase({ tournament, phase }) {
   });
 
   if (phase.type === PHASE_TYPES.GROUP_STAGE && nextPhase.type === PHASE_TYPES.KNOCKOUT) {
-    const standingsSnap = await db.collection("tournamentStandings").where("phaseId", "==", phase.id).get();
-    const matchesSnap = await db.collection("tournamentMatches").where("phaseId", "==", phase.id).get();
+    const [standingsSnap, matchesSnap, rulesSnap] = await Promise.all([
+      db.collection("tournamentStandings").where("phaseId", "==", phase.id).get(),
+      db.collection("tournamentMatches").where("phaseId", "==", phase.id).get(),
+      db.collection("tournamentAdvancementRules").doc(`${tournament.id}_${phase.type}_${nextPhase.type}`).get(),
+    ]);
     const standings = standingsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     const matches = matchesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const standingsByGroup = standings.reduce((acc, row) => {
-      const key = row.groupLabel || "_";
-      acc[key] = acc[key] || [];
-      acc[key].push(row);
-      return acc;
-    }, {});
-    const matchesByGroup = matches.reduce((acc, row) => {
-      const key = row.groupLabel || "_";
-      acc[key] = acc[key] || [];
-      acc[key].push(row);
-      return acc;
-    }, {});
+    const fallbackRules = buildDefaultAdvancementRules(tournament.structure || {});
+    const advancementRules = {
+      ...fallbackRules,
+      ...(phase.config || {}),
+      ...(rulesSnap.exists ? (rulesSnap.data()?.rules || {}) : {}),
+      startFrom: nextPhase.config?.startFrom || tournament.structure?.knockoutStage?.startFrom || fallbackRules.startFrom,
+      bracketSize: nextPhase.config?.bracketSize || fallbackRules.bracketSize,
+    };
 
-    const qualified = Object.values(standingsByGroup)
-      .flatMap((rows) => sortStandingsRows(rows, matchesByGroup[rows[0]?.groupLabel || "_"] || []).slice(0, 2))
-      .map((row) => row.teamId);
-
-    standings.forEach((row) => {
-      const groupKey = row.groupLabel || "_";
-      const groupRows = standingsByGroup[groupKey] || [];
-      batch.update(db.collection("tournamentStandings").doc(row.id), {
-        qualified: qualified.includes(row.teamId),
-        position: sortStandingsRows(
-          groupRows,
-          matchesByGroup[groupKey] || []
-        ).find((item) => item.id === row.id)?.position || row.position || 0,
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+    const advancement = buildAdvancementSummary({
+      standings,
+      matches,
+      rules: advancementRules,
     });
 
-    const seededRows = sortStandingsRows(standings.filter((row) => qualified.includes(row.teamId)), matches);
-    const teams = seededRows.map((row) => ({ id: row.teamId }));
-    const startFrom = nextPhase.config?.startFrom || tournament.structure?.knockoutStage?.startFrom || "semi";
+    standings.forEach((row) => {
+      const rankedRow = advancement.groupRankings
+        .flatMap((group) => group.rankedRows)
+        .find((item) => item.id === row.id);
+      const qualifiedRow = advancement.qualifiedRows.find((item) => item.id === row.id);
+      batch.set(db.collection("tournamentStandings").doc(row.id), {
+        position: rankedRow?.position || row.position || 0,
+        qualified: Boolean(qualifiedRow),
+        qualificationType: qualifiedRow?.qualificationType || null,
+        seed: qualifiedRow?.seed || null,
+        updatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+    });
+
+    const teams = advancement.orderedSeeds.map((row) => ({
+      id: row.teamId,
+      seed: row.bracketSeed,
+      sourceGroupLabel: row.groupLabel || null,
+      sourcePosition: row.position || null,
+      qualificationType: row.qualificationType || null,
+    }));
+    const startFrom = advancement.rules.startFrom || nextPhase.config?.startFrom || tournament.structure?.knockoutStage?.startFrom || "semi";
     assertKnockoutTeamCount({ teamCount: teams.length, startFrom, allowByes: false, context: "armar la llave eliminatoria" });
     const knockoutConfig = getKnockoutConfig(startFrom);
     const knockoutMatches = generateKnockoutBracket(tournament, teams, 1, nextPhase.type, {
@@ -235,12 +269,39 @@ async function advancePhase({ tournament, phase }) {
       });
     });
 
+    batch.set(db.collection("tournamentPhases").doc(phase.id), {
+      config: {
+        ...(phase.config || {}),
+        standingsClosed: true,
+        qualifiedTeamsPublished: advancement.qualifiedRows.map((row) => ({
+          teamId: row.teamId,
+          groupLabel: row.groupLabel || null,
+          position: row.position || null,
+          seed: row.seed || null,
+          qualificationType: row.qualificationType || null,
+          points: Number(row.stats?.points || 0),
+          setsDiff: Number(row.stats?.setsDiff || 0),
+          pointsDiff: Number(row.stats?.pointsDiff || 0),
+        })),
+      },
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+
     nextPhaseUpdate.config = {
       ...(nextPhase.config || {}),
       startFrom,
       bracketSize: knockoutConfig.bracketSize,
       allowByes: false,
       currentRoundLabel: knockoutMatches[0]?.roundLabel || null,
+      qualifiedTeams: advancement.orderedSeeds.map((row) => ({
+        teamId: row.teamId,
+        seed: row.bracketSeed,
+        standingsSeed: row.seed || null,
+        groupLabel: row.groupLabel || null,
+        position: row.position || null,
+        qualificationType: row.qualificationType || null,
+      })),
+      qualificationRules: advancement.rules,
       fixture: {
         generated: knockoutMatches.length > 0,
         generationMode: "full_bracket",

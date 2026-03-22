@@ -282,37 +282,29 @@ Hoy el mixto guarda `rounds`, pero la fase de grupos se genera como una sola vue
 **Verificación de vigencia:** ya no hace falta seguir modificando este punto tal como figuraba, porque la fase `group_stage` ahora usa la misma generación de fixture con `roundCycle` y `matchdayNumber`.
 
 #### 3.2. Volver configurable la clasificación a playoffs
-Hoy la lógica está fija en “clasifican los 2 mejores de cada grupo”.
+**Estado:** ✅ implementado en la configuración principal del torneo mixto y persistido también en `tournamentAdvancementRules`.
 
-**Cambio necesario:**
-- Reemplazar la lógica hardcodeada por lectura de configuración real.
-- Definir en fase o en `tournamentAdvancementRules` campos como:
-  - `qualifyPerGroup`
-  - `wildcardsCount`
-  - `qualifyBestThirds`
-  - `seedingCriteria`
-  - `crossGroupSeeding`
+**Qué quedó operativo:**
+- El mixto ya permite definir `qualifyPerGroup`, `wildcardsCount`, `seedingCriteria`, `crossGroupSeeding` y `bracketMatchup`.
+- La configuración se valida contra el tamaño del playoff antes de crear o editar el torneo.
+- El `group_stage` persiste estos datos en `config` para que queden visibles en la fase.
 
 #### 3.3. Hacer que `tournamentAdvancementRules` sea realmente la fuente de verdad
-El sistema ya crea ese documento, pero no lo usa efectivamente para avanzar fases.
+**Estado:** ✅ implementado con fallback defensivo a la estructura del torneo.
 
-**Cambio necesario:**
-- En `advancePhase`, leer `tournamentAdvancementRules` antes de clasificar equipos.
-- Usar esas reglas para:
-  - cuántos equipos avanzan;
-  - desde qué posiciones de cada grupo;
-  - cómo se ordenan los clasificados;
-  - cómo se arman los cruces.
+**Qué hace ahora `advancePhase`:**
+- lee `tournamentAdvancementRules/{tournamentId}_group_stage_knockout`;
+- combina esas reglas con la configuración persistida en fase/torneo;
+- calcula clasificados automáticos y wildcards;
+- ordena seeds y arma el bracket completo del playoff.
 
 #### 3.4. Calcular clasificación de acuerdo al tamaño del playoff
-Si el playoff empieza en cuartos, deben clasificar 8 equipos; si empieza en semis, 4; etc.
+**Estado:** ✅ implementado en backend y frontend.
 
-**Cambio necesario:**
-- Cruzar `startFrom` o `bracketSize` con:
-  - cantidad de grupos;
-  - posiciones que clasifican;
-  - posibles wildcards.
-- Validar que la configuración cierre matemáticamente.
+**Qué quedó resuelto:**
+- Se calcula `bracketSize` desde `startFrom`.
+- Se valida que `groupCount * qualifyPerGroup + wildcardsCount === bracketSize`.
+- Si la cuenta no cierra, la UI advierte y el backend rechaza la creación/edición.
 
 **Ejemplos:**
 - 2 grupos + semifinales → clasifican 2 por grupo = 4.
@@ -320,80 +312,82 @@ Si el playoff empieza en cuartos, deben clasificar 8 equipos; si empieza en semi
 - 6 grupos + octavos → puede requerir mejores terceros o un esquema especial.
 
 #### 3.5. Generar playoff completo desde la fase mixta
-Una vez clasificados los equipos, el sistema debe construir el cuadro eliminatorio completo.
+**Estado:** ✅ implementado.
 
-**Cambio necesario:**
-- Reutilizar el nuevo motor de knockout completo.
-- El avance desde grupos debe producir:
-  - lista de clasificados;
-  - seed de cada uno;
-  - bracket completo.
+**Qué hace ahora el avance:**
+- publica la lista de clasificados;
+- asigna `seed`/`bracketSeed`;
+- genera el cuadro completo con el motor de knockout ya existente;
+- deja el playoff confirmado y listo para carga de resultados.
 
 #### 3.6. Formalizar el seed de clasificación
-En mixto no alcanza con “top 2 por grupo”; hace falta saber cómo se cruzan.
+**Estado:** 🟡 parcialmente implementado.
 
-**Cambio necesario:**
-- Definir criterios de orden de clasificados:
-  - posición en grupo;
-  - puntos;
-  - diferencia de sets;
-  - diferencia de puntos;
-  - head-to-head.
-- Definir patrón de cruce:
-  - `1A vs 2B`
-  - `1B vs 2A`
-  - ranking global
-  - sorteo
+**Implementado ahora:**
+- criterios de seed por `points`, `group_position`, `setsDiff`, `pointsDiff`;
+- desempates con `setsDiff`, `pointsDiff`, `head2head`;
+- patrón `1A_vs_2B`;
+- patrón `standard_seeded` para ranking global.
+
+**Pendiente para cerrar del todo:**
+- exponer más variantes de cruce complejas (por ejemplo sorteo real o reglas especiales para mejores terceros en formatos no estándar);
+- documentar explícitamente qué combinaciones son compatibles con cada tamaño de cuadro.
 
 #### 3.7. Separar claramente fase de grupos y fase eliminatoria en métricas y estado
+**Estado:** 🟡 parcialmente implementado.
 
-**Cambio necesario:**
-- La fase de grupos debe cerrar formalmente antes de abrir playoffs.
-- Debe haber trazabilidad clara de:
-  - grupos confirmados;
-  - fixture de grupos confirmado;
-  - standings cerrados;
-  - clasificados publicados;
-  - bracket generado.
+**Implementado ahora:**
+- `confirmGroups` deja flags de grupos confirmados;
+- al cerrar grupos se persisten `standingsClosed` y `qualifiedTeamsPublished`;
+- la fase knockout guarda `qualifiedTeams` y metadata del bracket generado;
+- el panel admin ya muestra bloques separados de grupos y playoffs.
+
+**Pendiente:**
+- unificar estos hitos también en métricas/vistas públicas para que no dependan solo del panel admin;
+- evaluar subestados más formales a nivel torneo/fase.
 
 ### Frontend: qué modificar
 
 #### 3.8. Mantener la configuración de grupos, pero hacerla coherente con playoffs
+**Estado:** ✅ implementado.
 
-**Cambio necesario:**
-- El formulario debe mostrar:
-  - cantidad de grupos;
-  - rondas por grupo;
-  - inicio de playoff (`semi`, `cuartos`, `octavos`);
-  - cantidad de clasificados esperados.
-- La UI debería advertir si la configuración no cierra.
+**Qué muestra ahora la UI admin:**
+- cantidad de grupos;
+- rondas;
+- clasifican por grupo;
+- wildcards;
+- inicio de playoff;
+- cantidad de clasificados esperados / requeridos;
+- advertencia inmediata si la cuenta no cierra.
 
 **Ejemplo:**
 - “Con 3 grupos y playoff desde cuartos necesitás 8 clasificados; definí cómo completar las plazas restantes”.
 
 #### 3.9. Mostrar una preview real de clasificación
+**Estado:** ✅ implementado en alta/edición.
 
-**Cambio necesario:**
-- En la vista previa del torneo mixto, informar:
-  - cuántos equipos van por grupo;
-  - cuántos clasifican por grupo;
-  - si existen wildcards;
-  - desde qué instancia arranca el playoff.
+**La preview ahora informa:**
+- equipos por grupo;
+- clasificados por grupo;
+- wildcards;
+- ronda de inicio del playoff;
+- criterio de seed;
+- total esperado vs total requerido.
 
 #### 3.10. Mostrar dos bloques visuales separados
+**Estado:** ✅ implementado en el panel admin del torneo.
 
-**Cambio necesario:**
-- En el detalle del torneo mixto, dividir claramente:
-  1. fase de grupos
-  2. playoffs
-- La parte de grupos debe mostrar standings por grupo.
-- La parte de playoffs debe mostrar bracket.
+**Qué se ve ahora:**
+1. bloque de fase de grupos con grupos, standings, clasificados y fixture;
+2. bloque de playoffs con seeds clasificados y bracket.
 
 #### 3.11. Publicar clasificados al terminar grupos
+**Estado:** ✅ implementado.
 
-**Cambio necesario:**
-- Antes de mostrar el bracket, la UI debería tener una instancia de “equipos clasificados”.
-- Eso ayuda a validar que el pasaje de fase fue correcto antes del armado del cuadro.
+**Qué queda publicado:**
+- `qualifiedTeamsPublished` en la fase de grupos;
+- `qualifiedTeams` en la fase knockout;
+- marcas de `qualified`, `qualificationType` y `seed` en standings.
 
 ---
 
@@ -463,9 +457,10 @@ Esto puede ser en backend, en flags auxiliares o como view model de frontend.
 - soporte de `startFrom` real.
 
 ### Etapa 3 — Mixto
-- conectar clasificación configurable;
-- usar `tournamentAdvancementRules` como fuente de verdad;
-- generar playoff completo desde los clasificados.
+- ✅ conectar clasificación configurable;
+- ✅ usar `tournamentAdvancementRules` como fuente de verdad;
+- ✅ generar playoff completo desde los clasificados;
+- 🟡 completar variantes avanzadas de seeding/cruces y extender la separación visual a más vistas.
 
 ### Etapa 4 — UX y validaciones
 - mejorar previews;
@@ -480,4 +475,5 @@ Cuando estas modificaciones estén implementadas:
 
 - **Liga** va a funcionar como un verdadero todos-contra-todos con jornadas y campeón por tabla.
 - **Eliminación directa** va a funcionar como un bracket real hasta la final.
-- **Mixto** va a permitir grupos + clasificación configurable + playoff real, respetando la estructura elegida por el administrador.
+- **Mixto** ya permite grupos + clasificación configurable + playoff real, respetando la estructura elegida por el administrador en el flujo admin actual.
+- Como siguiente paso, falta terminar de homogeneizar estas reglas y estados en todas las vistas/métricas y ampliar variantes avanzadas de cruce.

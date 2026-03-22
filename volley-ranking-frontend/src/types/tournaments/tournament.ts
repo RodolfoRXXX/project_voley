@@ -30,6 +30,11 @@ export type Tournament = {
       enabled?: boolean;
       groupCount?: number;
       rounds?: number;
+      qualifyPerGroup?: number;
+      wildcardsCount?: number;
+      seedingCriteria?: "points" | "group_position" | "setsDiff" | "pointsDiff";
+      crossGroupSeeding?: boolean;
+      bracketMatchup?: "standard_seeded" | "1A_vs_2B";
     };
     knockoutStage?: {
       enabled?: boolean;

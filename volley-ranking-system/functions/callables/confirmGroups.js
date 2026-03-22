@@ -42,7 +42,12 @@ module.exports = functions.https.onCall(async (data, context) => {
   if (Math.max(...sizes) - Math.min(...sizes) > 1) throw new functions.https.HttpsError("invalid-argument", "Los grupos deben estar balanceados");
 
   await phaseRef.update({
-    config: { ...(phase.config || {}), groups: normalizedGroups },
+    config: {
+      ...(phase.config || {}),
+      groups: normalizedGroups,
+      groupsConfirmed: true,
+      groupsConfirmedAt: FieldValue.serverTimestamp(),
+    },
     status: PHASE_STATUS.CONFIRMED,
     confirmedAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),

@@ -350,11 +350,13 @@ export function TournamentEditForm({
                 <span className="text-sm text-neutral-700">Modo simple</span>
                 <button
                   type="button"
-                  onClick={() => {
-                    const nextAdvanced = !advancedMode;
-                    setAdvancedMode(nextAdvanced);
-                    onChange(normalizeMixedSettings(values, nextAdvanced));
-                  }}
+                  onClick={() =>
+                    setAdvancedMode((prev) => {
+                      const nextAdvanced = !prev;
+                      onChange(normalizeMixedSettings(values, nextAdvanced));
+                      return nextAdvanced;
+                    })
+                  }
                   className={`relative inline-flex h-7 w-14 items-center rounded-full border transition-colors ${
                     advancedMode ? "border-slate-600 bg-slate-900" : "border-neutral-300 bg-white"
                   }`}

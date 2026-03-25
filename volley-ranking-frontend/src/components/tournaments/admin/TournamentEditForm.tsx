@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { getKnockoutBracketSize, getKnockoutPreview, getKnockoutRoundLabel, type KnockoutStartFrom } from "@/lib/tournaments/knockout";
 import { getMixedConfigurationMessage, getMixedQualificationSummary } from "@/lib/tournaments/mixed";
 import type { Tournament } from "@/types/tournaments";
@@ -73,6 +73,17 @@ export function TournamentEditForm({
     || values.structure.groupStage.crossGroupSeeding !== true
   );
   const [advancedMode, setAdvancedMode] = useState(inferredAdvancedMode);
+
+  useEffect(() => {
+    setAdvancedMode(inferredAdvancedMode);
+  }, [inferredAdvancedMode]);
+
+  const handleAdvancedModeToggle = () => {
+    const nextAdvanced = !advancedMode;
+    setAdvancedMode(nextAdvanced);
+    onChange(normalizeMixedSettings(values, nextAdvanced));
+  };
+
   const requiredKnockoutTeams = getKnockoutBracketSize(values.structure.knockoutStage.startFrom);
   const knockoutPreview = getKnockoutPreview(values.structure.knockoutStage.startFrom);
   const mixedSummary = getMixedQualificationSummary({
@@ -350,13 +361,7 @@ export function TournamentEditForm({
                 <span className="text-sm text-neutral-700">Modo simple</span>
                 <button
                   type="button"
-                  onClick={() =>
-                    setAdvancedMode((prev) => {
-                      const nextAdvanced = !prev;
-                      onChange(normalizeMixedSettings(values, nextAdvanced));
-                      return nextAdvanced;
-                    })
-                  }
+                  onClick={handleAdvancedModeToggle}
                   className={`relative inline-flex h-7 w-14 items-center rounded-full border transition-colors ${
                     advancedMode ? "border-slate-600 bg-slate-900" : "border-neutral-300 bg-white"
                   }`}

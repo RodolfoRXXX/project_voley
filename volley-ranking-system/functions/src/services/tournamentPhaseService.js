@@ -518,7 +518,14 @@ async function recordMatchResult({ matchId, result }) {
   });
 
   if (phaseCompleted && tournament && phase) {
-    await advancePhase({ tournament, phase });
+    const phasesSnap = await db.collection("tournamentPhases").where("tournamentId", "==", tournament.id).get();
+    const phases = phasesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })).sort((a, b) => a.order - b.order);
+    const currentIndex = phases.findIndex((phaseDoc) => phaseDoc.id === phase.id);
+    const hasNextPhase = currentIndex >= 0 && Boolean(phases[currentIndex + 1]);
+
+    if (hasNextPhase) {
+      await advancePhase({ tournament, phase });
+    }
   }
 
   return { ok: true, phaseCompleted };

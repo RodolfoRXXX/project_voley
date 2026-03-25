@@ -36,6 +36,22 @@ export function getAdminAction(tournament: Tournament): AdminAction {
     };
   }
 
+  if (tournament.status === "inscripciones_cerradas") {
+    return {
+      label: "Iniciar torneo",
+      disabled: false,
+      nextStatus: "activo",
+    };
+  }
+
+  if (tournament.status === "activo") {
+    return {
+      label: "Finalizar torneo",
+      disabled: false,
+      nextStatus: "finalizado",
+    };
+  }
+
   return {
     label: "",
     disabled: true,

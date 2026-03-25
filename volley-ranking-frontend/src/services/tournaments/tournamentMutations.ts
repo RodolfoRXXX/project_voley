@@ -15,6 +15,9 @@ const addTournamentAdminFn = httpsCallable(functions, "addTournamentAdmin");
 const editTournamentFn = httpsCallable(functions, "editTournament");
 const createTournamentFn = httpsCallable(functions, "createTournament");
 const recordMatchResultFn = httpsCallable(functions, "recordMatchResult");
+const startTournamentFn = httpsCallable(functions, "startTournament");
+const finalizeTournamentFn = httpsCallable(functions, "finalizeTournament");
+const cancelTournamentFn = httpsCallable(functions, "cancelTournament");
 
 export type TournamentEntryPaymentSummary = {
   expectedAmount: number;
@@ -100,6 +103,18 @@ export async function recordTournamentMatchResult(params: {
 }) {
   const response = await recordMatchResultFn(params);
   return response.data as { ok: true; phaseCompleted: boolean };
+}
+
+export async function startTournament(tournamentId: string) {
+  return startTournamentFn({ tournamentId });
+}
+
+export async function finalizeTournament(tournamentId: string) {
+  return finalizeTournamentFn({ tournamentId });
+}
+
+export async function cancelTournament(tournamentId: string) {
+  return cancelTournamentFn({ tournamentId });
 }
 
 export async function updateTournamentEntryPlayers(params: {

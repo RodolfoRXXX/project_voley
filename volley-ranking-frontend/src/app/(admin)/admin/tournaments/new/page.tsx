@@ -530,18 +530,31 @@ export default function NewTournamentPage() {
             Estructura
           </h2>
           {isMixed && (
-            <label className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700">
-              <input
-                type="checkbox"
-                checked={advancedMode}
-                onChange={(e) => {
-                  const nextAdvanced = e.target.checked;
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-neutral-700">Modo simple</span>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextAdvanced = !advancedMode;
                   setAdvancedMode(nextAdvanced);
                   setForm((prev) => normalizeMixedSettings(prev, nextAdvanced));
                 }}
-              />
-              Modo avanzado
-            </label>
+                className={`relative inline-flex h-7 w-14 items-center rounded-full border transition-colors ${
+                  advancedMode ? "border-slate-600 bg-slate-900" : "border-neutral-300 bg-white"
+                }`}
+                role="switch"
+                aria-checked={advancedMode}
+                aria-label="Activar modo avanzado"
+              >
+                <span
+                  className={`ml-1 h-5 w-5 rounded-full shadow-sm transition-transform duration-200 ${
+                    advancedMode ? "translate-x-7 bg-neutral-200" : "translate-x-0 bg-neutral-700"
+                  }`}
+                  aria-hidden
+                />
+              </button>
+              <span className="text-sm text-neutral-700">Modo avanzado</span>
+            </div>
           )}
 
           {/* fase de grupos */}
@@ -679,7 +692,7 @@ export default function NewTournamentPage() {
                 </div>
               </div>
 
-              {isMixed && (
+              {isMixed && advancedMode && (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <label className="text-sm font-medium">Clasificados extra</label>
@@ -688,7 +701,6 @@ export default function NewTournamentPage() {
                       min={0}
                       className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
                       value={form.structure.groupStage.wildcardsCount}
-                      disabled={!advancedMode}
                       onChange={(e) =>
                         setForm((prev) => normalizeMixedSettings({
                           ...prev,
@@ -702,16 +714,12 @@ export default function NewTournamentPage() {
                         }, advancedMode))
                       }
                     />
-                    {!advancedMode && (
-                      <p className="mt-1 text-xs text-neutral-500">Se completa automáticamente para llenar el cuadro.</p>
-                    )}
                   </div>
                   <div>
                     <label className="text-sm font-medium">Cómo ordenar a los clasificados</label>
                     <select
                       className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
                       value={form.structure.groupStage.seedingCriteria}
-                      disabled={!advancedMode}
                       onChange={(e) =>
                         setForm((prev) => normalizeMixedSettings({
                           ...prev,
@@ -736,7 +744,6 @@ export default function NewTournamentPage() {
                     <select
                       className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
                       value={form.structure.groupStage.bracketMatchup}
-                      disabled={!advancedMode && !(form.structure.groupStage.qualifyPerGroup === 2 && form.structure.groupStage.wildcardsCount === 0)}
                       onChange={(e) =>
                         setForm((prev) => normalizeMixedSettings({
                           ...prev,
@@ -752,37 +759,31 @@ export default function NewTournamentPage() {
                     >
                       <option
                         value="1A_vs_2B"
-                        disabled={!advancedMode && !(form.structure.groupStage.qualifyPerGroup === 2 && form.structure.groupStage.wildcardsCount === 0)}
                       >
                         Cruce 1° vs 2°
                       </option>
                       <option value="standard_seeded">Ranking global</option>
                     </select>
-                    {!advancedMode && (
-                      <p className="mt-1 text-xs text-neutral-500">1° vs 2° solo aplica con 2 clasificados por grupo y 0 clasificados extra.</p>
-                    )}
                   </div>
-                  {advancedMode && (
-                    <label className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700">
-                      <input
-                        type="checkbox"
-                        checked={form.structure.groupStage.crossGroupSeeding}
-                        onChange={(e) =>
-                          setForm((prev) => normalizeMixedSettings({
-                            ...prev,
-                            structure: {
-                              ...prev.structure,
-                              groupStage: {
-                                ...prev.structure.groupStage,
-                                crossGroupSeeding: e.target.checked,
-                              },
+                  <label className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700">
+                    <input
+                      type="checkbox"
+                      checked={form.structure.groupStage.crossGroupSeeding}
+                      onChange={(e) =>
+                        setForm((prev) => normalizeMixedSettings({
+                          ...prev,
+                          structure: {
+                            ...prev.structure,
+                            groupStage: {
+                              ...prev.structure.groupStage,
+                              crossGroupSeeding: e.target.checked,
                             },
-                          }, advancedMode))
-                        }
-                      />
-                      Usar ranking general entre grupos
-                    </label>
-                  )}
+                          },
+                        }, advancedMode))
+                      }
+                    />
+                    Usar ranking general entre grupos
+                  </label>
                 </div>
               )}
 

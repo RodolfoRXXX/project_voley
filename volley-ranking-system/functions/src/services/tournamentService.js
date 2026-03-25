@@ -236,6 +236,35 @@ function validateTournamentUpdate(data) {
   return update;
 }
 
+function restrictUpdateByStatus(status, updatePayload) {
+  if (status === TOURNAMENT_STATUS.DRAFT) {
+    return updatePayload;
+  }
+
+  if (status === TOURNAMENT_STATUS.OPEN) {
+    const next = {};
+    if (typeof updatePayload.maxTeams === "number") next.maxTeams = updatePayload.maxTeams;
+    if (typeof updatePayload.minPlayers === "number") next.minPlayers = updatePayload.minPlayers;
+    if (typeof updatePayload.maxPlayers === "number") next.maxPlayers = updatePayload.maxPlayers;
+    if (typeof updatePayload.paymentForPlayer === "number") next.paymentForPlayer = updatePayload.paymentForPlayer;
+    if (updatePayload.startDate) next.startDate = updatePayload.startDate;
+    if (updatePayload.rules?.setsToWin != null) next.rules = { setsToWin: updatePayload.rules.setsToWin };
+    if (updatePayload.structure) next.structure = updatePayload.structure;
+    return next;
+  }
+
+  if (status === TOURNAMENT_STATUS.CLOSED) {
+    const next = {};
+    if (updatePayload.startDate) next.startDate = updatePayload.startDate;
+    if (typeof updatePayload.minPlayers === "number") next.minPlayers = updatePayload.minPlayers;
+    if (typeof updatePayload.maxPlayers === "number") next.maxPlayers = updatePayload.maxPlayers;
+    if (typeof updatePayload.paymentForPlayer === "number") next.paymentForPlayer = updatePayload.paymentForPlayer;
+    return next;
+  }
+
+  return {};
+}
+
 async function createTournament({ data, uid }) {
   const payload = validateTournamentPayload(data);
   const docRef = db.collection("tournaments").doc();
@@ -330,62 +359,67 @@ async function editTournament({ uid, tournamentId, data }) {
     const tournament = tournamentSnap.data();
     assertTournamentAdmin(tournament, uid);
 
-    if (![TOURNAMENT_STATUS.DRAFT, TOURNAMENT_STATUS.OPEN, TOURNAMENT_STATUS.ACTIVE].includes(tournament.status)) {
+    if (![TOURNAMENT_STATUS.DRAFT, TOURNAMENT_STATUS.OPEN, TOURNAMENT_STATUS.CLOSED].includes(tournament.status)) {
       throw new functions.https.HttpsError("failed-precondition", "El torneo no se puede editar en su estado actual");
     }
 
-    const nextPayload = { ...updatePayload, updatedBy: uid, updatedAt: FieldValue.serverTimestamp() };
-    if (updatePayload.minTeams || updatePayload.maxTeams || updatePayload.minPlayers || updatePayload.maxPlayers || updatePayload.paymentForPlayer || updatePayload.rules) {
+    const restrictedPayload = restrictUpdateByStatus(tournament.status, updatePayload);
+    if (!Object.keys(restrictedPayload).length) {
+      throw new functions.https.HttpsError("failed-precondition", "No hay campos editables para el estado actual del torneo");
+    }
+
+    const nextPayload = { ...restrictedPayload, updatedBy: uid, updatedAt: FieldValue.serverTimestamp() };
+    if (restrictedPayload.minTeams || restrictedPayload.maxTeams || restrictedPayload.minPlayers || restrictedPayload.maxPlayers || restrictedPayload.paymentForPlayer || restrictedPayload.rules) {
       nextPayload.settings = {
         ...(tournament.settings || {}),
-        ...(typeof updatePayload.minTeams === "number" ? { minTeams: updatePayload.minTeams } : {}),
-        ...(typeof updatePayload.maxTeams === "number" ? { maxTeams: updatePayload.maxTeams } : {}),
-        ...(typeof updatePayload.minPlayers === "number" ? { minPlayers: updatePayload.minPlayers } : {}),
-        ...(typeof updatePayload.maxPlayers === "number" ? { maxPlayers: updatePayload.maxPlayers } : {}),
-        ...(typeof updatePayload.paymentForPlayer === "number" ? { paymentPerPlayer: updatePayload.paymentForPlayer } : {}),
-        ...(updatePayload.rules || {}),
+        ...(typeof restrictedPayload.minTeams === "number" ? { minTeams: restrictedPayload.minTeams } : {}),
+        ...(typeof restrictedPayload.maxTeams === "number" ? { maxTeams: restrictedPayload.maxTeams } : {}),
+        ...(typeof restrictedPayload.minPlayers === "number" ? { minPlayers: restrictedPayload.minPlayers } : {}),
+        ...(typeof restrictedPayload.maxPlayers === "number" ? { maxPlayers: restrictedPayload.maxPlayers } : {}),
+        ...(typeof restrictedPayload.paymentForPlayer === "number" ? { paymentPerPlayer: restrictedPayload.paymentForPlayer } : {}),
+        ...(restrictedPayload.rules || {}),
       };
     }
 
-    if (updatePayload.structure) {
+    if (restrictedPayload.structure) {
       const currentStructure = tournament.structure || {};
-      const nextFormat = updatePayload.format || tournament.format;
+      const nextFormat = restrictedPayload.format || tournament.format;
       nextPayload.structure = {
         groupStage: {
           ...(currentStructure.groupStage || {}),
-          ...(updatePayload.structure.groupStage || {}),
+          ...(restrictedPayload.structure.groupStage || {}),
           enabled: nextFormat !== "eliminacion",
           groupCount: nextFormat === "liga"
             ? 1
-            : Number(updatePayload.structure.groupStage?.groupCount || currentStructure.groupStage?.groupCount || 2),
-          rounds: Number(updatePayload.structure.groupStage?.rounds || currentStructure.groupStage?.rounds || 1),
-          qualifyPerGroup: Number(updatePayload.structure.groupStage?.qualifyPerGroup || currentStructure.groupStage?.qualifyPerGroup || 0),
-          wildcardsCount: Number(updatePayload.structure.groupStage?.wildcardsCount || currentStructure.groupStage?.wildcardsCount || 0),
-          seedingCriteria: updatePayload.structure.groupStage?.seedingCriteria || currentStructure.groupStage?.seedingCriteria || "points",
-          crossGroupSeeding: updatePayload.structure.groupStage?.crossGroupSeeding ?? currentStructure.groupStage?.crossGroupSeeding ?? true,
-          bracketMatchup: updatePayload.structure.groupStage?.bracketMatchup || currentStructure.groupStage?.bracketMatchup || "standard_seeded",
+            : Number(restrictedPayload.structure.groupStage?.groupCount || currentStructure.groupStage?.groupCount || 2),
+          rounds: Number(restrictedPayload.structure.groupStage?.rounds || currentStructure.groupStage?.rounds || 1),
+          qualifyPerGroup: Number(restrictedPayload.structure.groupStage?.qualifyPerGroup || currentStructure.groupStage?.qualifyPerGroup || 0),
+          wildcardsCount: Number(restrictedPayload.structure.groupStage?.wildcardsCount || currentStructure.groupStage?.wildcardsCount || 0),
+          seedingCriteria: restrictedPayload.structure.groupStage?.seedingCriteria || currentStructure.groupStage?.seedingCriteria || "points",
+          crossGroupSeeding: restrictedPayload.structure.groupStage?.crossGroupSeeding ?? currentStructure.groupStage?.crossGroupSeeding ?? true,
+          bracketMatchup: restrictedPayload.structure.groupStage?.bracketMatchup || currentStructure.groupStage?.bracketMatchup || "standard_seeded",
         },
         knockoutStage: {
           ...(currentStructure.knockoutStage || {}),
-          ...(updatePayload.structure.knockoutStage || {}),
+          ...(restrictedPayload.structure.knockoutStage || {}),
           enabled: nextFormat !== "liga",
-          startFrom: updatePayload.structure.knockoutStage?.startFrom || currentStructure.knockoutStage?.startFrom || "semi",
+          startFrom: restrictedPayload.structure.knockoutStage?.startFrom || currentStructure.knockoutStage?.startFrom || "semi",
           allowByes: false,
         },
       };
     }
 
-    if ((updatePayload.structure || updatePayload.format) && (updatePayload.format || tournament.format) === "mixto") {
+    if ((restrictedPayload.structure || restrictedPayload.format) && (restrictedPayload.format || tournament.format) === "mixto") {
       validateMixedAdvancement({ structure: nextPayload.structure || tournament.structure || {}, context: "editar el torneo mixto" });
     }
 
-    if (!updatePayload.phaseDefinitions && (updatePayload.structure || updatePayload.format)) {
-      const derivedPhases = buildDefaultPhases(updatePayload.format || tournament.format, nextPayload.structure || tournament.structure || {});
+    if (!restrictedPayload.phaseDefinitions && (restrictedPayload.structure || restrictedPayload.format)) {
+      const derivedPhases = buildDefaultPhases(restrictedPayload.format || tournament.format, nextPayload.structure || tournament.structure || {});
       nextPayload.phaseDefinitions = derivedPhases;
       nextPayload.phaseOrder = derivedPhases.map(({ type, order }) => ({ type, order }));
     }
 
-    if (updatePayload.phaseDefinitions) {
+    if (restrictedPayload.phaseDefinitions) {
       const phaseSnap = await trx.get(db.collection("tournamentPhases").where("tournamentId", "==", tournamentId));
       const phasesByType = new Map(phaseSnap.docs.map((doc) => [doc.data().type, { id: doc.id, ...doc.data() }]));
       for (const phase of updatePayload.phaseDefinitions) {
@@ -399,9 +433,9 @@ async function editTournament({ uid, tournamentId, data }) {
       delete nextPayload.phaseDefinitions;
     }
 
-    if ((updatePayload.format || tournament.format) === "mixto") {
-      const groupPhase = (nextPayload.phaseDefinitions || buildDefaultPhases(updatePayload.format || tournament.format, nextPayload.structure || tournament.structure || {})).find((phase) => phase.type === PHASE_TYPES.GROUP_STAGE);
-      const knockoutPhase = (nextPayload.phaseDefinitions || buildDefaultPhases(updatePayload.format || tournament.format, nextPayload.structure || tournament.structure || {})).find((phase) => phase.type === PHASE_TYPES.KNOCKOUT);
+    if ((restrictedPayload.format || tournament.format) === "mixto") {
+      const groupPhase = (nextPayload.phaseDefinitions || buildDefaultPhases(restrictedPayload.format || tournament.format, nextPayload.structure || tournament.structure || {})).find((phase) => phase.type === PHASE_TYPES.GROUP_STAGE);
+      const knockoutPhase = (nextPayload.phaseDefinitions || buildDefaultPhases(restrictedPayload.format || tournament.format, nextPayload.structure || tournament.structure || {})).find((phase) => phase.type === PHASE_TYPES.KNOCKOUT);
       if (groupPhase && knockoutPhase) {
         const rulesRef = db.collection("tournamentAdvancementRules").doc(`${tournamentId}_${groupPhase.type}_${knockoutPhase.type}`);
         const advancementRules = buildDefaultAdvancementRules(nextPayload.structure || tournament.structure || {});

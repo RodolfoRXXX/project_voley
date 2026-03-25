@@ -132,6 +132,10 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
   const action = getAdminAction(tournament);
+  const startDateMillis = tournament.startDate?.seconds ? tournament.startDate.seconds * 1000 : null;
+  const nowMillis = Date.now();
+  const beforeStartDate = startDateMillis != null && nowMillis < startDateMillis;
+  const shouldShowStartButton = ["draft", "inscripciones_abiertas", "inscripciones_cerradas"].includes(tournament.status) && beforeStartDate;
   const currentPhase = useMemo(
     () => phases.find((phase) => phase.id === tournament.currentPhaseId) || null,
     [phases, tournament.currentPhaseId]
@@ -234,6 +238,16 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   }, [confirmedTournamentMatches]);
 
   const onMainAction = async () => {
+    if (shouldShowStartButton) {
+      showToast({
+        type: "info",
+        message: hasConfirmedFixture
+          ? "El torneo se activará automáticamente cuando llegue la fecha de inicio."
+          : "Primero confirmá el fixture para habilitar el inicio automático.",
+      });
+      return;
+    }
+
     if (!action.nextStatus) return;
 
     setBusyAction(true);
@@ -561,14 +575,14 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       loadingPhases={loadingPhases}
       timeline={<TournamentPhaseTimeline phases={phases} currentPhaseId={tournament.currentPhaseId} loading={loadingPhases} />}
     >
-      {action.nextStatus && (
+      {(action.nextStatus || shouldShowStartButton) && (
         <div className="flex justify-start">
           <button
             onClick={onMainAction}
-            disabled={busyAction || action.disabled}
+            disabled={busyAction || (shouldShowStartButton ? !hasConfirmedFixture : action.disabled)}
             className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
           >
-            {busyAction ? "Procesando..." : action.label}
+            {busyAction ? "Procesando..." : shouldShowStartButton ? "Iniciar torneo" : action.label}
           </button>
         </div>
       )}

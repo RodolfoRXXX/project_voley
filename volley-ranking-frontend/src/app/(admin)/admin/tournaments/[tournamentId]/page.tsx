@@ -56,6 +56,7 @@ export default function AdminTournamentDetailPage() {
     minPlayers: 0,
     maxPlayers: 0,
     paymentForPlayer: 0,
+    startDate: "",
     rules: {
       setsToWin: 3,
     },
@@ -83,9 +84,15 @@ export default function AdminTournamentDetailPage() {
   const [loadingRegistrations, setLoadingRegistrations] = useState(false);
 
   const tournamentStatus = tournament?.status as string | undefined;
-  const canEdit = tournamentStatus === "draft" || tournamentStatus === "inscripciones_abiertas" || tournamentStatus === "activo";
-  const isActiveTournament = tournamentStatus === "activo";
+  const canEdit = tournamentStatus === "draft" || tournamentStatus === "inscripciones_abiertas" || tournamentStatus === "inscripciones_cerradas";
   const isLockedTournament = tournamentStatus === "finalizado" || tournamentStatus === "cancelado";
+  const editMode: "draft" | "open" | "closed" | "locked" = tournamentStatus === "draft"
+    ? "draft"
+    : tournamentStatus === "inscripciones_abiertas"
+      ? "open"
+      : tournamentStatus === "inscripciones_cerradas"
+        ? "closed"
+        : "locked";
 
   const loadTournament = useCallback(async () => {
     if (!tournamentId) return;
@@ -124,6 +131,7 @@ export default function AdminTournamentDetailPage() {
       minPlayers: tournament.minPlayers || 1,
       maxPlayers: tournament.maxPlayers || 1,
       paymentForPlayer: tournament.paymentForPlayer || 0,
+      startDate: tournament.startDate?.seconds ? new Date(tournament.startDate.seconds * 1000).toISOString().slice(0, 16) : "",
       rules: {
         setsToWin: tournament.rules?.setsToWin || 3,
       },
@@ -202,34 +210,10 @@ export default function AdminTournamentDetailPage() {
 
     if (!confirmed) return;
 
-    const payload = isActiveTournament
-      ? {
-          minTeams: editForm.minTeams,
-          maxTeams: editForm.maxTeams,
-          maxPlayers: editForm.maxPlayers,
-          paymentForPlayer: editForm.paymentForPlayer,
-          rules: {
-            setsToWin: editForm.rules.setsToWin,
-          },
-          structure: {
-            groupStage: {
-              enabled: true,
-              groupCount: editForm.structure.groupStage.groupCount,
-              rounds: editForm.structure.groupStage.rounds,
-              qualifyPerGroup: editForm.structure.groupStage.qualifyPerGroup,
-              wildcardsCount: editForm.structure.groupStage.wildcardsCount,
-              seedingCriteria: editForm.structure.groupStage.seedingCriteria,
-              crossGroupSeeding: editForm.structure.groupStage.crossGroupSeeding,
-              bracketMatchup: editForm.structure.groupStage.bracketMatchup,
-            },
-            knockoutStage: {
-              enabled: editForm.structure.knockoutStage.enabled,
-              startFrom: editForm.structure.knockoutStage.startFrom,
-              allowByes: false,
-            },
-          },
-        }
-      : editForm;
+    const payload = {
+      ...editForm,
+      ...(editForm.startDate ? { startDateMillis: new Date(editForm.startDate).getTime() } : {}),
+    };
 
     setSaving(true);
 
@@ -322,7 +306,8 @@ export default function AdminTournamentDetailPage() {
       {editing && (
         <TournamentEditForm
           values={editForm}
-          isActiveTournament={isActiveTournament}
+          editMode={editMode}
+          allowAdvancedConfig
           saving={saving}
           onChange={setEditForm}
           onCancel={() => setEditing(false)}

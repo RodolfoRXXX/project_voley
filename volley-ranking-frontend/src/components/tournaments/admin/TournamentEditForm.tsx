@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { getKnockoutBracketSize, getKnockoutPreview, getKnockoutRoundLabel, type KnockoutStartFrom } from "@/lib/tournaments/knockout";
 import { getMixedConfigurationMessage, getMixedQualificationSummary } from "@/lib/tournaments/mixed";
 import type { Tournament } from "@/types/tournaments";
@@ -12,6 +12,7 @@ export type TournamentFormValues = {
   minPlayers: number;
   maxPlayers: number;
   paymentForPlayer: number;
+  startDate: string;
   rules: {
     setsToWin: number;
   };
@@ -36,22 +37,42 @@ export type TournamentFormValues = {
 
 export function TournamentEditForm({
   values,
-  isActiveTournament,
+  editMode,
+  allowAdvancedConfig,
   saving,
   onChange,
   onCancel,
   onSubmit,
 }: {
   values: TournamentFormValues;
-  isActiveTournament: boolean;
+  editMode: "draft" | "open" | "closed" | "locked";
+  allowAdvancedConfig: boolean;
   saving: boolean;
   onChange: (next: TournamentFormValues) => void;
   onCancel: () => void;
   onSubmit: (e: FormEvent<HTMLFormElement>) => Promise<void>;
 }) {
+  const isDraft = editMode === "draft";
+  const isOpen = editMode === "open";
+  const isClosed = editMode === "closed";
+  const isLocked = editMode === "locked";
+  const canEditAll = isDraft;
+  const canEditTeams = isDraft || isOpen;
+  const canEditPlayers = isDraft || isOpen || isClosed;
+  const canEditPayment = isDraft || isOpen || isClosed;
+  const canEditStartDate = isDraft || isOpen || isClosed;
+  const canEditRules = isDraft || isOpen;
+  const canEditStructure = isDraft || isOpen;
   const isLeague = values.format === "liga";
   const isKnockout = values.format === "eliminacion";
   const isMixed = values.format === "mixto";
+  const inferredAdvancedMode = isMixed && (
+    values.structure.groupStage.wildcardsCount > 0
+    || values.structure.groupStage.seedingCriteria !== "points"
+    || values.structure.groupStage.bracketMatchup !== "standard_seeded"
+    || values.structure.groupStage.crossGroupSeeding !== true
+  );
+  const [advancedMode, setAdvancedMode] = useState(inferredAdvancedMode);
   const requiredKnockoutTeams = getKnockoutBracketSize(values.structure.knockoutStage.startFrom);
   const knockoutPreview = getKnockoutPreview(values.structure.knockoutStage.startFrom);
   const mixedSummary = getMixedQualificationSummary({
@@ -64,13 +85,34 @@ export function TournamentEditForm({
     crossGroupSeeding: values.structure.groupStage.crossGroupSeeding,
     bracketMatchup: values.structure.groupStage.bracketMatchup,
   });
+  const normalizeMixedSettings = (next: TournamentFormValues, isAdvanced: boolean): TournamentFormValues => {
+    if (next.format !== "mixto") return next;
+    const requiredQualified = getKnockoutBracketSize(next.structure.knockoutStage.startFrom);
+    const automaticQualified = Math.max(1, Number(next.structure.groupStage.groupCount || 1))
+      * Math.max(1, Number(next.structure.groupStage.qualifyPerGroup || 1));
+    const missingSlots = Math.max(0, requiredQualified - automaticQualified);
+    const wildcardsCount = isAdvanced ? Math.max(0, Number(next.structure.groupStage.wildcardsCount || 0)) : missingSlots;
+    return {
+      ...next,
+      structure: {
+        ...next.structure,
+        groupStage: {
+          ...next.structure.groupStage,
+          wildcardsCount,
+          seedingCriteria: isAdvanced ? next.structure.groupStage.seedingCriteria : "points",
+          crossGroupSeeding: isAdvanced ? next.structure.groupStage.crossGroupSeeding : true,
+          bracketMatchup: isAdvanced ? next.structure.groupStage.bracketMatchup : "standard_seeded",
+        },
+      },
+    };
+  };
 
   return (
     <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
       <h2 className="text-base font-semibold">Editar torneo</h2>
-      {isActiveTournament && (
+      {isLocked && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-          Torneo activo: solo se permiten cambios en pago por jugador, cupos de equipos, máximo de jugadores, sets máximos por partido y configuración estructural todavía pendiente.
+          Este torneo está bloqueado y no admite cambios.
         </p>
       )}
 
@@ -79,7 +121,7 @@ export function TournamentEditForm({
           <label className="text-sm font-medium">Nombre</label>
           <input
             value={values.name}
-            disabled={isActiveTournament}
+            disabled={!canEditAll}
             onChange={(e) => onChange({ ...values, name: e.target.value })}
             className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
           />
@@ -89,7 +131,7 @@ export function TournamentEditForm({
           <label className="text-sm font-medium">Descripción</label>
           <textarea
             value={values.description}
-            disabled={isActiveTournament}
+            disabled={!canEditAll}
             onChange={(e) => onChange({ ...values, description: e.target.value })}
             className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
           />
@@ -100,7 +142,7 @@ export function TournamentEditForm({
             <label className="text-sm font-medium">Formato</label>
             <select
               value={values.format}
-              disabled={isActiveTournament}
+              disabled={!canEditAll}
               onChange={(e) => {
                 const format = e.target.value as TournamentFormValues["format"];
                 const nextBracketSize = getKnockoutBracketSize(values.structure.knockoutStage.startFrom);
@@ -137,6 +179,7 @@ export function TournamentEditForm({
               type="number"
               min={isKnockout && values.structure.knockoutStage.startFrom === "final" ? 2 : 4}
               value={values.minTeams}
+              disabled={!canEditAll}
               onChange={(e) => onChange({ ...values, minTeams: Number(e.target.value) })}
               className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
             />
@@ -148,6 +191,7 @@ export function TournamentEditForm({
               type="number"
               min={isKnockout && values.structure.knockoutStage.startFrom === "final" ? 2 : 4}
               value={values.maxTeams}
+              disabled={!canEditTeams}
               onChange={(e) => onChange({ ...values, maxTeams: Number(e.target.value) })}
               className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
             />
@@ -160,7 +204,7 @@ export function TournamentEditForm({
             <input
               type="number"
               value={values.minPlayers}
-              disabled={isActiveTournament}
+              disabled={!canEditPlayers}
               onChange={(e) => onChange({ ...values, minPlayers: Number(e.target.value) })}
               className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
             />
@@ -171,6 +215,7 @@ export function TournamentEditForm({
             <input
               type="number"
               value={values.maxPlayers}
+              disabled={!canEditPlayers}
               onChange={(e) => onChange({ ...values, maxPlayers: Number(e.target.value) })}
               className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
             />
@@ -183,6 +228,7 @@ export function TournamentEditForm({
             <input
               type="number"
               value={values.paymentForPlayer}
+              disabled={!canEditPayment}
               onChange={(e) => onChange({ ...values, paymentForPlayer: Number(e.target.value) })}
               className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
             />
@@ -193,6 +239,7 @@ export function TournamentEditForm({
             <input
               type="number"
               value={values.rules.setsToWin}
+              disabled={!canEditRules}
               onChange={(e) =>
                 onChange({
                   ...values,
@@ -209,6 +256,16 @@ export function TournamentEditForm({
             </p>
           </div>
         </div>
+        <div>
+          <label className="text-sm font-medium">Inicio</label>
+          <input
+            type="datetime-local"
+            value={values.startDate}
+            disabled={!canEditStartDate}
+            onChange={(e) => onChange({ ...values, startDate: e.target.value })}
+            className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+          />
+        </div>
 
         {!isKnockout && (
           <div className={`grid gap-3 ${isLeague ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
@@ -218,6 +275,7 @@ export function TournamentEditForm({
                 <input
                   type="number"
                   value={values.structure.groupStage.groupCount}
+                  disabled={!canEditStructure}
                   onChange={(e) =>
                     onChange({
                       ...values,
@@ -241,6 +299,7 @@ export function TournamentEditForm({
               <input
                 type="number"
                 value={values.structure.groupStage.rounds}
+                disabled={!canEditStructure}
                 onChange={(e) =>
                   onChange({
                     ...values,
@@ -264,6 +323,7 @@ export function TournamentEditForm({
                   type="number"
                   min={1}
                   value={values.structure.groupStage.qualifyPerGroup}
+                  disabled={!canEditStructure}
                   onChange={(e) =>
                     onChange({
                       ...values,
@@ -285,11 +345,38 @@ export function TournamentEditForm({
 
         {(isKnockout || isMixed) && (
           <div className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+            {isMixed && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-neutral-700">Modo simple</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextAdvanced = !advancedMode;
+                    setAdvancedMode(nextAdvanced);
+                    onChange(normalizeMixedSettings(values, nextAdvanced));
+                  }}
+                  className={`relative inline-flex h-7 w-14 items-center rounded-full border transition-colors ${
+                    advancedMode ? "border-slate-600 bg-slate-900" : "border-neutral-300 bg-white"
+                  }`}
+                  role="switch"
+                  aria-checked={advancedMode}
+                  aria-label="Activar modo avanzado"
+                >
+                  <span
+                    className={`ml-1 h-5 w-5 rounded-full shadow-sm transition-transform duration-200 ${
+                      advancedMode ? "translate-x-7 bg-neutral-200" : "translate-x-0 bg-neutral-700"
+                    }`}
+                    aria-hidden
+                  />
+                </button>
+                <span className="text-sm text-neutral-700">Modo avanzado</span>
+              </div>
+            )}
             <div>
               <label className="text-sm font-medium">Etapa de eliminación</label>
               <select
                 value={values.structure.knockoutStage.startFrom}
-                disabled={isActiveTournament}
+                disabled={!canEditStructure}
                 onChange={(e) => {
                   const startFrom = e.target.value as TournamentFormValues["structure"]["knockoutStage"]["startFrom"];
                   const nextBracketSize = getKnockoutBracketSize(startFrom);
@@ -335,90 +422,102 @@ export function TournamentEditForm({
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className="text-sm font-medium">Wildcards</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={values.structure.groupStage.wildcardsCount}
-                    onChange={(e) =>
-                      onChange({
-                        ...values,
-                        structure: {
-                          ...values.structure,
-                          groupStage: {
-                            ...values.structure.groupStage,
-                            wildcardsCount: Number(e.target.value),
+                  {allowAdvancedConfig && advancedMode ? (
+                    <input
+                      type="number"
+                      min={0}
+                      value={values.structure.groupStage.wildcardsCount}
+                      disabled={!canEditStructure}
+                      onChange={(e) =>
+                        onChange({
+                          ...values,
+                          structure: {
+                            ...values.structure,
+                            groupStage: {
+                              ...values.structure.groupStage,
+                              wildcardsCount: Number(e.target.value),
+                            },
                           },
-                        },
-                      })
-                    }
-                    className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                  />
+                        })
+                      }
+                      className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                    />
+                  ) : (
+                    <p className="mt-1 text-xs text-neutral-500">Se completa automáticamente en modo simple.</p>
+                  )}
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Criterio de seed</label>
-                  <select
-                    value={values.structure.groupStage.seedingCriteria}
-                    onChange={(e) =>
-                      onChange({
-                        ...values,
-                        structure: {
-                          ...values.structure,
-                          groupStage: {
-                            ...values.structure.groupStage,
-                            seedingCriteria: e.target.value as TournamentFormValues["structure"]["groupStage"]["seedingCriteria"],
-                          },
-                        },
-                      })
-                    }
-                    className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                  >
-                    <option value="points">Puntos</option>
-                    <option value="group_position">Posición de grupo</option>
-                    <option value="setsDiff">Dif. de sets</option>
-                    <option value="pointsDiff">Dif. de puntos</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Patrón de cruce</label>
-                  <select
-                    value={values.structure.groupStage.bracketMatchup}
-                    onChange={(e) =>
-                      onChange({
-                        ...values,
-                        structure: {
-                          ...values.structure,
-                          groupStage: {
-                            ...values.structure.groupStage,
-                            bracketMatchup: e.target.value as TournamentFormValues["structure"]["groupStage"]["bracketMatchup"],
-                          },
-                        },
-                      })
-                    }
-                    className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                  >
-                    <option value="1A_vs_2B">Cruce 1° vs 2°</option>
-                    <option value="standard_seeded">Ranking global</option>
-                  </select>
-                </div>
-                <label className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700">
-                  <input
-                    type="checkbox"
-                    checked={values.structure.groupStage.crossGroupSeeding}
-                    onChange={(e) =>
-                      onChange({
-                        ...values,
-                        structure: {
-                          ...values.structure,
-                          groupStage: {
-                            ...values.structure.groupStage,
-                            crossGroupSeeding: e.target.checked,
-                          },
-                        },
-                      })
-                    }
-                  />
-                  Seed cruzado entre grupos
-                </label>
+                {allowAdvancedConfig && advancedMode && (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium">Criterio de seed</label>
+                      <select
+                        value={values.structure.groupStage.seedingCriteria}
+                        disabled={!canEditStructure}
+                        onChange={(e) =>
+                          onChange({
+                            ...values,
+                            structure: {
+                              ...values.structure,
+                              groupStage: {
+                                ...values.structure.groupStage,
+                                seedingCriteria: e.target.value as TournamentFormValues["structure"]["groupStage"]["seedingCriteria"],
+                              },
+                            },
+                          })
+                        }
+                        className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                      >
+                        <option value="points">Puntos</option>
+                        <option value="group_position">Posición de grupo</option>
+                        <option value="setsDiff">Dif. de sets</option>
+                        <option value="pointsDiff">Dif. de puntos</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Patrón de cruce</label>
+                      <select
+                        value={values.structure.groupStage.bracketMatchup}
+                        disabled={!canEditStructure}
+                        onChange={(e) =>
+                          onChange({
+                            ...values,
+                            structure: {
+                              ...values.structure,
+                              groupStage: {
+                                ...values.structure.groupStage,
+                                bracketMatchup: e.target.value as TournamentFormValues["structure"]["groupStage"]["bracketMatchup"],
+                              },
+                            },
+                          })
+                        }
+                        className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                      >
+                        <option value="1A_vs_2B">Cruce 1° vs 2°</option>
+                        <option value="standard_seeded">Ranking global</option>
+                      </select>
+                    </div>
+                    <label className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700">
+                      <input
+                        type="checkbox"
+                        checked={values.structure.groupStage.crossGroupSeeding}
+                        disabled={!canEditStructure}
+                        onChange={(e) =>
+                          onChange({
+                            ...values,
+                            structure: {
+                              ...values.structure,
+                              groupStage: {
+                                ...values.structure.groupStage,
+                                crossGroupSeeding: e.target.checked,
+                              },
+                            },
+                          })
+                        }
+                      />
+                      Seed cruzado entre grupos
+                    </label>
+                  </>
+                )}
               </div>
             )}
 

@@ -623,3 +623,108 @@ Estados derivados implementados en esta iteración:
 Resultado esperado:
 
 - el usuario entra a “Mis torneos” y entiende rápido si ya está adentro, qué le falta y cuál es la próxima acción sugerida.
+
+### 17. Chequeo integral del módulo de torneos (frontend + backend)
+
+Fecha: 2026-03-25
+
+Se realizó una verificación cruzada del estado actual contra este documento para responder explícitamente:
+
+1. qué ya cumple el módulo;
+2. qué falta para darlo por terminado según estas definiciones;
+3. qué ajustes faltan para una alineación completa backend/frontend.
+
+#### Resultado general
+
+**Estado global: parcialmente alineado (alto avance, cierre funcional pendiente).**
+
+- **Cumple** la separación de dominio `Match` vs `TournamentMatch` y el uso del namespace `@/types/tournaments`.
+- **Cumple** la carga de resultados desde frontend admin hacia backend usando `recordMatchResult`.
+- **Cumple** la card de `Mis torneos` con estado operativo del equipo (roster, pago, próxima acción).
+- **No cumple todavía al 100%** en permisos finos por torneo, cierre explícito de torneo y feedback operativo de transición de fase.
+
+---
+
+#### Verificación de cumplimiento contra los eventos previos
+
+##### A. Dominio y tipos (frontend)
+
+**Cumplido.**
+
+- `TournamentMatch` permanece tipado en `src/types/tournaments/tournamentMatch.ts` y mantiene explícita su separación frente a `Match` social.
+- El módulo de servicios/UI de torneos consume tipado del dominio de torneos de forma consistente.
+
+##### B. Operación de resultados (frontend ↔ backend)
+
+**Cumplido en base técnica principal.**
+
+- Frontend tiene `recordTournamentMatchResult()` en `tournamentMutations.ts` como wrapper de callable.
+- El admin usa modal y validaciones para sets/puntos/ganador antes de persistir.
+- Backend persiste resultado, recalcula standings, completa fase cuando corresponde y avanza automáticamente.
+
+##### C. Estado operativo en “Mis torneos”
+
+**Cumplido.**
+
+- La card de perfil ya muestra:
+  - estado de inscripción/equipo,
+  - resumen de jugadores,
+  - resumen de pago,
+  - próxima acción sugerida.
+
+##### D. Concordancia total backend/frontend (pendientes)
+
+**Pendiente parcial.**
+
+Persisten deudas para considerar el bloque completamente cerrado:
+
+1. **Permisos finos por torneo en registro de resultados**
+   - hoy `recordMatchResult` valida `admin` global, pero no verifica además pertenencia a `adminIds` del torneo dentro de la callable;
+   - esto quedó identificado como pendiente funcional en el propio documento.
+
+2. **Cierre explícito del torneo (`finalizeTournament`)**
+   - hoy existe finalización automática por avance sin una operación explícita de cierre funcional/auditable según la definición pendiente.
+
+3. **Feedback UX de transición de fase**
+   - luego de cargar el último resultado, falta comunicar claramente en admin si se completó fase, si se generó siguiente fase o si el torneo quedó finalizado.
+
+4. **Scheduling operativo de fixture**
+   - el contrato visible de `TournamentMatch` aún no expone campos de agenda operativa (`scheduledDate`, `location`) ni flujo de edición asociado en admin.
+
+---
+
+#### Qué falta para dar el módulo por “terminado y acorde”
+
+Para cerrar este bloque como terminado, se sugiere ejecutar este orden:
+
+1. **Backend (prioridad alta): permisos finos en `recordMatchResult`**
+   - agregar validación de `assertTournamentAdmin(tournament, uid)` en la callable/servicio de resultados.
+
+2. **Backend (prioridad alta): cierre explícito**
+   - implementar callable/servicio `finalizeTournament` con persistencia de `podiumTeamIds` y criterio por formato.
+
+3. **Frontend + Backend (prioridad media): feedback de transición**
+   - extender respuesta de `recordMatchResult` (por ejemplo: `phaseCompleted`, `advanced`, `nextPhaseType`, `tournamentFinished`) y reflejarlo en toast/timeline.
+
+4. **Frontend (prioridad media): agenda de fixture**
+   - definir y modelar `scheduledDate` + `location` en tipo, persistencia y UI admin.
+
+5. **QA/Test (prioridad alta): cobertura mínima de regresión**
+   - permisos,
+   - carga/edición de resultados,
+   - avance de fase en mixto y knockout,
+   - finalización y podio.
+
+---
+
+#### Checklist corto de cierre
+
+Se considera “cerrado” cuando:
+
+- [ ] `recordMatchResult` exige admin del torneo además de admin global.
+- [ ] existe `finalizeTournament` con podio persistido.
+- [ ] admin recibe feedback explícito de transición/finalización tras cargar resultados.
+- [ ] fixture soporta agenda operativa definida por negocio.
+- [ ] hay tests automáticos de flujo crítico (resultado → standings → avance/finalización).
+
+Con ese checklist completo, el backend y frontend quedarían alineados con las convenciones y objetivos de esta migración.

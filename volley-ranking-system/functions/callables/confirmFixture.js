@@ -132,7 +132,7 @@ module.exports = functions.https.onCall(async (data, context) => {
       fixture: buildFixtureSummary(matches),
     },
   });
-  batch.update(tournamentRef, { status: "activo", currentPhaseId: phase.id, currentPhaseType: phase.type, updatedBy: uid, updatedAt: FieldValue.serverTimestamp() });
+  batch.update(tournamentRef, { status: "inscripciones_cerradas", currentPhaseId: phase.id, currentPhaseType: phase.type, updatedBy: uid, updatedAt: FieldValue.serverTimestamp() });
   await batch.commit();
   return { ok: true, matchesCount: matches.length, phaseId: phase.id };
 });

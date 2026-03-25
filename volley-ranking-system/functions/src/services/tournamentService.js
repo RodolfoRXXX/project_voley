@@ -540,6 +540,75 @@ async function closeTournamentRegistrations({ uid, tournamentId }) {
   return { ok: true };
 }
 
+async function startTournament({ uid, tournamentId }) {
+  if (typeof tournamentId !== "string" || !tournamentId) throw new functions.https.HttpsError("invalid-argument", "tournamentId inválido");
+  const tournamentRef = db.collection("tournaments").doc(tournamentId);
+  await db.runTransaction(async (trx) => {
+    const tournamentSnap = await trx.get(tournamentRef);
+    if (!tournamentSnap.exists) throw new functions.https.HttpsError("not-found", "El torneo no existe");
+    const tournament = tournamentSnap.data();
+    assertTournamentAdmin(tournament, uid);
+    if (tournament.status !== TOURNAMENT_STATUS.CLOSED) throw new functions.https.HttpsError("failed-precondition", "Solo se puede iniciar un torneo con inscripciones cerradas");
+
+    const phaseId = typeof tournament.currentPhaseId === "string" ? tournament.currentPhaseId : "";
+    if (!phaseId) throw new functions.https.HttpsError("failed-precondition", "El torneo no tiene fase activa");
+    const fixtureSnap = await trx.get(db.collection("tournamentMatches").where("phaseId", "==", phaseId).limit(1));
+    if (fixtureSnap.empty) throw new functions.https.HttpsError("failed-precondition", "Primero debés confirmar el fixture para iniciar el torneo");
+
+    trx.update(tournamentRef, {
+      status: TOURNAMENT_STATUS.ACTIVE,
+      updatedBy: uid,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+  return { ok: true };
+}
+
+async function finalizeTournament({ uid, tournamentId }) {
+  if (typeof tournamentId !== "string" || !tournamentId) throw new functions.https.HttpsError("invalid-argument", "tournamentId inválido");
+  const tournamentRef = db.collection("tournaments").doc(tournamentId);
+  await db.runTransaction(async (trx) => {
+    const tournamentSnap = await trx.get(tournamentRef);
+    if (!tournamentSnap.exists) throw new functions.https.HttpsError("not-found", "El torneo no existe");
+    const tournament = tournamentSnap.data();
+    assertTournamentAdmin(tournament, uid);
+    if (tournament.status !== TOURNAMENT_STATUS.ACTIVE) throw new functions.https.HttpsError("failed-precondition", "Solo se puede finalizar un torneo activo");
+
+    const matchesSnap = await trx.get(db.collection("tournamentMatches").where("tournamentId", "==", tournamentId));
+    if (matchesSnap.empty) throw new functions.https.HttpsError("failed-precondition", "No hay partidos para finalizar el torneo");
+    const allCompleted = matchesSnap.docs.every((matchDoc) => matchDoc.data().status === "completed");
+    if (!allCompleted) throw new functions.https.HttpsError("failed-precondition", "Debés cargar resultados en todos los partidos antes de finalizar");
+
+    trx.update(tournamentRef, {
+      status: TOURNAMENT_STATUS.FINISHED,
+      updatedBy: uid,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+  return { ok: true };
+}
+
+async function cancelTournament({ uid, tournamentId }) {
+  if (typeof tournamentId !== "string" || !tournamentId) throw new functions.https.HttpsError("invalid-argument", "tournamentId inválido");
+  const tournamentRef = db.collection("tournaments").doc(tournamentId);
+  await db.runTransaction(async (trx) => {
+    const tournamentSnap = await trx.get(tournamentRef);
+    if (!tournamentSnap.exists) throw new functions.https.HttpsError("not-found", "El torneo no existe");
+    const tournament = tournamentSnap.data();
+    assertTournamentAdmin(tournament, uid);
+    if ([TOURNAMENT_STATUS.CANCELLED, TOURNAMENT_STATUS.FINISHED].includes(tournament.status)) {
+      throw new functions.https.HttpsError("failed-precondition", "El torneo ya está cerrado definitivamente");
+    }
+
+    trx.update(tournamentRef, {
+      status: TOURNAMENT_STATUS.CANCELLED,
+      updatedBy: uid,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+  return { ok: true };
+}
+
 module.exports = {
   TOURNAMENT_STATUS,
   PHASE_STATUS,
@@ -550,5 +619,8 @@ module.exports = {
   addTournamentAdmin,
   openTournamentRegistrations,
   closeTournamentRegistrations,
+  startTournament,
+  finalizeTournament,
+  cancelTournament,
   editTournament,
 };

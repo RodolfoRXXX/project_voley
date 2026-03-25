@@ -14,13 +14,16 @@ import {
   type TournamentTeamRow,
 } from "@/services/tournaments/tournamentQueries";
 import {
+  cancelTournament,
   closeTournamentRegistrations,
   confirmTournamentFixture,
   confirmTournamentGroups,
+  finalizeTournament,
   openTournamentRegistrations,
   previewTournamentFixture,
   previewTournamentGroups,
   recordTournamentMatchResult,
+  startTournament,
 } from "@/services/tournaments/tournamentMutations";
 import { TournamentPhaseShell, TournamentPhaseTimeline } from "@/components/tournaments/admin/TournamentPhaseShell";
 import { TournamentGroupsList, TournamentStandingsTable } from "@/components/tournaments/admin/TournamentAdminPhaseSections";
@@ -30,6 +33,7 @@ import {
   groupTournamentMatches,
   TournamentMatchSummaryList,
 } from "@/components/tournaments/admin/TournamentMatchSections";
+import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 
 type TournamentAdminPanelProps = {
   tournament: Tournament;
@@ -108,6 +112,7 @@ function hasInvalidPointsList(value: string) {
 
 export default function TournamentAdminPanel({ tournament, onTournamentRefresh }: TournamentAdminPanelProps) {
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const confirmedFixtureRef = useRef<HTMLDivElement | null>(null);
 
   const [busyAction, setBusyAction] = useState(false);
@@ -132,10 +137,6 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
   const action = getAdminAction(tournament);
-  const startDateMillis = tournament.startDate?.seconds ? tournament.startDate.seconds * 1000 : null;
-  const nowMillis = Date.now();
-  const beforeStartDate = startDateMillis != null && nowMillis < startDateMillis;
-  const shouldShowStartButton = ["draft", "inscripciones_abiertas", "inscripciones_cerradas"].includes(tournament.status) && beforeStartDate;
   const currentPhase = useMemo(
     () => phases.find((phase) => phase.id === tournament.currentPhaseId) || null,
     [phases, tournament.currentPhaseId]
@@ -238,17 +239,15 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   }, [confirmedTournamentMatches]);
 
   const onMainAction = async () => {
-    if (shouldShowStartButton) {
-      showToast({
-        type: "info",
-        message: hasConfirmedFixture
-          ? "El torneo se activará automáticamente cuando llegue la fecha de inicio."
-          : "Primero confirmá el fixture para habilitar el inicio automático.",
-      });
-      return;
-    }
-
     if (!action.nextStatus) return;
+    const confirmed = await confirm({
+      title: "Confirmar acción",
+      message: `¿Querés ${action.label.toLowerCase()}?`,
+      confirmText: action.label,
+      cancelText: "Cancelar",
+      variant: "warning",
+    });
+    if (!confirmed) return;
 
     setBusyAction(true);
 
@@ -260,11 +259,50 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       if (action.nextStatus === "inscripciones_cerradas") {
         await closeTournamentRegistrations(tournament.id);
       }
+      if (action.nextStatus === "activo") {
+        await startTournament(tournament.id);
+      }
+      if (action.nextStatus === "finalizado") {
+        await finalizeTournament(tournament.id);
+      }
 
       showToast({ type: "success", message: `${action.label} correctamente` });
       await onTournamentRefresh();
     } catch (error) {
       handleFirebaseError(error, showToast, `No se pudo ejecutar: ${action.label}`);
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
+  const onCancelTournament = async () => {
+    if (tournament.status === "cancelado" || tournament.status === "finalizado") return;
+
+    const firstConfirm = await confirm({
+      title: "Cancelar torneo",
+      message: "Esta acción cambia el estado a cancelado y bloquea todas las modificaciones. ¿Querés continuar?",
+      confirmText: "Sí, continuar",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!firstConfirm) return;
+
+    const secondConfirm = await confirm({
+      title: "Confirmación final",
+      message: "¿Confirmás cancelar definitivamente este torneo?",
+      confirmText: "Sí, cancelar torneo",
+      cancelText: "Volver",
+      variant: "danger",
+    });
+    if (!secondConfirm) return;
+
+    setBusyAction(true);
+    try {
+      await cancelTournament(tournament.id);
+      showToast({ type: "success", message: "Torneo cancelado correctamente" });
+      await onTournamentRefresh();
+    } catch (error) {
+      handleFirebaseError(error, showToast, "No se pudo cancelar el torneo");
     } finally {
       setBusyAction(false);
     }
@@ -509,6 +547,19 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   );
   const groupedMixedGroupMatches = useMemo(() => groupTournamentMatches(mixedGroupMatches), [mixedGroupMatches]);
   const groupedMixedKnockoutMatches = useMemo(() => groupTournamentMatches(mixedKnockoutMatches), [mixedKnockoutMatches]);
+  const allTournamentMatchesCompleted = useMemo(
+    () => confirmedTournamentMatches.length > 0 && confirmedTournamentMatches.every((match) => match.status === "completed"),
+    [confirmedTournamentMatches]
+  );
+  const minTeamsRequired = Number(tournament.minTeams || tournament.settings?.minTeams || 0);
+  const canCloseRegistrations = Number(tournament.acceptedTeamsCount || 0) >= minTeamsRequired;
+  const isMainActionDisabled = useMemo(() => {
+    if (busyAction) return true;
+    if (action.nextStatus === "inscripciones_cerradas") return action.disabled || !canCloseRegistrations;
+    if (action.nextStatus === "activo") return !hasConfirmedFixture;
+    if (action.nextStatus === "finalizado") return !allTournamentMatchesCompleted;
+    return action.disabled;
+  }, [action.disabled, action.nextStatus, allTournamentMatchesCompleted, busyAction, canCloseRegistrations, hasConfirmedFixture]);
   const publishedQualifiedTeams = useMemo(() => {
     if (Array.isArray(groupStagePhase?.config?.qualifiedTeamsPublished) && groupStagePhase.config.qualifiedTeamsPublished.length > 0) {
       return [...groupStagePhase.config.qualifiedTeamsPublished].sort((a, b) => Number(a.seed || 0) - Number(b.seed || 0));
@@ -575,14 +626,21 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       loadingPhases={loadingPhases}
       timeline={<TournamentPhaseTimeline phases={phases} currentPhaseId={tournament.currentPhaseId} loading={loadingPhases} />}
     >
-      {(action.nextStatus || shouldShowStartButton) && (
-        <div className="flex justify-start">
+      {(action.nextStatus || tournament.status !== "cancelado") && (
+        <div className="flex flex-wrap justify-start gap-2">
           <button
             onClick={onMainAction}
-            disabled={busyAction || (shouldShowStartButton ? !hasConfirmedFixture : action.disabled)}
+            disabled={!action.nextStatus || isMainActionDisabled || tournament.status === "cancelado" || tournament.status === "finalizado"}
             className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
           >
-            {busyAction ? "Procesando..." : shouldShowStartButton ? "Iniciar torneo" : action.label}
+            {busyAction ? "Procesando..." : action.label}
+          </button>
+          <button
+            onClick={onCancelTournament}
+            disabled={busyAction || tournament.status === "cancelado" || tournament.status === "finalizado"}
+            className="rounded-lg bg-red-700 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+          >
+            {tournament.status === "cancelado" ? "Torneo cancelado" : "Cancelar torneo"}
           </button>
         </div>
       )}

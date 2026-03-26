@@ -633,7 +633,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       loadingPhases={loadingPhases}
       timeline={<TournamentPhaseTimeline phases={phases} currentPhaseId={tournament.currentPhaseId} loading={loadingPhases} />}
     >
-      {tournament.status !== "activo" && tournament.status !== "cancelado" && action.nextStatus && (
+      {tournament.status !== "finalizado" && tournament.status !== "cancelado" && action.nextStatus && (
         <div className="flex flex-wrap justify-start gap-2">
           <button
             onClick={onMainAction}

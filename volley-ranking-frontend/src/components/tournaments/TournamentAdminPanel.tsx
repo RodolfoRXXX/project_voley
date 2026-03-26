@@ -589,7 +589,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-          {isLeaguePhase ? "Tabla principal de la liga" : "Standings de la fase actual"}
+          {isLeaguePhase ? "Tabla principal de la liga" : "Tabla de posiciones de la fase actual"}
         </h3>
         {loadingStandings ? <span className="text-xs text-neutral-500 dark:text-neutral-400">Cargando...</span> : null}
       </div>
@@ -765,7 +765,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
             {groupStageStandings.length > 0 ? (
               <TournamentStandingsTable standings={groupStageStandings} teamNames={teamNames} />
             ) : (
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Los standings de grupos todavía no están disponibles.</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">La tabla de grupos todavía no está disponible.</p>
             )}
 
             <div className="space-y-2">
@@ -822,7 +822,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
               <TournamentMatchSummaryList
                 groupedTournamentMatches={groupedMixedKnockoutMatches}
                 teamNames={teamNames}
-                renderMatchDetails={renderConfirmedMatchDetails}
+                knockoutLayout="vertical"
               />
             ) : (
               <p className="text-sm text-neutral-500 dark:text-neutral-400">Todavía no hay bracket confirmado.</p>

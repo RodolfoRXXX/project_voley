@@ -184,12 +184,14 @@ function KnockoutBracket({
   rounds,
   teamNames,
   renderMatchDetails,
+  knockoutLayout = "grid",
 }: {
   rounds: Array<[string, TournamentMatch[]]>;
   teamNames: Record<string, string>;
   renderMatchDetails?: (tournamentMatch: TournamentMatch) => ReactNode;
+  knockoutLayout?: "grid" | "vertical";
 }) {
-  const showExtendedLayout = Boolean(renderMatchDetails);
+  const showExtendedLayout = Boolean(renderMatchDetails) || knockoutLayout === "vertical";
 
   return (
     <div className="space-y-3">
@@ -285,10 +287,12 @@ export function TournamentMatchSummaryList({
   groupedTournamentMatches,
   teamNames,
   renderMatchDetails,
+  knockoutLayout = "grid",
 }: {
   groupedTournamentMatches: GroupedTournamentMatches;
   teamNames: Record<string, string>;
   renderMatchDetails?: (tournamentMatch: TournamentMatch) => ReactNode;
+  knockoutLayout?: "grid" | "vertical";
 }) {
   const knockoutRounds = sortKnockoutEntries(groupedTournamentMatches.knockout);
   const leagueCycles = sortNumericEntries(groupedTournamentMatches.league);
@@ -327,6 +331,7 @@ export function TournamentMatchSummaryList({
           rounds={knockoutRounds}
           teamNames={teamNames}
           renderMatchDetails={renderMatchDetails}
+          knockoutLayout={knockoutLayout}
         />
       )}
     </div>

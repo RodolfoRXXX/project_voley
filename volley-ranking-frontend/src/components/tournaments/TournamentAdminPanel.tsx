@@ -633,24 +633,22 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       loadingPhases={loadingPhases}
       timeline={<TournamentPhaseTimeline phases={phases} currentPhaseId={tournament.currentPhaseId} loading={loadingPhases} />}
     >
-      {tournament.status !== "activo" && tournament.status !== "cancelado" && (action.nextStatus || tournament.status !== "cancelado") && (
+      {tournament.status !== "activo" && tournament.status !== "cancelado" && action.nextStatus && (
         <div className="flex flex-wrap justify-start gap-2">
           <button
             onClick={onMainAction}
-            disabled={!action.nextStatus || isMainActionDisabled || tournament.status === "cancelado" || tournament.status === "finalizado"}
+            disabled={isMainActionDisabled || tournament.status === "finalizado"}
             className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
           >
             {busyAction ? "Procesando..." : action.label}
           </button>
-          {tournament.status !== "activo" && (
-            <button
-              onClick={onCancelTournament}
-              disabled={busyAction || tournament.status === "cancelado" || tournament.status === "finalizado"}
-              className="rounded-lg bg-red-700 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
-            >
-              {tournament.status === "cancelado" ? "Torneo cancelado" : "Cancelar torneo"}
-            </button>
-          )}
+          <button
+            onClick={onCancelTournament}
+            disabled={busyAction || tournament.status === "finalizado"}
+            className="rounded-lg bg-red-700 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+          >
+            Cancelar torneo
+          </button>
         </div>
       )}
 

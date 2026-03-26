@@ -267,8 +267,10 @@ export default function AdminTournamentDetailPage() {
     const teamMembersCount = Array.isArray(item.playerIds)
       ? item.playerIds.length
       : Number(item.teamMembersCount ?? 0);
-    const meetsMinPlayers = typeof tournament.minPlayers === "number" ? teamMembersCount >= tournament.minPlayers : true;
-    const meetsMaxPlayers = typeof tournament.maxPlayers === "number" ? teamMembersCount <= tournament.maxPlayers : true;
+    const minPlayers = tournament?.minPlayers;
+    const maxPlayers = tournament?.maxPlayers;
+    const meetsMinPlayers = typeof minPlayers === "number" ? teamMembersCount >= minPlayers : true;
+    const meetsMaxPlayers = typeof maxPlayers === "number" ? teamMembersCount <= maxPlayers : true;
     return item.paymentStatus === "pagado" && meetsMinPlayers && meetsMaxPlayers;
   };
 

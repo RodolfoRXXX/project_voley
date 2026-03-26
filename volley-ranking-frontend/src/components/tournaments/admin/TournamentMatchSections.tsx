@@ -189,20 +189,25 @@ function KnockoutBracket({
   teamNames: Record<string, string>;
   renderMatchDetails?: (tournamentMatch: TournamentMatch) => ReactNode;
 }) {
+  const showExtendedLayout = Boolean(renderMatchDetails);
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <h4 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Cuadro eliminatorio</h4>
         <span className="text-xs text-neutral-500 dark:text-neutral-400">Los cruces futuros se muestran aunque todavía no tengan equipos definidos.</span>
       </div>
-      <div className="grid gap-4 xl:grid-cols-4 md:grid-cols-2">
+      <div className={showExtendedLayout ? "space-y-4" : "grid gap-4 md:grid-cols-2 xl:grid-cols-4"}>
         {rounds.map(([roundLabel, tournamentMatches]) => (
-          <div key={`knockout-${roundLabel}`} className="space-y-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-950/20">
+          <div
+            key={`knockout-${roundLabel}`}
+            className="space-y-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-950/20"
+          >
             <div>
               <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{getKnockoutRoundLabel(roundLabel)}</p>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">{tournamentMatches.length} cruce{tournamentMatches.length === 1 ? "" : "s"}</p>
             </div>
-            <div className="space-y-3">
+            <div className={showExtendedLayout ? "grid gap-3 lg:grid-cols-2" : "space-y-3"}>
               {sortMatches(tournamentMatches).map((tournamentMatch) => (
                 <KnockoutMatchCard
                   key={tournamentMatch.id}

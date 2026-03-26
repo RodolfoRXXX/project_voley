@@ -291,18 +291,7 @@ export default function TournamentRegistrationStatusModal({
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2">
-            {!isTeamSource && (
-              <button
-                type="button"
-                onClick={() => onReviewRegistration("aceptado")}
-                disabled={!canApprove || reviewing !== null}
-                className="h-10 rounded-lg bg-emerald-600 px-4 text-white text-sm font-medium disabled:opacity-60"
-              >
-                {reviewing === "aceptado" ? "Aceptando..." : "Aceptar inscripción"}
-              </button>
-            )}
-
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => onReviewRegistration(isTeamSource ? "equipo_rechazado" : "rechazado")}
@@ -315,6 +304,17 @@ export default function TournamentRegistrationStatusModal({
                   ? "Eliminar equipo"
                   : "Rechazar inscripción"}
             </button>
+
+            {!isTeamSource && (
+              <button
+                type="button"
+                onClick={() => onReviewRegistration("aceptado")}
+                disabled={!canApprove || reviewing !== null}
+                className="h-10 rounded-lg bg-emerald-600 px-4 text-white text-sm font-medium disabled:opacity-60"
+              >
+                {reviewing === "aceptado" ? "Aceptando..." : "Aceptar inscripción"}
+              </button>
+            )}
           </div>
         </div>
       </div>

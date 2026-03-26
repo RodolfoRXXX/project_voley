@@ -58,13 +58,11 @@ export function TournamentPhaseTimeline({
 
 export function TournamentPhaseShell({
   currentPhase,
-  currentPhaseType,
   loadingPhases,
   timeline,
   children,
 }: {
   currentPhase: TournamentPhase | null;
-  currentPhaseType?: string | null;
   loadingPhases?: boolean;
   timeline?: ReactNode;
   children: ReactNode;
@@ -79,18 +77,7 @@ export function TournamentPhaseShell({
               {currentPhase ? tournamentPhaseTypeLabel[currentPhase.type] : "Sin fase activa"}
             </h2>
           </div>
-          <div className="rounded-lg border border-neutral-200 p-3 text-sm text-neutral-700 dark:border-neutral-700 dark:text-neutral-200">
-            <p>
-              <b>Estado de fase:</b> {currentPhase ? tournamentPhaseStatusLabel[currentPhase.status] : "-"}
-            </p>
-            <p>
-              <b>Orden:</b> {currentPhase?.order ?? "-"}
-            </p>
-            <p>
-              <b>Tipo backend:</b> {currentPhaseType || "-"}
-            </p>
-            {loadingPhases ? <p className="text-xs text-neutral-500">Sincronizando fases...</p> : null}
-          </div>
+          {loadingPhases ? <p className="text-xs text-neutral-500">Sincronizando fases...</p> : null}
         </div>
 
         <div className="w-full max-w-md rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/50">

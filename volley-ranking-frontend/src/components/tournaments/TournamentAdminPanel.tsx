@@ -125,7 +125,6 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
   const [previewTournamentMatches, setPreviewTournamentMatches] = useState<TournamentMatch[] | null>(null);
   const [confirmedTournamentMatches, setConfirmedTournamentMatches] = useState<TournamentMatch[]>([]);
-  const [seed, setSeed] = useState<number | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [confirmingFixture, setConfirmingFixture] = useState(false);
   const [loadingConfirmed, setLoadingConfirmed] = useState(false);
@@ -153,6 +152,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   const isLeaguePhase = currentPhase?.type === "round_robin";
   const isKnockoutPhase = currentPhase?.type === "knockout" || currentPhase?.type === "final";
   const isMixedTournament = tournament.format === "mixto";
+  const canRecordResults = tournament.status === "activo";
 
   const loadPhases = useCallback(async () => {
     setLoadingPhases(true);
@@ -360,7 +360,6 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
         ...(currentPhase ? { phaseId: currentPhase.id } : {}),
         ...(previewTournamentMatches ? { seed: Math.floor(Math.random() * 1000000000) } : {}),
       });
-      setSeed(data.seed);
       setPreviewTournamentMatches(data.matches);
       showToast({ type: "success", message: "Fixture generado en memoria" });
     } catch (error) {
@@ -387,7 +386,6 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
       await loadConfirmedMatches();
       await loadStandings();
       setPreviewTournamentMatches(null);
-      setSeed(null);
       showToast({ type: "success", message: "Fixture confirmado correctamente" });
       confirmedFixtureRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (error) {
@@ -419,6 +417,11 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   );
 
   const onRecordMatchResult = async (tournamentMatch: TournamentMatch) => {
+    if (!canRecordResults) {
+      showToast({ type: "error", message: "Solo podés cargar resultados cuando el torneo está activo" });
+      return;
+    }
+
     const draft = matchResultDrafts[tournamentMatch.id] || buildMatchResultDraft(tournamentMatch);
 
     if (hasInvalidPointsList(draft.homePointsText) || hasInvalidPointsList(draft.awayPointsText)) {
@@ -493,15 +496,20 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           <span className={`rounded-full px-2 py-1 font-semibold ${isCompleted ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-200" : "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-200"}`}>
             {isCompleted ? "Resultado cargado" : "Pendiente"}
           </span>
-            <span>ID partido: {tournamentMatch.id}</span>
           </div>
           <button
             type="button"
             onClick={() => setSelectedMatchId(tournamentMatch.id)}
-            disabled={!hasDefinedTeams}
+            disabled={!hasDefinedTeams || !canRecordResults}
             className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-200"
           >
-            {!hasDefinedTeams ? "Esperando clasificados" : isCompleted ? "Editar resultado" : "Cargar resultado"}
+            {!hasDefinedTeams
+              ? "Esperando clasificados"
+              : !canRecordResults
+                ? "Disponible cuando esté activo"
+                : isCompleted
+                  ? "Editar resultado"
+                  : "Cargar resultado"}
           </button>
         </div>
 
@@ -622,25 +630,24 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   return (
     <TournamentPhaseShell
       currentPhase={currentPhase}
-      currentPhaseType={tournament.currentPhaseType}
       loadingPhases={loadingPhases}
       timeline={<TournamentPhaseTimeline phases={phases} currentPhaseId={tournament.currentPhaseId} loading={loadingPhases} />}
     >
-      {(action.nextStatus || tournament.status !== "cancelado") && (
+      {tournament.status !== "activo" && tournament.status !== "cancelado" && action.nextStatus && (
         <div className="flex flex-wrap justify-start gap-2">
           <button
             onClick={onMainAction}
-            disabled={!action.nextStatus || isMainActionDisabled || tournament.status === "cancelado" || tournament.status === "finalizado"}
+            disabled={isMainActionDisabled || tournament.status === "finalizado"}
             className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
           >
             {busyAction ? "Procesando..." : action.label}
           </button>
           <button
             onClick={onCancelTournament}
-            disabled={busyAction || tournament.status === "cancelado" || tournament.status === "finalizado"}
+            disabled={busyAction || tournament.status === "finalizado"}
             className="rounded-lg bg-red-700 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
           >
-            {tournament.status === "cancelado" ? "Torneo cancelado" : "Cancelar torneo"}
+            Cancelar torneo
           </button>
         </div>
       )}
@@ -712,8 +719,6 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
               </div>
             )}
           </div>
-
-          <p className="text-sm text-neutral-600 dark:text-neutral-300">Seed actual: <b>{seed ?? "-"}</b></p>
 
           {!hasConfirmedFixture && previewTournamentMatches !== null && (
             <PreviewCard title="Vista previa del fixture" tone="preview">

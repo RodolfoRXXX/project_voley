@@ -263,6 +263,16 @@ export default function AdminTournamentDetailPage() {
     ...registrations.filter((r) => r.status === "rechazado"),
     ...acceptedTeams.filter((team) => team.status === "rechazado"),
   ];
+  const isRegistrationReady = (item: TournamentRegistrationItem) => {
+    const teamMembersCount = Array.isArray(item.playerIds)
+      ? item.playerIds.length
+      : Number(item.teamMembersCount ?? 0);
+    const minPlayers = tournament?.minPlayers;
+    const maxPlayers = tournament?.maxPlayers;
+    const meetsMinPlayers = typeof minPlayers === "number" ? teamMembersCount >= minPlayers : true;
+    const meetsMaxPlayers = typeof maxPlayers === "number" ? teamMembersCount <= maxPlayers : true;
+    return item.paymentStatus === "pagado" && meetsMinPlayers && meetsMaxPlayers;
+  };
 
   if (loading) {
     return <p className="text-sm text-neutral-500">Cargando torneo...</p>;
@@ -348,7 +358,9 @@ export default function AdminTournamentDetailPage() {
               key={r.id}
               className="flex justify-between items-center border rounded-lg px-3 py-2 text-sm"
             >
-              <span>Equipo: {r.nameTeam || "Sin nombre"}</span>
+              <span>
+                Equipo: {r.nameTeam || "Sin nombre"} {isRegistrationReady(r) ? "✅" : "🕒"}
+              </span>
 
               <button
                 onClick={() => setSelectedRegistration(r)}

@@ -19,6 +19,8 @@ type TournamentSummaryCardProps = {
   href?: string;
   variant?: "default" | "profile";
   userState?: UserTournamentState;
+  winnerTeamNames?: string[];
+  highlightAsWinner?: boolean;
 };
 
 const userStateBadgeClass: Record<UserTournamentState["status"], string> = {
@@ -53,16 +55,30 @@ export function TournamentSummaryCard({
   href,
   variant = "default",
   userState,
+  winnerTeamNames: winnerTeamNamesProp,
+  highlightAsWinner = false,
 }: TournamentSummaryCardProps) {
+  const winnerTeamNames = Array.isArray(winnerTeamNamesProp) ? winnerTeamNamesProp.filter(Boolean) : [];
   const occupancyLabel = `${metrics.acceptedTeamsCount}/${metrics.maxTeams || metrics.acceptedTeamsCount || 0}`;
   const phaseLabel = phaseSnapshot ? tournamentPhaseTypeLabel[phaseSnapshot.type] : "Sin fase activa";
   const phaseStatusLabel = phaseSnapshot ? tournamentPhaseStatusLabel[phaseSnapshot.status] : "Pendiente";
   const completionLabel = metrics.matchesCount > 0
     ? `${metrics.completedMatchesCount}/${metrics.matchesCount}`
     : "Sin fixtures";
+  const isFinalized = tournament.status === "finalizado";
+  const currentPhaseType = phaseSnapshot?.type || "registration";
+  const progress = currentPhaseType === "registration"
+    ? metrics.occupancyPercent
+    : metrics.matchesCount > 0
+      ? Math.min(100, Math.round((metrics.completedMatchesCount / metrics.matchesCount) * 100))
+      : 0;
+  const progressLabel = currentPhaseType === "registration"
+    ? `Inscripción: ${metrics.acceptedTeamsCount}/${metrics.maxTeams || metrics.acceptedTeamsCount || 0} equipos`
+    : `Partidos: ${metrics.completedMatchesCount}/${metrics.matchesCount}`;
+  const winnersLabel = winnerTeamNames.length > 0 ? winnerTeamNames.join(", ") : "Sin ganador publicado";
 
   return (
-    <article className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4 shadow-sm shadow-neutral-100/60">
+    <article className={`rounded-xl border bg-white p-4 space-y-4 shadow-sm shadow-neutral-100/60 ${highlightAsWinner ? "border-amber-400 ring-2 ring-amber-200" : "border-neutral-200"}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -125,20 +141,27 @@ export function TournamentSummaryCard({
         </div>
 
         <div className="h-2 overflow-hidden rounded-full bg-neutral-100">
-          <div className="h-full rounded-full bg-orange-500" style={{ width: `${metrics.occupancyPercent}%` }} />
+          <div className="h-full rounded-full bg-orange-500" style={{ width: `${progress}%` }} />
         </div>
         <div className="flex items-center justify-between text-xs text-neutral-500">
-          <span>Cupos confirmados</span>
-          <span>{metrics.occupancyPercent}% completo</span>
+          <span>{progressLabel}</span>
+          <span>{progress}% completo</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <MetricPill label="Equipos" value={occupancyLabel} />
-        <MetricPill label="Partidos" value={completionLabel} />
-        <MetricPill label="Standings" value={String(metrics.standingsCount)} />
-        <MetricPill label="Clasificados" value={String(metrics.qualifiedTeamsCount)} />
-      </div>
+      {isFinalized ? (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <MetricPill label="Ganador(es)" value={winnersLabel} />
+          <MetricPill label="Partidos completados" value={completionLabel} />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <MetricPill label="Equipos" value={occupancyLabel} />
+          <MetricPill label="Partidos" value={completionLabel} />
+          <MetricPill label="Tabla" value={String(metrics.standingsCount)} />
+          <MetricPill label="Clasificados" value={String(metrics.qualifiedTeamsCount)} />
+        </div>
+      )}
 
       {footer || href ? (
         <div className="flex items-center justify-between gap-3 border-t border-neutral-100 pt-3">

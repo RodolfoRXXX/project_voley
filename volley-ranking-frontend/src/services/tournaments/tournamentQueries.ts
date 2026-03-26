@@ -322,6 +322,7 @@ export async function getPublicTournamentDetailView(tournamentId: string): Promi
     groupLabel: team.groupLabel || null,
   }));
   const normalizedStandings = standings
+    .filter((standing) => Number(standing.position || 0) > 0)
     .sort((a, b) => a.position - b.position)
     .map((standing) => ({
       ...standing,

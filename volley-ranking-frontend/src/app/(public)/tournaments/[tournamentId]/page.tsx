@@ -49,6 +49,7 @@ export default function PublicTournamentDetailPage() {
         phaseSnapshot={phaseSnapshot}
         winnerTeamNames={winnerTeamNames}
         description={tournament.description || "Seguimiento público del torneo y sus métricas principales."}
+        showPhaseProgress={false}
       />
 
       <TournamentPhaseOverview metrics={metrics} phaseSnapshot={phaseSnapshot} topStanding={topStanding} />

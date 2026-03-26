@@ -34,6 +34,12 @@ export function TournamentPhaseOverview({ metrics, phaseSnapshot, topStanding }:
   const completionValue = metrics.matchesCount > 0
     ? `${metrics.completedMatchesCount}/${metrics.matchesCount}`
     : "0/0";
+  const progress = metrics.matchesCount > 0
+    ? Math.min(100, Math.round((metrics.completedMatchesCount / metrics.matchesCount) * 100))
+    : metrics.occupancyPercent;
+  const progressLabel = metrics.matchesCount > 0
+    ? `Partidos: ${metrics.completedMatchesCount}/${metrics.matchesCount}`
+    : `Cupos: ${metrics.acceptedTeamsCount}/${metrics.maxTeams || metrics.acceptedTeamsCount || 0}`;
 
   return (
     <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
@@ -43,15 +49,22 @@ export function TournamentPhaseOverview({ metrics, phaseSnapshot, topStanding }:
           <h2 className="text-lg font-semibold text-neutral-900">{phaseLabel}</h2>
           <p className="text-sm text-neutral-600">Estado actual: {phaseStatus}.</p>
         </div>
-        <div className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-700">
-          {metrics.occupancyPercent}% de cupos completos
+      </div>
+
+      <div className="space-y-2">
+        <div className="h-2 overflow-hidden rounded-full bg-neutral-100">
+          <div className="h-full rounded-full bg-orange-500" style={{ width: `${progress}%` }} />
+        </div>
+        <div className="flex items-center justify-between text-xs text-neutral-500">
+          <span>{progressLabel}</span>
+          <span>{progress}% completo</span>
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <OverviewStat label="Equipos aceptados" value={`${metrics.acceptedTeamsCount}/${metrics.maxTeams || metrics.acceptedTeamsCount || 0}`} helper="Confirmados sobre el cupo total." />
         <OverviewStat label="Partidos cerrados" value={completionValue} helper="Confirmados dentro de la fase actual." />
-        <OverviewStat label="Filas de tabla" value={String(metrics.standingsCount)} helper="Equipos publicados en standings." />
+        <OverviewStat label="Tabla de posiciones" value={String(metrics.standingsCount)} helper="Equipos publicados en la tabla." />
         <OverviewStat label="Clasificados" value={String(metrics.qualifiedTeamsCount)} helper="Marcados como clasificados por helpers." />
       </div>
 

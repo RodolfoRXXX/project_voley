@@ -78,7 +78,7 @@ export const tournamentPhaseTypeLabel: Record<TournamentPhaseType, string> = {
   registration: "Inscripción",
   group_stage: "Fase de grupos",
   round_robin: "Liga",
-  knockout: "Eliminación",
+  knockout: "Playoffs",
   final: "Final",
 };
 

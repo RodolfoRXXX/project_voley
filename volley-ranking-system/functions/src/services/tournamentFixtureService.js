@@ -35,6 +35,15 @@ function normalizeRound(round) {
   return Number.isFinite(Number(round)) ? Number(round) : round;
 }
 
+function toIdSegment(value, fallback = "x") {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || fallback;
+}
+
 function rotateRoundRobinTeams(teamIds) {
   if (teamIds.length <= 2) return [...teamIds];
   const [anchor, ...rest] = teamIds;
@@ -75,6 +84,8 @@ function generateRoundRobinMatches(tournament, teams, startRound = 1, phase = "r
   const matches = [];
   let globalSequence = 0;
 
+  const scopeId = options.groupLabel ? `g-${toIdSegment(options.groupLabel)}` : "all";
+
   for (let roundCycle = 1; roundCycle <= rounds; roundCycle += 1) {
     matchdays.forEach((pairs, matchdayIndex) => {
       const matchdayNumber = startRound + matchdayIndex;
@@ -85,7 +96,7 @@ function generateRoundRobinMatches(tournament, teams, startRound = 1, phase = "r
         globalSequence += 1;
 
         matches.push({
-          id: `${options.phaseId || phase}-c${roundCycle}-m${matchdayNumber}-s${pairIndex + 1}`,
+          id: `${options.phaseId || phase}-${scopeId}-c${roundCycle}-m${matchdayNumber}-s${pairIndex + 1}`,
           tournamentId: tournament.id,
           phaseId: options.phaseId || null,
           phaseType: options.phaseType || phase,

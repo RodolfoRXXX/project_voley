@@ -63,6 +63,8 @@ export default function ProfileTournamentsPage() {
               tournament={row.tournament}
               metrics={row.metrics}
               phaseSnapshot={row.phaseSnapshot}
+              winnerTeamNames={row.winnerTeamNames}
+              highlightAsWinner={row.isWinnerTeam}
               description={`Tu equipo: ${row.nameTeam}`}
               titleSuffix={(
                 <span className={`text-xs rounded-full px-2 py-1 ${registrationStatusClass[row.registrationStatus]}`}>

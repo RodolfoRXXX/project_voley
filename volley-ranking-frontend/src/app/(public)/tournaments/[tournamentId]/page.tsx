@@ -29,7 +29,7 @@ export default function PublicTournamentDetailPage() {
     return <p className="text-sm text-neutral-500">Cargando torneo...</p>;
   }
 
-  const { tournament, teams, matches, standings, metrics, phaseSnapshot, topStanding } = view;
+  const { tournament, teams, matches, standings, metrics, phaseSnapshot, topStanding, winnerTeamNames } = view;
   const isLeaguePhase = view.currentPhase?.type === "round_robin";
   const groupedMatches = groupTournamentMatches(matches);
   const leagueProgress = getTournamentLeagueProgress(matches);
@@ -47,6 +47,7 @@ export default function PublicTournamentDetailPage() {
         tournament={tournament}
         metrics={metrics}
         phaseSnapshot={phaseSnapshot}
+        winnerTeamNames={winnerTeamNames}
         description={tournament.description || "Seguimiento público del torneo y sus métricas principales."}
       />
 

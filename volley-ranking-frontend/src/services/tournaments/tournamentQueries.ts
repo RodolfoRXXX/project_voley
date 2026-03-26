@@ -63,6 +63,7 @@ export type PublicTournamentListItem = {
   acceptedTeamsCount: number;
   metrics: TournamentProgressMetrics;
   phaseSnapshot: TournamentPhaseSnapshot | null;
+  winnerTeamNames: string[];
 };
 
 export type PublicTournamentTeamSummary = {
@@ -85,6 +86,7 @@ export type PublicTournamentDetailView = {
   metrics: TournamentProgressMetrics;
   phaseSnapshot: TournamentPhaseSnapshot | null;
   topStanding: PublicTournamentStandingRow | null;
+  winnerTeamNames: string[];
 };
 
 export type ProfileTournamentListRow = {
@@ -98,6 +100,8 @@ export type ProfileTournamentListRow = {
   metrics: TournamentProgressMetrics;
   phaseSnapshot: TournamentPhaseSnapshot | null;
   userState: UserTournamentState;
+  winnerTeamNames: string[];
+  isWinnerTeam: boolean;
 };
 
 export type ProfileTournamentDetailView = {
@@ -146,6 +150,28 @@ function toPhaseSnapshot(currentPhase: TournamentPhase | null): TournamentPhaseS
     order: currentPhase.order,
     hasActivePhase: currentPhase.status === "active",
   };
+}
+
+function getWinnerTeamNames(params: {
+  tournament: Tournament;
+  teams: TournamentTeamRow[];
+  standings: TournamentStanding[];
+}): string[] {
+  const teamNamesById = new Map(
+    params.teams.map((team) => [team.id, team.nameTeam || team.name || team.id])
+  );
+
+  const podiumTeamIds = Array.isArray(params.tournament.podiumTeamIds)
+    ? params.tournament.podiumTeamIds.filter(Boolean)
+    : [];
+
+  const winnerIdsFromPodium = podiumTeamIds.length > 0 ? [podiumTeamIds[0]] : [];
+  if (winnerIdsFromPodium.length > 0) {
+    return winnerIdsFromPodium.map((teamId) => teamNamesById.get(teamId) || teamId);
+  }
+
+  const winnersFromStandings = params.standings.filter((standing) => standing.position === 1);
+  return winnersFromStandings.map((standing) => teamNamesById.get(standing.teamId) || standing.teamId);
 }
 
 async function getTournamentPhaseContext(tournament: Tournament): Promise<{
@@ -276,6 +302,7 @@ export async function getPublicTournamentListView(): Promise<PublicTournamentLis
           standings,
         }),
         phaseSnapshot: toPhaseSnapshot(currentPhase),
+        winnerTeamNames: getWinnerTeamNames({ tournament, teams, standings }),
       };
     })
   );
@@ -321,6 +348,7 @@ export async function getPublicTournamentDetailView(tournamentId: string): Promi
     }),
     phaseSnapshot: toPhaseSnapshot(currentPhase),
     topStanding: normalizedStandings[0] || null,
+    winnerTeamNames: getWinnerTeamNames({ tournament, teams, standings }),
   };
 }
 
@@ -497,6 +525,8 @@ export async function getProfileTournamentListView(
           tournament.id,
           {
             currentPhase,
+            teams,
+            standings,
             metrics: buildTournamentProgressMetrics({
               tournament,
               teams,
@@ -519,11 +549,19 @@ export async function getProfileTournamentListView(
       const relationKey = `${record.tournamentId}::${record.groupId}`;
       const registration = registrationByTournamentGroup.get(relationKey) || null;
       const team = teamByTournamentGroup.get(relationKey) || null;
+      const teamDisplayName = record.nameTeam || record.name || team?.nameTeam || registration?.nameTeam || "Equipo sin nombre";
+      const winnerTeamNames = tournamentMetrics?.teams && tournamentMetrics?.standings
+        ? getWinnerTeamNames({
+          tournament,
+          teams: tournamentMetrics.teams,
+          standings: tournamentMetrics.standings,
+        })
+        : [];
 
       return {
         id: `${record.source}-${record.id}`,
         tournament,
-        nameTeam: record.nameTeam || record.name || team?.nameTeam || registration?.nameTeam || "Equipo sin nombre",
+        nameTeam: teamDisplayName,
         registrationStatus: record.status || "pendiente",
         source: record.source,
         entryId: record.id,
@@ -535,6 +573,8 @@ export async function getProfileTournamentListView(
           standings: [],
         }),
         phaseSnapshot: tournamentMetrics?.phaseSnapshot || null,
+        winnerTeamNames,
+        isWinnerTeam: winnerTeamNames.includes(teamDisplayName),
         userState: getUserTournamentState({
           tournament,
           registration,

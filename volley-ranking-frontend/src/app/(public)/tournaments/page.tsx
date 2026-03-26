@@ -68,12 +68,13 @@ export default function TorneosPage() {
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {rows.map(({ tournament, metrics, phaseSnapshot }) => (
+        {rows.map(({ tournament, metrics, phaseSnapshot, winnerTeamNames }) => (
           <TournamentSummaryCard
             key={tournament.id}
             tournament={tournament}
             metrics={metrics}
             phaseSnapshot={phaseSnapshot}
+            winnerTeamNames={winnerTeamNames}
             href={`/tournaments/${tournament.id}`}
             footer={userDoc?.roles === "admin" ? (
               <ActionButton

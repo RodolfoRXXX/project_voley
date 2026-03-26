@@ -637,14 +637,14 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
         <div className="flex flex-wrap justify-start gap-2">
           <button
             onClick={onMainAction}
-            disabled={isMainActionDisabled || tournament.status === "finalizado"}
+            disabled={isMainActionDisabled}
             className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
           >
             {busyAction ? "Procesando..." : action.label}
           </button>
           <button
             onClick={onCancelTournament}
-            disabled={busyAction || tournament.status === "finalizado"}
+            disabled={busyAction}
             className="rounded-lg bg-red-700 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
           >
             Cancelar torneo

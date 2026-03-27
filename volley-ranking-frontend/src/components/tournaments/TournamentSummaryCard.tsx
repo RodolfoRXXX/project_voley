@@ -22,6 +22,7 @@ type TournamentSummaryCardProps = {
   winnerTeamNames?: string[];
   highlightAsWinner?: boolean;
   showPhaseProgress?: boolean;
+  showMetrics?: boolean;
 };
 
 const userStateBadgeClass: Record<UserTournamentState["status"], string> = {
@@ -59,6 +60,7 @@ export function TournamentSummaryCard({
   winnerTeamNames: winnerTeamNamesProp,
   highlightAsWinner = false,
   showPhaseProgress = true,
+  showMetrics = true,
 }: TournamentSummaryCardProps) {
   const winnerTeamNames = Array.isArray(winnerTeamNamesProp) ? winnerTeamNamesProp.filter(Boolean) : [];
   const occupancyLabel = `${metrics.acceptedTeamsCount}/${metrics.maxTeams || metrics.acceptedTeamsCount || 0}`;
@@ -142,19 +144,21 @@ export function TournamentSummaryCard({
         </div>
       ) : null}
 
-      {isFinalized ? (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <MetricPill label="Ganador(es)" value={winnersLabel} />
-          <MetricPill label="Partidos completados" value={completionLabel} />
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <MetricPill label="Equipos" value={occupancyLabel} />
-          <MetricPill label="Partidos" value={completionLabel} />
-          <MetricPill label="Posiciones" value={String(metrics.standingsCount)} />
-          <MetricPill label="Clasificados" value={String(metrics.qualifiedTeamsCount)} />
-        </div>
-      )}
+      {showMetrics ? (
+        isFinalized ? (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <MetricPill label="Ganador(es)" value={winnersLabel} />
+            <MetricPill label="Partidos completados" value={completionLabel} />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <MetricPill label="Equipos" value={occupancyLabel} />
+            <MetricPill label="Partidos" value={completionLabel} />
+            <MetricPill label="Posiciones" value={String(metrics.standingsCount)} />
+            <MetricPill label="Clasificados" value={String(metrics.qualifiedTeamsCount)} />
+          </div>
+        )
+      ) : null}
 
       {footer || href ? (
         <div className="flex items-center justify-between gap-3 border-t border-neutral-100 pt-3">

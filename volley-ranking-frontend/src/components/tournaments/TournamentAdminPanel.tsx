@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Tournament, TournamentGroup, TournamentMatch, TournamentMatchResult, TournamentPhase, TournamentStanding } from "@/types/tournaments";
+import {
+  tournamentPhaseStatusLabel,
+  type Tournament,
+  type TournamentGroup,
+  type TournamentMatch,
+  type TournamentMatchResult,
+  type TournamentPhase,
+  type TournamentStanding,
+} from "@/types/tournaments";
 import { getAdminAction } from "@/lib/tournamentAdmin";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
@@ -119,7 +127,6 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   const [phases, setPhases] = useState<TournamentPhase[]>([]);
   const [loadingPhases, setLoadingPhases] = useState(false);
   const [previewGroups, setPreviewGroups] = useState<TournamentGroup[] | null>(null);
-  const [groupsSeed, setGroupsSeed] = useState<number | null>(null);
   const [loadingGroupsPreview, setLoadingGroupsPreview] = useState(false);
   const [confirmingGroups, setConfirmingGroups] = useState(false);
 
@@ -317,7 +324,6 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
         ...(currentPhase ? { phaseId: currentPhase.id } : {}),
         ...(previewGroups ? { seed: Math.floor(Math.random() * 1000000000) } : {}),
       });
-      setGroupsSeed(data.seed);
       setPreviewGroups(data.groups);
       showToast({ type: "success", message: "Vista previa de grupos generada" });
     } catch (error) {
@@ -341,7 +347,6 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
       showToast({ type: "success", message: "Grupos confirmados" });
       setPreviewGroups(null);
-      setGroupsSeed(null);
       await onTournamentRefresh();
       await loadPhases();
     } catch (error) {
@@ -676,8 +681,6 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
             )}
           </div>
 
-          <p className="text-sm text-neutral-600 dark:text-neutral-300">Seed de grupos: <b>{groupsSeed ?? "-"}</b></p>
-
           {previewGroups && (
             <PreviewCard title="Vista previa de grupos" tone="preview">
               <TournamentGroupsList groups={previewGroups} teamNames={teamNames} />
@@ -753,7 +756,9 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           <section className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-700 dark:bg-neutral-900/30">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">1. Fase de grupos</h3>
-              <span className="text-xs text-neutral-500 dark:text-neutral-400">{groupStagePhase.status}</span>
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                {tournamentPhaseStatusLabel[groupStagePhase.status]}
+              </span>
             </div>
 
             {confirmedGroups.length > 0 ? (
@@ -800,7 +805,9 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           <section className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-700 dark:bg-neutral-900/30">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">2. Playoffs</h3>
-              <span className="text-xs text-neutral-500 dark:text-neutral-400">{knockoutPhase?.status || "pending"}</span>
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                {knockoutPhase ? tournamentPhaseStatusLabel[knockoutPhase.status] : "Pendiente"}
+              </span>
             </div>
 
             {Array.isArray(knockoutPhase?.config?.qualifiedTeams) && knockoutPhase.config.qualifiedTeams.length > 0 ? (
@@ -825,7 +832,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
                 knockoutLayout="vertical"
               />
             ) : (
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Todavía no hay bracket confirmado.</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">Todavía no hay llaves confirmadas.</p>
             )}
           </section>
         </div>

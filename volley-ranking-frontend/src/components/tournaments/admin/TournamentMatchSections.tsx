@@ -63,11 +63,19 @@ function TournamentMatchSummaryItem({
   teamNames: Record<string, string>;
   renderMatchDetails?: (tournamentMatch: TournamentMatch) => ReactNode;
 }) {
+  const winnerId = tournamentMatch.result?.winnerId || null;
+  const winnerLabel = winnerId ? getTeamLabel(winnerId, teamNames) : null;
+
   return (
     <div key={tournamentMatch.id} className="rounded-md border border-neutral-200 px-3 py-2 dark:border-neutral-700">
       <p className="text-sm text-neutral-700 dark:text-neutral-200">
         {getTeamLabel(tournamentMatch.homeTeamId, teamNames)} vs {getTeamLabel(tournamentMatch.awayTeamId, teamNames)}
       </p>
+      {!renderMatchDetails && tournamentMatch.status === "completed" && winnerLabel && (
+        <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-300">
+          Ganador: <b>{winnerLabel}</b>
+        </p>
+      )}
       {renderMatchDetails ? <div className="mt-2">{renderMatchDetails(tournamentMatch)}</div> : null}
     </div>
   );
@@ -196,7 +204,7 @@ function KnockoutBracket({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <h4 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Cuadro eliminatorio</h4>
+        <h4 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Llaves eliminatorias</h4>
         <span className="text-xs text-neutral-500 dark:text-neutral-400">Los cruces futuros se muestran aunque todavía no tengan equipos definidos.</span>
       </div>
       <div className={showExtendedLayout ? "space-y-4" : "grid gap-4 md:grid-cols-2 xl:grid-cols-4"}>

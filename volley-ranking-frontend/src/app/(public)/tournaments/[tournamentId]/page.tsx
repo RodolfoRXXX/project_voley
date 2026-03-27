@@ -50,6 +50,7 @@ export default function PublicTournamentDetailPage() {
         winnerTeamNames={winnerTeamNames}
         description={tournament.description || "Seguimiento público del torneo y sus métricas principales."}
         showPhaseProgress={false}
+        showMetrics={false}
       />
 
       <TournamentPhaseOverview metrics={metrics} phaseSnapshot={phaseSnapshot} topStanding={topStanding} />
@@ -144,7 +145,7 @@ export default function PublicTournamentDetailPage() {
       <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-neutral-900">
-            {isLeaguePhase ? "Fixture por jornadas" : isKnockoutPhase ? "Bracket de la fase actual" : "Fixture de la fase actual"}
+            {isLeaguePhase ? "Fixture por jornadas" : isKnockoutPhase ? "Llaves de la fase actual" : "Fixture de la fase actual"}
           </h2>
           <span className="text-xs text-neutral-500">{matches.length} partidos</span>
         </div>

@@ -278,7 +278,7 @@ export async function getTournamentTeams(tournamentId: string): Promise<Tourname
 export async function getPublicActiveTournaments(): Promise<Tournament[]> {
   const q = query(
     collection(db, "tournaments"),
-    where("status", "in", ["inscripciones_abiertas", "activo"])
+    where("status", "in", ["inscripciones_abiertas", "activo", "finalizado"])
   );
   const snap = await getDocs(q);
   return snap.docs.map((tournamentDoc) => toTournament(tournamentDoc.id, tournamentDoc.data() as Omit<Tournament, "id">));

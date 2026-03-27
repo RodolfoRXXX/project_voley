@@ -60,11 +60,11 @@ export default function TorneosPage() {
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
       <div className="space-y-1">
         <h1 className="text-3xl font-bold text-neutral-900 dark:text-[var(--foreground)]">Torneos</h1>
-        <p className="text-sm text-neutral-500">Explorá torneos vigentes y activos, su fase actual y el avance competitivo disponible.</p>
+        <p className="text-sm text-neutral-500">Explorá torneos activos y finalizados, su fase actual y el avance competitivo disponible.</p>
       </div>
 
       {rows.length === 0 && (
-        <p className="text-sm text-neutral-500">No hay torneos vigentes o activos por el momento.</p>
+        <p className="text-sm text-neutral-500">No hay torneos disponibles por el momento.</p>
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

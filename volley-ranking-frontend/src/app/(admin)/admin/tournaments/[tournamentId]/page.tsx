@@ -14,9 +14,13 @@ import StatusPill, { type StatusVariant } from "@/components/ui/status/StatusPil
 import TournamentRegistrationStatusModal from "@/components/tournamentRegistrationStatusModal/TournamentRegistrationStatusModal";
 import { TournamentRegistrationItem } from "@/components/tournamentRegistrationStatusModal/TournamentRegistrationStatusModal.types";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
+import UserAvatar from "@/components/ui/avatar/UserAvatar";
+import { TournamentPodiumCard } from "@/components/tournaments/TournamentPodiumCard";
+import { TournamentAdminsCard } from "@/components/tournaments/TournamentAdminsCard";
+import { useAuth } from "@/hooks/useAuth";
 
-import { addTournamentAdmin, editTournament } from "@/services/tournaments/tournamentMutations";
-import { getAdminTournamentRegistrationsView, getTournamentById } from "@/services/tournaments/tournamentQueries";
+import { addTournamentAdmin, editTournament, removeTournamentAdmin } from "@/services/tournaments/tournamentMutations";
+import { getAdminTournamentRegistrationsView, getTournamentById, getTournamentTeams, getUsersByIds, searchAdminsByName } from "@/services/tournaments/tournamentQueries";
 
 function statusVariant(status: Tournament["status"]): StatusVariant {
   switch (status) {
@@ -37,12 +41,18 @@ export default function AdminTournamentDetailPage() {
   const params = useParams<{ tournamentId: string }>();
   const tournamentId = params?.tournamentId;
 
+  const { firebaseUser } = useAuth();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
-  const [adminUserId, setAdminUserId] = useState("");
+  const [adminQuery, setAdminQuery] = useState("");
+  const [adminSearchResults, setAdminSearchResults] = useState<Array<{ id: string; name: string; photoURL: string | null; email: string | null }>>([]);
+  const [showAdminSearchModal, setShowAdminSearchModal] = useState(false);
   const [addingAdmin, setAddingAdmin] = useState(false);
+  const [removingAdminId, setRemovingAdminId] = useState<string | null>(null);
+  const [adminUsers, setAdminUsers] = useState<Array<{ id: string; name: string; photoURL: string | null }>>([]);
+  const [winnerTeamNames, setWinnerTeamNames] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedRegistration, setSelectedRegistration] = useState<TournamentRegistrationItem | null>(null);
@@ -86,6 +96,7 @@ export default function AdminTournamentDetailPage() {
   const tournamentStatus = tournament?.status as string | undefined;
   const canEdit = tournamentStatus === "draft" || tournamentStatus === "inscripciones_abiertas" || tournamentStatus === "inscripciones_cerradas";
   const isLockedTournament = tournamentStatus === "finalizado" || tournamentStatus === "cancelado";
+  const isOwnerAdmin = Boolean(firebaseUser?.uid && tournament?.ownerAdminId === firebaseUser.uid);
   const editMode: "draft" | "open" | "closed" | "locked" = tournamentStatus === "draft"
     ? "draft"
     : tournamentStatus === "inscripciones_abiertas"
@@ -98,6 +109,27 @@ export default function AdminTournamentDetailPage() {
     if (!tournamentId) return;
     const nextTournament = await getTournamentById(tournamentId);
     setTournament(nextTournament);
+    if (nextTournament) {
+      const [users, teams] = await Promise.all([
+        getUsersByIds(nextTournament.adminIds || []),
+        getTournamentTeams(nextTournament.id),
+      ]);
+      const teamNameById = new Map(
+        teams.map((team) => [team.id, team.nameTeam || team.name || team.id])
+      );
+      const podiumIds = Array.isArray(nextTournament.podiumTeamIds) ? nextTournament.podiumTeamIds.filter(Boolean) : [];
+      setWinnerTeamNames(podiumIds.map((teamId) => teamNameById.get(teamId) || teamId));
+      setAdminUsers(
+        users.map((user) => ({
+          id: user.id,
+          name: user.nombre || "Administrador",
+          photoURL: user.photoURL || null,
+        }))
+      );
+    } else {
+      setWinnerTeamNames([]);
+      setAdminUsers([]);
+    }
 
     setLoading(false);
   }, [tournamentId]);
@@ -237,8 +269,7 @@ export default function AdminTournamentDetailPage() {
     }
   };
 
-  const onAddAdmin = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const onAddAdmin = async (adminUserId: string) => {
     if (!tournamentId || !adminUserId.trim()) return;
 
     setAddingAdmin(true);
@@ -248,12 +279,37 @@ export default function AdminTournamentDetailPage() {
         adminUserId: adminUserId.trim(),
       });
       showToast({ type: "success", message: "Admin agregado al torneo" });
-      setAdminUserId("");
+      setAdminQuery("");
+      setAdminSearchResults([]);
+      setShowAdminSearchModal(false);
       await loadTournament();
     } catch (err) {
       handleFirebaseError(err, showToast, "No se pudo agregar admin");
     } finally {
       setAddingAdmin(false);
+    }
+  };
+
+  const onRemoveAdmin = async (adminUserId: string) => {
+    if (!tournamentId || !isOwnerAdmin) return;
+    const confirmed = await confirm({
+      title: "Quitar administrador",
+      message: "¿Querés quitar este admin del torneo?",
+      confirmText: "Quitar admin",
+      cancelText: "Cancelar",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
+    setRemovingAdminId(adminUserId);
+    try {
+      await removeTournamentAdmin({ tournamentId, adminUserId });
+      showToast({ type: "success", message: "Admin eliminado del torneo" });
+      await loadTournament();
+    } catch (err) {
+      handleFirebaseError(err, showToast, "No se pudo eliminar admin");
+    } finally {
+      setRemovingAdminId(null);
     }
   };
 
@@ -311,6 +367,9 @@ export default function AdminTournamentDetailPage() {
           </div>
         </div>
       </header>
+
+      <TournamentPodiumCard winnerTeamNames={winnerTeamNames} status={tournament.status} />
+      <TournamentAdminsCard admins={adminUsers} />
 
 
       {editing && (
@@ -419,25 +478,110 @@ export default function AdminTournamentDetailPage() {
 
       <TournamentAdminPanel tournament={tournament} onTournamentRefresh={loadTournament} />
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
-        <h2 className="text-base font-semibold text-neutral-900">Agregar admin al torneo</h2>
-        <p className="text-sm text-neutral-500">Ingresá el UID del admin a sumar a la gestión de este torneo.</p>
-
-        <form onSubmit={onAddAdmin} className="flex flex-col sm:flex-row gap-2">
-          <input
-            value={adminUserId}
-            onChange={(e) => setAdminUserId(e.target.value)}
-            placeholder="UID del admin"
-            className="flex-1 rounded-lg border px-3 py-2 text-sm"
-          />
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-neutral-900">Administración del torneo</h2>
+            <p className="text-sm text-neutral-500">Buscá administradores por nombre para sumarlos al torneo.</p>
+          </div>
           <button
-            disabled={addingAdmin}
-            className="px-4 py-2 rounded-lg text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-neutral-300 disabled:opacity-60"
+            onClick={() => setShowAdminSearchModal(true)}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-neutral-300"
           >
-            {addingAdmin ? "Agregando..." : "Agregar admin"}
+            Agregar admin
           </button>
-        </form>
+        </div>
+
+        <ul className="space-y-2">
+          {adminUsers.map((admin) => (
+            <li key={admin.id} className="rounded-lg border border-neutral-200 px-3 py-2 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <UserAvatar nombre={admin.name} photoURL={admin.photoURL} size={36} />
+                <div>
+                  <p className="text-sm font-medium text-neutral-900">{admin.name}</p>
+                  <p className="text-xs text-neutral-500">
+                    {admin.id === tournament.ownerAdminId ? "Admin principal" : "Admin del torneo"}
+                  </p>
+                </div>
+              </div>
+              {isOwnerAdmin && admin.id !== tournament.ownerAdminId ? (
+                <button
+                  onClick={() => onRemoveAdmin(admin.id)}
+                  disabled={removingAdminId === admin.id}
+                  className="text-xs rounded-lg border border-red-200 text-red-700 px-2 py-1 hover:bg-red-50 disabled:opacity-60"
+                >
+                  {removingAdminId === admin.id ? "Quitando..." : "Quitar"}
+                </button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+        {!isOwnerAdmin ? (
+          <p className="text-xs text-neutral-500">
+            Solo el admin principal puede quitar administradores del torneo.
+          </p>
+        ) : null}
       </section>
+
+      {showAdminSearchModal ? (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-6 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold text-neutral-900">Agregar admin</h3>
+                <p className="text-xs text-neutral-500">Buscá por nombre y agregá admins al torneo.</p>
+              </div>
+              <button onClick={() => setShowAdminSearchModal(false)} className="text-sm text-neutral-500 hover:text-neutral-700">
+                Cerrar
+              </button>
+            </div>
+            <input
+              value={adminQuery}
+              onChange={async (event) => {
+                const value = event.target.value;
+                setAdminQuery(value);
+                if (value.trim().length < 2) {
+                  setAdminSearchResults([]);
+                  return;
+                }
+                const nextResults = await searchAdminsByName({
+                  queryText: value,
+                  excludedIds: tournament.adminIds,
+                });
+                setAdminSearchResults(nextResults);
+              }}
+              placeholder="Ej: Juan, Ana, Pedro..."
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            />
+            {adminQuery.trim().length < 2 ? (
+              <p className="text-sm text-neutral-500">Escribí al menos 2 letras para buscar.</p>
+            ) : adminSearchResults.length === 0 ? (
+              <p className="text-sm text-neutral-500">No se encontraron admins disponibles.</p>
+            ) : (
+              <ul className="max-h-80 overflow-y-auto space-y-2">
+                {adminSearchResults.map((admin) => (
+                  <li key={admin.id} className="rounded-lg border border-neutral-200 p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <UserAvatar nombre={admin.name} photoURL={admin.photoURL} size={36} />
+                      <div>
+                        <p className="text-sm font-medium text-neutral-900">{admin.name}</p>
+                        <p className="text-xs text-neutral-500">{admin.email || admin.id}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => onAddAdmin(admin.id)}
+                      disabled={addingAdmin}
+                      className="text-xs rounded-lg border border-neutral-300 px-2 py-1 hover:bg-neutral-50 disabled:opacity-60"
+                    >
+                      {addingAdmin ? "Agregando..." : "Agregar"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       <TournamentRegistrationStatusModal
         open={selectedRegistration !== null}

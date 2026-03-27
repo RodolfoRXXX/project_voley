@@ -7,15 +7,6 @@ import type { TournamentPhaseSnapshot, TournamentProgressMetrics } from "@/servi
 type TournamentPhaseOverviewProps = {
   metrics: TournamentProgressMetrics;
   phaseSnapshot: TournamentPhaseSnapshot | null;
-  topStanding?: {
-    teamName: string;
-    position: number;
-    stats: {
-      points: number;
-      setsDiff: number;
-      played: number;
-    };
-  } | null;
 };
 
 function OverviewStat({ label, value, helper }: { label: string; value: string; helper?: string }) {
@@ -28,7 +19,7 @@ function OverviewStat({ label, value, helper }: { label: string; value: string; 
   );
 }
 
-export function TournamentPhaseOverview({ metrics, phaseSnapshot, topStanding }: TournamentPhaseOverviewProps) {
+export function TournamentPhaseOverview({ metrics, phaseSnapshot }: TournamentPhaseOverviewProps) {
   const phaseLabel = phaseSnapshot ? tournamentPhaseTypeLabel[phaseSnapshot.type] : "Sin fase activa";
   const phaseStatus = phaseSnapshot ? tournamentPhaseStatusLabel[phaseSnapshot.status] : "Pendiente";
   const completionValue = metrics.matchesCount > 0
@@ -68,18 +59,6 @@ export function TournamentPhaseOverview({ metrics, phaseSnapshot, topStanding }:
         <OverviewStat label="Clasificados" value={String(metrics.qualifiedTeamsCount)} helper="Marcados como clasificados por helpers." />
       </div>
 
-      {topStanding ? (
-        <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-900">
-          <p className="font-semibold">Líder actual: #{topStanding.position} {topStanding.teamName}</p>
-          <p>
-            {topStanding.stats.points} pts · {topStanding.stats.played} PJ · diferencia de sets {topStanding.stats.setsDiff}
-          </p>
-        </div>
-      ) : (
-        <div className="rounded-xl border border-dashed border-neutral-200 p-4 text-sm text-neutral-500">
-          Aún no hay un líder publicado para esta fase.
-        </div>
-      )}
     </section>
   );
 }

@@ -12,6 +12,7 @@ const confirmGroupsFn = httpsCallable(functions, "confirmGroups");
 const previewFixtureFn = httpsCallable(functions, "previewFixture");
 const confirmFixtureFn = httpsCallable(functions, "confirmFixture");
 const addTournamentAdminFn = httpsCallable(functions, "addTournamentAdmin");
+const removeTournamentAdminFn = httpsCallable(functions, "removeTournamentAdmin");
 const editTournamentFn = httpsCallable(functions, "editTournament");
 const createTournamentFn = httpsCallable(functions, "createTournament");
 const recordMatchResultFn = httpsCallable(functions, "recordMatchResult");
@@ -86,6 +87,10 @@ export async function confirmTournamentFixture(params: {
 
 export async function addTournamentAdmin(params: { tournamentId: string; adminUserId: string }) {
   return addTournamentAdminFn(params);
+}
+
+export async function removeTournamentAdmin(params: { tournamentId: string; adminUserId: string }) {
+  return removeTournamentAdminFn(params);
 }
 
 export async function editTournament(params: Record<string, unknown> & { tournamentId: string }) {

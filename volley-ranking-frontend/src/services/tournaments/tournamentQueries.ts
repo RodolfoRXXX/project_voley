@@ -1,6 +1,6 @@
 "use client";
 
-import { collection, doc, getDoc, getDocs, orderBy, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type {
   ProfileTournamentEntry,
@@ -87,6 +87,7 @@ export type PublicTournamentDetailView = {
   phaseSnapshot: TournamentPhaseSnapshot | null;
   topStanding: PublicTournamentStandingRow | null;
   winnerTeamNames: string[];
+  adminUsers: Array<{ id: string; name: string; photoURL: string | null }>;
 };
 
 export type ProfileTournamentListRow = {
@@ -165,9 +166,8 @@ function getWinnerTeamNames(params: {
     ? params.tournament.podiumTeamIds.filter(Boolean)
     : [];
 
-  const winnerIdsFromPodium = podiumTeamIds.length > 0 ? [podiumTeamIds[0]] : [];
-  if (winnerIdsFromPodium.length > 0) {
-    return winnerIdsFromPodium.map((teamId) => teamNamesById.get(teamId) || teamId);
+  if (podiumTeamIds.length > 0) {
+    return podiumTeamIds.map((teamId) => teamNamesById.get(teamId) || teamId);
   }
 
   const winnersFromStandings = params.standings.filter((standing) => standing.position === 1);
@@ -329,6 +329,8 @@ export async function getPublicTournamentDetailView(tournamentId: string): Promi
       teamName: teamNames.get(standing.teamId) || standing.teamId,
     }));
 
+  const adminUsers = await getUsersByIds(tournament.adminIds || []);
+
   return {
     tournament,
     currentPhase,
@@ -350,6 +352,11 @@ export async function getPublicTournamentDetailView(tournamentId: string): Promi
     phaseSnapshot: toPhaseSnapshot(currentPhase),
     topStanding: normalizedStandings[0] || null,
     winnerTeamNames: getWinnerTeamNames({ tournament, teams, standings }),
+    adminUsers: adminUsers.map((user) => ({
+      id: user.id,
+      name: user.nombre || "Administrador",
+      photoURL: user.photoURL || null,
+    })),
   };
 }
 
@@ -404,6 +411,34 @@ export async function getUsersByIds(userIds: string[]): Promise<Array<{ id: stri
       };
     })
   );
+}
+
+export async function searchAdminsByName(params: {
+  queryText: string;
+  excludedIds?: string[];
+  limit?: number;
+}): Promise<Array<{ id: string; name: string; photoURL: string | null; email: string | null }>> {
+  const term = params.queryText.trim().toLowerCase();
+  if (term.length < 2) return [];
+
+  const excludedIds = new Set(params.excludedIds || []);
+  const snap = await getDocs(query(collection(db, "users"), where("roles", "==", "admin"), limit(100)));
+  const maxResults = Number(params.limit || 12);
+
+  return snap.docs
+    .map((docSnap) => {
+      const data = docSnap.data() as { nombre?: string; email?: string; photoURL?: string };
+      return {
+        id: docSnap.id,
+        name: data.nombre || "Sin nombre",
+        email: data.email || null,
+        photoURL: data.photoURL || null,
+      };
+    })
+    .filter((admin) => !excludedIds.has(admin.id))
+    .filter((admin) => admin.name.toLowerCase().includes(term))
+    .sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }))
+    .slice(0, maxResults);
 }
 
 export async function getUserTournamentGroupIds(userId: string): Promise<string[]> {

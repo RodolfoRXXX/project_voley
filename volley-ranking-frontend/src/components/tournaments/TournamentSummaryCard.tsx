@@ -79,7 +79,7 @@ export function TournamentSummaryCard({
   const progressLabel = currentPhaseType === "registration"
     ? `Inscripción: ${metrics.acceptedTeamsCount}/${metrics.maxTeams || metrics.acceptedTeamsCount || 0} equipos`
     : `Partidos: ${metrics.completedMatchesCount}/${metrics.matchesCount}`;
-  const winnersLabel = winnerTeamNames.length > 0 ? winnerTeamNames.join(", ") : "Sin ganador publicado";
+  const podiumLabels = ["1° puesto", "2° puesto", "3° puesto"];
 
   return (
     <article className={`rounded-xl border bg-white p-5 space-y-5 shadow-sm shadow-neutral-100/60 ${highlightAsWinner ? "border-amber-400 ring-2 ring-amber-200" : "border-neutral-200"}`}>
@@ -146,9 +146,14 @@ export function TournamentSummaryCard({
 
       {showMetrics ? (
         isFinalized ? (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <MetricPill label="Ganador(es)" value={winnersLabel} />
-            <MetricPill label="Partidos completados" value={completionLabel} />
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {podiumLabels.map((label, index) => (
+              <MetricPill
+                key={label}
+                label={label}
+                value={winnerTeamNames[index] || "Sin definir"}
+              />
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -162,11 +167,7 @@ export function TournamentSummaryCard({
 
       {footer || href ? (
         <div className="flex items-center justify-between gap-3 border-t border-neutral-100 pt-3">
-          <div className="text-xs text-neutral-500">
-            {metrics.groupedTeamsCount > 0
-              ? `${metrics.groupedTeamsCount} equipos ya tienen grupo asignado`
-              : "Todavía no hay grupos asignados"}
-          </div>
+          <div />
           <div className="flex items-center gap-3">
             {footer}
             {href ? (

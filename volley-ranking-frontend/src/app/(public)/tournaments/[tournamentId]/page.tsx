@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { TournamentPhaseOverview } from "@/components/tournaments/TournamentPhaseOverview";
 import { TournamentSummaryCard } from "@/components/tournaments/TournamentSummaryCard";
+import { TournamentPodiumCard } from "@/components/tournaments/TournamentPodiumCard";
+import { TournamentAdminsCard } from "@/components/tournaments/TournamentAdminsCard";
 import {
   getTournamentLeagueProgress,
   groupTournamentMatches,
@@ -29,7 +31,7 @@ export default function PublicTournamentDetailPage() {
     return <p className="text-sm text-neutral-500">Cargando torneo...</p>;
   }
 
-  const { tournament, teams, matches, standings, metrics, phaseSnapshot, topStanding, winnerTeamNames } = view;
+  const { tournament, teams, matches, standings, metrics, phaseSnapshot, winnerTeamNames, adminUsers } = view;
   const isLeaguePhase = view.currentPhase?.type === "round_robin";
   const groupedMatches = groupTournamentMatches(matches);
   const leagueProgress = getTournamentLeagueProgress(matches);
@@ -52,8 +54,10 @@ export default function PublicTournamentDetailPage() {
         showPhaseProgress={false}
         showMetrics={false}
       />
+      <TournamentPodiumCard winnerTeamNames={winnerTeamNames} status={tournament.status} />
+      <TournamentAdminsCard admins={adminUsers} />
 
-      <TournamentPhaseOverview metrics={metrics} phaseSnapshot={phaseSnapshot} topStanding={topStanding} />
+      <TournamentPhaseOverview metrics={metrics} phaseSnapshot={phaseSnapshot} />
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
@@ -63,13 +67,7 @@ export default function PublicTournamentDetailPage() {
           </div>
 
           {isLeaguePhase && (
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-lg border border-neutral-200 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Líder</p>
-                <p className="mt-1 text-sm font-medium text-neutral-900">
-                  {topStanding ? `#${topStanding.position} ${topStanding.teamName}` : "Sin datos"}
-                </p>
-              </div>
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-lg border border-neutral-200 p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Partidos</p>
                 <p className="mt-1 text-sm font-medium text-neutral-900">

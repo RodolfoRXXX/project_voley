@@ -44,6 +44,7 @@ exports.finalizeTournament = require("./callables/finalizeTournament");
 exports.cancelTournament = require("./callables/cancelTournament");
 exports.confirmGroups = require("./callables/confirmGroups");
 exports.addTournamentAdmin = require("./callables/addTournamentAdmin");
+exports.removeTournamentAdmin = require("./callables/removeTournamentAdmin");
 exports.editTournament = require("./callables/editTournament");
 exports.recordMatchResult = require("./callables/recordMatchResult");
 exports.advancePhase = require("./callables/advancePhase");

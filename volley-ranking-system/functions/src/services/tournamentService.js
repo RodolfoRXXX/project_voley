@@ -579,12 +579,64 @@ async function finalizeTournament({ uid, tournamentId }) {
     const allCompleted = matchesSnap.docs.every((matchDoc) => matchDoc.data().status === "completed");
     if (!allCompleted) throw new functions.https.HttpsError("failed-precondition", "Debés cargar resultados en todos los partidos antes de finalizar");
 
+    const currentPhaseId = typeof tournament.currentPhaseId === "string" ? tournament.currentPhaseId : "";
+    const standingsQuery = currentPhaseId
+      ? db.collection("tournamentStandings").where("tournamentId", "==", tournamentId).where("phaseId", "==", currentPhaseId)
+      : db.collection("tournamentStandings").where("tournamentId", "==", tournamentId);
+    const standingsSnap = await trx.get(standingsQuery);
+
+    const orderedStandings = standingsSnap.docs
+      .map((standingDoc) => {
+        const standing = standingDoc.data();
+        return {
+          teamId: typeof standing.teamId === "string" ? standing.teamId : "",
+          position: Number(standing.position || 0),
+          points: Number(standing?.stats?.points || 0),
+        };
+      })
+      .filter((standing) => standing.teamId && standing.position > 0)
+      .sort((a, b) => a.position - b.position || b.points - a.points);
+
+    const podiumTeamIds = Array.from(new Set(orderedStandings.map((standing) => standing.teamId))).slice(0, 3);
+
     trx.update(tournamentRef, {
       status: TOURNAMENT_STATUS.FINISHED,
+      podiumTeamIds: podiumTeamIds.length === 3 ? podiumTeamIds : null,
       updatedBy: uid,
       updatedAt: FieldValue.serverTimestamp(),
     });
   });
+  return { ok: true };
+}
+
+async function removeTournamentAdmin({ uid, tournamentId, adminUserId }) {
+  if (typeof tournamentId !== "string" || !tournamentId) throw new functions.https.HttpsError("invalid-argument", "tournamentId inválido");
+  if (typeof adminUserId !== "string" || !adminUserId) throw new functions.https.HttpsError("invalid-argument", "adminUserId inválido");
+
+  const tournamentRef = db.collection("tournaments").doc(tournamentId);
+  await db.runTransaction(async (trx) => {
+    const tournamentSnap = await trx.get(tournamentRef);
+    if (!tournamentSnap.exists) throw new functions.https.HttpsError("not-found", "El torneo no existe");
+    const tournament = tournamentSnap.data();
+    assertTournamentOwner(tournament, uid);
+
+    if (adminUserId === tournament.ownerAdminId) {
+      throw new functions.https.HttpsError("failed-precondition", "No se puede eliminar al admin principal");
+    }
+
+    const currentAdminIds = Array.isArray(tournament.adminIds) ? tournament.adminIds : [];
+    if (!currentAdminIds.includes(adminUserId)) {
+      throw new functions.https.HttpsError("not-found", "El usuario no es admin del torneo");
+    }
+
+    const nextAdminIds = currentAdminIds.filter((id) => id !== adminUserId);
+    trx.update(tournamentRef, {
+      adminIds: nextAdminIds,
+      updatedBy: uid,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+
   return { ok: true };
 }
 
@@ -617,6 +669,7 @@ module.exports = {
   assertTournamentOwner,
   createTournament,
   addTournamentAdmin,
+  removeTournamentAdmin,
   openTournamentRegistrations,
   closeTournamentRegistrations,
   startTournament,

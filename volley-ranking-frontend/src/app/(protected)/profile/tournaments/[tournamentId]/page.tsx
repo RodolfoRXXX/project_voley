@@ -5,17 +5,39 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { tournamentStatusLabel } from "@/types/tournaments";
-import { getProfileTournamentDetailView, type ProfileTournamentDetailView } from "@/services/tournaments/tournamentQueries";
+import { TournamentPodiumCard } from "@/components/tournaments/TournamentPodiumCard";
+import { TournamentAdminsCard } from "@/components/tournaments/TournamentAdminsCard";
+import { getProfileTournamentDetailView, getTournamentTeams, getUsersByIds, type ProfileTournamentDetailView } from "@/services/tournaments/tournamentQueries";
 
 export default function ProfileTournamentDetailPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
   const { firebaseUser } = useAuth();
   const [view, setView] = useState<ProfileTournamentDetailView | null>(null);
+  const [adminUsers, setAdminUsers] = useState<Array<{ id: string; name: string; photoURL: string | null }>>([]);
+  const [winnerTeamNames, setWinnerTeamNames] = useState<string[]>([]);
 
   useEffect(() => {
     const load = async () => {
       if (!firebaseUser || !tournamentId) return;
-      setView(await getProfileTournamentDetailView(tournamentId, firebaseUser.uid));
+      const nextView = await getProfileTournamentDetailView(tournamentId, firebaseUser.uid);
+      setView(nextView);
+      if (!nextView) return;
+
+      const [users, allTeams] = await Promise.all([
+        getUsersByIds(nextView.tournament.adminIds || []),
+        getTournamentTeams(nextView.tournament.id),
+      ]);
+      setAdminUsers(users.map((user) => ({
+        id: user.id,
+        name: user.nombre || "Administrador",
+        photoURL: user.photoURL || null,
+      })));
+
+      const teamNameById = new Map(
+        allTeams.map((team) => [team.id, team.nameTeam || team.name || team.id])
+      );
+      const podiumIds = Array.isArray(nextView.tournament.podiumTeamIds) ? nextView.tournament.podiumTeamIds.filter(Boolean) : [];
+      setWinnerTeamNames(podiumIds.map((teamId) => teamNameById.get(teamId) || teamId));
     };
 
     load();
@@ -38,6 +60,8 @@ export default function ProfileTournamentDetailPage() {
           {tournamentStatusLabel[tournament.status]}
         </span>
       </header>
+      <TournamentPodiumCard winnerTeamNames={winnerTeamNames} status={tournament.status} />
+      <TournamentAdminsCard admins={adminUsers} />
 
       <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
         <h2 className="text-base font-semibold text-neutral-900">Equipos (tournamentTeams)</h2>

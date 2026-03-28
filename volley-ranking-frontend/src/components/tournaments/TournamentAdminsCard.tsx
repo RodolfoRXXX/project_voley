@@ -2,24 +2,76 @@ import UserAvatar from "@/components/ui/avatar/UserAvatar";
 
 type TournamentAdminsCardProps = {
   admins: Array<{ id: string; name: string; photoURL: string | null }>;
+  isAdminView?: boolean;
+  isOwnerAdmin?: boolean;
+  ownerAdminId?: string;
+  removingAdminId?: string | null;
+  onAddAdminClick?: () => void;
+  onRemoveAdmin?: (adminId: string) => void;
 };
 
-export function TournamentAdminsCard({ admins }: TournamentAdminsCardProps) {
+export function TournamentAdminsCard({
+  admins,
+  isAdminView = false,
+  isOwnerAdmin = false,
+  ownerAdminId,
+  removingAdminId = null,
+  onAddAdminClick,
+  onRemoveAdmin,
+}: TournamentAdminsCardProps) {
   if (admins.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-neutral-200 bg-neutral-50 p-5 space-y-3">
-      <h2 className="text-base font-semibold text-neutral-900">Administradores del torneo</h2>
-      <div className="flex flex-wrap items-start gap-4">
-        {admins.map((admin) => (
-          <article key={admin.id} className="w-24 text-center space-y-2">
-            <div className="flex justify-center">
-              <UserAvatar nombre={admin.name} photoURL={admin.photoURL} size={48} />
-            </div>
-            <p className="text-xs font-medium text-neutral-700 leading-tight">{admin.name}</p>
-          </article>
-        ))}
+    <section className="rounded-xl border border-neutral-200 bg-neutral-50 p-5 space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-neutral-900">Administradores del torneo</h2>
+          {isAdminView ? (
+            <p className="text-sm text-neutral-500">Gestioná altas y bajas de administradores desde esta caja.</p>
+          ) : null}
+        </div>
+        {isAdminView ? (
+          <button
+            onClick={onAddAdminClick}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-neutral-300"
+          >
+            Agregar admin
+          </button>
+        ) : null}
       </div>
+
+      <ul className="space-y-2">
+        {admins.map((admin) => (
+          <li key={admin.id} className="rounded-lg border border-neutral-200 bg-white px-3 py-2 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <UserAvatar nombre={admin.name} photoURL={admin.photoURL} size={36} />
+              <div>
+                <p className="text-sm font-medium text-neutral-900">{admin.name}</p>
+                {isAdminView ? (
+                  <p className="text-xs text-neutral-500">
+                    {admin.id === ownerAdminId ? "Admin principal" : "Admin del torneo"}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+            {isAdminView && isOwnerAdmin && admin.id !== ownerAdminId ? (
+              <button
+                onClick={() => onRemoveAdmin?.(admin.id)}
+                disabled={removingAdminId === admin.id}
+                className="text-xs rounded-lg border border-red-200 text-red-700 px-2 py-1 hover:bg-red-50 disabled:opacity-60"
+              >
+                {removingAdminId === admin.id ? "Quitando..." : "Quitar"}
+              </button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+
+      {isAdminView && !isOwnerAdmin ? (
+        <p className="text-xs text-neutral-500">
+          Solo el admin principal puede quitar administradores del torneo.
+        </p>
+      ) : null}
     </section>
   );
 }

@@ -55,7 +55,6 @@ export default function PublicTournamentDetailPage() {
         showMetrics={false}
       />
       <TournamentPodiumCard winnerTeamNames={winnerTeamNames} status={tournament.status} />
-      <TournamentAdminsCard admins={adminUsers} />
 
       <TournamentPhaseOverview metrics={metrics} phaseSnapshot={phaseSnapshot} />
 
@@ -155,6 +154,8 @@ export default function PublicTournamentDetailPage() {
           <TournamentMatchSummaryList groupedTournamentMatches={groupedMatches} teamNames={teamNames} />
         )}
       </section>
+
+      <TournamentAdminsCard admins={adminUsers} />
     </main>
   );
 }

@@ -369,7 +369,6 @@ export default function AdminTournamentDetailPage() {
       </header>
 
       <TournamentPodiumCard winnerTeamNames={winnerTeamNames} status={tournament.status} />
-      <TournamentAdminsCard admins={adminUsers} />
 
 
       {editing && (
@@ -478,50 +477,15 @@ export default function AdminTournamentDetailPage() {
 
       <TournamentAdminPanel tournament={tournament} onTournamentRefresh={loadTournament} />
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-neutral-900">Administración del torneo</h2>
-            <p className="text-sm text-neutral-500">Buscá administradores por nombre para sumarlos al torneo.</p>
-          </div>
-          <button
-            onClick={() => setShowAdminSearchModal(true)}
-            className="px-4 py-2 rounded-lg text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-neutral-300"
-          >
-            Agregar admin
-          </button>
-        </div>
-
-        <ul className="space-y-2">
-          {adminUsers.map((admin) => (
-            <li key={admin.id} className="rounded-lg border border-neutral-200 px-3 py-2 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <UserAvatar nombre={admin.name} photoURL={admin.photoURL} size={36} />
-                <div>
-                  <p className="text-sm font-medium text-neutral-900">{admin.name}</p>
-                  <p className="text-xs text-neutral-500">
-                    {admin.id === tournament.ownerAdminId ? "Admin principal" : "Admin del torneo"}
-                  </p>
-                </div>
-              </div>
-              {isOwnerAdmin && admin.id !== tournament.ownerAdminId ? (
-                <button
-                  onClick={() => onRemoveAdmin(admin.id)}
-                  disabled={removingAdminId === admin.id}
-                  className="text-xs rounded-lg border border-red-200 text-red-700 px-2 py-1 hover:bg-red-50 disabled:opacity-60"
-                >
-                  {removingAdminId === admin.id ? "Quitando..." : "Quitar"}
-                </button>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-        {!isOwnerAdmin ? (
-          <p className="text-xs text-neutral-500">
-            Solo el admin principal puede quitar administradores del torneo.
-          </p>
-        ) : null}
-      </section>
+      <TournamentAdminsCard
+        admins={adminUsers}
+        isAdminView
+        isOwnerAdmin={isOwnerAdmin}
+        ownerAdminId={tournament.ownerAdminId}
+        removingAdminId={removingAdminId}
+        onAddAdminClick={() => setShowAdminSearchModal(true)}
+        onRemoveAdmin={onRemoveAdmin}
+      />
 
       {showAdminSearchModal ? (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4">

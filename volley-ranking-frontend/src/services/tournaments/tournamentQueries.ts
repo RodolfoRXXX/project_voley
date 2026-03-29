@@ -110,6 +110,9 @@ export type ProfileTournamentDetailView = {
   teams: TournamentTeamRow[];
   registrations: TournamentRegistration[];
   myGroupIds: string[];
+  myTeamIds: string[];
+  matches: Array<TournamentMatch & { homeTeamName: string; awayTeamName: string }>;
+  standings: Array<TournamentStanding & { teamName: string }>;
 };
 
 export type AdminTournamentRegistrationsView = {
@@ -634,10 +637,45 @@ export async function getProfileTournamentDetailView(
 
   if (!tournament) return null;
 
+  const currentPhase = await getCurrentTournamentPhase(tournament);
+  const [matches, standings] = await Promise.all([
+    getTournamentMatches({ tournamentId, phaseId: currentPhase?.id }),
+    getTournamentStandings({ tournamentId, phaseId: currentPhase?.id }),
+  ]);
+
+  const myTeams = teams.filter((team) => team.groupId && myGroupIds.includes(team.groupId));
+  const myTeamIds = myTeams.map((team) => team.id);
+  const myTeamIdsSet = new Set(myTeamIds);
+  const teamNameById = new Map(teams.map((team) => [team.id, team.nameTeam || team.name || team.id]));
+
   return {
     tournament,
     myGroupIds,
-    teams: teams.filter((team) => team.groupId && myGroupIds.includes(team.groupId)),
+    myTeamIds,
+    teams: myTeams,
     registrations: registrations.filter((registration) => registration.groupId && myGroupIds.includes(registration.groupId)),
+    matches: matches
+      .filter((match) => {
+        const homeTeamId = match.homeTeamId || "";
+        const awayTeamId = match.awayTeamId || "";
+        return myTeamIdsSet.has(homeTeamId) || myTeamIdsSet.has(awayTeamId);
+      })
+      .sort((a, b) =>
+        Number(a.roundCycle || 1) - Number(b.roundCycle || 1)
+        || Number(a.matchdayNumber || a.round || 0) - Number(b.matchdayNumber || b.round || 0)
+        || Number(a.sequence || 0) - Number(b.sequence || 0)
+      )
+      .map((match) => ({
+        ...match,
+        homeTeamName: teamNameById.get(match.homeTeamId || "") || match.homeTeamId || "Por confirmar",
+        awayTeamName: teamNameById.get(match.awayTeamId || "") || match.awayTeamId || "Por confirmar",
+      })),
+    standings: standings
+      .filter((standing) => Number(standing.position || 0) > 0)
+      .sort((a, b) => a.position - b.position)
+      .map((standing) => ({
+        ...standing,
+        teamName: teamNameById.get(standing.teamId) || standing.teamId,
+      })),
   };
 }

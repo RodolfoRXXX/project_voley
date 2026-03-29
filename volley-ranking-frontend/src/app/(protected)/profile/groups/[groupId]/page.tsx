@@ -219,9 +219,9 @@ export default function ProfileGroupDetailPage() {
         {tournaments.length === 0 ? (
           <p className="text-sm text-neutral-500">Este grupo no tiene torneos asociados aún.</p>
         ) : (
-          <ul className="space-y-2 text-sm text-neutral-700">
+          <ul className="grid gap-3 text-sm text-neutral-700 sm:grid-cols-2 xl:grid-cols-3">
             {tournaments.map((tournament) => (
-              <li key={tournament.id} className="rounded-lg border border-neutral-200 p-3 space-y-1">
+              <li key={tournament.id} className="rounded-lg border border-neutral-200 p-3 space-y-1 bg-neutral-50">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-semibold text-neutral-900">{tournament.name}</p>
                   {tournament.podiumPlace ? (
@@ -233,6 +233,9 @@ export default function ProfileGroupDetailPage() {
                 <p><b>Descripción:</b> {tournament.description}</p>
                 <p><b>Tipo:</b> {tournament.format}</p>
                 <p><b>Estado:</b> {tournamentStatusLabel[tournament.status]}</p>
+                <Link href={`/tournaments/${tournament.id}`} className="inline-block pt-1 text-sm font-medium text-orange-600 hover:text-orange-700">
+                  Ver detalle del torneo
+                </Link>
               </li>
             ))}
           </ul>

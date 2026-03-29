@@ -40,18 +40,20 @@ export function TournamentAdminsCard({
         ) : null}
       </div>
 
-      <ul className="space-y-2">
+      <ul className={isAdminView ? "space-y-2" : "flex flex-wrap items-start gap-4"}>
         {admins.map((admin) => (
-          <li key={admin.id} className="rounded-lg border border-neutral-200 bg-white px-3 py-2 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <UserAvatar nombre={admin.name} photoURL={admin.photoURL} size={36} />
+          <li key={admin.id} className={`rounded-lg border border-neutral-200 bg-white ${isAdminView ? "px-3 py-2 flex items-center justify-between gap-3" : "px-4 py-3 w-full sm:w-[220px]"}`}>
+            <div className={isAdminView ? "flex items-center gap-3" : "flex flex-col items-center text-center gap-2"}>
+              <UserAvatar nombre={admin.name} photoURL={admin.photoURL} size={isAdminView ? 36 : 48} />
               <div>
                 <p className="text-sm font-medium text-neutral-900">{admin.name}</p>
                 {isAdminView ? (
                   <p className="text-xs text-neutral-500">
                     {admin.id === ownerAdminId ? "Admin principal" : "Admin del torneo"}
                   </p>
-                ) : null}
+                ) : (
+                  <p className="text-xs text-neutral-500">Admin del grupo</p>
+                )}
               </div>
             </div>
             {isAdminView && isOwnerAdmin && admin.id !== ownerAdminId ? (

@@ -6,20 +6,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, onSnapshot, query, where, Timestamp } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, onSnapshot, query, where, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import MatchCard from "@/components/matchCard/MatchCard";
 import { Skeleton } from "@/components/ui/skeleton/Skeleton";
 import type { Match } from "@/types/match";
+import { tournamentPhaseTypeLabel, type TournamentPhaseType } from "@/types/tournaments/tournamentPhase";
+import Link from "next/link";
 
 const SOCIAL_MATCH_STATUSES = ["abierto", "verificando", "cerrado", "cancelado"] as const;
+
+type TournamentDashboardMatch = {
+  id: string;
+  tournamentId: string;
+  tournamentName: string;
+  tournamentType: string;
+  phaseType: TournamentPhaseType | "group_stage";
+  homeTeamName: string;
+  awayTeamName: string;
+};
 
 export default function DashboardPage() {
   const { firebaseUser, userDoc } = useAuth();
 
   const [matches, setMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [tournamentMatches, setTournamentMatches] = useState<TournamentDashboardMatch[]>([]);
+  const [matchesLoading, setMatchesLoading] = useState(true);
+  const [tournamentLoading, setTournamentLoading] = useState(true);
   const [groupsMap, setGroupsMap] = useState<Record<string, string>>({});
 
   // 🔑 HOOKS SIEMPRE ARRIBA, SIN IF
@@ -42,7 +56,7 @@ export default function DashboardPage() {
 
       if (groupIds.length === 0) {
         setGroupsMap({});
-        setLoading(false);
+        setMatchesLoading(false);
         return;
       }
 
@@ -81,11 +95,82 @@ export default function DashboardPage() {
 
       setMatches(filteredMatches);
       setGroupsMap(map);
-      setLoading(false);
+      setMatchesLoading(false);
     });
 
     return () => unsub();
   }, [firebaseUser?.uid, userDoc?.roles]);
+
+  useEffect(() => {
+    const loadTournamentMatches = async () => {
+      const matchesSnap = await getDocs(query(collection(db, "tournamentMatches"), where("status", "==", "scheduled")));
+
+      const pendingMatches = matchesSnap.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() as Record<string, unknown> }))
+        .filter((match) => !match.result);
+
+      const tournamentIds = Array.from(new Set(pendingMatches.map((match) => String(match.tournamentId || "")).filter(Boolean)));
+      if (tournamentIds.length === 0) {
+        setTournamentMatches([]);
+        return;
+      }
+
+      const tournamentDocs = await Promise.all(
+        tournamentIds.map(async (tournamentId) => {
+          const snap = await getDoc(doc(db, "tournaments", tournamentId));
+          if (!snap.exists()) return null;
+          return { id: snap.id, ...snap.data() as Record<string, unknown> };
+        })
+      );
+      const phaseDocs = await Promise.all(
+        tournamentIds.map(async (tournamentId) => {
+          const phasesSnap = await getDocs(query(collection(db, "tournamentPhases"), where("tournamentId", "==", tournamentId)));
+          return phasesSnap.docs.map((phaseDoc) => ({ id: phaseDoc.id, ...phaseDoc.data() as Record<string, unknown> }));
+        })
+      );
+      const teamDocs = await Promise.all(
+        tournamentIds.map(async (tournamentId) => {
+          const teamsSnap = await getDocs(query(collection(db, "tournamentTeams"), where("tournamentId", "==", tournamentId)));
+          return teamsSnap.docs.map((teamDoc) => ({
+            id: teamDoc.id,
+            name: String((teamDoc.data() as { nameTeam?: string; name?: string }).nameTeam || (teamDoc.data() as { name?: string }).name || "Equipo"),
+            tournamentId,
+          }));
+        })
+      );
+
+      const tournamentsMap = new Map(tournamentDocs.filter(Boolean).map((doc) => [doc!.id, doc!]));
+      const phasesByTournamentId = new Map(phaseDocs.map((phases) => [String(phases[0]?.tournamentId || ""), phases]));
+      const teamsMap = new Map(teamDocs.flat().map((team) => [team.id, team.name]));
+
+      const rows = pendingMatches
+        .map((match) => {
+          const tournamentId = String(match.tournamentId || "");
+          const tournamentDoc = tournamentsMap.get(tournamentId);
+          if (!tournamentDoc) return null;
+
+          const phaseId = String(match.phaseId || "");
+          const phaseType = (phasesByTournamentId.get(tournamentId) || []).find((phase) => phase.id === phaseId)?.type as TournamentPhaseType | undefined;
+
+          return {
+            id: String(match.id),
+            tournamentId,
+            tournamentName: String(tournamentDoc.name || "Torneo"),
+            tournamentType: String(tournamentDoc.format || "-"),
+            phaseType: phaseType || "group_stage",
+            homeTeamName: teamsMap.get(String(match.homeTeamId || "")) || "Equipo por definir",
+            awayTeamName: teamsMap.get(String(match.awayTeamId || "")) || "Equipo por definir",
+          };
+        })
+        .filter((row): row is TournamentDashboardMatch => Boolean(row));
+
+      setTournamentMatches(rows);
+    };
+
+    loadTournamentMatches().finally(() => setTournamentLoading(false));
+  }, []);
+
+  const loading = matchesLoading || tournamentLoading;
 
   /* =====================
      SKELETON
@@ -124,9 +209,10 @@ export default function DashboardPage() {
         Próximos partidos
       </h2>
 
-      {matches.length === 0 ? (
+      {matches.length === 0 && tournamentMatches.length === 0 ? (
         <p className="text-gray-500">No hay partidos disponibles.</p>
       ) : (
+        <>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {matches.map((match) => (
             <MatchCard
@@ -137,6 +223,28 @@ export default function DashboardPage() {
             />
           ))}
         </div>
+
+        {tournamentMatches.length > 0 && (
+          <section className="space-y-3">
+            <h3 className="text-xl font-semibold text-neutral-900">Próximos partidos de torneos</h3>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {tournamentMatches.map((match) => (
+                <article key={match.id} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-2">
+                  <p className="text-sm font-semibold text-neutral-900">{match.tournamentName}</p>
+                  <p className="text-xs text-neutral-600">Tipo: <b>{match.tournamentType}</b></p>
+                  <p className="text-xs text-neutral-600">Etapa: <b>{tournamentPhaseTypeLabel[match.phaseType]}</b></p>
+                  <p className="text-sm text-neutral-700">
+                    <b>{match.homeTeamName}</b> vs <b>{match.awayTeamName}</b>
+                  </p>
+                  <Link href={`/tournaments/${match.tournamentId}`} className="inline-block text-sm font-medium text-orange-600 hover:text-orange-700">
+                    Ver detalle
+                  </Link>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+        </>
       )}
     </main>
   );

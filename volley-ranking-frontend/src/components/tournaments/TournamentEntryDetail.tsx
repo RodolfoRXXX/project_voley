@@ -7,9 +7,14 @@ import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { tournamentStatusLabel, type Tournament } from "@/types/tournaments";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
+import { tournamentPhaseTypeLabel } from "@/types/tournaments/tournamentPhase";
+import {
+  groupTournamentMatches,
+  TournamentMatchSummaryList,
+} from "@/components/tournaments/admin/TournamentMatchSections";
 
 import type { TournamentEntrySource as EntrySource, TournamentPaymentStatus as PaymentStatus, TournamentRegistration as EntryDoc, TournamentRegistrationStatus as RegistrationStatus } from "@/types/tournaments";
-import { getGroupById, getTournamentById, getTournamentRegistrationById, getUserTournamentGroupIds, getUsersByIds } from "@/services/tournaments/tournamentQueries";
+import { getGroupById, getPublicTournamentDetailView, getTournamentById, getTournamentRegistrationById, getUserTournamentGroupIds, getUsersByIds, type PublicTournamentDetailView } from "@/services/tournaments/tournamentQueries";
 import { buildTournamentEntryPaymentSummary, updateTournamentEntryPlayers } from "@/services/tournaments/tournamentMutations";
 
 type GroupDoc = {
@@ -94,6 +99,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
   const [group, setGroup] = useState<GroupDoc | null>(null);
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [members, setMembers] = useState<Array<UserDoc & { id: string }>>([]);
+  const [developmentView, setDevelopmentView] = useState<PublicTournamentDetailView | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -140,6 +146,9 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
 
       const uniqueMemberIds = Array.from(new Set([...(groupData.adminIds || []), ...(groupData.memberIds || [])]));
       setMembers(await getUsersByIds(uniqueMemberIds));
+      if (source === "team") {
+        setDevelopmentView(await getPublicTournamentDetailView(entryData.tournamentId));
+      }
       setLoading(false);
     };
 
@@ -209,6 +218,12 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
   const paidAmount = Number(entry.paidAmount ?? 0);
   const storedExpectedAmount = Number(entry.expectedAmount ?? expectedAmount);
   const pendingAmount = Number(entry.pendingAmount ?? Math.max(storedExpectedAmount - paidAmount, 0));
+  const groupedMatches = developmentView ? groupTournamentMatches(developmentView.matches) : [];
+  const teamStanding = developmentView?.standings.find((standing) => standing.teamId === entry.id) || null;
+  const teamNames = (developmentView?.teams || []).reduce<Record<string, string>>((acc, team) => {
+    acc[team.id] = team.name;
+    return acc;
+  }, {});
 
   return (
     <section className="space-y-5">
@@ -309,6 +324,60 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
             <b>Falta pagar:</b> ${pendingAmount}
           </p>
 
+        </article>
+      )}
+
+      {source === "team" && developmentView && (
+        <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-semibold text-neutral-900">Desarrollo del torneo para este equipo</h2>
+            <Link href={`/tournaments/${tournament.id}`} className="text-sm font-medium text-orange-600 hover:text-orange-700">
+              Ver torneo público
+            </Link>
+          </div>
+          <p className="text-sm text-neutral-600">
+            Fase actual: <b>{developmentView.phaseSnapshot ? tournamentPhaseTypeLabel[developmentView.phaseSnapshot.type] : "Sin fase activa"}</b>
+          </p>
+
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-neutral-900">Próximos partidos</h3>
+            {developmentView.matches.length === 0 ? (
+              <p className="text-sm text-neutral-500">Todavía no hay partidos publicados en la fase actual.</p>
+            ) : (
+              <TournamentMatchSummaryList groupedTournamentMatches={groupedMatches} teamNames={teamNames} />
+            )}
+          </section>
+
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-neutral-900">Tabla de posiciones</h3>
+            {developmentView.standings.length === 0 ? (
+              <p className="text-sm text-neutral-500">Aún no hay tabla disponible.</p>
+            ) : (
+              <ul className="space-y-2">
+                {developmentView.standings.map((standing) => {
+                  const isCurrentTeam = standing.teamId === entry.id;
+                  return (
+                    <li
+                      key={standing.id}
+                      className={`rounded-lg border p-3 text-sm ${isCurrentTeam ? "border-orange-300 bg-orange-50" : "border-neutral-200 bg-white"}`}
+                    >
+                      <p className="font-medium text-neutral-900">
+                        #{standing.position} {standing.teamName} {isCurrentTeam ? "← tu equipo" : ""}
+                      </p>
+                      <p className="text-xs text-neutral-600">
+                        Pts: <b>{standing.stats.points}</b> · PJ: <b>{standing.stats.played}</b> · Sets: <b>{standing.stats.setsFor}-{standing.stats.setsAgainst}</b>
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {teamStanding && (
+              <p className="text-xs text-neutral-600">
+                Posición actual del equipo: <b>#{teamStanding.position}</b>.
+              </p>
+            )}
+          </section>
         </article>
       )}
     </section>

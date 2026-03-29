@@ -579,11 +579,14 @@ async function finalizeTournament({ uid, tournamentId }) {
     const allCompleted = matchesSnap.docs.every((matchDoc) => matchDoc.data().status === "completed");
     if (!allCompleted) throw new functions.https.HttpsError("failed-precondition", "Debés cargar resultados en todos los partidos antes de finalizar");
 
+    const standingsRef = db.collection("tournamentStandings");
     const currentPhaseId = typeof tournament.currentPhaseId === "string" ? tournament.currentPhaseId : "";
-    const standingsQuery = currentPhaseId
-      ? db.collection("tournamentStandings").where("tournamentId", "==", tournamentId).where("phaseId", "==", currentPhaseId)
-      : db.collection("tournamentStandings").where("tournamentId", "==", tournamentId);
-    const standingsSnap = await trx.get(standingsQuery);
+    const currentPhaseStandingsSnap = currentPhaseId
+      ? await trx.get(standingsRef.where("tournamentId", "==", tournamentId).where("phaseId", "==", currentPhaseId))
+      : null;
+    const standingsSnap = currentPhaseStandingsSnap && !currentPhaseStandingsSnap.empty
+      ? currentPhaseStandingsSnap
+      : await trx.get(standingsRef.where("tournamentId", "==", tournamentId));
 
     const orderedStandings = standingsSnap.docs
       .map((standingDoc) => {
@@ -601,7 +604,7 @@ async function finalizeTournament({ uid, tournamentId }) {
 
     trx.update(tournamentRef, {
       status: TOURNAMENT_STATUS.FINISHED,
-      podiumTeamIds: podiumTeamIds.length === 3 ? podiumTeamIds : null,
+      podiumTeamIds: podiumTeamIds.length > 0 ? podiumTeamIds : null,
       updatedBy: uid,
       updatedAt: FieldValue.serverTimestamp(),
     });

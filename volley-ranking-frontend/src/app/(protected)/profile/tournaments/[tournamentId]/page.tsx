@@ -64,7 +64,7 @@ export default function ProfileTournamentDetailPage() {
       <TournamentAdminsCard admins={adminUsers} />
 
       <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
-        <h2 className="text-base font-semibold text-neutral-900">Equipos (tournamentTeams)</h2>
+        <h2 className="text-base font-semibold text-neutral-900">Mis equipos en el torneo</h2>
         {teams.length === 0 ? (
           <p className="text-sm text-neutral-500">Sin datos en tournamentTeams para tus grupos.</p>
         ) : (
@@ -77,6 +77,63 @@ export default function ProfileTournamentDetailPage() {
               </li>
             ))}
           </ul>
+        )}
+      </article>
+
+      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+        <h2 className="text-base font-semibold text-neutral-900">Partidos de mis equipos</h2>
+        {view.matches.length === 0 ? (
+          <p className="text-sm text-neutral-500">Aún no hay partidos asignados para tus equipos.</p>
+        ) : (
+          <ul className="space-y-2 text-sm text-neutral-700">
+            {view.matches.map((match) => (
+              <li key={match.id} className="rounded-lg border border-neutral-200 p-3">
+                <p><b>Partido:</b> {match.homeTeamName} vs {match.awayTeamName}</p>
+                <p><b>Fase:</b> {match.phaseType}</p>
+                <p><b>Estado:</b> {match.status === "completed" ? "Finalizado" : "Programado"}</p>
+                <p>
+                  <b>Resultado:</b>{" "}
+                  {match.status === "completed"
+                    ? `${match.result?.homeSets ?? 0}-${match.result?.awaySets ?? 0}`
+                    : "-"}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </article>
+
+      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+        <h2 className="text-base font-semibold text-neutral-900">Tabla de posiciones</h2>
+        {view.standings.length === 0 ? (
+          <p className="text-sm text-neutral-500">No hay posiciones disponibles todavía.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm text-neutral-700">
+              <thead>
+                <tr className="border-b border-neutral-200 text-left text-xs uppercase tracking-wide text-neutral-500">
+                  <th className="px-2 py-2">Pos</th>
+                  <th className="px-2 py-2">Equipo</th>
+                  <th className="px-2 py-2">PJ</th>
+                  <th className="px-2 py-2">PG</th>
+                  <th className="px-2 py-2">PP</th>
+                  <th className="px-2 py-2">Pts</th>
+                </tr>
+              </thead>
+              <tbody>
+                {view.standings.map((standing) => (
+                  <tr key={standing.id} className="border-b border-neutral-100">
+                    <td className="px-2 py-2 font-semibold">{standing.position}</td>
+                    <td className="px-2 py-2">{standing.teamName}</td>
+                    <td className="px-2 py-2">{standing.stats.played}</td>
+                    <td className="px-2 py-2">{standing.stats.won}</td>
+                    <td className="px-2 py-2">{standing.stats.lost}</td>
+                    <td className="px-2 py-2">{standing.stats.points}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </article>
 

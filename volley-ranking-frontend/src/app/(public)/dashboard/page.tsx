@@ -42,6 +42,12 @@ type TournamentPhaseQueryRow = {
   type?: TournamentPhaseType;
 };
 
+type TournamentQueryRow = {
+  id: string;
+  name?: string;
+  format?: string;
+};
+
 export default function DashboardPage() {
   const { firebaseUser, userDoc } = useAuth();
 
@@ -137,7 +143,8 @@ export default function DashboardPage() {
         tournamentIds.map(async (tournamentId) => {
           const snap = await getDoc(doc(db, "tournaments", tournamentId));
           if (!snap.exists()) return null;
-          return { id: snap.id, ...snap.data() as Record<string, unknown> };
+          const data = snap.data() as Omit<TournamentQueryRow, "id">;
+          return { id: snap.id, ...data } as TournamentQueryRow;
         })
       );
       const phaseDocs = await Promise.all(

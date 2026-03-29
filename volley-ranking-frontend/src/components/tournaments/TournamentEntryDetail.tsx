@@ -11,6 +11,7 @@ import { tournamentPhaseTypeLabel } from "@/types/tournaments/tournamentPhase";
 import {
   groupTournamentMatches,
   TournamentMatchSummaryList,
+  type GroupedTournamentMatches,
 } from "@/components/tournaments/admin/TournamentMatchSections";
 
 import type { TournamentEntrySource as EntrySource, TournamentPaymentStatus as PaymentStatus, TournamentRegistration as EntryDoc, TournamentRegistrationStatus as RegistrationStatus } from "@/types/tournaments";
@@ -57,6 +58,12 @@ const paymentStatusLabel: Record<PaymentStatus, string> = {
   pendiente: "Pendiente",
   parcial: "Parcial",
   pagado: "Pagado",
+};
+
+const EMPTY_GROUPED_MATCHES: GroupedTournamentMatches = {
+  league: {},
+  group: {},
+  knockout: {},
 };
 
 function TournamentEntryDetailSkeleton() {
@@ -218,7 +225,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
   const paidAmount = Number(entry.paidAmount ?? 0);
   const storedExpectedAmount = Number(entry.expectedAmount ?? expectedAmount);
   const pendingAmount = Number(entry.pendingAmount ?? Math.max(storedExpectedAmount - paidAmount, 0));
-  const groupedMatches = developmentView ? groupTournamentMatches(developmentView.matches) : [];
+  const groupedMatches = developmentView ? groupTournamentMatches(developmentView.matches) : EMPTY_GROUPED_MATCHES;
   const teamStanding = developmentView?.standings.find((standing) => standing.teamId === entry.id) || null;
   const teamNames = (developmentView?.teams || []).reduce<Record<string, string>>((acc, team) => {
     acc[team.id] = team.name;

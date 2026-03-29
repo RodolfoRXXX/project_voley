@@ -63,6 +63,13 @@ type GroupData = {
   [key: string]: unknown;
 };
 
+type GroupTournamentRow = {
+  id: string;
+  name: string;
+  format: string;
+  status: string;
+};
+
 const functions = getFunctions(app);
 const editGroup = httpsCallable(functions, "editGroup");
 const toggleGroupActivo = httpsCallable(functions, "toggleGroupActivo");
@@ -146,6 +153,7 @@ export default function AdminGroupPage() {
 
   const [group, setGroup] = useState<GroupData | null>(null);
   const [matches, setMatches] = useState<GroupMatch[]>([]);
+  const [groupTournaments, setGroupTournaments] = useState<GroupTournamentRow[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [actingKey, setActingKey] = useState<string | null>(null);
@@ -265,6 +273,29 @@ export default function AdminGroupPage() {
     pendingAdminRequests,
     nombre: typeof data.nombre === "string" ? data.nombre : "",
   };
+
+  const [registrationsSnap, teamsSnap] = await Promise.all([
+    getDocs(query(collection(db, "tournamentRegistrations"), where("groupId", "==", groupId))),
+    getDocs(query(collection(db, "tournamentTeams"), where("groupId", "==", groupId))),
+  ]);
+  const tournamentIds = Array.from(new Set([
+    ...registrationsSnap.docs.map((row) => String(row.data().tournamentId || "")),
+    ...teamsSnap.docs.map((row) => String(row.data().tournamentId || "")),
+  ].filter(Boolean)));
+  const tournamentRows = await Promise.all(
+    tournamentIds.map(async (tournamentId) => {
+      const tournamentSnap = await getDoc(doc(db, "tournaments", tournamentId));
+      if (!tournamentSnap.exists()) return null;
+      const tournamentData = tournamentSnap.data() as { name?: string; format?: string; status?: string };
+      return {
+        id: tournamentId,
+        name: tournamentData.name || "Torneo",
+        format: tournamentData.format || "-",
+        status: tournamentData.status || "draft",
+      };
+    })
+  );
+  setGroupTournaments(tournamentRows.filter((row): row is GroupTournamentRow => Boolean(row)));
 
   setGroup(groupData);
 
@@ -806,6 +837,28 @@ export default function AdminGroupPage() {
       </section>
 
       {/* Matches */}
+      <section>
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-neutral-900">Torneos del grupo</h2>
+        </div>
+        {groupTournaments.length === 0 ? (
+          <p className="text-gray-500">Este grupo no tiene torneos asociados.</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 mb-6">
+            {groupTournaments.map((tournament) => (
+              <article key={tournament.id} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-1">
+                <p className="text-sm font-semibold text-neutral-900">{tournament.name}</p>
+                <p className="text-xs text-neutral-600">Tipo: <b>{tournament.format}</b></p>
+                <p className="text-xs text-neutral-600">Estado: <b>{tournament.status}</b></p>
+                <Link href={`/tournaments/${tournament.id}`} className="inline-block pt-1 text-sm font-medium text-blue-600 hover:underline">
+                  Ver detalle público
+                </Link>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
       <section>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-neutral-900">

@@ -27,6 +27,15 @@ type TournamentDashboardMatch = {
   awayTeamName: string;
 };
 
+type TournamentMatchQueryRow = {
+  id: string;
+  tournamentId?: string;
+  phaseId?: string;
+  homeTeamId?: string;
+  awayTeamId?: string;
+  result?: unknown;
+};
+
 export default function DashboardPage() {
   const { firebaseUser, userDoc } = useAuth();
 
@@ -106,7 +115,10 @@ export default function DashboardPage() {
       const matchesSnap = await getDocs(query(collection(db, "tournamentMatches"), where("status", "==", "scheduled")));
 
       const pendingMatches = matchesSnap.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() as Record<string, unknown> }))
+        .map((doc): TournamentMatchQueryRow => {
+          const data = doc.data() as Omit<TournamentMatchQueryRow, "id">;
+          return { id: doc.id, ...data };
+        })
         .filter((match) => !match.result);
 
       const tournamentIds = Array.from(new Set(pendingMatches.map((match) => String(match.tournamentId || "")).filter(Boolean)));

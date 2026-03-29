@@ -8,7 +8,7 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
-import { tournamentStatusLabel } from "@/types/tournaments";
+import { tournamentStatusLabel, type TournamentStatus } from "@/types/tournaments";
 
 type GroupDoc = {
   nombre?: string;
@@ -31,7 +31,7 @@ type GroupTournamentRow = {
   name: string;
   description: string;
   format: string;
-  status: string;
+  status: TournamentStatus;
   podiumPlace: 1 | 2 | 3 | null;
 };
 
@@ -46,6 +46,14 @@ const podiumLabelByPlace: Record<1 | 2 | 3, string> = {
   2: "2do lugar",
   3: "3er lugar",
 };
+
+function toTournamentStatus(value: unknown): TournamentStatus {
+  if (value === "inscripciones_abiertas" || value === "inscripciones_cerradas" || value === "activo" || value === "finalizado" || value === "cancelado") {
+    return value;
+  }
+
+  return "draft";
+}
 
 export default function ProfileGroupDetailPage() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -142,7 +150,7 @@ export default function ProfileGroupDetailPage() {
             name: tournamentData.name || "Torneo",
             description: tournamentData.description || "Sin descripción",
             format: tournamentData.format || "-",
-            status: tournamentData.status || "draft",
+            status: toTournamentStatus(tournamentData.status),
             podiumPlace: podiumPlace && podiumPlace <= 3 ? podiumPlace : null,
           };
         })
@@ -224,7 +232,7 @@ export default function ProfileGroupDetailPage() {
                 </div>
                 <p><b>Descripción:</b> {tournament.description}</p>
                 <p><b>Tipo:</b> {tournament.format}</p>
-                <p><b>Estado:</b> {tournamentStatusLabel[tournament.status] || tournament.status}</p>
+                <p><b>Estado:</b> {tournamentStatusLabel[tournament.status]}</p>
               </li>
             ))}
           </ul>

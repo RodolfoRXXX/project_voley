@@ -36,6 +36,12 @@ type TournamentMatchQueryRow = {
   result?: unknown;
 };
 
+type TournamentPhaseQueryRow = {
+  id: string;
+  tournamentId?: string;
+  type?: TournamentPhaseType;
+};
+
 export default function DashboardPage() {
   const { firebaseUser, userDoc } = useAuth();
 
@@ -137,7 +143,10 @@ export default function DashboardPage() {
       const phaseDocs = await Promise.all(
         tournamentIds.map(async (tournamentId) => {
           const phasesSnap = await getDocs(query(collection(db, "tournamentPhases"), where("tournamentId", "==", tournamentId)));
-          return phasesSnap.docs.map((phaseDoc) => ({ id: phaseDoc.id, ...phaseDoc.data() as Record<string, unknown> }));
+          return phasesSnap.docs.map((phaseDoc): TournamentPhaseQueryRow => {
+            const data = phaseDoc.data() as Omit<TournamentPhaseQueryRow, "id">;
+            return { id: phaseDoc.id, ...data };
+          });
         })
       );
       const teamDocs = await Promise.all(

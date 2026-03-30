@@ -36,10 +36,23 @@ export default function PublicTournamentDetailPage() {
   const groupedMatches = groupTournamentMatches(matches);
   const leagueProgress = getTournamentLeagueProgress(matches);
   const isKnockoutPhase = view.currentPhase?.type === "knockout" || view.currentPhase?.type === "final";
+  const isFinalized = tournament.status === "finalizado";
   const teamNames = teams.reduce<Record<string, string>>((acc, team) => {
     acc[team.id] = team.name;
     return acc;
   }, {});
+  const finalMatch = [...matches]
+    .filter((match) => match.status === "completed")
+    .sort((a, b) => {
+      const aFinal = a.roundLabel === "final" ? 1 : 0;
+      const bFinal = b.roundLabel === "final" ? 1 : 0;
+      return bFinal - aFinal || (b.sequence || 0) - (a.sequence || 0);
+    })[0] || null;
+  const finalMatchHome = finalMatch?.homeTeamId ? (teamNames[finalMatch.homeTeamId] || "Equipo local") : "Equipo local";
+  const finalMatchAway = finalMatch?.awayTeamId ? (teamNames[finalMatch.awayTeamId] || "Equipo visitante") : "Equipo visitante";
+  const finalSets = finalMatch?.result
+    ? `${finalMatch.result.homeSets ?? 0} - ${finalMatch.result.awaySets ?? 0}`
+    : "Sin marcador";
 
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
@@ -54,9 +67,25 @@ export default function PublicTournamentDetailPage() {
         showPhaseProgress={false}
         showMetrics={false}
       />
+      {isFinalized ? (
+        <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 space-y-2">
+          <p className="text-xs uppercase tracking-wide font-semibold text-emerald-700">Resultado definitivo</p>
+          <h2 className="text-xl font-semibold text-emerald-900">Torneo finalizado</h2>
+          <p className="text-sm text-emerald-800">
+            Este torneo cerró oficialmente. A continuación se muestran el podio, la tabla final y todos los resultados.
+          </p>
+        </section>
+      ) : null}
       <TournamentPodiumCard winnerTeamNames={winnerTeamNames} status={tournament.status} />
+      {isFinalized && finalMatch ? (
+        <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
+          <p className="text-xs uppercase tracking-wide text-neutral-500 font-semibold">Partido de cierre</p>
+          <h3 className="text-base font-semibold text-neutral-900">{finalMatchHome} vs {finalMatchAway}</h3>
+          <p className="text-sm text-neutral-700">Marcador final (sets): <b>{finalSets}</b></p>
+        </section>
+      ) : null}
 
-      <TournamentPhaseOverview metrics={metrics} phaseSnapshot={phaseSnapshot} />
+      <TournamentPhaseOverview metrics={metrics} phaseSnapshot={phaseSnapshot} tournamentStatus={tournament.status} />
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
@@ -97,7 +126,7 @@ export default function PublicTournamentDetailPage() {
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-medium text-neutral-900">#{standing.position} {standing.teamName}</p>
                     <span className={`text-xs rounded-full px-2 py-1 ${standing.qualified ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-600"}`}>
-                      {standing.qualified ? "Clasificado" : "En competencia"}
+                      {standing.qualified ? "Clasificado" : isFinalized ? "Resultado final" : "En competencia"}
                     </span>
                   </div>
                   {!isLeaguePhase && !isKnockoutPhase && <p><b>Grupo:</b> {standing.groupLabel || "-"}</p>}

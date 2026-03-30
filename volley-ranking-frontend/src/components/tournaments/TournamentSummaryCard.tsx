@@ -70,6 +70,7 @@ export function TournamentSummaryCard({
     ? `${metrics.completedMatchesCount}/${metrics.matchesCount}`
     : "Sin fixtures";
   const isFinalized = tournament.status === "finalizado";
+  const isActive = tournament.status === "activo";
   const currentPhaseType = phaseSnapshot?.type || "registration";
   const progress = currentPhaseType === "registration"
     ? metrics.occupancyPercent
@@ -80,9 +81,15 @@ export function TournamentSummaryCard({
     ? `Inscripción: ${metrics.acceptedTeamsCount}/${metrics.maxTeams || metrics.acceptedTeamsCount || 0} equipos`
     : `Partidos: ${metrics.completedMatchesCount}/${metrics.matchesCount}`;
   const podiumLabels = ["1° puesto", "2° puesto", "3° puesto"];
+  const statusBadgeClass = isFinalized
+    ? "bg-emerald-100 text-emerald-700"
+    : isActive
+      ? "bg-orange-100 text-orange-700"
+      : "bg-neutral-100 text-neutral-700";
+  const linkLabel = isFinalized ? "Ver resultados finales →" : "Seguir torneo →";
 
   return (
-    <article className={`rounded-xl border bg-white p-5 space-y-5 shadow-sm shadow-neutral-100/60 ${highlightAsWinner ? "border-amber-400 ring-2 ring-amber-200" : "border-neutral-200"}`}>
+    <article className={`rounded-xl border bg-white p-5 space-y-5 shadow-sm shadow-neutral-100/60 ${highlightAsWinner ? "border-amber-400 ring-2 ring-amber-200" : isFinalized ? "border-emerald-300" : "border-neutral-200"}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -91,10 +98,25 @@ export function TournamentSummaryCard({
           </div>
           <p className="text-sm text-neutral-600 line-clamp-2">{description || tournament.description || "Sin descripción"}</p>
         </div>
-        <span className="text-xs rounded-full px-2 py-1 bg-orange-100 text-orange-700 whitespace-nowrap">
+        <span className={`text-xs rounded-full px-2 py-1 whitespace-nowrap ${statusBadgeClass}`}>
           {tournamentStatusLabel[tournament.status]}
         </span>
       </div>
+
+      {isFinalized ? (
+        <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+          <p className="text-xs uppercase tracking-wide text-emerald-700 font-semibold">Torneo finalizado</p>
+          <p className="text-sm text-emerald-900">
+            Resultados definitivos publicados.
+            {winnerTeamNames[0] ? ` Campeón: ${winnerTeamNames[0]}.` : ""}
+          </p>
+        </section>
+      ) : isActive ? (
+        <section className="rounded-xl border border-orange-200 bg-orange-50 p-3">
+          <p className="text-xs uppercase tracking-wide text-orange-700 font-semibold">Torneo en juego</p>
+          <p className="text-sm text-orange-900">Seguimiento en vivo de fase actual, standings y próximos partidos.</p>
+        </section>
+      ) : null}
 
       {variant === "profile" && userState ? (
         <section className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 space-y-3">
@@ -172,7 +194,7 @@ export function TournamentSummaryCard({
             {footer}
             {href ? (
               <Link href={href} className="text-sm font-medium text-orange-600 hover:text-orange-700">
-                Ver detalle →
+                {linkLabel}
               </Link>
             ) : null}
           </div>

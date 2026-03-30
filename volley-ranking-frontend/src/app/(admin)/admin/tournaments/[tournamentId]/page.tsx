@@ -368,6 +368,15 @@ export default function AdminTournamentDetailPage() {
         </div>
       </header>
 
+      {tournament.status === "finalizado" ? (
+        <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-1">
+          <p className="text-xs uppercase tracking-wide font-semibold text-emerald-700">Estado definitivo</p>
+          <p className="text-sm text-emerald-900">
+            El torneo ya finalizó. Este panel muestra resultados cerrados, podio y trazabilidad histórica.
+          </p>
+        </section>
+      ) : null}
+
       <TournamentPodiumCard winnerTeamNames={winnerTeamNames} status={tournament.status} />
 
 

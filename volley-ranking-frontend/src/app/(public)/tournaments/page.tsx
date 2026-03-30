@@ -53,6 +53,9 @@ export default function TorneosPage() {
   const closeRegisterModal = () => {
     setRegisterModalTournamentId(null);
   };
+  const activeRows = rows.filter((row) => row.tournament.status === "activo");
+  const finalizedRows = rows.filter((row) => row.tournament.status === "finalizado");
+  const otherRows = rows.filter((row) => row.tournament.status !== "activo" && row.tournament.status !== "finalizado");
 
   if (loading) return <TournamentsSkeleton />;
 
@@ -67,28 +70,89 @@ export default function TorneosPage() {
         <p className="text-sm text-neutral-500">No hay torneos disponibles por el momento.</p>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {rows.map(({ tournament, metrics, phaseSnapshot, winnerTeamNames }) => (
-          <TournamentSummaryCard
-            key={tournament.id}
-            tournament={tournament}
-            metrics={metrics}
-            phaseSnapshot={phaseSnapshot}
-            winnerTeamNames={winnerTeamNames}
-            href={`/tournaments/${tournament.id}`}
-            footer={userDoc?.roles === "admin" ? (
-              <ActionButton
-                onClick={() => openRegisterModal(tournament.id)}
-                variant="success"
-                compact
-                disabled={!canRegister(tournament)}
-              >
-                Inscribirme
-              </ActionButton>
-            ) : undefined}
-          />
-        ))}
-      </div>
+      {activeRows.length > 0 ? (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-neutral-900">Torneos en juego</h2>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {activeRows.map(({ tournament, metrics, phaseSnapshot, winnerTeamNames }) => (
+              <TournamentSummaryCard
+                key={tournament.id}
+                tournament={tournament}
+                metrics={metrics}
+                phaseSnapshot={phaseSnapshot}
+                winnerTeamNames={winnerTeamNames}
+                href={`/tournaments/${tournament.id}`}
+                footer={userDoc?.roles === "admin" ? (
+                  <ActionButton
+                    onClick={() => openRegisterModal(tournament.id)}
+                    variant="success"
+                    compact
+                    disabled={!canRegister(tournament)}
+                  >
+                    Inscribirme
+                  </ActionButton>
+                ) : undefined}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {finalizedRows.length > 0 ? (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-neutral-900">Torneos finalizados</h2>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {finalizedRows.map(({ tournament, metrics, phaseSnapshot, winnerTeamNames }) => (
+              <TournamentSummaryCard
+                key={tournament.id}
+                tournament={tournament}
+                metrics={metrics}
+                phaseSnapshot={phaseSnapshot}
+                winnerTeamNames={winnerTeamNames}
+                href={`/tournaments/${tournament.id}`}
+                footer={userDoc?.roles === "admin" ? (
+                  <ActionButton
+                    onClick={() => openRegisterModal(tournament.id)}
+                    variant="success"
+                    compact
+                    disabled={!canRegister(tournament)}
+                  >
+                    Inscribirme
+                  </ActionButton>
+                ) : undefined}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {otherRows.length > 0 ? (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-neutral-900">Otros estados</h2>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {otherRows.map(({ tournament, metrics, phaseSnapshot, winnerTeamNames }) => (
+              <TournamentSummaryCard
+                key={tournament.id}
+                tournament={tournament}
+                metrics={metrics}
+                phaseSnapshot={phaseSnapshot}
+                winnerTeamNames={winnerTeamNames}
+                href={`/tournaments/${tournament.id}`}
+                footer={userDoc?.roles === "admin" ? (
+                  <ActionButton
+                    onClick={() => openRegisterModal(tournament.id)}
+                    variant="success"
+                    compact
+                    disabled={!canRegister(tournament)}
+                  >
+                    Inscribirme
+                  </ActionButton>
+                ) : undefined}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
       <RegisterTournamentModal
         open={registerModalTournamentId !== null}
         onClose={closeRegisterModal}

@@ -18,9 +18,40 @@ import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { TournamentPodiumCard } from "@/components/tournaments/TournamentPodiumCard";
 import { TournamentAdminsCard } from "@/components/tournaments/TournamentAdminsCard";
 import { useAuth } from "@/hooks/useAuth";
+import { Skeleton } from "@/components/ui/skeleton/Skeleton";
 
 import { addTournamentAdmin, editTournament, removeTournamentAdmin } from "@/services/tournaments/tournamentMutations";
 import { getAdminTournamentRegistrationsView, getTournamentById, getTournamentTeams, getUsersByIds, searchAdminsByName } from "@/services/tournaments/tournamentQueries";
+
+function AdminTournamentDetailSkeleton() {
+  return (
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
+      <Skeleton className="h-5 w-56" />
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+        <Skeleton className="h-6 w-64" />
+        <Skeleton className="h-4 w-full max-w-2xl" />
+      </section>
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
+        <Skeleton className="h-5 w-48" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      </section>
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+      </section>
+      <section className="rounded-xl border border-neutral-200 bg-neutral-50 p-5 space-y-3">
+        <Skeleton className="h-5 w-52" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+      </section>
+    </main>
+  );
+}
 
 function statusVariant(status: Tournament["status"]): StatusVariant {
   switch (status) {
@@ -331,7 +362,7 @@ export default function AdminTournamentDetailPage() {
   };
 
   if (loading) {
-    return <p className="text-sm text-neutral-500">Cargando torneo...</p>;
+    return <AdminTournamentDetailSkeleton />;
   }
 
   if (!tournament) {
@@ -490,6 +521,8 @@ export default function AdminTournamentDetailPage() {
         admins={adminUsers}
         isAdminView
         isOwnerAdmin={isOwnerAdmin}
+        canManageAdmins={isOwnerAdmin}
+        isTournamentFinalized={tournament.status === "finalizado"}
         ownerAdminId={tournament.ownerAdminId}
         removingAdminId={removingAdminId}
         onAddAdminClick={() => setShowAdminSearchModal(true)}
@@ -561,6 +594,7 @@ export default function AdminTournamentDetailPage() {
         registration={selectedRegistration}
         tournamentMinPlayers={tournament?.minPlayers}
         tournamentMaxPlayers={tournament?.maxPlayers}
+        isTournamentFinalized={tournament.status === "finalizado"}
         onClose={() => setSelectedRegistration(null)}
         onUpdated={async () => {
           await Promise.all([loadRegistrations(), loadTournament()]);

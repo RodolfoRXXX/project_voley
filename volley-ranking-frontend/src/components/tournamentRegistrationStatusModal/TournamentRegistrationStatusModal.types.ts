@@ -13,4 +13,5 @@ export type TournamentRegistrationStatusModalProps = {
   registration: TournamentRegistrationItem | null;
   tournamentMinPlayers?: number;
   tournamentMaxPlayers?: number;
+  isTournamentFinalized?: boolean;
 };

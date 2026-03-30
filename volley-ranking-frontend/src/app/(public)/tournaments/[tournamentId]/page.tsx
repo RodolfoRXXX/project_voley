@@ -7,12 +7,43 @@ import { TournamentPhaseOverview } from "@/components/tournaments/TournamentPhas
 import { TournamentSummaryCard } from "@/components/tournaments/TournamentSummaryCard";
 import { TournamentPodiumCard } from "@/components/tournaments/TournamentPodiumCard";
 import { TournamentAdminsCard } from "@/components/tournaments/TournamentAdminsCard";
+import { Skeleton } from "@/components/ui/skeleton/Skeleton";
 import {
   getTournamentLeagueProgress,
   groupTournamentMatches,
   TournamentMatchSummaryList,
 } from "@/components/tournaments/admin/TournamentMatchSections";
 import { getPublicTournamentDetailView, type PublicTournamentDetailView } from "@/services/tournaments/tournamentQueries";
+
+function PublicTournamentDetailSkeleton() {
+  return (
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
+      <Skeleton className="h-5 w-40" />
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+        <Skeleton className="h-7 w-64" />
+        <Skeleton className="h-4 w-full max-w-2xl" />
+      </section>
+      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+        <div className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      </section>
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+        <Skeleton className="h-5 w-56" />
+        <Skeleton className="h-14 w-full" />
+        <Skeleton className="h-14 w-full" />
+      </section>
+    </main>
+  );
+}
 
 export default function PublicTournamentDetailPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
@@ -28,7 +59,7 @@ export default function PublicTournamentDetailPage() {
   }, [tournamentId]);
 
   if (!view) {
-    return <p className="text-sm text-neutral-500">Cargando torneo...</p>;
+    return <PublicTournamentDetailSkeleton />;
   }
 
   const { tournament, teams, matches, standings, metrics, phaseSnapshot, winnerTeamNames, adminUsers } = view;

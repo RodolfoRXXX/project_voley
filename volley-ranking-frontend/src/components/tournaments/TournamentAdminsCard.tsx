@@ -4,6 +4,8 @@ type TournamentAdminsCardProps = {
   admins: Array<{ id: string; name: string; photoURL: string | null }>;
   isAdminView?: boolean;
   isOwnerAdmin?: boolean;
+  canManageAdmins?: boolean;
+  isTournamentFinalized?: boolean;
   ownerAdminId?: string;
   removingAdminId?: string | null;
   onAddAdminClick?: () => void;
@@ -14,6 +16,8 @@ export function TournamentAdminsCard({
   admins,
   isAdminView = false,
   isOwnerAdmin = false,
+  canManageAdmins = false,
+  isTournamentFinalized = false,
   ownerAdminId,
   removingAdminId = null,
   onAddAdminClick,
@@ -30,9 +34,10 @@ export function TournamentAdminsCard({
             <p className="text-sm text-neutral-500">Gestioná altas y bajas de administradores desde esta caja.</p>
           ) : null}
         </div>
-        {isAdminView ? (
+        {isAdminView && canManageAdmins ? (
           <button
             onClick={onAddAdminClick}
+            disabled={isTournamentFinalized}
             className="px-4 py-2 rounded-lg text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-neutral-300"
           >
             Agregar admin
@@ -59,7 +64,7 @@ export function TournamentAdminsCard({
             {isAdminView && isOwnerAdmin && admin.id !== ownerAdminId ? (
               <button
                 onClick={() => onRemoveAdmin?.(admin.id)}
-                disabled={removingAdminId === admin.id}
+                disabled={removingAdminId === admin.id || isTournamentFinalized}
                 className="text-xs rounded-lg border border-red-200 text-red-700 px-2 py-1 hover:bg-red-50 disabled:opacity-60"
               >
                 {removingAdminId === admin.id ? "Quitando..." : "Quitar"}
@@ -69,9 +74,9 @@ export function TournamentAdminsCard({
         ))}
       </ul>
 
-      {isAdminView && !isOwnerAdmin ? (
+      {isAdminView && !canManageAdmins ? (
         <p className="text-xs text-neutral-500">
-          Solo el admin principal puede quitar administradores del torneo.
+          Solo el admin principal puede agregar o quitar administradores del torneo.
         </p>
       ) : null}
     </section>

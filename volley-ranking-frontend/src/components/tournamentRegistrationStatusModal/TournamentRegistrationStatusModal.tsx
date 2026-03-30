@@ -66,6 +66,7 @@ export default function TournamentRegistrationStatusModal({
   registration,
   tournamentMinPlayers,
   tournamentMaxPlayers,
+  isTournamentFinalized = false,
 }: TournamentRegistrationStatusModalProps) {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
@@ -261,6 +262,7 @@ export default function TournamentRegistrationStatusModal({
                 min={0}
                 value={paidAmountInput}
                 onChange={(e) => setPaidAmountInput(Number(e.target.value || 0))}
+                disabled={isTournamentFinalized}
                 className="w-full mt-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900"
               />
             </label>
@@ -268,7 +270,7 @@ export default function TournamentRegistrationStatusModal({
             <button
               type="button"
               onClick={onConfirmPayment}
-              disabled={savingPayment || Number(paidAmountInput || 0) <= 0}
+              disabled={isTournamentFinalized || savingPayment || Number(paidAmountInput || 0) <= 0}
               className="h-10 rounded-lg bg-neutral-900 text-white text-sm font-medium dark:bg-neutral-200 dark:text-neutral-900 disabled:opacity-60"
             >
               {savingPayment ? "Guardando..." : "Guardar pago"}
@@ -295,7 +297,7 @@ export default function TournamentRegistrationStatusModal({
             <button
               type="button"
               onClick={() => onReviewRegistration(isTeamSource ? "equipo_rechazado" : "rechazado")}
-              disabled={reviewing !== null}
+              disabled={isTournamentFinalized || reviewing !== null}
               className="h-10 rounded-lg bg-red-600 px-4 text-white text-sm font-medium disabled:opacity-60"
             >
               {reviewing === "rechazado" || reviewing === "equipo_rechazado"
@@ -309,7 +311,7 @@ export default function TournamentRegistrationStatusModal({
               <button
                 type="button"
                 onClick={() => onReviewRegistration("aceptado")}
-                disabled={!canApprove || reviewing !== null}
+                disabled={isTournamentFinalized || !canApprove || reviewing !== null}
                 className="h-10 rounded-lg bg-emerald-600 px-4 text-white text-sm font-medium disabled:opacity-60"
               >
                 {reviewing === "aceptado" ? "Aceptando..." : "Aceptar inscripción"}

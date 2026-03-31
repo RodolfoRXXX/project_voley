@@ -58,17 +58,17 @@ function PreviewCard({
   children: ReactNode;
 }) {
   const styles = tone === "preview"
-    ? "border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30"
-    : "border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-950/30";
+    ? "border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/35"
+    : "border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-950/35";
   const badge = tone === "preview" ? "PREVIEW" : "CONFIRMADO";
   const badgeStyles = tone === "preview"
-    ? "bg-amber-200 text-amber-900 dark:bg-amber-800/70 dark:text-amber-100"
-    : "bg-green-200 text-green-900 dark:bg-green-800/70 dark:text-green-100";
+    ? "bg-amber-200 text-amber-900 dark:bg-amber-700/70 dark:text-amber-300"
+    : "bg-green-200 text-green-900 dark:bg-green-700/70 dark:text-green-300";
 
   return (
-    <div className={`space-y-3 rounded-lg border p-3 ${styles}`}>
-      <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{title}</h4>
+    <div className={`space-y-3 overflow-hidden rounded-lg border p-3 ${styles}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-300">{title}</h4>
         <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${badgeStyles}`}>
           {badge}
         </span>

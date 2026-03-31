@@ -11,8 +11,8 @@ export function TournamentGroupsList({
     <div className="space-y-3">
       {groups.map((group) => (
         <div key={group.name} className="rounded border border-neutral-200 p-3 dark:border-neutral-700 dark:bg-neutral-900/60">
-          <h5 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Grupo {group.name}</h5>
-          <ul className="mt-2 space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
+          <h5 className="text-sm font-semibold text-neutral-900 dark:text-neutral-300">Grupo {group.name}</h5>
+          <ul className="mt-2 space-y-1 text-sm text-neutral-700 dark:text-neutral-300">
             {group.teamIds.map((teamId) => (
               <li key={`${group.name}-${teamId}`}>• {teamNames[teamId] || `Equipo ${teamId.slice(0, 6)}`}</li>
             ))}

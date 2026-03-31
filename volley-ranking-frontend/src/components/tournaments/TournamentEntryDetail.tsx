@@ -292,7 +292,8 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
                       variant={inTeam ? "danger_outline" : "success_outline"}
                       compact
                     >
-                      {inTeam ? "- quitar" : "+ agregar"}
+                      <span className="sm:hidden">{inTeam ? "Quitar" : "Agregar"}</span>
+                      <span className="hidden sm:inline">{inTeam ? "- quitar" : "+ agregar"}</span>
                     </ActionButton>
                   )}
                 </li>

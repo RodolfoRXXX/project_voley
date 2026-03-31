@@ -73,9 +73,11 @@ export function TournamentPhaseShell({
         <div className="space-y-2">
           <div>
             <p className="text-sm font-medium text-orange-600">Operación de fase</p>
-            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-              {currentPhase ? tournamentPhaseTypeLabel[currentPhase.type] : "Sin fase activa"}
-            </h2>
+            <div className="mt-1 inline-flex rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 dark:border-orange-700 dark:bg-orange-900/45">
+              <h2 className="text-base font-semibold text-neutral-900 dark:text-orange-200">
+                {currentPhase ? tournamentPhaseTypeLabel[currentPhase.type] : "Sin fase activa"}
+              </h2>
+            </div>
           </div>
           {loadingPhases ? <p className="text-xs text-neutral-500">Sincronizando fases...</p> : null}
         </div>

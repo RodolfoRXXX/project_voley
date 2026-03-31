@@ -68,7 +68,7 @@ function TournamentMatchSummaryItem({
 
   return (
     <div key={tournamentMatch.id} className="rounded-md border border-neutral-200 px-3 py-2 dark:border-neutral-700">
-      <p className="text-sm text-neutral-700 dark:text-neutral-200">
+      <p className="text-sm text-neutral-700 dark:text-neutral-300">
         {getTeamLabel(tournamentMatch.homeTeamId, teamNames)} vs {getTeamLabel(tournamentMatch.awayTeamId, teamNames)}
       </p>
       {!renderMatchDetails && tournamentMatch.status === "completed" && winnerLabel && (
@@ -203,18 +203,18 @@ function KnockoutBracket({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h4 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Llaves eliminatorias</h4>
-        <span className="text-xs text-neutral-500 dark:text-neutral-400">Los cruces futuros se muestran aunque todavía no tengan equipos definidos.</span>
+        <span className="text-xs text-neutral-500 dark:text-neutral-400 sm:text-right">Los cruces futuros se muestran aunque todavía no tengan equipos definidos.</span>
       </div>
       <div className={showExtendedLayout ? "space-y-4" : "grid gap-4 md:grid-cols-2 xl:grid-cols-4"}>
         {rounds.map(([roundLabel, tournamentMatches]) => (
           <div
             key={`knockout-${roundLabel}`}
-            className="space-y-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-950/20"
+            className="space-y-3 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-950/20"
           >
             <div>
-              <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{getKnockoutRoundLabel(roundLabel)}</p>
+              <p className="break-words text-sm font-semibold text-neutral-900 dark:text-neutral-300">{getKnockoutRoundLabel(roundLabel)}</p>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">{tournamentMatches.length} cruce{tournamentMatches.length === 1 ? "" : "s"}</p>
             </div>
             <div className={showExtendedLayout ? "grid gap-3 lg:grid-cols-2" : "space-y-3"}>

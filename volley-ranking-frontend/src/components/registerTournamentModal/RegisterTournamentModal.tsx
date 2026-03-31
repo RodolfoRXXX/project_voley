@@ -179,26 +179,26 @@ export default function RegisterTournamentModal({
     };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
 
-        <div className="bg-white rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-xl">
+        <div className="w-full max-w-lg space-y-5 rounded-2xl bg-white p-6 shadow-xl dark:bg-neutral-900">
 
         {/* HEADER */}
 
         <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-neutral-900">
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
                 Inscribirse al torneo
             </h2>
 
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
                 Elegí uno de tus grupos y definí el nombre del equipo.
             </p>
             </div>
 
             <button
             onClick={onClose}
-            className="text-sm font-medium text-neutral-500 hover:text-neutral-700 transition"
+            className="text-sm font-medium text-neutral-500 transition hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
             >
             Cerrar
             </button>
@@ -207,9 +207,9 @@ export default function RegisterTournamentModal({
         {/* INSCRIPCIONES EXISTENTES */}
 
         {registrations.length > 0 && (
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 space-y-3">
+            <div className="space-y-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/60">
 
-            <p className="text-sm font-medium text-neutral-700">
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
                 Tus inscripciones
             </p>
 
@@ -220,14 +220,14 @@ export default function RegisterTournamentModal({
                 return (
                     <div
                     key={reg.id}
-                    className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
+                    className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
                     >
                     <div className="flex flex-col">
-                        <span className="font-medium text-neutral-900">
+                        <span className="font-medium text-neutral-900 dark:text-neutral-100">
                         {reg.nameTeam}
                         </span>
 
-                        <span className="text-neutral-500 text-xs">
+                        <span className="text-xs text-neutral-500 dark:text-neutral-400">
                         {group?.nombre || "Grupo"}
                         </span>
                     </div>
@@ -254,23 +254,23 @@ export default function RegisterTournamentModal({
 
         <div className="space-y-4">
 
-            <p className="text-sm font-medium text-neutral-700">
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
             Nueva inscripción
             </p>
 
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
               Este torneo requiere al menos <b>{minPlayers}</b> jugadores por equipo para inscribirse.
             </p>
 
             {loadingGroups ? (
 
-            <p className="text-sm text-neutral-500">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
                 Cargando grupos...
             </p>
 
             ) : groups.length === 0 ? (
 
-            <p className="text-sm text-neutral-500">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
                 No administrás ningún grupo.
             </p>
 
@@ -281,14 +281,14 @@ export default function RegisterTournamentModal({
                 {/* SELECT GRUPO */}
 
                 <div className="space-y-1">
-                <label className="text-xs font-medium text-neutral-600">
+                <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300">
                     Grupo
                 </label>
 
                 <select
                     value={selectedGroupId}
                     onChange={(e) => setSelectedGroupId(e.target.value)}
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-400"
+                    className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:border-neutral-500"
                 >
                     {groups.map((group) => {
                       const isUsed = usedGroupIds.has(group.id);
@@ -315,7 +315,7 @@ export default function RegisterTournamentModal({
                 {/* TEAM NAME */}
 
                 <div className="space-y-1">
-                <label className="text-xs font-medium text-neutral-600">
+                <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300">
                     Nombre del equipo
                 </label>
 
@@ -323,7 +323,7 @@ export default function RegisterTournamentModal({
                     value={teamName}
                     onChange={(e) => setTeamName(e.target.value)}
                     placeholder="Ej: Los Tigres"
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-400"
+                    className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-500"
                 />
                 </div>
 
@@ -335,7 +335,7 @@ export default function RegisterTournamentModal({
 
         {/* ACTIONS */}
 
-        <div className="flex justify-end gap-2 pt-2 border-t border-neutral-100">
+        <div className="flex justify-end gap-2 border-t border-neutral-100 pt-2 dark:border-neutral-700">
 
             <ActionButton
             onClick={onClose}

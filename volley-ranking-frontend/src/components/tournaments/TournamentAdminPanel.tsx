@@ -753,7 +753,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
       {isMixedTournament && groupStagePhase && (
         <div className="grid gap-6 xl:grid-cols-2">
-          <section className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-700 dark:bg-neutral-900/30">
+          <section className="min-w-0 space-y-4 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-700 dark:bg-neutral-900/30">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">1. Fase de grupos</h3>
               <span className="text-xs text-neutral-500 dark:text-neutral-400">

@@ -58,8 +58,8 @@ function PreviewCard({
   children: ReactNode;
 }) {
   const styles = tone === "preview"
-    ? "border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/35"
-    : "border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-950/35";
+    ? "border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/45"
+    : "border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/45";
   const badge = tone === "preview" ? "PREVIEW" : "CONFIRMADO";
   const badgeStyles = tone === "preview"
     ? "bg-amber-200 text-amber-900 dark:bg-amber-700/70 dark:text-amber-300"

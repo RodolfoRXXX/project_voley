@@ -37,12 +37,16 @@ export function TournamentPhaseTimeline({
         return (
           <div
             key={phase.id}
-            className={`rounded-lg border p-3 ${isCurrent ? "border-orange-300 bg-orange-50 dark:border-orange-700 dark:bg-orange-950/40" : "border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"}`}
+            className={`rounded-lg border p-3 ${isCurrent ? "border-orange-300 bg-orange-50 dark:border-orange-800 dark:bg-orange-950" : "border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"}`}
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Fase {phase.order}</p>
-                <h4 className={`text-sm font-semibold ${isCurrent ? "text-neutral-900 dark:text-orange-300" : "text-neutral-900 dark:text-neutral-100"}`}>
+                <p
+                  className={`text-xs uppercase tracking-wide ${isCurrent ? "text-neutral-500 dark:text-orange-200" : "text-neutral-500 dark:text-neutral-400"}`}
+                >
+                  Fase {phase.order}
+                </p>
+                <h4 className={`text-sm font-semibold ${isCurrent ? "text-neutral-900 dark:text-orange-100" : "text-neutral-900 dark:text-neutral-100"}`}>
                   {tournamentPhaseTypeLabel[phase.type]}
                   {isCurrent ? " · actual" : ""}
                 </h4>
@@ -73,8 +77,8 @@ export function TournamentPhaseShell({
         <div className="space-y-2">
           <div>
             <p className="text-sm font-medium text-orange-600">Operación de fase</p>
-            <div className="mt-1 inline-flex rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 dark:border-orange-700 dark:bg-orange-900/45">
-              <h2 className="text-base font-semibold text-neutral-900 dark:text-orange-200">
+            <div className="mt-1 inline-flex rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 dark:border-orange-800 dark:bg-orange-950">
+              <h2 className="text-base font-semibold text-neutral-900 dark:text-orange-100">
                 {currentPhase ? tournamentPhaseTypeLabel[currentPhase.type] : "Sin fase activa"}
               </h2>
             </div>

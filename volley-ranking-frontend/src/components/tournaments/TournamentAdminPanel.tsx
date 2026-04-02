@@ -581,9 +581,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
   }, [groupStagePhase?.config?.qualifiedTeamsPublished, groupStageStandings]);
   const canOrganizeTournament =
     currentPhase?.type === "group_stage"
-    && (tournament.status === "inscripciones_cerradas" || tournament.status === "activo")
-    && tournament.status !== "finalizado"
-    && tournament.status !== "cancelado";
+    && (tournament.status === "inscripciones_cerradas" || tournament.status === "activo");
   const showGroupActions =
     currentPhase?.type === "group_stage"
     && !hasConfirmedGroups

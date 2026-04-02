@@ -320,12 +320,6 @@ export default function ProfileGroupsPage() {
                     Torneos activos: <b>{group.activeTournaments}</b>
                   </span>
                 </div>
-                {group.memberNames.length > 0 ? (
-                  <p className="text-xs text-neutral-600">
-                    Integrantes: <b>{group.memberNames.join(", ")}</b>
-                    {group.memberIds.length > group.memberNames.length ? "…" : ""}
-                  </p>
-                ) : null}
 
                 <div className="flex items-center gap-3 pt-3 border-t">
                   <UserAvatar

@@ -164,6 +164,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
 
   const selectedCount = entry?.playerIds?.length || 0;
   const isGroupAdmin = !!firebaseUser?.uid && !!group?.adminIds?.includes(firebaseUser.uid);
+  const isTournamentLocked = tournament?.status === "finalizado" || tournament?.status === "cancelado";
 
   const isCountValid = useMemo(() => {
     if (!tournament) return false;
@@ -176,7 +177,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
   }, [selectedCount, tournament]);
 
   const togglePlayer = async (playerId: string) => {
-    if (!entry || !tournament || !isGroupAdmin) return;
+    if (!entry || !tournament || !isGroupAdmin || isTournamentLocked) return;
 
     const current = Array.isArray(entry.playerIds) ? entry.playerIds : [];
     const exists = current.includes(playerId);
@@ -288,7 +289,11 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
                     <ActionButton
                       onClick={() => togglePlayer(member.id)}
                       loading={saving === member.id}
-                      disabled={(!inTeam && selectedCount >= Number(tournament.maxPlayers || 0)) || (inTeam && selectedCount <= Number(tournament.minPlayers || 0))}
+                      disabled={
+                        isTournamentLocked
+                        || (!inTeam && selectedCount >= Number(tournament.maxPlayers || 0))
+                        || (inTeam && selectedCount <= Number(tournament.minPlayers || 0))
+                      }
                       variant={inTeam ? "danger_outline" : "success_outline"}
                       compact
                     >
@@ -315,6 +320,11 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
           <h2 className="text-base font-semibold text-neutral-900">
             Pago de inscripción
           </h2>
+          {isTournamentLocked ? (
+            <p className="text-xs font-medium text-amber-700">
+              Torneo {tournament.status}. Las acciones de edición están inhabilitadas.
+            </p>
+          ) : null}
 
           <p>
             <b>Pago por jugador:</b> ${Number(tournament.paymentForPlayer || entry.paymentForPlayer || 0)}
@@ -367,12 +377,16 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
                   return (
                     <li
                       key={standing.id}
-                      className={`rounded-lg border p-3 text-sm ${isCurrentTeam ? "border-orange-300 bg-orange-50" : "border-neutral-200 bg-white"}`}
+                      className={`rounded-lg border p-3 text-sm ${
+                        isCurrentTeam
+                          ? "border-orange-300 bg-orange-50 text-orange-950 dark:border-orange-700 dark:bg-orange-500/20 dark:text-orange-100"
+                          : "border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900/40"
+                      }`}
                     >
-                      <p className="font-medium text-neutral-900">
+                      <p className={`font-medium ${isCurrentTeam ? "text-orange-950 dark:text-orange-100" : "text-neutral-900 dark:text-neutral-100"}`}>
                         #{standing.position} {standing.teamName} {isCurrentTeam ? "← tu equipo" : ""}
                       </p>
-                      <p className="text-xs text-neutral-600">
+                      <p className={`text-xs ${isCurrentTeam ? "text-orange-800 dark:text-orange-200" : "text-neutral-600 dark:text-neutral-300"}`}>
                         Pts: <b>{standing.stats.points}</b> · PJ: <b>{standing.stats.played}</b> · Sets: <b>{standing.stats.setsFor}-{standing.stats.setsAgainst}</b>
                       </p>
                     </li>

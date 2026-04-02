@@ -24,7 +24,23 @@ type GroupItem = {
   } | null;
   memberIds: string[];
   adminIds: string[];
+  activeMatches: number;
+  activeTournaments: number;
+  memberNames: string[];
 };
+type GroupOwnerDoc = {
+  nombre?: string;
+  displayName?: string;
+  photoURL?: string | null;
+};
+
+type GroupBase = Omit<GroupItem, "owner" | "activeMatches" | "activeTournaments" | "memberNames"> & {
+  ownerId: string | null;
+};
+
+function isDefinedString(value: string | undefined): value is string {
+  return typeof value === "string" && value.length > 0;
+}
 
 function chunkArray<T>(array: T[], size: number) {
   const result: T[][] = [];
@@ -65,7 +81,7 @@ export default function ProfileGroupsPage() {
         getDocs(byAdmin),
       ]);
 
-      const merged = new Map<string, any>();
+      const merged = new Map<string, GroupBase>();
 
       [...memberSnap.docs, ...adminSnap.docs].forEach((docItem) => {
         const data = docItem.data();
@@ -88,7 +104,7 @@ export default function ProfileGroupsPage() {
       // cargar owners
       const ownerIds = [...new Set(groupsArray.map((g) => g.ownerId).filter(Boolean))];
 
-      let ownersMap = new Map<string, any>();
+      const ownersMap = new Map<string, GroupOwnerDoc>();
 
       if (ownerIds.length) {
         const batches = chunkArray(ownerIds, 10);
@@ -107,7 +123,58 @@ export default function ProfileGroupsPage() {
         }
       }
 
-      const finalGroups: GroupItem[] = groupsArray.map((g) => ({
+      const memberIds = [...new Set(groupsArray.flatMap((group) => Array.isArray(group.memberIds) ? group.memberIds : []))];
+      const membersMap = new Map<string, GroupOwnerDoc>();
+      if (memberIds.length) {
+        const memberBatches = chunkArray(memberIds, 10);
+        for (const batch of memberBatches) {
+          const membersQuery = query(collection(db, "users"), where(documentId(), "in", batch));
+          const membersSnap = await getDocs(membersQuery);
+          membersSnap.forEach((doc) => {
+            membersMap.set(doc.id, doc.data());
+          });
+        }
+      }
+
+      const activeTournamentStatuses = new Set(["inscripciones_abiertas", "inscripciones_cerradas", "activo"]);
+      const finalGroups: GroupItem[] = await Promise.all(groupsArray.map(async (g) => {
+        const activeMatchesSnap = await getDocs(
+          query(
+            collection(db, "matches"),
+            where("groupId", "==", g.id),
+            where("estado", "in", ["abierto", "verificando", "cerrado"])
+          )
+        );
+
+        const [registrationSnap, teamsSnap] = await Promise.all([
+          getDocs(query(collection(db, "tournamentRegistrations"), where("groupId", "==", g.id))),
+          getDocs(query(collection(db, "tournamentTeams"), where("groupId", "==", g.id))),
+        ]);
+        const tournamentIds = new Set<string>();
+        registrationSnap.docs.forEach((doc) => {
+          const tournamentId = doc.data()?.tournamentId;
+          if (typeof tournamentId === "string" && tournamentId.trim()) tournamentIds.add(tournamentId);
+        });
+        teamsSnap.docs.forEach((doc) => {
+          const tournamentId = doc.data()?.tournamentId;
+          if (typeof tournamentId === "string" && tournamentId.trim()) tournamentIds.add(tournamentId);
+        });
+
+        let activeTournaments = 0;
+        if (tournamentIds.size > 0) {
+          const tournamentBatches = chunkArray(Array.from(tournamentIds), 10);
+          for (const batch of tournamentBatches) {
+            const tournamentsSnap = await getDocs(query(collection(db, "tournaments"), where(documentId(), "in", batch)));
+            tournamentsSnap.docs.forEach((tournamentDoc) => {
+              const status = tournamentDoc.data()?.status;
+              if (typeof status === "string" && activeTournamentStatuses.has(status)) {
+                activeTournaments += 1;
+              }
+            });
+          }
+        }
+
+        return {
         ...g,
         owner: g.ownerId
           ? {
@@ -118,7 +185,13 @@ export default function ProfileGroupsPage() {
               photoURL: ownersMap.get(g.ownerId)?.photoURL || null,
             }
           : null,
-      }));
+        activeMatches: activeMatchesSnap.size,
+        activeTournaments,
+        memberNames: (g.memberIds || [])
+          .map((memberId: string) => membersMap.get(memberId)?.nombre || membersMap.get(memberId)?.displayName)
+          .filter(isDefinedString)
+          .slice(0, 4),
+      };}));
 
       setGroups(finalGroups);
       setLoading(false);
@@ -236,14 +309,23 @@ export default function ProfileGroupsPage() {
               </div>
 
               <div className="mt-auto pt-4 space-y-4">
-                <div className="flex gap-4 text-xs text-neutral-500">
+                <div className="flex flex-wrap gap-4 text-xs text-neutral-500">
                   <span>
-                    Partidos: <b>{group.totalMatches}</b>
+                    Partidos activos: <b>{group.activeMatches}</b>
                   </span>
                   <span>
                     Integrantes: <b>{group.memberIds.length}</b>
                   </span>
+                  <span>
+                    Torneos activos: <b>{group.activeTournaments}</b>
+                  </span>
                 </div>
+                {group.memberNames.length > 0 ? (
+                  <p className="text-xs text-neutral-600">
+                    Integrantes: <b>{group.memberNames.join(", ")}</b>
+                    {group.memberIds.length > group.memberNames.length ? "…" : ""}
+                  </p>
+                ) : null}
 
                 <div className="flex items-center gap-3 pt-3 border-t">
                   <UserAvatar

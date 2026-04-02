@@ -48,7 +48,7 @@ export function ActionButton({
 
   const variants: Record<Variant, string> = {
     default:
-      "bg-gray-800 text-white hover:bg-gray-900 active:bg-black focus-visible:ring-gray-400",
+      "bg-gray-800 text-white hover:bg-gray-900 active:bg-black focus-visible:ring-gray-400 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white dark:active:bg-neutral-200 dark:ring-1 dark:ring-neutral-500/60 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08)]",
 
     primary:
       "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 focus-visible:ring-blue-400",

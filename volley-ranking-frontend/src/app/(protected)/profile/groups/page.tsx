@@ -38,6 +38,10 @@ type GroupBase = Omit<GroupItem, "owner" | "activeMatches" | "activeTournaments"
   ownerId: string | null;
 };
 
+function isDefinedString(value: string | undefined): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
 function chunkArray<T>(array: T[], size: number) {
   const result: T[][] = [];
 
@@ -185,7 +189,7 @@ export default function ProfileGroupsPage() {
         activeTournaments,
         memberNames: (g.memberIds || [])
           .map((memberId: string) => membersMap.get(memberId)?.nombre || membersMap.get(memberId)?.displayName)
-          .filter((name: string | undefined) => !!name)
+          .filter(isDefinedString)
           .slice(0, 4),
       };}));
 

@@ -465,7 +465,7 @@ export default function NewTournamentPage() {
           <input
             type="datetime-local"
             required
-            className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:[color-scheme:dark]"
             value={form.startDate}
             onChange={(e) =>
               setForm((prev) => ({ ...prev, startDate: e.target.value }))

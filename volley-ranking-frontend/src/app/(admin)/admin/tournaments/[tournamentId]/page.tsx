@@ -462,7 +462,8 @@ export default function AdminTournamentDetailPage() {
 
               <button
                 onClick={() => setSelectedRegistration(r)}
-                className="text-xs px-2 py-1 rounded border hover:bg-neutral-50"
+                disabled={isLockedTournament}
+                className="text-xs px-2 py-1 rounded border hover:bg-neutral-50 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Ver estado
               </button>
@@ -484,7 +485,8 @@ export default function AdminTournamentDetailPage() {
 
               <button
                 onClick={() => setSelectedRegistration(r)}
-                className="text-xs px-2 py-1 rounded border hover:bg-neutral-50"
+                disabled={isLockedTournament}
+                className="text-xs px-2 py-1 rounded border hover:bg-neutral-50 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Ver estado
               </button>
@@ -522,7 +524,7 @@ export default function AdminTournamentDetailPage() {
         isAdminView
         isOwnerAdmin={isOwnerAdmin}
         canManageAdmins={isOwnerAdmin}
-        isTournamentFinalized={tournament.status === "finalizado"}
+        isTournamentFinalized={isLockedTournament}
         ownerAdminId={tournament.ownerAdminId}
         removingAdminId={removingAdminId}
         onAddAdminClick={() => setShowAdminSearchModal(true)}
@@ -594,7 +596,7 @@ export default function AdminTournamentDetailPage() {
         registration={selectedRegistration}
         tournamentMinPlayers={tournament?.minPlayers}
         tournamentMaxPlayers={tournament?.maxPlayers}
-        isTournamentFinalized={tournament.status === "finalizado"}
+        isTournamentFinalized={isLockedTournament}
         onClose={() => setSelectedRegistration(null)}
         onUpdated={async () => {
           await Promise.all([loadRegistrations(), loadTournament()]);

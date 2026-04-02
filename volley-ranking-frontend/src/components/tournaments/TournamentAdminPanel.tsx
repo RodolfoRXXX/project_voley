@@ -580,13 +580,22 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
     return groupStageStandings.filter((standing) => standing.qualified).sort((a, b) => Number(a.seed || 0) - Number(b.seed || 0) || a.position - b.position);
   }, [groupStagePhase?.config?.qualifiedTeamsPublished, groupStageStandings]);
   const canOrganizeTournament =
-    currentPhase?.type === "group_stage" && (tournament.status === "inscripciones_cerradas" || tournament.status === "activo");
-  const showGroupActions = currentPhase?.type === "group_stage" && !hasConfirmedGroups;
+    currentPhase?.type === "group_stage"
+    && (tournament.status === "inscripciones_cerradas" || tournament.status === "activo")
+    && tournament.status !== "finalizado"
+    && tournament.status !== "cancelado";
+  const showGroupActions =
+    currentPhase?.type === "group_stage"
+    && !hasConfirmedGroups
+    && tournament.status !== "finalizado"
+    && tournament.status !== "cancelado";
   const showFixtureActions =
     currentPhase !== null &&
     ["group_stage", "round_robin", "knockout", "final"].includes(currentPhase.type) &&
     (currentPhase.type !== "group_stage" || hasConfirmedGroups) &&
-    !hasConfirmedFixture;
+    !hasConfirmedFixture &&
+    tournament.status !== "finalizado" &&
+    tournament.status !== "cancelado";
   const showGroupsSection = !isLeaguePhase && (canOrganizeTournament || Boolean(previewGroups) || hasConfirmedGroups);
   const showFixtureSection =
     showFixtureActions || previewTournamentMatches !== null || hasConfirmedFixture || (loadingConfirmed && (hasConfirmedGroups || isLeaguePhase));
@@ -643,7 +652,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           <button
             onClick={onMainAction}
             disabled={isMainActionDisabled}
-            className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+            className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white dark:ring-1 dark:ring-neutral-500/60"
           >
             {busyAction ? "Procesando..." : action.label}
           </button>
@@ -673,7 +682,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
                 <button
                   onClick={onConfirmGroups}
                   disabled={confirmingGroups || !previewGroups || previewGroups.length === 0}
-                  className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+                  className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white dark:ring-1 dark:ring-neutral-500/60"
                 >
                   {confirmingGroups ? "Confirmando..." : "Confirmar grupos"}
                 </button>
@@ -715,7 +724,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
                 <button
                   onClick={onConfirmFixture}
                   disabled={confirmingFixture || !previewTournamentMatches || previewTournamentMatches.length === 0}
-                  className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+                  className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white dark:ring-1 dark:ring-neutral-500/60"
                 >
                   {confirmingFixture ? "Confirmando..." : "Confirmar fixture"}
                 </button>

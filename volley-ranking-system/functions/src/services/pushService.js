@@ -4,9 +4,9 @@ const { db } = require("../firebase");
 
 const COLLECTION = "push_subscriptions";
 
-const vapidPublicKey = process.env.PUSH_VAPID_PUBLIC_KEY;
-const vapidPrivateKey = process.env.PUSH_VAPID_PRIVATE_KEY;
-const vapidSubject = process.env.PUSH_VAPID_SUBJECT || "mailto:soporte@sportexa.app";
+const vapidPublicKey = process.env.NEXT_PUBLIC_PUSH_VAPID_PUBLIC_KEY;
+const vapidPrivateKey = process.env.NEXT_PUBLIC_PUSH_VAPID_PRIVATE_KEY;
+const vapidSubject = process.env.NEXT_PUBLIC_PUSH_VAPID_SUBJECT || "mailto:soporte@sportexa.app";
 
 if (vapidPublicKey && vapidPrivateKey) {
   webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);

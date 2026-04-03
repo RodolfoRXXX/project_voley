@@ -4,7 +4,7 @@ const { db } = require("../firebase");
 
 const COLLECTION = "push_subscriptions";
 
-const vapidPublicKey = process.env.NPUSH_VAPID_PUBLIC_KEY;
+const vapidPublicKey = process.env.PUSH_VAPID_PUBLIC_KEY;
 const vapidPrivateKey = process.env.PUSH_VAPID_PRIVATE_KEY;
 const vapidSubject = process.env.PUSH_VAPID_SUBJECT || "mailto:soporte@sportexa.app";
 

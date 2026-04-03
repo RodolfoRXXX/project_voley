@@ -64,7 +64,7 @@ function ProfilePageSkeleton() {
 
 export default function ProfilePage() {
   const { userDoc, loading } = useAuth();
-  const vapidPublicKey = process.env.NEXT_PUBLIC_PUSH_VAPID_PUBLIC_KEY || "";
+  const vapidPublicKey = process.env.PUSH_VAPID_PUBLIC_KEY || "";
 
   if (loading || !userDoc) return <ProfilePageSkeleton />;
 

@@ -1,6 +1,7 @@
 // Functions/src/callables/createMatch.js
 
 const functions = require("firebase-functions/v1");
+const { MAIL_AND_PUSH_SECRETS } = require("../src/config/functionSecrets");
 const { crearMatch } = require("../src/services/adminMatchService");
 const { assertIsAdmin, assertGroupAdmin } = require("../src/services/adminAccessService");
 const formaciones = require("../src/config/formaciones");
@@ -12,7 +13,9 @@ const {
   Timestamp,
 } = require("firebase-admin/firestore");
 
-module.exports = functions.https.onCall(async (data, context) => {
+module.exports = functions
+  .runWith({ secrets: MAIL_AND_PUSH_SECRETS })
+  .https.onCall(async (data, context) => {
   /* =====================
      Auth
   ===================== */

@@ -1,13 +1,16 @@
 
 
 const functions = require("firebase-functions/v1");
+const { MAIL_AND_PUSH_SECRETS } = require("../src/config/functionSecrets");
 const { eliminarMatch } = require("../src/services/adminMatchService");
 const { assertIsAdmin, assertMatchAdmin } = require("../src/services/adminAccessService");
 const { db } = require("../src/firebase");
 const { emitDomainEvent } = require("../src/events/domainEventBus");
 const { DOMAIN_EVENTS } = require("../src/events/domainEvents");
 
-module.exports = functions.https.onCall(async (data, context) => {
+module.exports = functions
+  .runWith({ secrets: MAIL_AND_PUSH_SECRETS })
+  .https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
       "unauthenticated",

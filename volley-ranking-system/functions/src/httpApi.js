@@ -6,6 +6,7 @@ const { FieldValue } = require("firebase-admin/firestore");
 const { emitDomainEvent } = require("./events/domainEventBus");
 const { DOMAIN_EVENTS } = require("./events/domainEvents");
 const { getPublicVapidKey } = require("./services/pushService");
+const { MAIL_AND_PUSH_SECRETS } = require("./config/functionSecrets");
 
 
 function getBearerToken(authHeader = "") {
@@ -740,7 +741,7 @@ async function handlePushSubscribe(req, res, authContext) {
 
 module.exports = functions
   .runWith({
-    secrets: ["GMAIL_USER", "GMAIL_PASS", "WEB_APP_URL"],
+    secrets: MAIL_AND_PUSH_SECRETS,
   })
   .https.onRequest(async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");

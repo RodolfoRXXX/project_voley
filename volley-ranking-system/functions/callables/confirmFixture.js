@@ -1,4 +1,5 @@
 const functions = require("firebase-functions/v1");
+const { MAIL_AND_PUSH_SECRETS } = require("../src/config/functionSecrets");
 const { FieldValue } = require("firebase-admin/firestore");
 const { db } = require("../src/firebase");
 const { assertIsAdmin } = require("../src/services/adminAccessService");
@@ -55,7 +56,9 @@ function buildFixtureSummary(matches = []) {
   };
 }
 
-module.exports = functions.https.onCall(async (data, context) => {
+module.exports = functions
+  .runWith({ secrets: MAIL_AND_PUSH_SECRETS })
+  .https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "No autenticado");
   const uid = context.auth.uid;
   await assertIsAdmin(uid);

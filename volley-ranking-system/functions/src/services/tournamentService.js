@@ -353,10 +353,12 @@ async function editTournament({ uid, tournamentId, data }) {
   if (!Object.keys(updatePayload).length) throw new functions.https.HttpsError("invalid-argument", "No hay datos válidos para actualizar");
 
   const tournamentRef = db.collection("tournaments").doc(tournamentId);
+  let tournamentName = "Torneo";
   await db.runTransaction(async (trx) => {
     const tournamentSnap = await trx.get(tournamentRef);
     if (!tournamentSnap.exists) throw new functions.https.HttpsError("not-found", "El torneo no existe");
     const tournament = tournamentSnap.data();
+    tournamentName = tournament?.name || tournament?.nombre || "Torneo";
     assertTournamentAdmin(tournament, uid);
 
     if (![TOURNAMENT_STATUS.DRAFT, TOURNAMENT_STATUS.OPEN, TOURNAMENT_STATUS.CLOSED].includes(tournament.status)) {
@@ -459,10 +461,11 @@ async function editTournament({ uid, tournamentId, data }) {
     trx.update(tournamentRef, nextPayload);
   });
 
+  emitDomainEvent(DOMAIN_EVENTS.TOURNAMENT_ADMIN_ADDED, { userId: adminUserId, tournamentId, tournamentName });
   return { ok: true };
 }
 
-async function addTournamentAdmin({ uid, tournamentId, adminUserId }) { /* unchanged body below */
+async function addTournamentAdmin({ uid, tournamentId, adminUserId }) {
   if (typeof tournamentId !== "string" || !tournamentId) throw new functions.https.HttpsError("invalid-argument", "tournamentId inválido");
   if (typeof adminUserId !== "string" || !adminUserId) throw new functions.https.HttpsError("invalid-argument", "adminUserId inválido");
   const targetUserSnap = await db.collection("users").doc(adminUserId).get();
@@ -543,10 +546,12 @@ async function closeTournamentRegistrations({ uid, tournamentId }) {
 async function startTournament({ uid, tournamentId }) {
   if (typeof tournamentId !== "string" || !tournamentId) throw new functions.https.HttpsError("invalid-argument", "tournamentId inválido");
   const tournamentRef = db.collection("tournaments").doc(tournamentId);
+  let tournamentName = "Torneo";
   await db.runTransaction(async (trx) => {
     const tournamentSnap = await trx.get(tournamentRef);
     if (!tournamentSnap.exists) throw new functions.https.HttpsError("not-found", "El torneo no existe");
     const tournament = tournamentSnap.data();
+    tournamentName = tournament?.name || tournament?.nombre || "Torneo";
     assertTournamentAdmin(tournament, uid);
     if (tournament.status !== TOURNAMENT_STATUS.CLOSED) throw new functions.https.HttpsError("failed-precondition", "Solo se puede iniciar un torneo con inscripciones cerradas");
 
@@ -561,6 +566,7 @@ async function startTournament({ uid, tournamentId }) {
       updatedAt: FieldValue.serverTimestamp(),
     });
   });
+  emitDomainEvent(DOMAIN_EVENTS.TOURNAMENT_STARTED, { tournamentId, tournamentName });
   return { ok: true };
 }
 

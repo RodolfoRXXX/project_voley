@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import ProfileGame from "@/components/profile/profileGame";
 import ProfileMatches from "@/components/profile/ProfileMatches";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
+import EnablePushButton from "@/components/push/EnablePushButton";
 
 /* =====================
    SKELETON
@@ -63,6 +64,7 @@ function ProfilePageSkeleton() {
 
 export default function ProfilePage() {
   const { userDoc, loading } = useAuth();
+  const vapidPublicKey = process.env.NEXT_PUBLIC_PUSH_VAPID_PUBLIC_KEY || "";
 
   if (loading || !userDoc) return <ProfilePageSkeleton />;
 
@@ -78,6 +80,8 @@ export default function ProfilePage() {
         posicionesPreferidas={userDoc.posicionesPreferidas || []}
         role={userDoc.roles}
       />
+
+      <EnablePushButton vapidPublicKey={vapidPublicKey} />
 
       {/* Profile Matches */}
 

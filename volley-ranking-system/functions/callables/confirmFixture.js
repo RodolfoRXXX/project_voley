@@ -5,6 +5,8 @@ const { assertIsAdmin } = require("../src/services/adminAccessService");
 const { assertTournamentAdmin, PHASE_STATUS, PHASE_TYPES } = require("../src/services/tournamentService");
 const { buildStandingsDoc, getTournamentAndPhase } = require("../src/services/tournamentPhaseService");
 const { getKnockoutConfig } = require("../src/services/tournamentFixtureService");
+const { emitDomainEvent } = require("../src/events/domainEventBus");
+const { DOMAIN_EVENTS } = require("../src/events/domainEvents");
 
 function isNullableTeamId(teamId) {
   return teamId == null || typeof teamId === "string";
@@ -134,5 +136,11 @@ module.exports = functions.https.onCall(async (data, context) => {
   });
   batch.update(tournamentRef, { status: "inscripciones_cerradas", currentPhaseId: phase.id, currentPhaseType: phase.type, updatedBy: uid, updatedAt: FieldValue.serverTimestamp() });
   await batch.commit();
+
+  emitDomainEvent(DOMAIN_EVENTS.TOURNAMENT_FIXTURE_CONFIRMED, {
+    tournamentId,
+    tournamentName: tournament?.name || tournament?.nombre || "Torneo",
+  });
+
   return { ok: true, matchesCount: matches.length, phaseId: phase.id };
 });

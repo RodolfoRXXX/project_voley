@@ -5,6 +5,8 @@ const { TOURNAMENT_STATUS, assertTournamentAdmin } = require("./tournamentServic
 const {
   FieldValue,
 } = require("firebase-admin/firestore");
+const { emitDomainEvent } = require("../events/domainEventBus");
+const { DOMAIN_EVENTS } = require("../events/domainEvents");
 
 
 async function requestTournamentRegistration({ uid, tournamentId, groupId, nameTeam }) {
@@ -34,6 +36,10 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId, nameT
   const registrationId = `${tournamentId}_${groupId}`;
   const registrationRef = db.collection("tournamentRegistrations").doc(registrationId);
 
+  let acceptedGroupId = null;
+  let acceptedTournamentId = null;
+  let acceptedTournamentName = "Torneo";
+
   await db.runTransaction(async (trx) => {
 
     const tournamentSnap = await trx.get(tournamentRef);
@@ -42,6 +48,7 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId, nameT
     }
 
     const tournament = tournamentSnap.data();
+    acceptedTournamentName = tournament?.name || tournament?.nombre || "Torneo";
 
     if (tournament.status !== TOURNAMENT_STATUS.OPEN) {
       throw new functions.https.HttpsError(
@@ -188,6 +195,9 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
         updatedBy: uid,
       });
 
+      acceptedGroupId = registration.groupId;
+      acceptedTournamentId = registration.tournamentId;
+
       trx.set(tournamentTeamRef, {
         tournamentId: registration.tournamentId,
         groupId: registration.groupId,
@@ -253,6 +263,14 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
     trx.update(registrationRef, updatePayload);
   });
 
+  if (acceptedGroupId && acceptedTournamentId) {
+    emitDomainEvent(DOMAIN_EVENTS.GROUP_ACCEPTED_INTO_TOURNAMENT, {
+      groupId: acceptedGroupId,
+      tournamentId: acceptedTournamentId,
+      tournamentName: acceptedTournamentName,
+    });
+  }
+
   return { ok: true };
 }
 
@@ -309,8 +327,25 @@ async function updateTournamentRegistrationPayment({ uid, registrationId, paidAm
   return { ok: true };
 }
 
+
+async function notifyTournamentPlayerAdded({ tournamentId, userId }) {
+  emitDomainEvent(DOMAIN_EVENTS.TOURNAMENT_PLAYER_ADDED, {
+    tournamentId: String(tournamentId),
+    userId: String(userId),
+  });
+}
+
+async function notifyTournamentPlayerRemoved({ tournamentId, userId }) {
+  emitDomainEvent(DOMAIN_EVENTS.TOURNAMENT_PLAYER_REMOVED, {
+    tournamentId: String(tournamentId),
+    userId: String(userId),
+  });
+}
+
 module.exports = {
   requestTournamentRegistration,
   reviewTournamentRegistration,
   updateTournamentRegistrationPayment,
+  notifyTournamentPlayerAdded,
+  notifyTournamentPlayerRemoved,
 };

@@ -1,3 +1,5 @@
+require("./src/events/bootstrap");
+
 //const admin = require("firebase-admin");
 //admin.initializeApp();
 

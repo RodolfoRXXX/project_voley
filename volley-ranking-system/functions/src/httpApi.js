@@ -688,6 +688,12 @@ async function handleAdminRemoval(req, res, authContext, groupId, userId) {
 }
 
 
+
+
+function handleGetPushPublicKey(_req, res) {
+  res.status(200).json({ ok: true, vapidPublicKey: getPublicVapidKey() });
+}
+
 function isValidPushSubscription(subscription) {
   return !!(
     subscription
@@ -826,6 +832,11 @@ module.exports = functions
     return;
   }
 
+
+  if (req.method === "GET" && req.path === "/push/vapid-public-key") {
+    handleGetPushPublicKey(req, res);
+    return;
+  }
 
   if (req.method === "POST" && req.path === "/push/subscribe") {
     await handlePushSubscribe(req, res, authContext);

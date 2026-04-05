@@ -64,8 +64,6 @@ function ProfilePageSkeleton() {
 
 export default function ProfilePage() {
   const { userDoc, loading } = useAuth();
-  const vapidPublicKey = process.env.PUSH_VAPID_PUBLIC_KEY || "";
-
   if (loading || !userDoc) return <ProfilePageSkeleton />;
 
   return (
@@ -81,7 +79,7 @@ export default function ProfilePage() {
         role={userDoc.roles}
       />
 
-      <EnablePushButton vapidPublicKey={vapidPublicKey} />
+      <EnablePushButton />
 
       {/* Profile Matches */}
 

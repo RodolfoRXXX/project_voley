@@ -8,9 +8,11 @@ const vapidPublicKey = process.env.PUSH_VAPID_PUBLIC_KEY;
 const vapidPrivateKey = process.env.PUSH_VAPID_PRIVATE_KEY;
 const vapidSubject = process.env.PUSH_VAPID_SUBJECT || "mailto:soporte@sportexa.app";
 
+const isFunctionsEmulator = process.env.FUNCTIONS_EMULATOR === "true";
+
 if (vapidPublicKey && vapidPrivateKey) {
   webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
-} else {
+} else if (!isFunctionsEmulator) {
   console.warn("[PushService] VAPID keys are not configured. Push notifications are disabled.");
 }
 

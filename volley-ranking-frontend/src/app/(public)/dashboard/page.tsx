@@ -249,23 +249,23 @@ export default function DashboardPage() {
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
       {showGuestHero && (
-        <section className="relative overflow-hidden rounded-3xl border border-orange-100 bg-gradient-to-br from-orange-50 via-white to-amber-50 p-6 sm:p-8 shadow-sm">
-          <div className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-orange-300/20 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-amber-300/20 blur-3xl" />
+        <section className="relative overflow-hidden rounded-3xl border border-orange-200/70 dark:border-[var(--border)] bg-gradient-to-br from-orange-100 via-orange-50 to-amber-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-6 sm:p-8 shadow-sm">
+          <div className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-orange-300/20 dark:bg-orange-500/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-amber-300/20 dark:bg-amber-500/10 blur-3xl" />
 
           <div className="relative space-y-6">
             <header className="space-y-3">
-              <p className="inline-flex items-center rounded-full border border-orange-200 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">
-                Tu plataforma de vóley
+              <p className="inline-flex items-center rounded-full border border-orange-200/80 dark:border-orange-400/30 bg-white/80 dark:bg-slate-900/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-orange-600 dark:text-orange-300">
+                Tu plataforma para deportes
               </p>
 
-              <h2 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900">
-                <span className="text-slate-900">Sporte</span>
-                <span className="font-[var(--font-arizonia)] text-5xl sm:text-6xl text-orange-500 align-middle mx-1">X</span>
-                <span className="text-slate-900">a</span>
+              <h2 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-[var(--foreground)]">
+                <span>Sporte</span>
+                <span className="logo-x text-5xl sm:text-6xl align-middle mx-1">X</span>
+                <span>a</span>
               </h2>
 
-              <p className="max-w-2xl text-sm sm:text-base text-slate-600">
+              <p className="max-w-2xl text-sm sm:text-base text-slate-600 dark:text-[var(--text-muted)]">
                 Organizá partidos, descubrí torneos y seguí tu evolución en una experiencia moderna, clara y hecha para la comunidad.
               </p>
             </header>
@@ -274,15 +274,24 @@ export default function DashboardPage() {
               {featureCards.map((feature) => (
                 <article
                   key={feature.title}
-                  className="rounded-2xl border border-white/70 bg-white/80 backdrop-blur px-4 py-5 shadow-[0_10px_30px_rgba(251,146,60,0.10)]"
+                  className="rounded-2xl border border-white/80 dark:border-[var(--border)] bg-white/80 dark:bg-slate-900/70 backdrop-blur px-4 py-5 shadow-[0_10px_30px_rgba(251,146,60,0.10)]"
                 >
-                  <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 text-xl shadow-inner ring-1 ring-orange-200/70">
+                  <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-500/20 dark:to-amber-500/20 text-xl shadow-inner ring-1 ring-orange-200/70 dark:ring-orange-300/20">
                     <span className="-translate-y-[1px]">{feature.emoji}</span>
                   </div>
-                  <h3 className="text-base font-semibold text-slate-900">{feature.title}</h3>
-                  <p className="mt-1 text-sm text-slate-600">{feature.description}</p>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-[var(--foreground)]">{feature.title}</h3>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-[var(--text-muted)]">{feature.description}</p>
                 </article>
               ))}
+            </div>
+
+            <div>
+              <Link
+                href="/groups"
+                className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
+              >
+                Empecemos
+              </Link>
             </div>
           </div>
         </section>

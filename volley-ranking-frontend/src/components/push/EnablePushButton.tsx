@@ -8,6 +8,7 @@ export default function EnablePushButton() {
   const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [message, setMessage] = useState("");
   const [vapidPublicKey, setVapidPublicKey] = useState("");
+  const [isCheckingVapidKey, setIsCheckingVapidKey] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -28,13 +29,42 @@ export default function EnablePushButton() {
       .then((payload) => {
         if (mounted) {
           setVapidPublicKey(String(payload?.vapidPublicKey || ""));
+          setIsCheckingVapidKey(false);
         }
       })
       .catch(() => {
         if (mounted) {
           setVapidPublicKey("");
+          setIsCheckingVapidKey(false);
         }
       });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const checkExistingSubscription = async () => {
+      if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+        return;
+      }
+
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const existingSubscription = await registration.pushManager.getSubscription();
+        if (mounted && Notification.permission === "granted" && existingSubscription) {
+          setStatus("ok");
+          setMessage("Notificaciones activadas correctamente.");
+        }
+      } catch {
+        // noop: si falla el chequeo inicial, el usuario igual puede intentar activar manualmente
+      }
+    };
+
+    checkExistingSubscription();
 
     return () => {
       mounted = false;
@@ -61,18 +91,30 @@ export default function EnablePushButton() {
     }
   };
 
+  const notificationsAreActive = status === "ok";
+  const hasVapidConfigurationError = !isCheckingVapidKey && !vapidPublicKey && !notificationsAreActive;
+  const isButtonDisabled = status === "loading" || notificationsAreActive || hasVapidConfigurationError;
+
   return (
     <div className="rounded-xl border p-4 bg-white space-y-2">
       <p className="text-sm text-gray-700">Activá notificaciones para avisos de grupos y torneos.</p>
-      <button
-        type="button"
-        onClick={handleEnable}
-        disabled={status === "loading"}
-        className="rounded-md bg-blue-600 px-3 py-2 text-white text-sm disabled:opacity-60"
-      >
-        {status === "loading" ? "Activando..." : "Activar notificaciones"}
-      </button>
-      {!vapidPublicKey ? (
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleEnable}
+          disabled={isButtonDisabled}
+          className="rounded-md bg-blue-600 px-3 py-2 text-white text-sm disabled:opacity-60"
+        >
+          {status === "loading"
+            ? "Activando..."
+            : notificationsAreActive
+              ? "Notificaciones activas"
+              : "Activar notificaciones"}
+        </button>
+        {notificationsAreActive ? <span aria-label="Notificaciones activas">✅</span> : null}
+        {hasVapidConfigurationError ? <span aria-label="Error de configuración de notificaciones">❌</span> : null}
+      </div>
+      {hasVapidConfigurationError ? (
         <p className="text-xs text-amber-700">
           No se pudo obtener la VAPID pública desde la API. Verificá Functions y la ruta <code>/api/push/vapid-public-key</code>.
         </p>

@@ -253,53 +253,83 @@ export default function DashboardPage() {
           <div className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-orange-300/20 dark:bg-orange-500/10 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-amber-300/20 dark:bg-amber-500/10 blur-3xl" />
 
-          <div className="relative space-y-6">
-            <header className="space-y-3">
-              <p className="inline-flex items-center rounded-full border border-orange-200/80 dark:border-orange-400/30 bg-white/80 dark:bg-slate-900/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-orange-600 dark:text-orange-300">
-                Tu plataforma para deportes
-              </p>
+          <div className="relative space-y-8">
 
-              <h2 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-[var(--foreground)]">
-                <span>Sporte</span>
-                <span className="logo-x text-5xl sm:text-6xl align-middle mx-1">X</span>
-                <span>a</span>
-              </h2>
+            {/* Badge + título */}
+            <header className="space-y-5">
+              
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                
+                {/* Badge */}
+                <p className="inline-flex w-fit items-center rounded-full border border-orange-200/80 dark:border-orange-400/30 bg-white/80 dark:bg-slate-900/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-orange-600 dark:text-orange-300 backdrop-blur transition-all duration-300 hover:scale-[1.03]">
+                  Tu plataforma para deportes
+                </p>
 
+                {/* Espacio en desktop */}
+                <div className="hidden sm:block" />
+              </div>
+
+              {/* Título */}
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 dark:text-[var(--foreground)] leading-tight">
+                Organizá tu torneo con{" "}
+                <span className="inline-block">
+                  <span>Sporte</span>
+                  <span className="logo-x text-5xl sm:text-6xl lg:text-7xl align-middle mx-1 animate-pulse">
+                    X
+                  </span>
+                  <span>a</span>
+                </span>
+              </h1>
+
+              {/* Subtexto */}
               <p className="max-w-2xl text-sm sm:text-base text-slate-600 dark:text-[var(--text-muted)]">
                 Organizá partidos, descubrí torneos y seguí tu evolución en una experiencia moderna, clara y hecha para la comunidad.
               </p>
+
+              {/* CTA */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <a
+                  href="/groups"
+                  className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white transition-all duration-300 hover:bg-orange-600 hover:scale-[1.02] shadow-lg shadow-orange-500/20"
+                >
+                  Empezar ahora
+                </a>
+
+                <a
+                  href="#"
+                  className="inline-flex items-center justify-center rounded-xl border border-neutral-300 dark:border-neutral-700 px-6 py-3 text-sm font-semibold text-slate-700 dark:text-neutral-200 transition-all duration-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                >
+                  Ver demo
+                </a>
+              </div>
+
             </header>
 
+            {/* Cards */}
             <div className="grid gap-4 md:grid-cols-3">
-              {featureCards.map((feature) => (
+              {featureCards.map((feature, i) => (
                 <article
                   key={feature.title}
-                  className="rounded-2xl border border-white/80 dark:border-[var(--border)] bg-white/80 dark:bg-slate-900/70 backdrop-blur px-4 py-5 shadow-[0_10px_30px_rgba(251,146,60,0.10)]"
+                  className="group rounded-2xl border border-white/80 dark:border-[var(--border)] bg-white/80 dark:bg-slate-900/70 backdrop-blur px-4 py-5 shadow-[0_10px_30px_rgba(251,146,60,0.10)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_15px_40px_rgba(251,146,60,0.18)]"
                 >
-                  <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-500/20 dark:to-amber-500/20 text-xl shadow-inner ring-1 ring-orange-200/70 dark:ring-orange-300/20">
+                  <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-500/20 dark:to-amber-500/20 text-xl shadow-inner ring-1 ring-orange-200/70 dark:ring-orange-300/20 transition-transform duration-300 group-hover:scale-110">
                     <span className="-translate-y-[1px]">{feature.emoji}</span>
                   </div>
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-[var(--foreground)]">{feature.title}</h3>
-                  <p className="mt-1 text-sm text-slate-600 dark:text-[var(--text-muted)]">{feature.description}</p>
+
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-[var(--foreground)]">
+                    {feature.title}
+                  </h3>
+
+                  <p className="mt-1 text-sm text-slate-600 dark:text-[var(--text-muted)]">
+                    {feature.description}
+                  </p>
                 </article>
               ))}
             </div>
 
-            <div>
-              <Link
-                href="/groups"
-                className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
-              >
-                Empecemos
-              </Link>
-            </div>
           </div>
         </section>
       )}
-
-      <h1 className="text-sm uppercase tracking-wide text-slate-400">
-        Tablero
-      </h1>
 
       <h2 className="text-3xl font-bold text-neutral-800 dark:text-[var(--foreground)]">
         Próximos partidos

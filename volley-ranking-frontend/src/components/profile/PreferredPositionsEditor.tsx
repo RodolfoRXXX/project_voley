@@ -170,6 +170,7 @@ export default function PreferredPositionsEditor({
               key={p}
               label={`${i + 1}. ${p}`}
               variant="info"
+              size="md"
             />
           ))}
 
@@ -186,6 +187,7 @@ export default function PreferredPositionsEditor({
                   selected ? `${index + 1}. ${p}` : p
                 }
                 variant={selected ? "info" : "neutral"}
+                size="md"
                 onClick={
                   disabled ? undefined : () => togglePosition(p)
                 }
@@ -222,6 +224,7 @@ export default function PreferredPositionsEditor({
             label={roleLabel[role]}
             variant={role === "admin" ? "warning" : "success"}
             size="md"
+            inline
           />
         )}
       </div>

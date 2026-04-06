@@ -49,7 +49,7 @@ type TournamentQueryRow = {
 };
 
 export default function DashboardPage() {
-  const { firebaseUser, userDoc } = useAuth();
+  const { firebaseUser, userDoc, loading: authLoading } = useAuth();
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [tournamentMatches, setTournamentMatches] = useState<TournamentDashboardMatch[]>([]);
@@ -199,6 +199,25 @@ export default function DashboardPage() {
   }, []);
 
   const loading = matchesLoading || tournamentLoading;
+  const showGuestHero = !authLoading && !firebaseUser;
+
+  const featureCards = [
+    {
+      emoji: "🏐",
+      title: "Partidos sociales en minutos",
+      description: "Creá o encontrá partidos abiertos, unite rápido y coordiná con tu grupo desde un solo lugar.",
+    },
+    {
+      emoji: "🏆",
+      title: "Torneos organizados",
+      description: "Seguí fases, cruces y equipos con una vista clara para vivir cada torneo como profesional.",
+    },
+    {
+      emoji: "📈",
+      title: "Ranking y progreso",
+      description: "Tu actividad suma. Medí tu avance y mantené el ritmo para escalar posiciones.",
+    },
+  ];
 
   /* =====================
      SKELETON
@@ -229,6 +248,46 @@ export default function DashboardPage() {
 
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
+      {showGuestHero && (
+        <section className="relative overflow-hidden rounded-3xl border border-orange-100 bg-gradient-to-br from-orange-50 via-white to-amber-50 p-6 sm:p-8 shadow-sm">
+          <div className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-orange-300/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-amber-300/20 blur-3xl" />
+
+          <div className="relative space-y-6">
+            <header className="space-y-3">
+              <p className="inline-flex items-center rounded-full border border-orange-200 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">
+                Tu plataforma de vóley
+              </p>
+
+              <h2 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900">
+                <span className="text-slate-900">Sporte</span>
+                <span className="font-[var(--font-arizonia)] text-5xl sm:text-6xl text-orange-500 align-middle mx-1">X</span>
+                <span className="text-slate-900">a</span>
+              </h2>
+
+              <p className="max-w-2xl text-sm sm:text-base text-slate-600">
+                Organizá partidos, descubrí torneos y seguí tu evolución en una experiencia moderna, clara y hecha para la comunidad.
+              </p>
+            </header>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              {featureCards.map((feature) => (
+                <article
+                  key={feature.title}
+                  className="rounded-2xl border border-white/70 bg-white/80 backdrop-blur px-4 py-5 shadow-[0_10px_30px_rgba(251,146,60,0.10)]"
+                >
+                  <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 text-xl shadow-inner ring-1 ring-orange-200/70">
+                    <span className="-translate-y-[1px]">{feature.emoji}</span>
+                  </div>
+                  <h3 className="text-base font-semibold text-slate-900">{feature.title}</h3>
+                  <p className="mt-1 text-sm text-slate-600">{feature.description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       <h1 className="text-sm uppercase tracking-wide text-slate-400">
         Tablero
       </h1>

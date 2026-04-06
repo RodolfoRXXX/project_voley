@@ -190,8 +190,8 @@ export default function AppSidebar() {
                 className="w-10 h-10 rounded-full object-cover"
             />
             ) : (
-            <div className="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center text-sm">
-                👤
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-100 to-amber-100 ring-1 ring-orange-200 flex items-center justify-center text-base shadow-inner">
+              <span className="-translate-y-[1px]">👤</span>
             </div>
             )}
 

@@ -44,6 +44,33 @@ export default function EnablePushButton() {
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+
+    const checkExistingSubscription = async () => {
+      if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+        return;
+      }
+
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const existingSubscription = await registration.pushManager.getSubscription();
+        if (mounted && Notification.permission === "granted" && existingSubscription) {
+          setStatus("ok");
+          setMessage("Notificaciones activadas correctamente.");
+        }
+      } catch {
+        // noop: si falla el chequeo inicial, el usuario igual puede intentar activar manualmente
+      }
+    };
+
+    checkExistingSubscription();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const handleEnable = async () => {
     try {
       setStatus("loading");

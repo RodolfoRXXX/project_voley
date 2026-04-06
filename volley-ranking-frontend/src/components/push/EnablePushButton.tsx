@@ -91,8 +91,8 @@ export default function EnablePushButton() {
     }
   };
 
+  const hasVapidConfigurationError = !isCheckingVapidKey && !vapidPublicKey;
   const notificationsAreActive = status === "ok";
-  const hasVapidConfigurationError = !isCheckingVapidKey && !vapidPublicKey && !notificationsAreActive;
   const isButtonDisabled = status === "loading" || notificationsAreActive || hasVapidConfigurationError;
 
   return (

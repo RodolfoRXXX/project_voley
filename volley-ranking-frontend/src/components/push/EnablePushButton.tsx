@@ -96,7 +96,7 @@ export default function EnablePushButton() {
   const isButtonDisabled = status === "loading" || notificationsAreActive || hasVapidConfigurationError;
 
   return (
-    <div className="rounded-xl border p-4 bg-white space-y-2">
+    <div className="rounded-md border border-neutral-200 p-6 bg-white space-y-3">
       <p className="text-sm text-gray-700">Activá notificaciones para avisos de grupos y torneos.</p>
       <div className="flex items-center gap-2">
         <button
@@ -111,8 +111,6 @@ export default function EnablePushButton() {
               ? "Notificaciones activas"
               : "Activar notificaciones"}
         </button>
-        {notificationsAreActive ? <span aria-label="Notificaciones activas">✅</span> : null}
-        {hasVapidConfigurationError ? <span aria-label="Error de configuración de notificaciones">❌</span> : null}
       </div>
       {hasVapidConfigurationError ? (
         <p className="text-xs text-amber-700">

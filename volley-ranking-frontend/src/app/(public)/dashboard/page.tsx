@@ -7,13 +7,16 @@
 
 import { useEffect, useState } from "react";
 import { collection, doc, getDoc, getDocs, onSnapshot, query, where, Timestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import MatchCard from "@/components/matchCard/MatchCard";
 import { Skeleton } from "@/components/ui/skeleton/Skeleton";
 import type { Match } from "@/types/match";
 import { tournamentPhaseTypeLabel, type TournamentPhaseType } from "@/types/tournaments/tournamentPhase";
 import Link from "next/link";
+import useToast from "@/components/ui/toast/useToast";
+import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
 
 const SOCIAL_MATCH_STATUSES = ["abierto", "verificando", "cerrado", "cancelado"] as const;
 
@@ -50,12 +53,22 @@ type TournamentQueryRow = {
 
 export default function DashboardPage() {
   const { firebaseUser, userDoc, loading: authLoading } = useAuth();
+  const { showToast } = useToast();
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [tournamentMatches, setTournamentMatches] = useState<TournamentDashboardMatch[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [tournamentLoading, setTournamentLoading] = useState(true);
   const [groupsMap, setGroupsMap] = useState<Record<string, string>>({});
+
+  const login = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      handleAuthPopupError(err, showToast);
+    }
+  };
 
   // 🔑 HOOKS SIEMPRE ARRIBA, SIN IF
   useEffect(() => {
@@ -288,19 +301,13 @@ export default function DashboardPage() {
 
               {/* CTA */}
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <a
-                  href="/groups"
+                <button
+                  type="button"
+                  onClick={login}
                   className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white transition-all duration-300 hover:bg-orange-600 hover:scale-[1.02] shadow-lg shadow-orange-500/20"
                 >
                   Empezar ahora
-                </a>
-
-                <a
-                  href="#"
-                  className="inline-flex items-center justify-center rounded-xl border border-neutral-300 dark:border-neutral-700 px-6 py-3 text-sm font-semibold text-slate-700 dark:text-neutral-200 transition-all duration-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                >
-                  Ver demo
-                </a>
+                </button>
               </div>
 
             </header>

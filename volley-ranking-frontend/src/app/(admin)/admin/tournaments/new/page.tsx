@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
+import { Spinner } from "@/components/ui/spinner/spinner";
 
 import { createTournament } from "@/services/tournaments/tournamentMutations";
 import { getKnockoutBracketSize, getKnockoutPreview, type KnockoutStartFrom } from "@/lib/tournaments/knockout";
@@ -892,9 +893,10 @@ export default function NewTournamentPage() {
         <div className="flex items-center gap-3 pt-2">
           <button
             disabled={loading}
-            className="px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-800 disabled:opacity-60"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-800 disabled:opacity-60"
           >
-            {loading ? "Creando..." : "Crear torneo"}
+            {loading ? <Spinner /> : null}
+            Crear torneo
           </button>
 
           <Link

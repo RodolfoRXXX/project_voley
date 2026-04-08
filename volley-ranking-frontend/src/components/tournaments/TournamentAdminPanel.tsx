@@ -36,6 +36,7 @@ import {
 import { TournamentPhaseShell, TournamentPhaseTimeline } from "@/components/tournaments/admin/TournamentPhaseShell";
 import { TournamentGroupsList, TournamentStandingsTable } from "@/components/tournaments/admin/TournamentAdminPhaseSections";
 import { MatchResultModal, type MatchResultDraft } from "@/components/tournaments/admin/MatchResultModal";
+import { Spinner } from "@/components/ui/spinner/spinner";
 import {
   getTournamentLeagueProgress,
   groupTournamentMatches,
@@ -650,9 +651,10 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           <button
             onClick={onMainAction}
             disabled={isMainActionDisabled}
-            className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white dark:ring-1 dark:ring-neutral-500/60"
+            className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white dark:ring-1 dark:ring-neutral-500/60"
           >
-            {busyAction ? "Procesando..." : action.label}
+            {busyAction ? <Spinner /> : null}
+            {action.label}
           </button>
           <button
             onClick={onCancelTournament}
@@ -673,16 +675,18 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
                 <button
                   onClick={onPreviewGroups}
                   disabled={loadingGroupsPreview}
-                  className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium disabled:opacity-60"
                 >
-                  {loadingGroupsPreview ? "Generando..." : previewGroups ? "Regenerar grupos" : "Generar grupos"}
+                  {loadingGroupsPreview ? <Spinner /> : null}
+                  {previewGroups ? "Regenerar grupos" : "Generar grupos"}
                 </button>
                 <button
                   onClick={onConfirmGroups}
                   disabled={confirmingGroups || !previewGroups || previewGroups.length === 0}
-                  className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white dark:ring-1 dark:ring-neutral-500/60"
+                  className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white dark:ring-1 dark:ring-neutral-500/60"
                 >
-                  {confirmingGroups ? "Confirmando..." : "Confirmar grupos"}
+                  {confirmingGroups ? <Spinner /> : null}
+                  Confirmar grupos
                 </button>
               </div>
             )}
@@ -715,16 +719,18 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
                 <button
                   onClick={onPreviewFixture}
                   disabled={loadingPreview}
-                  className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium disabled:opacity-60"
                 >
-                  {loadingPreview ? "Generando..." : "Generar fixture"}
+                  {loadingPreview ? <Spinner /> : null}
+                  Generar fixture
                 </button>
                 <button
                   onClick={onConfirmFixture}
                   disabled={confirmingFixture || !previewTournamentMatches || previewTournamentMatches.length === 0}
-                  className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white dark:ring-1 dark:ring-neutral-500/60"
+                  className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white dark:ring-1 dark:ring-neutral-500/60"
                 >
-                  {confirmingFixture ? "Confirmando..." : "Confirmar fixture"}
+                  {confirmingFixture ? <Spinner /> : null}
+                  Confirmar fixture
                 </button>
               </div>
             )}

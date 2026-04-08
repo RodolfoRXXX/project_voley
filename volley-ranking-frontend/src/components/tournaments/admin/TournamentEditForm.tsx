@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { getKnockoutBracketSize, getKnockoutPreview, getKnockoutRoundLabel, type KnockoutStartFrom } from "@/lib/tournaments/knockout";
 import { getMixedConfigurationMessage, getMixedQualificationSummary } from "@/lib/tournaments/mixed";
 import type { Tournament } from "@/types/tournaments";
+import { Spinner } from "@/components/ui/spinner/spinner";
 
 export type TournamentFormValues = {
   name: string;
@@ -544,7 +545,10 @@ export function TournamentEditForm({
 
         <div className="flex gap-2 pt-2">
           <button disabled={saving} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm text-white dark:bg-neutral-200 dark:text-neutral-900">
-            {saving ? "Guardando..." : "Guardar cambios"}
+            <span className="inline-flex items-center gap-2">
+              {saving ? <Spinner /> : null}
+              Guardar cambios
+            </span>
           </button>
 
           <button type="button" onClick={onCancel} className="rounded-lg border px-4 py-2 text-sm">

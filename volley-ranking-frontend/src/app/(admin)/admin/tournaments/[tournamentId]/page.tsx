@@ -19,6 +19,7 @@ import { TournamentPodiumCard } from "@/components/tournaments/TournamentPodiumC
 import { TournamentAdminsCard } from "@/components/tournaments/TournamentAdminsCard";
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton/Skeleton";
+import { Spinner } from "@/components/ui/spinner/spinner";
 
 import { addTournamentAdmin, editTournament, removeTournamentAdmin } from "@/services/tournaments/tournamentMutations";
 import { getAdminTournamentRegistrationsView, getTournamentById, getTournamentTeams, getUsersByIds, searchAdminsByName } from "@/services/tournaments/tournamentQueries";
@@ -579,9 +580,10 @@ export default function AdminTournamentDetailPage() {
                     <button
                       onClick={() => onAddAdmin(admin.id)}
                       disabled={addingAdmin}
-                      className="text-xs rounded-lg border border-neutral-300 px-2 py-1 hover:bg-neutral-50 disabled:opacity-60"
+                      className="inline-flex items-center gap-2 text-xs rounded-lg border border-neutral-300 px-2 py-1 hover:bg-neutral-50 disabled:opacity-60"
                     >
-                      {addingAdmin ? "Agregando..." : "Agregar"}
+                      {addingAdmin ? <Spinner size="sm" /> : null}
+                      Agregar
                     </button>
                   </li>
                 ))}

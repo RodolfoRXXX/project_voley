@@ -36,10 +36,6 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId, nameT
   const registrationId = `${tournamentId}_${groupId}`;
   const registrationRef = db.collection("tournamentRegistrations").doc(registrationId);
 
-  let acceptedGroupId = null;
-  let acceptedTournamentId = null;
-  let acceptedTournamentName = "Torneo";
-
   await db.runTransaction(async (trx) => {
 
     const tournamentSnap = await trx.get(tournamentRef);
@@ -126,6 +122,9 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
 
   const sourceCollection = source === "team" ? "tournamentTeams" : "tournamentRegistrations";
   const registrationRef = db.collection(sourceCollection).doc(registrationId);
+  let acceptedGroupId = null;
+  let acceptedTournamentId = null;
+  let acceptedTournamentName = "Torneo";
 
   await db.runTransaction(async (trx) => {
     const registrationSnap = await trx.get(registrationRef);
@@ -143,6 +142,7 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
     }
 
     const tournament = tournamentSnap.data();
+    acceptedTournamentName = tournament?.name || tournament?.nombre || "Torneo";
     assertTournamentAdmin(tournament, uid);
 
     const isPendingRegistration = registration.status === "pendiente";

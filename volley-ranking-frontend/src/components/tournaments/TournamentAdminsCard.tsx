@@ -1,4 +1,5 @@
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
+import { Spinner } from "@/components/ui/spinner/spinner";
 
 type TournamentAdminsCardProps = {
   admins: Array<{ id: string; name: string; photoURL: string | null }>;
@@ -65,9 +66,10 @@ export function TournamentAdminsCard({
               <button
                 onClick={() => onRemoveAdmin?.(admin.id)}
                 disabled={removingAdminId === admin.id || isTournamentFinalized}
-                className="text-xs rounded-lg border border-red-200 text-red-700 px-2 py-1 hover:bg-red-50 disabled:opacity-60"
+                className="inline-flex items-center gap-2 text-xs rounded-lg border border-red-200 text-red-700 px-2 py-1 hover:bg-red-50 disabled:opacity-60"
               >
-                {removingAdminId === admin.id ? "Quitando..." : "Quitar"}
+                {removingAdminId === admin.id ? <Spinner size="sm" /> : null}
+                Quitar
               </button>
             ) : null}
           </li>

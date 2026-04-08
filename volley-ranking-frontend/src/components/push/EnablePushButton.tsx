@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { enablePushNotifications } from "@/services/push/pushNotifications";
+import { Spinner } from "@/components/ui/spinner/spinner";
 
 export default function EnablePushButton() {
   const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
@@ -103,13 +104,10 @@ export default function EnablePushButton() {
           type="button"
           onClick={handleEnable}
           disabled={isButtonDisabled}
-          className="rounded-md bg-blue-600 px-3 py-2 text-white text-sm disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-white text-sm disabled:opacity-60"
         >
-          {status === "loading"
-            ? "Activando..."
-            : notificationsAreActive
-              ? "Notificaciones activas"
-              : "Activar notificaciones"}
+          {status === "loading" ? <Spinner /> : null}
+          {notificationsAreActive ? "Notificaciones activas" : "Activar notificaciones"}
         </button>
       </div>
       {hasVapidConfigurationError ? (

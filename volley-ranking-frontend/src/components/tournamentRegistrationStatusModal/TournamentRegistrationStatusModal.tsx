@@ -7,6 +7,7 @@ import { functions } from "@/lib/firebase";
 import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
+import { Spinner } from "@/components/ui/spinner/spinner";
 import {
   TournamentRegistrationStatusModalProps,
   RegistrationStatus,
@@ -271,9 +272,10 @@ export default function TournamentRegistrationStatusModal({
               type="button"
               onClick={onConfirmPayment}
               disabled={isTournamentFinalized || savingPayment || Number(paidAmountInput || 0) <= 0}
-              className="h-10 rounded-lg bg-neutral-900 text-white text-sm font-medium dark:bg-neutral-200 dark:text-neutral-900 disabled:opacity-60"
+              className="inline-flex items-center gap-2 h-10 rounded-lg bg-neutral-900 px-4 text-white text-sm font-medium dark:bg-neutral-200 dark:text-neutral-900 disabled:opacity-60"
             >
-              {savingPayment ? "Guardando..." : "Guardar pago"}
+              {savingPayment ? <Spinner /> : null}
+              Guardar pago
             </button>
           </div>
 
@@ -298,13 +300,10 @@ export default function TournamentRegistrationStatusModal({
               type="button"
               onClick={() => onReviewRegistration(isTeamSource ? "equipo_rechazado" : "rechazado")}
               disabled={isTournamentFinalized || reviewing !== null}
-              className="h-10 rounded-lg bg-red-600 px-4 text-white text-sm font-medium disabled:opacity-60"
+              className="inline-flex items-center gap-2 h-10 rounded-lg bg-red-600 px-4 text-white text-sm font-medium disabled:opacity-60"
             >
-              {reviewing === "rechazado" || reviewing === "equipo_rechazado"
-                ? "Rechazando..."
-                : isTeamSource
-                  ? "Eliminar equipo"
-                  : "Rechazar inscripción"}
+              {reviewing === "rechazado" || reviewing === "equipo_rechazado" ? <Spinner /> : null}
+              {isTeamSource ? "Eliminar equipo" : "Rechazar inscripción"}
             </button>
 
             {!isTeamSource && (
@@ -312,9 +311,10 @@ export default function TournamentRegistrationStatusModal({
                 type="button"
                 onClick={() => onReviewRegistration("aceptado")}
                 disabled={isTournamentFinalized || !canApprove || reviewing !== null}
-                className="h-10 rounded-lg bg-emerald-600 px-4 text-white text-sm font-medium disabled:opacity-60"
+                className="inline-flex items-center gap-2 h-10 rounded-lg bg-emerald-600 px-4 text-white text-sm font-medium disabled:opacity-60"
               >
-                {reviewing === "aceptado" ? "Aceptando..." : "Aceptar inscripción"}
+                {reviewing === "aceptado" ? <Spinner /> : null}
+                Aceptar inscripción
               </button>
             )}
           </div>

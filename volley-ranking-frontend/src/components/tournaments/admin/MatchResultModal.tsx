@@ -2,6 +2,7 @@
 
 import type { Tournament, TournamentMatch, TournamentPhase } from "@/types/tournaments";
 import { tournamentPhaseTypeLabel } from "@/types/tournaments/tournamentPhase";
+import { Spinner } from "@/components/ui/spinner/spinner";
 
 export type MatchResultDraft = {
   homeSets: string;
@@ -236,9 +237,10 @@ export function MatchResultModal({
               type="button"
               onClick={onSubmit}
               disabled={saving}
-              className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
             >
-              {saving ? "Guardando..." : tournamentMatch.status === "completed" ? "Guardar cambios" : "Guardar resultado"}
+              {saving ? <Spinner /> : null}
+              {tournamentMatch.status === "completed" ? "Guardar cambios" : "Guardar resultado"}
             </button>
           </div>
         </div>

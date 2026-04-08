@@ -421,72 +421,134 @@ export default function DashboardPage() {
         </>
       )}
       {selectedTournamentCard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
-          <section className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-5 space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-neutral-500">Torneo activo</p>
-                <h3 className="text-xl font-semibold text-neutral-900">{selectedTournamentCard.name}</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4 py-6">
+          <section className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-6 space-y-6 shadow-2xl">
+
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-[11px] uppercase tracking-widest text-orange-500 font-semibold">
+                  Torneo activo
+                </p>
+                <h3 className="text-2xl font-bold text-neutral-900 leading-tight">
+                  {selectedTournamentCard.name}
+                </h3>
               </div>
+
               <button
                 type="button"
                 onClick={() => setSelectedTournamentCard(null)}
-                className="rounded-lg border border-neutral-300 px-2 py-1 text-sm text-neutral-700 hover:bg-neutral-50"
+                className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 transition"
               >
-                Cerrar
+                ✕
               </button>
             </div>
 
-            <p className="text-sm text-neutral-700">{selectedTournamentCard.description}</p>
+            {/* Descripción */}
+            <p className="text-sm text-neutral-600 leading-relaxed">
+              {selectedTournamentCard.description}
+            </p>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <article className="rounded-lg border border-neutral-200 p-3 text-sm text-neutral-700">
-                <p>Tipo de torneo: <b>{selectedTournamentCard.format}</b></p>
-                <p>Etapa actual: <b>{tournamentPhaseTypeLabel[selectedTournamentCard.phaseType]}</b></p>
-                <p>Equipos confirmados: <b>{selectedTournamentCard.teamsCount}</b></p>
+            {/* Info principal */}
+            <div className="grid gap-4 sm:grid-cols-2">
+
+              <article className="rounded-xl border border-neutral-200 dark:border-neutral-800 
+                                  p-4 bg-neutral-50/60 dark:bg-neutral-900/60 space-y-2">
+                <p className="text-sm">
+                  <span className="text-neutral-500">Tipo:</span>{" "}
+                  <b className="text-neutral-900">{selectedTournamentCard.format}</b>
+                </p>
+                <p className="text-sm">
+                  <span className="text-neutral-500">Fase:</span>{" "}
+                  <b className="text-neutral-900">
+                    {tournamentPhaseTypeLabel[selectedTournamentCard.phaseType]}
+                  </b>
+                </p>
+                <p className="text-sm">
+                  <span className="text-neutral-500">Equipos:</span>{" "}
+                  <b className="text-neutral-900">{selectedTournamentCard.teamsCount}</b>
+                </p>
               </article>
-              <article className="rounded-lg border border-neutral-200 p-3 text-sm text-neutral-700">
-                <p className="font-semibold text-neutral-900">Información importante</p>
-                <ul className="mt-2 list-disc pl-4 space-y-1">
+
+              <article className="rounded-lg border border-neutral-200 dark:border-neutral-800 
+                                  bg-neutral-50/50 dark:bg-neutral-900/50 p-2">
+                <p className="text-sm font-semibold text-neutral-900">
+                  Información importante
+                </p>
+                <ul className="mt-2 space-y-1 text-sm text-neutral-600">
                   {selectedTournamentCard.importantInfo.map((item) => (
-                    <li key={item}>{item}</li>
+                    <li key={item} className="flex gap-2">
+                      <span className="text-orange-500">•</span>
+                      <span>{item}</span>
+                    </li>
                   ))}
                 </ul>
               </article>
             </div>
 
-            <article className="rounded-lg border border-neutral-200 p-3 text-sm text-neutral-700 space-y-2">
-              <p className="font-semibold text-neutral-900">Tabla de posiciones</p>
+            {/* Tabla */}
+            <article className="space-y-2">
+              <p className="text-sm font-semibold text-neutral-900">
+                Tabla de posiciones
+              </p>
+
               {selectedTournamentCard.standings.length === 0 ? (
-                <p className="text-neutral-500">Todavía no hay posiciones cargadas.</p>
+                <p className="text-xs text-neutral-500">
+                  Todavía no hay posiciones cargadas.
+                </p>
               ) : (
-                <ul className="space-y-1">
-                  {selectedTournamentCard.standings.map((standing) => (
-                    <li key={standing.id} className="flex items-center justify-between gap-3 rounded-md bg-neutral-50 px-2 py-1">
-                      <span>#{standing.position} {standing.teamName}</span>
-                      <span className="text-xs text-neutral-600">{standing.points} pts · {standing.played} PJ</span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 p-2">
+                  <ul className="text-xs text-neutral-700 dark:text-neutral-300">
+                    {selectedTournamentCard.standings.map((standing, i) => (
+                      <li
+                        key={standing.id}
+                        className={`mx-1 px-2 py-1 flex items-center justify-between ${
+                          i !== selectedTournamentCard.standings.length - 1
+                            ? "border-b border-neutral-200/70 dark:border-neutral-700/60"
+                            : ""
+                        }`}
+                      >
+                        <span>
+                          #{standing.position} {standing.teamName}
+                        </span>
+                        <span className="text-neutral-500 dark:text-neutral-400">
+                          {standing.points} pts · {standing.played} PJ
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </article>
 
-            <article className="rounded-lg border border-neutral-200 p-3 text-sm text-neutral-700 space-y-2">
-              <p className="font-semibold text-neutral-900">Próximos partidos</p>
+            {/* Próximos partidos */}
+            <article className="space-y-3">
+              <p className="text-sm font-semibold text-neutral-900">
+                Próximos partidos
+              </p>
+
               {selectedTournamentCard.upcomingMatches.length === 0 ? (
-                <p className="text-neutral-500">No hay partidos pendientes.</p>
+                <p className="text-sm text-neutral-500">
+                  No hay partidos pendientes.
+                </p>
               ) : (
-                <ul className="space-y-1">
+                <ul className="space-y-2">
                   {selectedTournamentCard.upcomingMatches.map((match) => (
-                    <li key={match.id} className="rounded-md bg-neutral-50 px-2 py-1">
-                      <b>{match.homeTeamName}</b> vs <b>{match.awayTeamName}</b>
+                    <li
+                      key={match.id}
+                      className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm hover:bg-neutral-50 transition"
+                    >
+                      <b>{match.homeTeamName}</b>{" "}
+                      <span className="text-neutral-400 mx-1">vs</span>{" "}
+                      <b>{match.awayTeamName}</b>
                     </li>
                   ))}
                 </ul>
               )}
             </article>
 
-            <div className="flex justify-end">
+            {/* CTA */}
+            <div className="flex justify-end pt-2">
               <button
                 type="button"
                 onClick={async () => {
@@ -498,11 +560,12 @@ export default function DashboardPage() {
                   if (!success) return;
                   router.push(`/tournaments/${selectedTournamentCard.id}`);
                 }}
-                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+                className="rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-orange-500/20 transition hover:bg-orange-600 hover:scale-[1.02]"
               >
-                Ver detalle completo
+                Ver detalle completo →
               </button>
             </div>
+
           </section>
         </div>
       )}

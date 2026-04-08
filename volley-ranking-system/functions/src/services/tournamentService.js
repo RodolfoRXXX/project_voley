@@ -3,6 +3,8 @@ const { db } = require("../firebase");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getKnockoutBracketSize } = require("./tournamentFixtureService");
 const { buildDefaultAdvancementRules, validateMixedAdvancement } = require("./tournamentAdvancementService");
+const { emitDomainEvent } = require("../events/domainEventBus");
+const { DOMAIN_EVENTS } = require("../events/domainEvents");
 
 const TOURNAMENT_STATUS = {
   DRAFT: "draft",

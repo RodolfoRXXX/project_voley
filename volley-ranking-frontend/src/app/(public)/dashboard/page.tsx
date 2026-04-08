@@ -6,7 +6,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, doc, getDoc, getDocs, onSnapshot, query, where, Timestamp } from "firebase/firestore";
+import { collection, getDocs, onSnapshot, query, where, Timestamp } from "firebase/firestore";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,9 +14,10 @@ import MatchCard from "@/components/matchCard/MatchCard";
 import { Skeleton } from "@/components/ui/skeleton/Skeleton";
 import type { Match } from "@/types/match";
 import { tournamentPhaseTypeLabel, type TournamentPhaseType } from "@/types/tournaments/tournamentPhase";
-import Link from "next/link";
+import { tournamentStatusLabel } from "@/types/tournaments/tournament";
 import useToast from "@/components/ui/toast/useToast";
 import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
+import { useRouter } from "next/navigation";
 
 const SOCIAL_MATCH_STATUSES = ["abierto", "verificando", "cerrado", "cancelado"] as const;
 
@@ -28,6 +29,19 @@ type TournamentDashboardMatch = {
   phaseType: TournamentPhaseType | "group_stage";
   homeTeamName: string;
   awayTeamName: string;
+};
+
+type TournamentDashboardCard = {
+  id: string;
+  name: string;
+  format: string;
+  phaseType: TournamentPhaseType | "group_stage";
+  description: string;
+  teamsCount: number;
+  nextMatch: TournamentDashboardMatch | null;
+  standings: Array<{ id: string; teamName: string; position: number; points: number; played: number }>;
+  upcomingMatches: TournamentDashboardMatch[];
+  importantInfo: string[];
 };
 
 type TournamentMatchQueryRow = {
@@ -52,11 +66,13 @@ type TournamentQueryRow = {
 };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { firebaseUser, userDoc, loading: authLoading } = useAuth();
   const { showToast } = useToast();
 
   const [matches, setMatches] = useState<Match[]>([]);
-  const [tournamentMatches, setTournamentMatches] = useState<TournamentDashboardMatch[]>([]);
+  const [activeTournamentCards, setActiveTournamentCards] = useState<TournamentDashboardCard[]>([]);
+  const [selectedTournamentCard, setSelectedTournamentCard] = useState<TournamentDashboardCard | null>(null);
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [tournamentLoading, setTournamentLoading] = useState(true);
   const [groupsMap, setGroupsMap] = useState<Record<string, string>>({});
@@ -65,8 +81,10 @@ export default function DashboardPage() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
+      return true;
     } catch (err) {
       handleAuthPopupError(err, showToast);
+      return false;
     }
   };
 
@@ -136,79 +154,95 @@ export default function DashboardPage() {
   }, [firebaseUser?.uid, userDoc?.roles]);
 
   useEffect(() => {
-    const loadTournamentMatches = async () => {
-      const matchesSnap = await getDocs(query(collection(db, "tournamentMatches"), where("status", "==", "scheduled")));
+    const loadTournamentCards = async () => {
+      const tournamentsSnap = await getDocs(query(collection(db, "tournaments"), where("status", "==", "activo")));
 
-      const pendingMatches = matchesSnap.docs
-        .map((doc): TournamentMatchQueryRow => {
-          const data = doc.data() as Omit<TournamentMatchQueryRow, "id">;
-          return { id: doc.id, ...data };
-        })
-        .filter((match) => !match.result);
+      const cards = await Promise.all(
+        tournamentsSnap.docs.map(async (docSnap) => {
+          const tournamentData = docSnap.data() as Omit<TournamentQueryRow, "id"> & { description?: string; status?: string; currentPhaseId?: string };
+          const tournamentId = docSnap.id;
 
-      const tournamentIds = Array.from(new Set(pendingMatches.map((match) => String(match.tournamentId || "")).filter(Boolean)));
-      if (tournamentIds.length === 0) {
-        setTournamentMatches([]);
-        return;
-      }
+          const [phasesSnap, teamsSnap, matchesSnap, standingsSnap] = await Promise.all([
+            getDocs(query(collection(db, "tournamentPhases"), where("tournamentId", "==", tournamentId))),
+            getDocs(query(collection(db, "tournamentTeams"), where("tournamentId", "==", tournamentId))),
+            getDocs(query(collection(db, "tournamentMatches"), where("tournamentId", "==", tournamentId), where("status", "==", "scheduled"))),
+            getDocs(query(collection(db, "tournamentStandings"), where("tournamentId", "==", tournamentId))),
+          ]);
 
-      const tournamentDocs = await Promise.all(
-        tournamentIds.map(async (tournamentId) => {
-          const snap = await getDoc(doc(db, "tournaments", tournamentId));
-          if (!snap.exists()) return null;
-          const data = snap.data() as Omit<TournamentQueryRow, "id">;
-          return { id: snap.id, ...data } as TournamentQueryRow;
-        })
-      );
-      const phaseDocs = await Promise.all(
-        tournamentIds.map(async (tournamentId) => {
-          const phasesSnap = await getDocs(query(collection(db, "tournamentPhases"), where("tournamentId", "==", tournamentId)));
-          return phasesSnap.docs.map((phaseDoc): TournamentPhaseQueryRow => {
+          const phaseDocs = phasesSnap.docs.map((phaseDoc): TournamentPhaseQueryRow => {
             const data = phaseDoc.data() as Omit<TournamentPhaseQueryRow, "id">;
             return { id: phaseDoc.id, ...data };
           });
-        })
-      );
-      const teamDocs = await Promise.all(
-        tournamentIds.map(async (tournamentId) => {
-          const teamsSnap = await getDocs(query(collection(db, "tournamentTeams"), where("tournamentId", "==", tournamentId)));
-          return teamsSnap.docs.map((teamDoc) => ({
+          const currentPhase = phaseDocs.find((phase) => phase.id === tournamentData.currentPhaseId) || phaseDocs[0];
+
+          const teams = teamsSnap.docs.map((teamDoc) => ({
             id: teamDoc.id,
             name: String((teamDoc.data() as { nameTeam?: string; name?: string }).nameTeam || (teamDoc.data() as { name?: string }).name || "Equipo"),
-            tournamentId,
           }));
+          const teamsMap = new Map(teams.map((team) => [team.id, team.name]));
+
+          const pendingMatches = matchesSnap.docs
+            .map((matchDoc): TournamentMatchQueryRow => {
+              const data = matchDoc.data() as Omit<TournamentMatchQueryRow, "id"> & { round?: number; sequence?: number };
+              return { id: matchDoc.id, ...data };
+            })
+            .sort((a, b) => {
+              const roundA = Number((a as { round?: number }).round || 0);
+              const roundB = Number((b as { round?: number }).round || 0);
+              const seqA = Number((a as { sequence?: number }).sequence || 0);
+              const seqB = Number((b as { sequence?: number }).sequence || 0);
+              return roundA - roundB || seqA - seqB;
+            });
+
+          const mappedMatches = pendingMatches.map((match) => ({
+            id: String(match.id),
+            tournamentId,
+            tournamentName: String(tournamentData.name || "Torneo"),
+            tournamentType: String(tournamentData.format || "-"),
+            phaseType: (phaseDocs.find((phase) => phase.id === String(match.phaseId || ""))?.type || "group_stage") as TournamentPhaseType | "group_stage",
+            homeTeamName: teamsMap.get(String(match.homeTeamId || "")) || "Equipo por definir",
+            awayTeamName: teamsMap.get(String(match.awayTeamId || "")) || "Equipo por definir",
+          }));
+
+          const standings = standingsSnap.docs
+            .map((standingDoc) => {
+              const standingData = standingDoc.data() as { teamId?: string; position?: number; stats?: { points?: number; played?: number } };
+              return {
+                id: standingDoc.id,
+                teamName: teamsMap.get(String(standingData.teamId || "")) || "Equipo",
+                position: Number(standingData.position || 0),
+                points: Number(standingData.stats?.points || 0),
+                played: Number(standingData.stats?.played || 0),
+              };
+            })
+            .sort((a, b) => a.position - b.position)
+            .slice(0, 6);
+
+          const importantInfo = [
+            `Estado actual: ${tournamentStatusLabel[(tournamentData.status as keyof typeof tournamentStatusLabel) || "activo"] || "Activo"}`,
+            `Equipos confirmados: ${teams.length}`,
+            `Partidos pendientes: ${mappedMatches.length}`,
+          ];
+
+          return {
+            id: tournamentId,
+            name: String(tournamentData.name || "Torneo"),
+            format: String(tournamentData.format || "-"),
+            phaseType: (currentPhase?.type || "group_stage") as TournamentPhaseType | "group_stage",
+            description: String(tournamentData.description || "Sin descripción disponible."),
+            teamsCount: teams.length,
+            nextMatch: mappedMatches[0] || null,
+            standings,
+            upcomingMatches: mappedMatches.slice(0, 5),
+            importantInfo,
+          } as TournamentDashboardCard;
         })
       );
 
-      const tournamentsMap = new Map(tournamentDocs.filter(Boolean).map((doc) => [doc!.id, doc!]));
-      const phasesByTournamentId = new Map(phaseDocs.map((phases) => [String(phases[0]?.tournamentId || ""), phases]));
-      const teamsMap = new Map(teamDocs.flat().map((team) => [team.id, team.name]));
-
-      const rows = pendingMatches
-        .map((match) => {
-          const tournamentId = String(match.tournamentId || "");
-          const tournamentDoc = tournamentsMap.get(tournamentId);
-          if (!tournamentDoc) return null;
-
-          const phaseId = String(match.phaseId || "");
-          const phaseType = (phasesByTournamentId.get(tournamentId) || []).find((phase) => phase.id === phaseId)?.type as TournamentPhaseType | undefined;
-
-          return {
-            id: String(match.id),
-            tournamentId,
-            tournamentName: String(tournamentDoc.name || "Torneo"),
-            tournamentType: String(tournamentDoc.format || "-"),
-            phaseType: phaseType || "group_stage",
-            homeTeamName: teamsMap.get(String(match.homeTeamId || "")) || "Equipo por definir",
-            awayTeamName: teamsMap.get(String(match.awayTeamId || "")) || "Equipo por definir",
-          };
-        })
-        .filter((row): row is TournamentDashboardMatch => Boolean(row));
-
-      setTournamentMatches(rows);
+      setActiveTournamentCards(cards);
     };
 
-    loadTournamentMatches().finally(() => setTournamentLoading(false));
+    loadTournamentCards().finally(() => setTournamentLoading(false));
   }, []);
 
   const loading = matchesLoading || tournamentLoading;
@@ -314,7 +348,7 @@ export default function DashboardPage() {
 
             {/* Cards */}
             <div className="grid gap-4 md:grid-cols-3">
-              {featureCards.map((feature, i) => (
+              {featureCards.map((feature) => (
                 <article
                   key={feature.title}
                   className="group rounded-2xl border border-white/80 dark:border-[var(--border)] bg-white/80 dark:bg-slate-900/70 backdrop-blur px-4 py-5 shadow-[0_10px_30px_rgba(251,146,60,0.10)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_15px_40px_rgba(251,146,60,0.18)]"
@@ -342,7 +376,7 @@ export default function DashboardPage() {
         Próximos partidos
       </h2>
 
-      {matches.length === 0 && tournamentMatches.length === 0 ? (
+      {matches.length === 0 && activeTournamentCards.length === 0 ? (
         <p className="text-gray-500">No hay partidos disponibles.</p>
       ) : (
         <>
@@ -357,21 +391,28 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {tournamentMatches.length > 0 && (
+        {activeTournamentCards.length > 0 && (
           <section className="space-y-3">
-            <h3 className="text-xl font-semibold text-neutral-900">Próximos partidos de torneos</h3>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {tournamentMatches.map((match) => (
-                <article key={match.id} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-2">
-                  <p className="text-sm font-semibold text-neutral-900">{match.tournamentName}</p>
-                  <p className="text-xs text-neutral-600">Tipo: <b>{match.tournamentType}</b></p>
-                  <p className="text-xs text-neutral-600">Etapa: <b>{tournamentPhaseTypeLabel[match.phaseType]}</b></p>
+            <h3 className="text-xl font-semibold text-neutral-900">Torneos activos</h3>
+            <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
+              {activeTournamentCards.map((tournamentCard) => (
+                <article key={tournamentCard.id} className="min-w-[280px] sm:min-w-[330px] snap-start rounded-xl border border-neutral-200 bg-white p-4 space-y-2">
+                  <p className="text-sm font-semibold text-neutral-900">{tournamentCard.name}</p>
+                  <p className="text-xs text-neutral-600">Tipo: <b>{tournamentCard.format}</b></p>
+                  <p className="text-xs text-neutral-600">Etapa: <b>{tournamentPhaseTypeLabel[tournamentCard.phaseType]}</b></p>
                   <p className="text-sm text-neutral-700">
-                    <b>{match.homeTeamName}</b> vs <b>{match.awayTeamName}</b>
+                    Próximo partido:{" "}
+                    {tournamentCard.nextMatch
+                      ? <><b>{tournamentCard.nextMatch.homeTeamName}</b> vs <b>{tournamentCard.nextMatch.awayTeamName}</b></>
+                      : <b>Sin partidos pendientes</b>}
                   </p>
-                  <Link href={`/tournaments/${match.tournamentId}`} className="inline-block text-sm font-medium text-orange-600 hover:text-orange-700">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTournamentCard(tournamentCard)}
+                    className="inline-block text-sm font-medium text-orange-600 hover:text-orange-700"
+                  >
                     Ver detalle
-                  </Link>
+                  </button>
                 </article>
               ))}
             </div>
@@ -379,6 +420,93 @@ export default function DashboardPage() {
         )}
         </>
       )}
+      {selectedTournamentCard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
+          <section className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-neutral-500">Torneo activo</p>
+                <h3 className="text-xl font-semibold text-neutral-900">{selectedTournamentCard.name}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedTournamentCard(null)}
+                className="rounded-lg border border-neutral-300 px-2 py-1 text-sm text-neutral-700 hover:bg-neutral-50"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <p className="text-sm text-neutral-700">{selectedTournamentCard.description}</p>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <article className="rounded-lg border border-neutral-200 p-3 text-sm text-neutral-700">
+                <p>Tipo de torneo: <b>{selectedTournamentCard.format}</b></p>
+                <p>Etapa actual: <b>{tournamentPhaseTypeLabel[selectedTournamentCard.phaseType]}</b></p>
+                <p>Equipos confirmados: <b>{selectedTournamentCard.teamsCount}</b></p>
+              </article>
+              <article className="rounded-lg border border-neutral-200 p-3 text-sm text-neutral-700">
+                <p className="font-semibold text-neutral-900">Información importante</p>
+                <ul className="mt-2 list-disc pl-4 space-y-1">
+                  {selectedTournamentCard.importantInfo.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </article>
+            </div>
+
+            <article className="rounded-lg border border-neutral-200 p-3 text-sm text-neutral-700 space-y-2">
+              <p className="font-semibold text-neutral-900">Tabla de posiciones</p>
+              {selectedTournamentCard.standings.length === 0 ? (
+                <p className="text-neutral-500">Todavía no hay posiciones cargadas.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {selectedTournamentCard.standings.map((standing) => (
+                    <li key={standing.id} className="flex items-center justify-between gap-3 rounded-md bg-neutral-50 px-2 py-1">
+                      <span>#{standing.position} {standing.teamName}</span>
+                      <span className="text-xs text-neutral-600">{standing.points} pts · {standing.played} PJ</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+
+            <article className="rounded-lg border border-neutral-200 p-3 text-sm text-neutral-700 space-y-2">
+              <p className="font-semibold text-neutral-900">Próximos partidos</p>
+              {selectedTournamentCard.upcomingMatches.length === 0 ? (
+                <p className="text-neutral-500">No hay partidos pendientes.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {selectedTournamentCard.upcomingMatches.map((match) => (
+                    <li key={match.id} className="rounded-md bg-neutral-50 px-2 py-1">
+                      <b>{match.homeTeamName}</b> vs <b>{match.awayTeamName}</b>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (firebaseUser) {
+                    router.push(`/tournaments/${selectedTournamentCard.id}`);
+                    return;
+                  }
+                  const success = await login();
+                  if (!success) return;
+                  router.push(`/tournaments/${selectedTournamentCard.id}`);
+                }}
+                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+              >
+                Ver detalle completo
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
     </main>
   );
 }

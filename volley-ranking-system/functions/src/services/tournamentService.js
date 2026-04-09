@@ -177,7 +177,7 @@ function validateTournamentPayload(data) {
   };
 
   if (format === "mixto") {
-    validateMixedAdvancement({ structure, context: "crear el torneo mixto" });
+    validateMixedAdvancement({ structure, context: "crear el torneo de grupos y eliminatorias" });
   }
 
   return {
@@ -414,7 +414,7 @@ async function editTournament({ uid, tournamentId, data }) {
     }
 
     if ((restrictedPayload.structure || restrictedPayload.format) && (restrictedPayload.format || tournament.format) === "mixto") {
-      validateMixedAdvancement({ structure: nextPayload.structure || tournament.structure || {}, context: "editar el torneo mixto" });
+      validateMixedAdvancement({ structure: nextPayload.structure || tournament.structure || {}, context: "editar el torneo de grupos y eliminatorias" });
     }
 
     if (!restrictedPayload.phaseDefinitions && (restrictedPayload.structure || restrictedPayload.format)) {

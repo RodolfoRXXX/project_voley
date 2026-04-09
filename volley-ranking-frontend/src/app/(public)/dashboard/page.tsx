@@ -14,7 +14,7 @@ import MatchCard from "@/components/matchCard/MatchCard";
 import { Skeleton } from "@/components/ui/skeleton/Skeleton";
 import type { Match } from "@/types/match";
 import { tournamentPhaseTypeLabel, type TournamentPhaseType } from "@/types/tournaments/tournamentPhase";
-import { tournamentStatusLabel } from "@/types/tournaments/tournament";
+import { getTournamentFormatLabel, tournamentStatusLabel } from "@/types/tournaments/tournament";
 import useToast from "@/components/ui/toast/useToast";
 import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
 import { useRouter } from "next/navigation";
@@ -275,7 +275,7 @@ export default function DashboardPage() {
           return {
             id: tournamentId,
             name: String(tournamentData.name || "Torneo"),
-            format: String(tournamentData.format || "-"),
+            format: getTournamentFormatLabel(tournamentData.format),
             phaseType: (currentPhase?.type || "group_stage") as TournamentPhaseType | "group_stage",
             description: String(tournamentData.description || "Sin descripción disponible."),
             teamsCount: teams.length,

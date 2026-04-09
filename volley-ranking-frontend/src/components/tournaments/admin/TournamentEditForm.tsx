@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { getKnockoutBracketSize, getKnockoutPreview, getKnockoutRoundLabel, type KnockoutStartFrom } from "@/lib/tournaments/knockout";
 import { getMixedConfigurationMessage, getMixedQualificationSummary } from "@/lib/tournaments/mixed";
-import type { Tournament } from "@/types/tournaments";
+import { getTournamentFormatLabel, type Tournament } from "@/types/tournaments";
 import { Spinner } from "@/components/ui/spinner/spinner";
 
 export type TournamentFormValues = {
@@ -181,7 +181,7 @@ export function TournamentEditForm({
             >
               <option value="liga">Liga</option>
               <option value="eliminacion">Eliminación</option>
-              <option value="mixto">Normal</option>
+              <option value="mixto">Grupos y eliminatorias</option>
             </select>
           </div>
 
@@ -561,9 +561,7 @@ export function TournamentEditForm({
 }
 
 function formatLabel(format: Tournament["format"]) {
-  if (format === "mixto") return "Normal";
-  if (format === "eliminacion") return "Eliminación";
-  return "Liga";
+  return getTournamentFormatLabel(format);
 }
 
 function knockoutLabel(startFrom?: KnockoutStartFrom) {

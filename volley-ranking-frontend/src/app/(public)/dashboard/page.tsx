@@ -469,30 +469,72 @@ export default function DashboardPage() {
 
         {activeTournamentCards.length > 0 && (
           <section className="space-y-3">
-            <h3 className="text-xl font-semibold text-neutral-900">Torneos activos</h3>
-            <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
-              {activeTournamentCards.map((tournamentCard) => (
-                <article key={tournamentCard.id} className="min-w-[280px] sm:min-w-[330px] snap-start rounded-xl border border-neutral-200 bg-white p-4 space-y-2">
-                  <p className="text-sm font-semibold text-neutral-900">{tournamentCard.name}</p>
-                  <p className="text-xs text-neutral-600">Tipo: <b>{tournamentCard.format}</b></p>
-                  <p className="text-xs text-neutral-600">Etapa: <b>{tournamentPhaseTypeLabel[tournamentCard.phaseType]}</b></p>
-                  <p className="text-sm text-neutral-700">
-                    Próximo partido:{" "}
-                    {tournamentCard.nextMatch
-                      ? <><b>{tournamentCard.nextMatch.homeTeamName}</b> vs <b>{tournamentCard.nextMatch.awayTeamName}</b></>
-                      : <b>Sin partidos pendientes</b>}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTournamentCard(tournamentCard)}
-                    className="inline-block text-sm font-medium text-orange-600 hover:text-orange-700"
-                  >
-                    Ver detalle
-                  </button>
-                </article>
-              ))}
-            </div>
-          </section>
+  <h3 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+    Torneos activos
+  </h3>
+
+  <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
+    {activeTournamentCards.map((tournamentCard) => (
+      <article
+        key={tournamentCard.id}
+        className="group min-w-[280px] sm:min-w-[330px] snap-start rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 space-y-4 shadow-sm hover:shadow-md transition-all duration-300"
+      >
+
+        {/* Header */}
+        <div className="space-y-1">
+          <p className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+            {tournamentCard.name}
+          </p>
+
+          <div className="flex items-center gap-2 text-xs text-neutral-500">
+            <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300">
+              {tournamentCard.format}
+            </span>
+            <span className="text-neutral-400">•</span>
+            <span>
+              {tournamentPhaseTypeLabel[tournamentCard.phaseType]}
+            </span>
+          </div>
+        </div>
+
+        {/* Próximo partido */}
+        <div className="rounded-lg bg-neutral-50 dark:bg-neutral-800/60 px-3 py-2 text-sm">
+          <p className="text-xs text-neutral-500 mb-1">
+            Próximo partido
+          </p>
+
+          {tournamentCard.nextMatch ? (
+            <p className="font-medium text-neutral-900 dark:text-neutral-100">
+              <span>{tournamentCard.nextMatch.homeTeamName}</span>
+              <span className="text-neutral-400 mx-1">vs</span>
+              <span>{tournamentCard.nextMatch.awayTeamName}</span>
+            </p>
+          ) : (
+            <p className="text-neutral-500">
+              Sin partidos pendientes
+            </p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-xs text-neutral-500">
+            {tournamentCard.teamsCount} equipos
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setSelectedTournamentCard(tournamentCard)}
+            className="text-sm font-medium text-orange-600 hover:text-orange-700 transition"
+          >
+            Ver detalle →
+          </button>
+        </div>
+
+      </article>
+    ))}
+  </div>
+</section>
         )}
         </>
       )}

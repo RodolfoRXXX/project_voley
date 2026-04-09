@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { tournamentStatusLabel, type TournamentStatus } from "@/types/tournaments";
+import { getTournamentFormatLabel } from "@/types/tournaments/tournament";
 
 type GroupDoc = {
   nombre?: string;
@@ -31,6 +32,7 @@ type GroupTournamentRow = {
   name: string;
   description: string;
   format: string;
+  isMixed: boolean;
   status: TournamentStatus;
   podiumPlace: 1 | 2 | 3 | null;
 };
@@ -150,6 +152,7 @@ export default function ProfileGroupDetailPage() {
             name: tournamentData.name || "Torneo",
             description: tournamentData.description || "Sin descripción",
             format: tournamentData.format || "-",
+            isMixed: tournamentData.format === "mixto" || tournamentData.format === "normal",
             status: toTournamentStatus(tournamentData.status),
             podiumPlace: podiumPlace && podiumPlace <= 3 ? podiumPlace : null,
           };
@@ -231,7 +234,16 @@ export default function ProfileGroupDetailPage() {
                   ) : null}
                 </div>
                 <p><b>Descripción:</b> {tournament.description}</p>
-                <p><b>Tipo:</b> {tournament.format}</p>
+                <p className="flex flex-wrap items-center gap-2">
+                  <b>Tipo:</b>
+                  {tournament.isMixed ? (
+                    <span className="inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-600">
+                      Grupos y eliminatorias
+                    </span>
+                  ) : (
+                    <span>{getTournamentFormatLabel(tournament.format)}</span>
+                  )}
+                </p>
                 <p><b>Estado:</b> {tournamentStatusLabel[tournament.status]}</p>
                 <Link href={`/tournaments/${tournament.id}`} className="inline-block pt-1 text-sm font-medium text-orange-600 hover:text-orange-700">
                   Ver detalle del torneo

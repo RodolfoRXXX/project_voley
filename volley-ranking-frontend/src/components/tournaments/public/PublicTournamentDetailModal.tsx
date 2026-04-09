@@ -1,10 +1,12 @@
 "use client";
 
+import { getKnockoutRoundLabel } from "@/lib/tournaments/knockout";
 import { tournamentPhaseTypeLabel, type TournamentPhaseType } from "@/types/tournaments/tournamentPhase";
 
 type TournamentDashboardMatch = {
   id: string;
   phaseType: TournamentPhaseType | "group_stage";
+  roundLabel?: string | null;
   homeTeamName: string;
   awayTeamName: string;
 };
@@ -27,6 +29,17 @@ type PublicTournamentDetailModalProps = {
   onClose: () => void;
   onOpenDetail: (tournamentId: string) => void;
 };
+
+
+function getPhaseBadgeLabel(match: TournamentDashboardMatch) {
+  if ((match.phaseType === "knockout" || match.phaseType === "final") && match.roundLabel) {
+    return getKnockoutRoundLabel(match.roundLabel);
+  }
+
+  if (match.phaseType === "final") return "Final";
+
+  return tournamentPhaseTypeLabel[match.phaseType];
+}
 
 export default function PublicTournamentDetailModal({
   open,
@@ -96,7 +109,9 @@ export default function PublicTournamentDetailModal({
             ) : (
               <div className="rounded-lg border border-neutral-200 bg-neutral-50/50 p-2">
                 <ul className="text-xs text-neutral-700">
-                  {tournamentCard.standings.map((standing, i) => (
+                  {[...tournamentCard.standings]
+                    .sort((a, b) => b.points - a.points || a.position - b.position || a.teamName.localeCompare(b.teamName, "es"))
+                    .map((standing, i) => (
                     <li
                       key={standing.id}
                       className={`mx-1 px-2 py-1 flex items-center justify-between ${
@@ -130,7 +145,7 @@ export default function PublicTournamentDetailModal({
                         <b>{match.homeTeamName}</b> <span className="text-neutral-400 mx-1">vs</span> <b>{match.awayTeamName}</b>
                       </p>
                       <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[11px] font-medium text-neutral-500">
-                        {tournamentPhaseTypeLabel[match.phaseType]}
+                        {getPhaseBadgeLabel(match)}
                       </span>
                     </div>
                   </li>

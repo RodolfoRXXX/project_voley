@@ -28,6 +28,7 @@ type TournamentDashboardMatch = {
   tournamentName: string;
   tournamentType: string;
   phaseType: TournamentPhaseType | "group_stage";
+  roundLabel?: string | null;
   homeTeamName: string;
   awayTeamName: string;
 };
@@ -51,6 +52,7 @@ type TournamentMatchQueryRow = {
   phaseId?: string;
   homeTeamId?: string;
   awayTeamId?: string;
+  roundLabel?: string | null;
   result?: unknown;
 };
 
@@ -201,6 +203,7 @@ export default function DashboardPage() {
             tournamentName: String(tournamentData.name || "Torneo"),
             tournamentType: String(tournamentData.format || "-"),
             phaseType: (phaseDocs.find((phase) => phase.id === String(match.phaseId || ""))?.type || "group_stage") as TournamentPhaseType | "group_stage",
+            roundLabel: match.roundLabel || null,
             homeTeamName: teamsMap.get(String(match.homeTeamId || "")) || "Equipo por definir",
             awayTeamName: teamsMap.get(String(match.awayTeamId || "")) || "Equipo por definir",
           }));
@@ -256,7 +259,11 @@ export default function DashboardPage() {
 
               return acc;
             }, [])
-            .sort((a, b) => a.position - b.position || b.points - a.points)
+            .sort((a, b) => b.points - a.points || a.position - b.position || a.teamName.localeCompare(b.teamName, "es"))
+            .map((standing, index) => ({
+              ...standing,
+              position: index + 1,
+            }))
             .slice(0, 6);
 
           const importantInfo = [

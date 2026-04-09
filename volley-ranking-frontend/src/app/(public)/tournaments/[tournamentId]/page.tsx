@@ -119,59 +119,55 @@ export default function PublicTournamentDetailPage() {
       <TournamentPhaseOverview metrics={metrics} phaseSnapshot={phaseSnapshot} tournamentStatus={tournament.status} />
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-base font-semibold text-neutral-900">{isLeaguePhase ? "Tabla principal" : isKnockoutPhase ? "Resumen mínimo" : "Tabla actual"}</h2>
-            <span className="text-xs text-neutral-500">{standings.length} filas</span>
-          </div>
-
-          {isLeaguePhase && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border border-neutral-200 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Partidos</p>
-                <p className="mt-1 text-sm font-medium text-neutral-900">
-                  {leagueProgress.completedMatches} jugados / {leagueProgress.pendingMatches} pendientes
-                </p>
-              </div>
-              <div className="rounded-lg border border-neutral-200 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Jornadas</p>
-                <p className="mt-1 text-sm font-medium text-neutral-900">
-                  {leagueProgress.completedMatchdays} de {leagueProgress.totalMatchdays} completas
-                </p>
-              </div>
+        {!isKnockoutPhase && (
+          <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-base font-semibold text-neutral-900">{isLeaguePhase ? "Tabla principal" : "Tabla actual"}</h2>
+              <span className="text-xs text-neutral-500">{standings.length} filas</span>
             </div>
-          )}
 
-          {isKnockoutPhase && (
-            <p className="text-sm text-neutral-500">
-              En eliminación directa el cuadro es la referencia principal. Esta tabla queda sólo como apoyo estadístico mínimo.
-            </p>
-          )}
+            {isLeaguePhase && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-neutral-200 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Partidos</p>
+                  <p className="mt-1 text-sm font-medium text-neutral-900">
+                    {leagueProgress.completedMatches} jugados / {leagueProgress.pendingMatches} pendientes
+                  </p>
+                </div>
+                <div className="rounded-lg border border-neutral-200 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Jornadas</p>
+                  <p className="mt-1 text-sm font-medium text-neutral-900">
+                    {leagueProgress.completedMatchdays} de {leagueProgress.totalMatchdays} completas
+                  </p>
+                </div>
+              </div>
+            )}
 
-          {standings.length === 0 ? (
-            <p className="text-sm text-neutral-500">Todavía no hay tabla de posiciones para la fase actual.</p>
-          ) : (
-            <ul className="space-y-2 text-sm text-neutral-700">
-              {standings.map((standing) => (
-                <li key={standing.id} className="rounded-lg border border-neutral-200 p-3 space-y-1">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium text-neutral-900">#{standing.position} {standing.teamName}</p>
-                    <span className={`text-xs rounded-full px-2 py-1 ${standing.qualified ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-600"}`}>
-                      {standing.qualified ? "Clasificado" : isFinalized ? "Resultado final" : "En competencia"}
-                    </span>
-                  </div>
-                  {!isLeaguePhase && !isKnockoutPhase && <p><b>Grupo:</b> {standing.groupLabel || "-"}</p>}
-                  <div className="grid grid-cols-2 gap-2 text-xs text-neutral-600 sm:grid-cols-4">
-                    <span>Puntos: <b>{standing.stats.points}</b></span>
-                    <span>PJ: <b>{standing.stats.played}</b></span>
-                    <span>Sets: <b>{standing.stats.setsFor}-{standing.stats.setsAgainst}</b></span>
-                    <span>Dif. sets: <b>{standing.stats.setsDiff}</b></span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+            {standings.length === 0 ? (
+              <p className="text-sm text-neutral-500">Todavía no hay tabla de posiciones para la fase actual.</p>
+            ) : (
+              <ul className="space-y-2 text-sm text-neutral-700">
+                {standings.map((standing) => (
+                  <li key={standing.id} className="rounded-lg border border-neutral-200 p-3 space-y-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-medium text-neutral-900">#{standing.position} {standing.teamName}</p>
+                      <span className={`text-xs rounded-full px-2 py-1 ${standing.qualified ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-600"}`}>
+                        {standing.qualified ? "Clasificado" : isFinalized ? "Resultado final" : "En competencia"}
+                      </span>
+                    </div>
+                    {!isLeaguePhase && <p><b>Grupo:</b> {standing.groupLabel || "-"}</p>}
+                    <div className="grid grid-cols-2 gap-2 text-xs text-neutral-600 sm:grid-cols-4">
+                      <span>Puntos: <b>{standing.stats.points}</b></span>
+                      <span>PJ: <b>{standing.stats.played}</b></span>
+                      <span>Sets: <b>{standing.stats.setsFor}-{standing.stats.setsAgainst}</b></span>
+                      <span>Dif. sets: <b>{standing.stats.setsDiff}</b></span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
 
         <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
           <div className="flex items-center justify-between gap-3">

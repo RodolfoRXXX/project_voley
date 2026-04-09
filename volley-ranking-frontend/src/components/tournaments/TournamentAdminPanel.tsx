@@ -762,7 +762,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
         </div>
       )}
 
-      {!isLeaguePhase ? standingsSection : null}
+      {!isLeaguePhase && !isKnockoutPhase ? standingsSection : null}
 
       {isMixedTournament && groupStagePhase && (
         <div className="grid gap-6 xl:grid-cols-2">

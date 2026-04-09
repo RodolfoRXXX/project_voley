@@ -18,6 +18,7 @@ import { tournamentStatusLabel } from "@/types/tournaments/tournament";
 import useToast from "@/components/ui/toast/useToast";
 import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
 import { useRouter } from "next/navigation";
+import PublicTournamentDetailModal from "@/components/tournaments/public/PublicTournamentDetailModal";
 
 const SOCIAL_MATCH_STATUSES = ["abierto", "verificando", "cerrado", "cancelado"] as const;
 
@@ -39,7 +40,7 @@ type TournamentDashboardCard = {
   description: string;
   teamsCount: number;
   nextMatch: TournamentDashboardMatch | null;
-  standings: Array<{ id: string; teamName: string; position: number; points: number; played: number }>;
+  standings: Array<{ id: string; teamId: string; teamName: string; position: number; points: number; played: number }>;
   upcomingMatches: TournamentDashboardMatch[];
   importantInfo: string[];
 };
@@ -206,16 +207,56 @@ export default function DashboardPage() {
 
           const standings = standingsSnap.docs
             .map((standingDoc) => {
-              const standingData = standingDoc.data() as { teamId?: string; position?: number; stats?: { points?: number; played?: number } };
+              const standingData = standingDoc.data() as {
+                teamId?: string;
+                phaseId?: string;
+                position?: number;
+                stats?: { points?: number; played?: number };
+              };
               return {
                 id: standingDoc.id,
+                teamId: String(standingData.teamId || ""),
+                phaseId: String(standingData.phaseId || ""),
                 teamName: teamsMap.get(String(standingData.teamId || "")) || "Equipo",
                 position: Number(standingData.position || 0),
                 points: Number(standingData.stats?.points || 0),
                 played: Number(standingData.stats?.played || 0),
               };
             })
-            .sort((a, b) => a.position - b.position)
+            .filter((standing) => !currentPhase?.id || standing.phaseId === currentPhase.id)
+            .reduce<Array<{ id: string; teamId: string; teamName: string; position: number; points: number; played: number }>>((acc, standing) => {
+              const existingIndex = acc.findIndex((item) => item.teamId === standing.teamId);
+
+              if (existingIndex === -1) {
+                acc.push({
+                  id: standing.id,
+                  teamId: standing.teamId,
+                  teamName: standing.teamName,
+                  position: standing.position,
+                  points: standing.points,
+                  played: standing.played,
+                });
+                return acc;
+              }
+
+              const currentItem = acc[existingIndex];
+              if (
+                standing.position < currentItem.position
+                || (standing.position === currentItem.position && standing.points > currentItem.points)
+              ) {
+                acc[existingIndex] = {
+                  id: standing.id,
+                  teamId: standing.teamId,
+                  teamName: standing.teamName,
+                  position: standing.position,
+                  points: standing.points,
+                  played: standing.played,
+                };
+              }
+
+              return acc;
+            }, [])
+            .sort((a, b) => a.position - b.position || b.points - a.points)
             .slice(0, 6);
 
           const importantInfo = [
@@ -272,23 +313,51 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 space-y-6">
-        <h1 className="text-sm uppercase tracking-wide text-slate-400">
-          Tablero
-        </h1>
-
-        <h2 className="text-3xl font-bold text-neutral-800 dark:text-[var(--foreground)]">
-          Próximos partidos
-        </h2>
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <Skeleton
-              key={i}
-              className="h-40 rounded-m"
-            />
-          ))}
+      <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 space-y-6 pb-12">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-10 w-72" />
         </div>
+
+        <section className="rounded-3xl border border-neutral-200 bg-white p-6 sm:p-8 space-y-5">
+          <Skeleton className="h-6 w-44 rounded-full" />
+          <Skeleton className="h-12 w-full max-w-2xl" />
+          <Skeleton className="h-4 w-full max-w-xl" />
+          <Skeleton className="h-11 w-40 rounded-xl" />
+          <div className="grid gap-4 md:grid-cols-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="rounded-2xl border border-neutral-100 p-4 space-y-3">
+                <Skeleton className="h-10 w-10 rounded-2xl" />
+                <Skeleton className="h-5 w-2/3" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="space-y-2">
+          <Skeleton className="h-10 w-64" />
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <Skeleton key={i} className="h-40 rounded-md" />
+            ))}
+          </div>
+        </div>
+
+        <section className="space-y-3">
+          <Skeleton className="h-7 w-44" />
+          <div className="flex gap-4 overflow-hidden">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="min-w-[280px] sm:min-w-[330px] rounded-xl border border-neutral-200 bg-white p-4 space-y-2">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ))}
+          </div>
+        </section>
       </main>
     );
   }
@@ -420,155 +489,20 @@ export default function DashboardPage() {
         )}
         </>
       )}
-      {selectedTournamentCard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4 py-6">
-          <section className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-6 space-y-6 shadow-2xl">
-
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <p className="text-[11px] uppercase tracking-widest text-orange-500 font-semibold">
-                  Torneo activo
-                </p>
-                <h3 className="text-2xl font-bold text-neutral-900 leading-tight">
-                  {selectedTournamentCard.name}
-                </h3>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setSelectedTournamentCard(null)}
-                className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 transition"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Descripción */}
-            <p className="text-sm text-neutral-600 leading-relaxed">
-              {selectedTournamentCard.description}
-            </p>
-
-            {/* Info principal */}
-            <div className="grid gap-4 sm:grid-cols-2">
-
-              <article className="rounded-xl border border-neutral-200 dark:border-neutral-800 
-                                  p-4 bg-neutral-50/60 dark:bg-neutral-900/60 space-y-2">
-                <p className="text-sm">
-                  <span className="text-neutral-500">Tipo:</span>{" "}
-                  <b className="text-neutral-900">{selectedTournamentCard.format}</b>
-                </p>
-                <p className="text-sm">
-                  <span className="text-neutral-500">Fase:</span>{" "}
-                  <b className="text-neutral-900">
-                    {tournamentPhaseTypeLabel[selectedTournamentCard.phaseType]}
-                  </b>
-                </p>
-                <p className="text-sm">
-                  <span className="text-neutral-500">Equipos:</span>{" "}
-                  <b className="text-neutral-900">{selectedTournamentCard.teamsCount}</b>
-                </p>
-              </article>
-
-              <article className="rounded-lg border border-neutral-200 dark:border-neutral-800 
-                                  bg-neutral-50/50 dark:bg-neutral-900/50 p-2">
-                <p className="text-sm font-semibold text-neutral-900">
-                  Información importante
-                </p>
-                <ul className="mt-2 space-y-1 text-sm text-neutral-600">
-                  {selectedTournamentCard.importantInfo.map((item) => (
-                    <li key={item} className="flex gap-2">
-                      <span className="text-orange-500">•</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </article>
-            </div>
-
-            {/* Tabla */}
-            <article className="space-y-2">
-              <p className="text-sm font-semibold text-neutral-900">
-                Tabla de posiciones
-              </p>
-
-              {selectedTournamentCard.standings.length === 0 ? (
-                <p className="text-xs text-neutral-500">
-                  Todavía no hay posiciones cargadas.
-                </p>
-              ) : (
-                <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 p-2">
-                  <ul className="text-xs text-neutral-700 dark:text-neutral-300">
-                    {selectedTournamentCard.standings.map((standing, i) => (
-                      <li
-                        key={standing.id}
-                        className={`mx-1 px-2 py-1 flex items-center justify-between ${
-                          i !== selectedTournamentCard.standings.length - 1
-                            ? "border-b border-neutral-200/70 dark:border-neutral-700/60"
-                            : ""
-                        }`}
-                      >
-                        <span>
-                          #{standing.position} {standing.teamName}
-                        </span>
-                        <span className="text-neutral-500 dark:text-neutral-400">
-                          {standing.points} pts · {standing.played} PJ
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </article>
-
-            {/* Próximos partidos */}
-            <article className="space-y-3">
-              <p className="text-sm font-semibold text-neutral-900">
-                Próximos partidos
-              </p>
-
-              {selectedTournamentCard.upcomingMatches.length === 0 ? (
-                <p className="text-sm text-neutral-500">
-                  No hay partidos pendientes.
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {selectedTournamentCard.upcomingMatches.map((match) => (
-                    <li
-                      key={match.id}
-                      className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm hover:bg-neutral-50 transition"
-                    >
-                      <b>{match.homeTeamName}</b>{" "}
-                      <span className="text-neutral-400 mx-1">vs</span>{" "}
-                      <b>{match.awayTeamName}</b>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </article>
-
-            {/* CTA */}
-            <div className="flex justify-end pt-2">
-              <button
-                type="button"
-                onClick={async () => {
-                  if (firebaseUser) {
-                    router.push(`/tournaments/${selectedTournamentCard.id}`);
-                    return;
-                  }
-                  const success = await login();
-                  if (!success) return;
-                  router.push(`/tournaments/${selectedTournamentCard.id}`);
-                }}
-                className="rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-orange-500/20 transition hover:bg-orange-600 hover:scale-[1.02]"
-              >
-                Ver detalle completo →
-              </button>
-            </div>
-
-          </section>
-        </div>
-      )}
+      <PublicTournamentDetailModal
+        open={selectedTournamentCard !== null}
+        tournamentCard={selectedTournamentCard}
+        onClose={() => setSelectedTournamentCard(null)}
+        onOpenDetail={async (tournamentId) => {
+          if (firebaseUser) {
+            router.push(`/tournaments/${tournamentId}`);
+            return;
+          }
+          const success = await login();
+          if (!success) return;
+          router.push(`/tournaments/${tournamentId}`);
+        }}
+      />
 
     </main>
   );

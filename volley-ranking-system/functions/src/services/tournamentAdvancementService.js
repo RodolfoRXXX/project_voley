@@ -54,7 +54,7 @@ function buildDefaultAdvancementRules(structure = {}) {
   };
 }
 
-function validateMixedAdvancement({ structure = {}, context = "configurar el torneo mixto" }) {
+function validateMixedAdvancement({ structure = {}, context = "configurar el torneo de grupos y eliminatorias" }) {
   const rules = buildDefaultAdvancementRules(structure);
   const groupCount = Math.max(1, asPositiveInteger(structure.groupStage?.groupCount, 2));
   const automaticQualified = groupCount * rules.qualifyPerGroup;

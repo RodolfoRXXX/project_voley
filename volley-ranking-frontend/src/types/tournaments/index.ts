@@ -1,5 +1,5 @@
 export type { Tournament, TournamentStatus } from "./tournament";
-export { tournamentStatusLabel } from "./tournament";
+export { getTournamentFormatLabel, tournamentFormatLabel, tournamentStatusLabel } from "./tournament";
 
 export type {
   TournamentGroup,

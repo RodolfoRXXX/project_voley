@@ -363,7 +363,7 @@ export default function NewTournamentPage() {
             >
               <option value="liga">Liga</option>
               <option value="eliminacion">Eliminación</option>
-              <option value="mixto">Normal</option>
+              <option value="mixto">Grupos y eliminatorias</option>
             </select>
           </div>
 

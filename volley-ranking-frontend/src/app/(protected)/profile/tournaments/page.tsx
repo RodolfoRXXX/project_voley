@@ -118,7 +118,7 @@ export default function ProfileTournamentsPage() {
               <option value="all">Todos</option>
               <option value="liga">Liga</option>
               <option value="eliminacion">Eliminación</option>
-              <option value="mixto">Mixto</option>
+              <option value="mixto">Grupos y eliminatorias</option>
             </select>
           </label>
 

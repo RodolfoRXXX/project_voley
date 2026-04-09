@@ -83,3 +83,16 @@ export const tournamentStatusLabel: Record<TournamentStatus, string> = {
   finalizado: "Finalizado",
   cancelado: "Cancelado",
 };
+
+export const tournamentFormatLabel: Record<Tournament["format"], string> = {
+  liga: "Liga",
+  eliminacion: "Eliminación",
+  mixto: "Grupos y eliminatorias",
+};
+
+export function getTournamentFormatLabel(format?: string | null) {
+  if (!format) return "-";
+  if (format === "normal" || format === "mixto") return tournamentFormatLabel.mixto;
+  if (format === "liga" || format === "eliminacion") return tournamentFormatLabel[format];
+  return format;
+}

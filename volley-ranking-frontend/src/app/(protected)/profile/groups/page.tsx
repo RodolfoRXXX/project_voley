@@ -53,13 +53,15 @@ function chunkArray<T>(array: T[], size: number) {
 }
 
 export default function ProfileGroupsPage() {
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, loading: authLoading } = useAuth();
   const [groups, setGroups] = useState<GroupItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { run, isLoading } = useAction();
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
+
       if (!firebaseUser) {
         setGroups([]);
         setLoading(false);
@@ -230,7 +232,7 @@ export default function ProfileGroupsPage() {
     );
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <section className="space-y-5">
         <div className="space-y-1">

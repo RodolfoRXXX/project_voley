@@ -3,6 +3,7 @@ import { ConfirmProvider } from "@/components/confirmModal/ConfirmProvider";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/toast/ToastProvider";
 import Navbar from "@/components/layout/Navbar";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 import { Outfit, Arizonia } from "next/font/google";
 
 export const outfit = Outfit({
@@ -25,7 +26,8 @@ export default function RootLayout({
   return (
     <html lang="es" data-theme="light">
       <body className={`h-screen overflow-hidden ${outfit.variable} ${arizonia.variable}`}>
-        <ToastProvider>
+        <AuthProvider>
+          <ToastProvider>
             <ConfirmProvider>
               <div className="h-full flex flex-col">
                 {/* Header mobile */}
@@ -33,7 +35,8 @@ export default function RootLayout({
                 <main className="flex-1 flex flex-col min-h-0">{children}</main>
               </div>
             </ConfirmProvider>
-        </ToastProvider>
+          </ToastProvider>
+        </AuthProvider>
       </body>
     </html>
   );

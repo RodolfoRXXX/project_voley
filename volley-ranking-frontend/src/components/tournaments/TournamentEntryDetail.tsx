@@ -1,0 +1,407 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import UserAvatar from "@/components/ui/avatar/UserAvatar";
+import { tournamentStatusLabel, type Tournament } from "@/types/tournaments";
+import { ActionButton } from "@/components/ui/action/ActionButton";
+import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
+import { tournamentPhaseTypeLabel } from "@/types/tournaments/tournamentPhase";
+import {
+  groupTournamentMatches,
+  TournamentMatchSummaryList,
+  type GroupedTournamentMatches,
+} from "@/components/tournaments/admin/TournamentMatchSections";
+
+import type { TournamentEntrySource as EntrySource, TournamentPaymentStatus as PaymentStatus, TournamentRegistration as EntryDoc, TournamentRegistrationStatus as RegistrationStatus } from "@/types/tournaments";
+import { getGroupById, getPublicTournamentDetailView, getTournamentById, getTournamentRegistrationById, getUserTournamentGroupIds, getUsersByIds, type PublicTournamentDetailView } from "@/services/tournaments/tournamentQueries";
+import { buildTournamentEntryPaymentSummary, updateTournamentEntryPlayers } from "@/services/tournaments/tournamentMutations";
+
+type GroupDoc = {
+  nombre?: string;
+  descripcion?: string;
+  memberIds?: string[];
+  adminIds?: string[];
+};
+
+type UserDoc = {
+  nombre?: string;
+  photoURL?: string;
+  posicionesPreferidas?: string[];
+};
+
+type TournamentEntryDetailProps = {
+  source: EntrySource;
+  entryId: string;
+};
+
+const registrationStatusClass: Record<RegistrationStatus, string> = {
+  pendiente: "bg-yellow-100 text-yellow-700",
+  aceptado: "bg-green-100 text-green-700",
+  rechazado: "bg-red-100 text-red-700",
+};
+
+const registrationStatusLabel: Record<RegistrationStatus, string> = {
+  pendiente: "Pendiente",
+  aceptado: "Aceptado",
+  rechazado: "Rechazado",
+};
+
+const paymentStatusClass: Record<PaymentStatus, string> = {
+  pendiente: "bg-yellow-100 text-yellow-700",
+  parcial: "bg-orange-100 text-orange-700",
+  pagado: "bg-green-100 text-green-700",
+};
+
+const paymentStatusLabel: Record<PaymentStatus, string> = {
+  pendiente: "Pendiente",
+  parcial: "Parcial",
+  pagado: "Pagado",
+};
+
+const EMPTY_GROUPED_MATCHES: GroupedTournamentMatches = {
+  league: {},
+  group: {},
+  knockout: {},
+};
+
+function TournamentEntryDetailSkeleton() {
+  return (
+    <section className="space-y-5" aria-busy>
+      <SkeletonSoft className="h-4 w-44" />
+
+      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+        <Skeleton className="h-6 w-2/3" />
+        <SkeletonSoft className="h-4 w-full" />
+        <SkeletonSoft className="h-4 w-1/2" />
+      </article>
+
+      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+        <Skeleton className="h-5 w-48" />
+        {Array.from({ length: 5 }).map((_, idx) => (
+          <SkeletonSoft key={`entry-info-${idx}`} className="h-4 w-full" />
+        ))}
+      </article>
+
+      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <Skeleton className="h-5 w-44" />
+          <SkeletonSoft className="h-4 w-28" />
+        </div>
+        {Array.from({ length: 4 }).map((_, idx) => (
+          <SkeletonSoft key={`entry-member-${idx}`} className="h-14 w-full rounded-lg" />
+        ))}
+      </article>
+    </section>
+  );
+}
+
+export default function TournamentEntryDetail({ source, entryId }: TournamentEntryDetailProps) {
+  const { firebaseUser } = useAuth();
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [entry, setEntry] = useState<EntryDoc | null>(null);
+  const [group, setGroup] = useState<GroupDoc | null>(null);
+  const [tournament, setTournament] = useState<Tournament | null>(null);
+  const [members, setMembers] = useState<Array<UserDoc & { id: string }>>([]);
+  const [developmentView, setDevelopmentView] = useState<PublicTournamentDetailView | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!entryId || !firebaseUser) return;
+
+      const entryData = await getTournamentRegistrationById(entryId, source);
+
+      if (!entryData) {
+        setLoading(false);
+        return;
+      }
+      const normalizedPlayers = Array.isArray(entryData.playerIds)
+        ? entryData.playerIds
+        : Array.isArray(entryData.playersIds)
+          ? entryData.playersIds
+          : [];
+      const safeStatus = entryData.status || (source === "team" ? "aceptado" : "pendiente");
+      setEntry({
+        ...entryData,
+        nameTeam: entryData.nameTeam || entryData.name || "",
+        playerIds: normalizedPlayers,
+        playersIds: normalizedPlayers,
+        status: safeStatus,
+      });
+
+      const [allowedGroupIds, tournamentData] = await Promise.all([
+        getUserTournamentGroupIds(firebaseUser.uid),
+        getTournamentById(entryData.tournamentId),
+      ]);
+
+      if (!entryData.groupId || !allowedGroupIds.includes(entryData.groupId) || !tournamentData) {
+        setLoading(false);
+        return;
+      }
+
+      const groupData = await getGroupById(entryData.groupId);
+      if (!groupData) {
+        setLoading(false);
+        return;
+      }
+
+      setGroup(groupData);
+      setTournament(tournamentData);
+
+      const uniqueMemberIds = Array.from(new Set([...(groupData.adminIds || []), ...(groupData.memberIds || [])]));
+      setMembers(await getUsersByIds(uniqueMemberIds));
+      if (source === "team") {
+        setDevelopmentView(await getPublicTournamentDetailView(entryData.tournamentId));
+      }
+      setLoading(false);
+    };
+
+    load();
+  }, [entryId, firebaseUser, source]);
+
+  const selectedCount = entry?.playerIds?.length || 0;
+  const isGroupAdmin = !!firebaseUser?.uid && !!group?.adminIds?.includes(firebaseUser.uid);
+  const isTournamentLocked = tournament?.status === "finalizado" || tournament?.status === "cancelado";
+
+  const isCountValid = useMemo(() => {
+    if (!tournament) return false;
+    return selectedCount >= Number(tournament.minPlayers || 0) && selectedCount <= Number(tournament.maxPlayers || 0);
+  }, [selectedCount, tournament]);
+
+  const expectedAmount = useMemo(() => {
+    if (!tournament) return 0;
+    return selectedCount * Number(tournament.paymentForPlayer || 0);
+  }, [selectedCount, tournament]);
+
+  const togglePlayer = async (playerId: string) => {
+    if (!entry || !tournament || !isGroupAdmin || isTournamentLocked) return;
+
+    const current = Array.isArray(entry.playerIds) ? entry.playerIds : [];
+    const exists = current.includes(playerId);
+    const minPlayers = Number(tournament.minPlayers || 0);
+    const maxPlayers = Number(tournament.maxPlayers || 0);
+
+    if (!exists && current.length >= maxPlayers) return;
+    if (exists && current.length <= minPlayers) return;
+
+    const next = exists ? current.filter((id) => id !== playerId) : [...current, playerId];
+    const paymentSummary = buildTournamentEntryPaymentSummary({
+      playerIds: next,
+      paymentForPlayer: Number(tournament.paymentForPlayer || 0),
+      paidAmount: Number(entry.paidAmount ?? 0),
+    });
+
+    setSaving(playerId);
+
+    await updateTournamentEntryPlayers({
+      source,
+      entryId: entry.id,
+      playerIds: next,
+      paymentForPlayer: Number(tournament.paymentForPlayer || 0),
+      paidAmount: Number(entry.paidAmount ?? 0),
+    });
+
+    setEntry((prev) => (prev ? {
+      ...prev,
+      playerIds: next,
+      playersIds: next,
+      ...paymentSummary,
+    } : prev));
+    setSaving(null);
+  };
+
+  if (loading) {
+    return <TournamentEntryDetailSkeleton />;
+  }
+
+  if (!entry || !tournament || !group) {
+    return <p className="text-sm text-neutral-500">No tienes acceso a este detalle o no existe.</p>;
+  }
+
+  const registrationStatus = entry.status || "pendiente";
+  const paymentStatus = entry.paymentStatus || "pendiente";
+  const paidAmount = Number(entry.paidAmount ?? 0);
+  const storedExpectedAmount = Number(entry.expectedAmount ?? expectedAmount);
+  const pendingAmount = Number(entry.pendingAmount ?? Math.max(storedExpectedAmount - paidAmount, 0));
+  const groupedMatches = developmentView ? groupTournamentMatches(developmentView.matches) : EMPTY_GROUPED_MATCHES;
+  const teamStanding = developmentView?.standings.find((standing) => standing.teamId === entry.id) || null;
+  const teamNames = (developmentView?.teams || []).reduce<Record<string, string>>((acc, team) => {
+    acc[team.id] = team.name;
+    return acc;
+  }, {});
+
+  return (
+    <section className="space-y-5">
+      <Link href="/profile/tournaments" className="text-sm text-neutral-600 hover:underline">← Volver a mis torneos</Link>
+
+      <header className="relative rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
+        <span className={`absolute right-4 top-4 text-xs rounded-full px-2 py-1 ${registrationStatusClass[registrationStatus]}`}>
+          {registrationStatusLabel[registrationStatus]}
+        </span>
+        <h1 className="pr-28 text-2xl font-bold text-neutral-900">{tournament.name}</h1>
+        <p className="text-sm text-neutral-600">{tournament.description || "Sin descripción"}</p>
+        <p className="text-sm text-neutral-700">Estado del torneo: {tournamentStatusLabel[tournament.status]}</p>
+      </header>
+
+      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2 text-sm">
+        <h2 className="text-base font-semibold text-neutral-900">Información del torneo y equipo</h2>
+        <p><b>Tipo de registro:</b> {source === "registration" ? "Inscripción" : "Equipo"}</p>
+        <p><b>Nombre del equipo:</b> {entry.nameTeam || entry.name || group.nombre || "Sin nombre"}</p>
+        <p><b>Grupo:</b> {group.nombre || entry.groupLabel || entry.groupId}</p>
+        <p><b>Jugadores permitidos:</b> min {tournament.minPlayers} / max {tournament.maxPlayers}</p>
+        {source === "team" && entry.registrationId && <p><b>Registration ID:</b> {entry.registrationId}</p>}
+      </article>
+
+      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-base font-semibold text-neutral-900">Integrantes del equipo</h2>
+          <div className="text-sm text-neutral-700 flex items-center gap-2">
+            <span>{selectedCount} seleccionados</span>
+            <span>{isCountValid ? "✅" : "⚠️"}</span>
+          </div>
+        </div>
+
+        {members.length === 0 ? (
+          <p className="text-sm text-neutral-500">No hay integrantes para mostrar.</p>
+        ) : (
+          <ul className="space-y-2">
+            {members.map((member) => {
+              const inTeam = entry.playerIds?.includes(member.id);
+
+              return (
+                <li key={member.id} className="rounded-lg border border-neutral-200 p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <UserAvatar nombre={member.nombre} photoURL={member.photoURL || null} size={36} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-neutral-900 truncate">{member.nombre || member.id}</p>
+                      <p className="text-xs text-neutral-500 truncate">
+                        {(member.posicionesPreferidas && member.posicionesPreferidas.length > 0)
+                          ? member.posicionesPreferidas.join(", ")
+                          : "Sin posiciones preferidas"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {isGroupAdmin && (
+                    <ActionButton
+                      onClick={() => togglePlayer(member.id)}
+                      loading={saving === member.id}
+                      disabled={
+                        isTournamentLocked
+                        || (!inTeam && selectedCount >= Number(tournament.maxPlayers || 0))
+                        || (inTeam && selectedCount <= Number(tournament.minPlayers || 0))
+                      }
+                      variant={inTeam ? "danger_outline" : "success_outline"}
+                      compact
+                    >
+                      <span className="sm:hidden">{inTeam ? "Quitar" : "Agregar"}</span>
+                      <span className="hidden sm:inline">{inTeam ? "- quitar" : "+ agregar"}</span>
+                    </ActionButton>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </article>
+
+      {isGroupAdmin && (source === "registration" || source === "team") && (
+        <article className="relative rounded-xl border border-neutral-200 bg-white p-5 space-y-2 text-sm">
+
+          <span
+            className={`absolute top-4 right-4 text-xs rounded-full px-2 py-1 ${paymentStatusClass[paymentStatus]}`}
+          >
+            {paymentStatusLabel[paymentStatus]}
+          </span>
+
+          <h2 className="text-base font-semibold text-neutral-900">
+            Pago de inscripción
+          </h2>
+          {isTournamentLocked ? (
+            <p className="text-xs font-medium text-amber-700">
+              Torneo {tournament.status}. Las acciones de edición están inhabilitadas.
+            </p>
+          ) : null}
+
+          <p>
+            <b>Pago por jugador:</b> ${Number(tournament.paymentForPlayer || entry.paymentForPlayer || 0)}
+          </p>
+
+          <p>
+            <b>Monto total:</b> ${storedExpectedAmount}
+          </p>
+
+          <p>
+            <b>Pagado:</b> ${paidAmount}
+          </p>
+
+          <p>
+            <b>Falta pagar:</b> ${pendingAmount}
+          </p>
+
+        </article>
+      )}
+
+      {source === "team" && developmentView && (
+        <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-semibold text-neutral-900">Desarrollo del torneo para este equipo</h2>
+            <Link href={`/tournaments/${tournament.id}`} className="text-sm font-medium text-orange-600 hover:text-orange-700">
+              Ver torneo público
+            </Link>
+          </div>
+          <p className="text-sm text-neutral-600">
+            Fase actual: <b>{developmentView.phaseSnapshot ? tournamentPhaseTypeLabel[developmentView.phaseSnapshot.type] : "Sin fase activa"}</b>
+          </p>
+
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-neutral-900">Próximos partidos</h3>
+            {developmentView.matches.length === 0 ? (
+              <p className="text-sm text-neutral-500">Todavía no hay partidos publicados en la fase actual.</p>
+            ) : (
+              <TournamentMatchSummaryList groupedTournamentMatches={groupedMatches} teamNames={teamNames} />
+            )}
+          </section>
+
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-neutral-900">Tabla de posiciones</h3>
+            {developmentView.standings.length === 0 ? (
+              <p className="text-sm text-neutral-500">Aún no hay tabla disponible.</p>
+            ) : (
+              <ul className="space-y-2">
+                {developmentView.standings.map((standing) => {
+                  const isCurrentTeam = standing.teamId === entry.id;
+                  return (
+                    <li
+                      key={standing.id}
+                      className={`rounded-lg border p-3 text-sm ${
+                        isCurrentTeam
+                          ? "border-orange-300 bg-orange-50 text-orange-950 dark:border-orange-700 dark:bg-orange-500/20 dark:text-orange-100"
+                          : "border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900/40"
+                      }`}
+                    >
+                      <p className={`font-medium ${isCurrentTeam ? "text-orange-950 dark:text-orange-100" : "text-neutral-900 dark:text-neutral-100"}`}>
+                        #{standing.position} {standing.teamName} {isCurrentTeam ? "← tu equipo" : ""}
+                      </p>
+                      <p className={`text-xs ${isCurrentTeam ? "text-orange-800 dark:text-orange-200" : "text-neutral-600 dark:text-neutral-300"}`}>
+                        Pts: <b>{standing.stats.points}</b> · PJ: <b>{standing.stats.played}</b> · Sets: <b>{standing.stats.setsFor}-{standing.stats.setsAgainst}</b>
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {teamStanding && (
+              <p className="text-xs text-neutral-600">
+                Posición actual del equipo: <b>#{teamStanding.position}</b>.
+              </p>
+            )}
+          </section>
+        </article>
+      )}
+    </section>
+  );
+}

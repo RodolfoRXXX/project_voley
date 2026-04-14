@@ -21,8 +21,10 @@ export default function ThemeSwitch({ theme, onToggle, className = "" }: Props) 
       aria-checked={theme === "dark"}
     >
       <span
-        className={`absolute text-xs leading-none transition-all ${
-          theme === "light" ? "right-1.5 text-amber-500" : "left-1.5 text-slate-400"
+        className={`absolute inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] leading-none transition-all ${
+          theme === "light"
+            ? "right-1.5 bg-amber-100/90 text-amber-600"
+            : "left-1.5 bg-slate-700/90 text-slate-100"
         }`}
         aria-hidden
       >

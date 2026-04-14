@@ -21,9 +21,9 @@ function getCommitmentPill(value: number): { label: string; variant: StatusVaria
 }
 
 export default function ProfileHeader({ user }: Props) {
-  const roleLabel = user.roles === "admin" ? "Admin" : "Player";
+  const roleLabel = user.roles === "admin" ? "Administrador" : "Jugador";
   const roleVariant: StatusVariant =
-    user.roles === "admin" ? "warning" : "info";
+    user.roles === "admin" ? "warning" : "success";
   const commitment = getCommitmentPill(user.estadoCompromiso ?? 0);
 
   return (

@@ -282,7 +282,7 @@ const puedeUnirse =
             <button
               onClick={() => {
                 if (!requireOnboarding()) return;
-                router.push(`/groups/${match.groupId}/matches/${match.id}`);
+                router.push(`profile/groups/${match.groupId}/matches/${match.id}`);
               }}
               className="text-sm text-neutral-500 dark:text-[var(--text-muted)] hover:text-neutral-800 dark:hover:text-[var(--foreground)]"
             >

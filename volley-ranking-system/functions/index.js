@@ -1,3 +1,5 @@
+require("./src/events/bootstrap");
+
 //const admin = require("firebase-admin");
 //admin.initializeApp();
 
@@ -30,5 +32,23 @@ exports.addGroupAdmin = require("./callables/addGroupAdmin");
 exports.removeGroupAdmin = require("./callables/removeGroupAdmin");
 exports.reorderGroupAdmins = require("./callables/reorderGroupAdmins");
 exports.transferGroupOwnership = require("./callables/transferGroupOwnership");
+exports.createTournament = require("./callables/createTournament");
+exports.requestTournamentRegistration = require("./callables/requestTournamentRegistration");
+exports.reviewTournamentRegistration = require("./callables/reviewTournamentRegistration");
+exports.updateTournamentRegistrationPayment = require("./callables/updateTournamentRegistrationPayment");
+exports.openTournamentRegistrations = require("./callables/openTournamentRegistrations");
+exports.confirmFixture = require("./callables/confirmFixture");
+exports.previewFixture = require("./callables/previewFixture");
+exports.previewGroups = require("./callables/previewGroups");
+exports.closeTournamentRegistrations = require("./callables/closeTournamentRegistrations");
+exports.startTournament = require("./callables/startTournament");
+exports.finalizeTournament = require("./callables/finalizeTournament");
+exports.cancelTournament = require("./callables/cancelTournament");
+exports.confirmGroups = require("./callables/confirmGroups");
+exports.addTournamentAdmin = require("./callables/addTournamentAdmin");
+exports.removeTournamentAdmin = require("./callables/removeTournamentAdmin");
+exports.editTournament = require("./callables/editTournament");
+exports.recordMatchResult = require("./callables/recordMatchResult");
+exports.advancePhase = require("./callables/advancePhase");
 
 exports.api = require("./src/httpApi");

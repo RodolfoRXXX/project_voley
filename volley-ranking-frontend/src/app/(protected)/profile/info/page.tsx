@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import ProfileGame from "@/components/profile/profileGame";
 import ProfileMatches from "@/components/profile/ProfileMatches";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
+import EnablePushButton from "@/components/push/EnablePushButton";
 
 /* =====================
    SKELETON
@@ -63,11 +64,10 @@ function ProfilePageSkeleton() {
 
 export default function ProfilePage() {
   const { userDoc, loading } = useAuth();
-
   if (loading || !userDoc) return <ProfilePageSkeleton />;
 
   return (
-    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 pb-12 space-y-8">
+    <main className="mx-auto mt-6 sm:mt-10 pb-12 space-y-8">
 
       {/* Profile Header */}
       <ProfileHeader user={userDoc} />
@@ -78,6 +78,8 @@ export default function ProfilePage() {
         posicionesPreferidas={userDoc.posicionesPreferidas || []}
         role={userDoc.roles}
       />
+
+      <EnablePushButton />
 
       {/* Profile Matches */}
 

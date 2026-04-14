@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { doc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
@@ -57,7 +57,7 @@ type GroupDetail = {
 
 function GroupDetailSkeleton() {
   return (
-    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
 
       {/* Back link */}
       <SkeletonSoft className="h-4 w-32" />
@@ -120,7 +120,8 @@ function GroupDetailSkeleton() {
 
 export default function GrupoPublicDetailPage() {
   const { groupId } = useParams<{ groupId: string }>();
-  const { firebaseUser, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const { firebaseUser, userDoc, loading: authLoading } = useAuth();
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [matches, setMatches] = useState<GroupMatch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,6 +176,15 @@ export default function GrupoPublicDetailPage() {
   useEffect(() => {
     loadGroup();
   }, [loadGroup]);
+
+  useEffect(() => {
+    if (!firebaseUser || !group || !userDoc?.onboarded) return;
+
+    const member = group.memberIds?.includes(firebaseUser.uid) || group.adminIds?.includes(firebaseUser.uid);
+    if (member) {
+      router.replace(`/profile/groups/${groupId}`);
+    }
+  }, [firebaseUser, group, userDoc?.onboarded, router, groupId]);
 
   useEffect(() => {
     if (!groupId || authLoading || !group?.canManageMembers) return;
@@ -387,8 +397,8 @@ export default function GrupoPublicDetailPage() {
     !!firebaseUser?.uid && !!group?.pendingAdminRequestIds?.includes(firebaseUser.uid);
 
   return (
-    <main className="max-w-4xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
-      <Link href="/grupos" className="text-sm text-neutral-600 hover:underline">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
+      <Link href="/groups" className="text-sm text-neutral-600 hover:underline">
         ← Volver a grupos
       </Link>
 

@@ -5,14 +5,12 @@
 
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { db } from "@/lib/firebase";
-import useToast from "@/components/ui/toast/useToast";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
 import StatusPill from "@/components/ui/status/StatusPill";
 import { useAction } from "@/components/ui/action/useAction";
@@ -115,9 +113,7 @@ export default function GruposPage() {
   const { firebaseUser } = useAuth();
   const [groups, setGroups] = useState<PublicGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { showToast } = useToast();
   const { run, isLoading } = useAction();
 
   const endpoint = useMemo(() => {
@@ -182,19 +178,15 @@ export default function GruposPage() {
     return () => unsub();
   }, [groups.length]);
 
-  const myGroups = groups.filter(
-    (group) =>
-      firebaseUser?.uid &&
-      (group.memberIds?.includes(firebaseUser.uid) ||
-        group.adminIds?.includes(firebaseUser.uid))
-  );
+  const availableGroups = groups.filter((group) => {
+    if (group.visibility !== "public") return false;
+    if (!firebaseUser?.uid) return true;
 
-  const otherGroups = groups.filter(
-    (group) =>
-      !firebaseUser?.uid ||
-      (!group.memberIds?.includes(firebaseUser.uid) &&
-        !group.adminIds?.includes(firebaseUser.uid))
-  );
+    return (
+      !group.memberIds?.includes(firebaseUser.uid) &&
+      !group.adminIds?.includes(firebaseUser.uid)
+    );
+  });
 
   const getJoinState = (group: PublicGroup): JoinState => {
     if (!firebaseUser?.uid) return "none";
@@ -206,14 +198,6 @@ export default function GruposPage() {
     }
     if (group.pendingRequestIds?.includes(firebaseUser.uid)) return "pending";
     return "none";
-  };
-
-  const canViewDetail = (group: PublicGroup) => {
-    if (!firebaseUser?.uid) return false;
-    return (
-      !!group.memberIds?.includes(firebaseUser.uid) ||
-      !!group.adminIds?.includes(firebaseUser.uid)
-    );
   };
 
   const joinGroup = async (group: PublicGroup) => {
@@ -302,22 +286,13 @@ export default function GruposPage() {
 
       {error && <p className="text-red-500">{error}</p>}
 
-      {groups.length === 0 && (
+      {availableGroups.length === 0 && (
         <p className="text-gray-500">No hay grupos disponibles.</p>
       )}
-
-      {/* =======================
-          MIS GRUPOS
-      ======================= */}
-
-      {firebaseUser && myGroups.length > 0 && (
+      {availableGroups.length > 0 && (
         <section className="space-y-4">
-          <h2 className="text-lg font-semibold text-neutral-900">
-            Mis grupos
-          </h2>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {myGroups.map((group) => {
+            {availableGroups.map((group) => {
               const buttonConfig = getButtonConfig(group);
 
               return (
@@ -377,7 +352,7 @@ export default function GruposPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2">
+                    <div className="pt-2">
                       <ActionButton
                         onClick={() => joinGroup(group)}
                         loading={isLoading(`leave-group-${group.id}`) || isLoading(`join-group-${group.id}`)}
@@ -386,118 +361,6 @@ export default function GruposPage() {
                       >
                         {buttonConfig.label}
                       </ActionButton>
-
-                      <Link
-                        href={`/grupos/${group.id}`}
-                        className={`text-sm transition-colors ${
-                          canViewDetail(group)
-                            ? "text-neutral-500 hover:text-neutral-800"
-                            : "text-neutral-300 pointer-events-none"
-                        }`}
-                      >
-                        Ver detalle →
-                      </Link>
-                    </div>
-
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* =======================
-          OTROS GRUPOS
-      ======================= */}
-
-      {otherGroups.length > 0 && (
-        <section className="space-y-4 border-t pt-2">
-          <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wide">
-            Otros grupos
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {otherGroups.map((group) => {
-              const buttonConfig = getButtonConfig(group);
-
-              return (
-                <div key={group.id} className="rounded-md border border-neutral-200 bg-white p-4 flex flex-col h-full">
-                  {/* HEADER (crece libremente) */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <h2 className="text-base font-semibold text-neutral-900">
-                        {group.name}
-                      </h2>
-                      <p className="text-sm text-neutral-600">
-                        {group.description || "Sin descripción"}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-2">
-                      <StatusPill
-                        label={group.visibility === "public" ? "Público" : "Privado"}
-                        variant={group.visibility === "public" ? "info" : "neutral"}
-                        inline
-                      />
-                      {group.joinApproval && (
-                        <StatusPill
-                          label="Requiere aprobación"
-                          variant="warning"
-                          inline
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 👇 TODO ESTO SE PEGA AL FONDO */}
-                  <div className="mt-auto pt-4 space-y-4">
-
-                    <div className="flex gap-4 text-xs text-neutral-500">
-                      <span>
-                        Partidos: <b>{group.totalMatches}</b>
-                      </span>
-                      <span>
-                        Integrantes: <b>{group.memberIds?.length || 0}</b>
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-3 pt-3 border-t">
-                      <UserAvatar
-                        nombre={group.owner?.name}
-                        photoURL={group.owner?.photoURL}
-                        size={36}
-                      />
-                      <div>
-                        <p className="text-sm font-medium text-neutral-900">
-                          {group.owner?.name || "No disponible"}
-                        </p>
-                        <p className="text-xs text-neutral-500">
-                          Admin principal
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2">
-                      <ActionButton
-                        onClick={() => joinGroup(group)}
-                        loading={isLoading(`leave-group-${group.id}`) || isLoading(`join-group-${group.id}`)}
-                        variant={buttonConfig.variant}
-                        compact
-                      >
-                        {buttonConfig.label}
-                      </ActionButton>
-
-                      <Link
-                        href={`/grupos/${group.id}`}
-                        className={`text-sm transition-colors ${
-                          canViewDetail(group)
-                            ? "text-neutral-500 hover:text-neutral-800"
-                            : "text-neutral-300 pointer-events-none"
-                        }`}
-                      >
-                        Ver detalle →
-                      </Link>
                     </div>
 
                   </div>

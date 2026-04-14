@@ -1,16 +1,21 @@
 // Functions/src/callables/createMatch.js
 
 const functions = require("firebase-functions/v1");
+const { MAIL_AND_PUSH_SECRETS } = require("../src/config/functionSecrets");
 const { crearMatch } = require("../src/services/adminMatchService");
 const { assertIsAdmin, assertGroupAdmin } = require("../src/services/adminAccessService");
 const formaciones = require("../src/config/formaciones");
+const { emitDomainEvent } = require("../src/events/domainEventBus");
+const { DOMAIN_EVENTS } = require("../src/events/domainEvents");
 
 const {
   getFirestore,
   Timestamp,
 } = require("firebase-admin/firestore");
 
-module.exports = functions.https.onCall(async (data, context) => {
+module.exports = functions
+  .runWith({ secrets: MAIL_AND_PUSH_SECRETS })
+  .https.onCall(async (data, context) => {
   /* =====================
      Auth
   ===================== */
@@ -102,6 +107,12 @@ module.exports = functions.https.onCall(async (data, context) => {
     cantidadSuplentes,
     visibility,
     jugadores: [],
+  });
+
+  emitDomainEvent(DOMAIN_EVENTS.MATCH_CREATED, {
+    groupId,
+    groupName: group?.nombre || "Grupo",
+    memberIds: Array.isArray(group?.memberIds) ? group.memberIds : [],
   });
 
   return { ok: true, matchId };

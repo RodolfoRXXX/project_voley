@@ -2,6 +2,12 @@ const functions = require("firebase-functions/v1");
 const { admin, db } = require("./firebase");
 const { normalizeGroupAdmins } = require("./services/groupAdminsService");
 const { sendEmail, getWebAppUrl } = require("./services/emailService");
+const { FieldValue } = require("firebase-admin/firestore");
+const { emitDomainEvent } = require("./events/domainEventBus");
+const { DOMAIN_EVENTS } = require("./events/domainEvents");
+const { getPublicVapidKey } = require("./services/pushService");
+const { MAIL_AND_PUSH_SECRETS } = require("./config/functionSecrets");
+
 
 function getBearerToken(authHeader = "") {
   if (!authHeader.startsWith("Bearer ")) return null;
@@ -307,6 +313,13 @@ async function handleGroupMemberRemoval(req, res, authContext, groupId, userId) 
   const memberIds = cleanStringArray(group.memberIds).filter((id) => id !== String(userId));
 
   await db.collection("groups").doc(groupId).update({ memberIds });
+
+  emitDomainEvent(DOMAIN_EVENTS.GROUP_USER_REMOVED, {
+    userId: String(userId),
+    groupId,
+    groupName: group?.nombre || "Grupo",
+  });
+
   res.status(200).json({ ok: true, memberIds });
 }
 
@@ -399,6 +412,14 @@ async function handleGroupMemberAdd(req, res, authContext, groupId, userId) {
     memberIds: Array.from(new Set(memberIds)),
     pendingRequestIds: Array.from(new Set(pendingRequestIds)),
   });
+
+  if (isNewMember) {
+    emitDomainEvent(DOMAIN_EVENTS.GROUP_USER_ADDED, {
+      userId: String(userId),
+      groupId,
+      groupName: group?.nombre || "Grupo",
+    });
+  }
 
   if (isNewMember) {
     const invitedUser = userSnap.data();
@@ -592,6 +613,12 @@ async function handleAdminRequestAction(req, res, authContext, groupId, userId, 
   });
 
   if (!res.headersSent) {
+    if (action === "approve") {
+      emitDomainEvent(DOMAIN_EVENTS.GROUP_ADMIN_ADDED, {
+        userId: String(userId),
+        groupId,
+      });
+    }
     res.status(200).json({ ok: true });
   }
 }
@@ -660,9 +687,67 @@ async function handleAdminRemoval(req, res, authContext, groupId, userId) {
   }
 }
 
+
+
+
+function handleGetPushPublicKey(_req, res) {
+  res.status(200).json({ ok: true, vapidPublicKey: getPublicVapidKey() });
+}
+
+function isValidPushSubscription(subscription) {
+  return !!(
+    subscription
+    && typeof subscription.endpoint === "string"
+    && subscription.endpoint
+    && subscription.keys
+    && typeof subscription.keys.p256dh === "string"
+    && typeof subscription.keys.auth === "string"
+  );
+}
+
+async function handlePushSubscribe(req, res, authContext) {
+  if (!authContext.uid) {
+    res.status(401).json({ error: "Debes iniciar sesión" });
+    return;
+  }
+
+  const subscription = req.body?.subscription || req.body;
+  if (!isValidPushSubscription(subscription)) {
+    res.status(400).json({ error: "Subscription inválida" });
+    return;
+  }
+
+  const now = FieldValue.serverTimestamp();
+  const endpoint = String(subscription.endpoint);
+
+  const existingSnap = await db.collection("push_subscriptions").where("endpoint", "==", endpoint).limit(1).get();
+
+  if (existingSnap.empty) {
+    await db.collection("push_subscriptions").add({
+      user_id: authContext.uid,
+      endpoint,
+      p256dh_key: String(subscription.keys.p256dh),
+      auth_key: String(subscription.keys.auth),
+      user_agent: req.headers["user-agent"] || "",
+      created_at: now,
+      last_used_at: null,
+    });
+  } else {
+    await existingSnap.docs[0].ref.update({
+      user_id: authContext.uid,
+      p256dh_key: String(subscription.keys.p256dh),
+      auth_key: String(subscription.keys.auth),
+      user_agent: req.headers["user-agent"] || "",
+      last_used_at: now,
+    });
+  }
+
+  res.status(200).json({ ok: true, vapidPublicKey: getPublicVapidKey() });
+}
+
 module.exports = functions
   .runWith({
-    secrets: ["GMAIL_USER", "GMAIL_PASS", "WEB_APP_URL"],
+    secrets: MAIL_AND_PUSH_SECRETS,
   })
   .https.onRequest(async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
@@ -744,6 +829,17 @@ module.exports = functions
   const removeAdminMatch = req.path.match(/^\/groups\/([^/]+)\/admins\/([^/]+)\/remove$/);
   if (req.method === "POST" && removeAdminMatch) {
     await handleAdminRemoval(req, res, authContext, removeAdminMatch[1], removeAdminMatch[2]);
+    return;
+  }
+
+
+  if (req.method === "GET" && req.path === "/push/vapid-public-key") {
+    handleGetPushPublicKey(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.path === "/push/subscribe") {
+    await handlePushSubscribe(req, res, authContext);
     return;
   }
 

@@ -398,3 +398,62 @@ Verificar:
 
 firebase functions:secrets:access GMAIL_USER
 firebase functions:secrets:access GMAIL_PASS
+## Seed rápido para pruebas (admin + users + grupos)
+
+Para no crear todo manualmente después de reiniciar entorno, podés usar este script:
+
+```bash
+cd volley-ranking-system/functions
+npm run seed:dev
+```
+
+También podés simular sin escribir en Firebase:
+
+```bash
+npm run seed:dev:dry
+```
+
+Opciones disponibles:
+
+- `--users=24` cantidad total de usuarios a generar (el primero será admin).
+- `--groups=4` cantidad de grupos.
+- `--prefix=seed` prefijo para uid/doc ids (evita choques con data real).
+- `--domain=seed.local` dominio de emails fake.
+- `--project=mi-proyecto` project id de Firebase/GCP (alternativa a `FIREBASE_PROJECT_ID`).
+- `--credentials=./service-account.json` ruta a service account (alternativa a `GOOGLE_APPLICATION_CREDENTIALS`).
+- `--emulator` (default) fuerza uso de emuladores (`FIRESTORE_EMULATOR_HOST` y `FIREBASE_AUTH_EMULATOR_HOST`).
+- `--no-emulator` desactiva emuladores explícitamente.
+- `--allow-production` permite escritura sin emulador (protección desactivada de forma explícita).
+- `--firestore-emulator-host=127.0.0.1:8080` host Firestore Emulator.
+- `--auth-emulator-host=127.0.0.1:9099` host Auth Emulator.
+
+Ejemplo:
+
+```bash
+npm run seed:dev -- --users=30 --groups=6 --prefix=demo
+```
+
+Si corrés local fuera de GCP, además definí el proyecto y credenciales para evitar el error
+`metadata.google.internal`:
+
+```bash
+export FIREBASE_PROJECT_ID="tu-project-id"
+export GOOGLE_APPLICATION_CREDENTIALS="/ruta/service-account.json"
+npm run seed:dev -- --users=30 --groups=6 --prefix=demo
+```
+
+También podés pasarlo por flags:
+
+```bash
+npm run seed:dev -- --project=tu-project-id --credentials=./service-account.json
+```
+
+⚠️ Seguridad: si `dryRun=false` y no hay emuladores activos, el script se bloquea para evitar escribir en producción.
+Para escribir en producción de forma intencional, usá `--allow-production --no-emulator`.
+
+Esto crea/actualiza:
+
+- 1 admin (`roles: "admin"`)
+- N players con `posicionesPreferidas` aleatorias
+- grupos públicos con `joinApproval: false`
+- miembros asignados aleatoriamente a cada grupo

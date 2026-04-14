@@ -27,6 +27,7 @@ export default function Navbar() {
   const { confirm } = useConfirm();
   const [open, setOpen] = useState(false);
   const { theme, themeLabel, toggleTheme } = useThemeMode();
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
   const pathname = usePathname();
 
@@ -57,16 +58,35 @@ export default function Navbar() {
 
   const navItems = [
     { label: "Inicio", href: "/dashboard" },
-    { label: "Grupos", href: "/grupos" },
-    { label: "Perfil", href: "/profile" },
+    { label: "Grupos", href: "/groups" },
+    { label: "Torneos", href: "/tournaments" },
+
+    {
+      label: "Mi perfil",
+      children: [
+        { label: "Mi info", href: "/profile/info" },
+        { label: "Mis grupos", href: "/profile/groups" },
+        { label: "Mis torneos", href: "/profile/tournaments" },
+      ],
+    },
   ];
 
   if (userDoc?.roles === "admin") {
     navItems.push({
-      label: "Gestión",
-      href: "/admin/groups",
+      label: "Mi gestión",
+      children: [
+        { label: "Grupos", href: "/admin/groups" },
+        { label: "Torneos", href: "/admin/tournaments" },
+      ],
     });
   }
+
+  const toggleMenu = (label: string) => {
+    setOpenMenus((prev) => ({
+      ...prev,
+      [label]: !prev[label],
+    }));
+  };
 
   return (
     <nav className="sticky top-0 z-50 bg-[var(--nav-bg)] border-b border-[var(--border)] shadow-sm transition-colors">
@@ -153,21 +173,65 @@ export default function Navbar() {
           {firebaseUser && (
             <nav className="px-2 space-y-1 border-b border-[var(--border)] py-2">
               {navItems.map((item) => {
-                const isActive = pathname.startsWith(item.href);
+
+                // ITEM SIMPLE
+                if (!item.children) {
+                  const isActive = pathname.startsWith(item.href);
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setOpen(false)}
+                      className={`block rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                        isActive
+                          ? "bg-orange-500/10 text-orange-600"
+                          : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                }
+
+                // ITEM CON SUBMENU
+                const isOpen = openMenus[item.label];
 
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className={`block rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                      isActive
-                        ? "bg-orange-500/10 text-orange-600"
-                        : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
+                  <div key={item.label}>
+                    <button
+                      onClick={() => toggleMenu(item.label)}
+                      className="w-full flex items-center justify-between rounded-lg px-4 py-2 text-sm font-medium text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+                    >
+                      {item.label}
+                      <span className={`transition-transform ${isOpen ? "rotate-90" : ""}`}>
+                        ▶
+                      </span>
+                    </button>
+
+                    {isOpen && (
+                      <div className="ml-4 mt-1 space-y-1">
+                        {item.children.map((sub) => {
+                          const isActive = pathname.startsWith(sub.href);
+
+                          return (
+                            <Link
+                              key={sub.href}
+                              href={sub.href}
+                              onClick={() => setOpen(false)}
+                              className={`block rounded-lg px-4 py-2 text-sm transition-colors ${
+                                isActive
+                                  ? "bg-orange-500/10 text-orange-600"
+                                  : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+                              }`}
+                            >
+                              {sub.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </nav>

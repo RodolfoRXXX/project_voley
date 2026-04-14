@@ -15,6 +15,11 @@ type Props = {
   initialRole: Role;
 };
 
+const roleLabel: Record<Role, string> = {
+  admin: "Administrador",
+  player: "Jugador",
+};
+
 export default function PreferredPositionsEditor({
   initial,
   initialRole,
@@ -165,6 +170,7 @@ export default function PreferredPositionsEditor({
               key={p}
               label={`${i + 1}. ${p}`}
               variant="info"
+              size="md"
             />
           ))}
 
@@ -181,6 +187,7 @@ export default function PreferredPositionsEditor({
                   selected ? `${index + 1}. ${p}` : p
                 }
                 variant={selected ? "info" : "neutral"}
+                size="md"
                 onClick={
                   disabled ? undefined : () => togglePosition(p)
                 }
@@ -200,20 +207,24 @@ export default function PreferredPositionsEditor({
         {editing ? (
           <div className="flex flex-wrap gap-2">
             <StatusPill
-              label="Player"
+              label={roleLabel.player}
               variant={role === "player" ? "success" : "neutral"}
               onClick={() => setRole("player")}
+              size={role === "player" ? "md" : "sm"}
             />
             <StatusPill
-              label="Admin"
+              label={roleLabel.admin}
               variant={role === "admin" ? "warning" : "neutral"}
               onClick={() => setRole("admin")}
+              size={role === "admin" ? "md" : "sm"}
             />
           </div>
         ) : (
           <StatusPill
-            label={role === "admin" ? "Admin" : "Player"}
+            label={roleLabel[role]}
             variant={role === "admin" ? "warning" : "success"}
+            size="md"
+            inline
           />
         )}
       </div>

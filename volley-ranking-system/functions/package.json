@@ -5,7 +5,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "migrate:group-admins": "node src/scripts/migrateGroupAdmins.js",
-    "migrate:group-admins:write": "node src/scripts/migrateGroupAdmins.js --write"
+    "migrate:group-admins:write": "node src/scripts/migrateGroupAdmins.js --write",
+    "seed:dev": "node src/scripts/seedDevelopmentData.js",
+    "seed:dev:dry": "node src/scripts/seedDevelopmentData.js --dry-run"
   },
   "keywords": [],
   "author": "",
@@ -14,6 +16,7 @@
   "dependencies": {
     "firebase-admin": "^11.11.1",
     "firebase-functions": "^4.4.1",
-    "nodemailer": "^8.0.1"
+    "nodemailer": "^8.0.1",
+    "web-push": "^3.6.7"
   }
 }

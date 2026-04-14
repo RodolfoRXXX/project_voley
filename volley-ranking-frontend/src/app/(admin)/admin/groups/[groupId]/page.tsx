@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   doc,
@@ -25,12 +25,59 @@ import Link from "next/link";
 import { formatDateTime } from "@/lib/date";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
+import UserAvatar from "@/components/ui/avatar/UserAvatar";
+import StatusPill from "@/components/ui/status/StatusPill";
+import AddMemberModal from "@/components/addMemberModal/AddMemberModal";
+import { SearchableMember } from "@/components/addMemberModal/AddMemberModal.types";
+import { readJsonSafely } from "@/lib/http/readJsonSafely";
+
+type GroupMember = {
+  id: string;
+  name: string;
+  photoURL?: string | null;
+  positions?: string[];
+  isAdmin?: boolean;
+};
+
+type GroupMatch = {
+  id: string;
+  estado?: string;
+  horaInicio?: Date | null;
+  createdAt?: Date | null;
+  [key: string]: unknown;
+};
+
+type GroupData = {
+  id: string;
+  nombre: string;
+  descripcion?: string;
+  visibility?: "public" | "private";
+  joinApproval?: boolean;
+  activo?: boolean;
+  ownerId?: string;
+  adminId?: string;
+  adminIds?: string[];
+  members?: GroupMember[];
+  pendingRequests?: GroupMember[];
+  pendingAdminRequests?: GroupMember[];
+  [key: string]: unknown;
+};
+
+type GroupTournamentRow = {
+  id: string;
+  name: string;
+  format: string;
+  status: string;
+};
 
 const functions = getFunctions(app);
 const editGroup = httpsCallable(functions, "editGroup");
 const toggleGroupActivo = httpsCallable(functions, "toggleGroupActivo");
 
-const canAdminGroup = (group: any, uid?: string) => {
+const canAdminGroup = (
+  group: Pick<GroupData, "adminIds" | "adminId"> | null | undefined,
+  uid?: string
+) => {
   if (!uid) return false;
   if (Array.isArray(group?.adminIds)) {
     return group.adminIds.includes(uid);
@@ -45,7 +92,7 @@ const canAdminGroup = (group: any, uid?: string) => {
 
 function GroupDetailSkeleton() {
   return (
-    <main className="max-w-3xl mx-auto mt-6 sm:mt-10 space-y-6">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 space-y-6">
 
       {/* Breadcrumb */}
       <SkeletonSoft className="h-4 w-56" />
@@ -104,10 +151,13 @@ export default function AdminGroupPage() {
   const { firebaseUser, userDoc, loading } = useAuth();
   const { run, isLoading } = useAction();
 
-  const [group, setGroup] = useState<any>(null);
-  const [matches, setMatches] = useState<any[]>([]);
+  const [group, setGroup] = useState<GroupData | null>(null);
+  const [matches, setMatches] = useState<GroupMatch[]>([]);
+  const [groupTournaments, setGroupTournaments] = useState<GroupTournamentRow[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  const [actingKey, setActingKey] = useState<string | null>(null);
+  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
@@ -124,6 +174,160 @@ export default function AdminGroupPage() {
     }
   }, [firebaseUser, userDoc, loading, router]);
 
+  const loadGroupDetails = useCallback(async () => {
+  if (!firebaseUser?.uid || !groupId) return;
+
+  const groupRef = doc(db, "groups", groupId);
+  const snap = await getDoc(groupRef);
+
+  if (!snap.exists()) {
+    router.replace("/dashboard");
+    return;
+  }
+
+  const data = snap.data();
+
+  if (!canAdminGroup(data, firebaseUser.uid)) {
+    router.replace("/admin/groups");
+    return;
+  }
+
+  if (!data.nombre) {
+    router.replace("/admin/groups");
+    return;
+  }
+
+  const memberIds: string[] = Array.isArray(data.memberIds) ? data.memberIds : [];
+  const pendingIds: string[] = Array.isArray(data.pendingRequestIds) ? data.pendingRequestIds : [];
+
+  const adminUserIds =
+    Array.isArray(data.admins) && data.admins.length > 0
+      ? data.admins.map((a: any) => a.userId)
+      : Array.isArray(data.adminIds)
+      ? data.adminIds
+      : [];
+
+  const allUserIds = [...new Set([...memberIds, ...pendingIds])];
+
+  const loadUsersByIds = async (ids: string[]) => {
+    if (ids.length === 0) return [];
+
+    const chunks = [];
+    for (let i = 0; i < ids.length; i += 10) {
+      chunks.push(ids.slice(i, i + 10));
+    }
+
+    const results: any[] = [];
+
+    for (const chunk of chunks) {
+      const q = query(
+        collection(db, "users"),
+        where("__name__", "in", chunk)
+      );
+
+      const snap = await getDocs(q);
+
+      snap.forEach((doc) => {
+        results.push({
+          id: doc.id,
+          ...doc.data(),
+        });
+      });
+    }
+
+    return results;
+  };
+
+  const users = await loadUsersByIds(allUserIds);
+
+  const userMap = new Map(users.map((u) => [u.id, u]));
+
+  const buildMember = (uid: string): GroupMember => {
+    const u = userMap.get(uid);
+
+    return {
+      id: uid,
+      name: u?.nombre || u?.name || u?.displayName || "Usuario",
+      photoURL: u?.photoURL || null,
+      positions: Array.isArray(u?.posicionesPreferidas)
+        ? u.posicionesPreferidas
+        : Array.isArray(u?.positions)
+        ? u.positions
+        : [],
+      isAdmin: adminUserIds.includes(uid),
+    };
+  };
+
+  const members = memberIds.map(buildMember);
+  const pendingRequests = pendingIds.map(buildMember);
+
+  const pendingAdminRequests: GroupMember[] = Array.isArray(data.pendingAdminRequestIds)
+    ? data.pendingAdminRequestIds.map(buildMember)
+    : [];
+
+  const groupData: GroupData = {
+    id: snap.id,
+    ...data,
+    members,
+    pendingRequests,
+    pendingAdminRequests,
+    nombre: typeof data.nombre === "string" ? data.nombre : "",
+  };
+
+  const [registrationsSnap, teamsSnap] = await Promise.all([
+    getDocs(query(collection(db, "tournamentRegistrations"), where("groupId", "==", groupId))),
+    getDocs(query(collection(db, "tournamentTeams"), where("groupId", "==", groupId))),
+  ]);
+  const tournamentIds = Array.from(new Set([
+    ...registrationsSnap.docs.map((row) => String(row.data().tournamentId || "")),
+    ...teamsSnap.docs.map((row) => String(row.data().tournamentId || "")),
+  ].filter(Boolean)));
+  const tournamentRows = await Promise.all(
+    tournamentIds.map(async (tournamentId) => {
+      const tournamentSnap = await getDoc(doc(db, "tournaments", tournamentId));
+      if (!tournamentSnap.exists()) return null;
+      const tournamentData = tournamentSnap.data() as { name?: string; format?: string; status?: string };
+      return {
+        id: tournamentId,
+        name: tournamentData.name || "Torneo",
+        format: tournamentData.format || "-",
+        status: tournamentData.status || "draft",
+      };
+    })
+  );
+  setGroupTournaments(tournamentRows.filter((row): row is GroupTournamentRow => Boolean(row)));
+
+  setGroup(groupData);
+
+  setFormData({
+    nombre: groupData.nombre,
+    descripcion: groupData.descripcion || "",
+    visibility: groupData.visibility === "public" ? "public" : "private",
+    joinApproval: groupData.joinApproval ?? true,
+  });
+
+  const qMatches = query(
+    collection(db, "matches"),
+    where("groupId", "==", groupId),
+    orderBy("horaInicio", "desc")
+  );
+
+  const snapMatches = await getDocs(qMatches);
+
+  setMatches(
+    snapMatches.docs.map((d) => {
+      const m = d.data();
+
+      return {
+        id: d.id,
+        ...m,
+        horaInicio: m.horaInicio?.toDate?.() ?? null,
+        createdAt: m.createdAt?.toDate?.() ?? null,
+      };
+    })
+  );
+}, [firebaseUser?.uid, groupId, router]);
+
   /* =====================
      Load data
   ===================== */
@@ -132,55 +336,14 @@ export default function AdminGroupPage() {
 
     const load = async () => {
       try {
-        const ref = doc(db, "groups", groupId);
-        const snap = await getDoc(ref);
-
-        if (!snap.exists()) {
-          router.replace("/dashboard");
-          return;
-        }
-
-        const data = snap.data();
-
-        if (!canAdminGroup(data, firebaseUser?.uid)) {
-          router.replace("/admin/groups");
-          return;
-        }
-
-        setGroup({ id: snap.id, ...data });
-
-        setFormData({
-          nombre: data.nombre,
-          descripcion: data.descripcion || "",
-          visibility: data.visibility === "public" ? "public" : "private",
-          joinApproval: data.joinApproval ?? true,
-        });
-
-        const q = query(
-          collection(db, "matches"),
-          where("groupId", "==", groupId),
-          orderBy("horaInicio", "desc") // 👈 más recientes primero
-        );
-
-        const snapMatches = await getDocs(q);
-        setMatches(
-          snapMatches.docs.map((d) => {
-            const data = d.data();
-            return {
-              id: d.id,
-              ...data,
-              horaInicio: data.horaInicio?.toDate?.() ?? null,
-              createdAt: data.createdAt?.toDate?.() ?? null,
-            };
-          })
-        );
+        await loadGroupDetails();
       } finally {
         setLoadingData(false);
       }
     };
 
     load();
-  }, [firebaseUser?.uid, groupId, loading, router]);
+  }, [firebaseUser?.uid, groupId, loading, loadGroupDetails]);
 
   /* =====================
      Actions
@@ -208,12 +371,15 @@ export default function AdminGroupPage() {
           joinApproval: formData.joinApproval,
         });
 
-        setGroup({
-          ...group,
-          nombre: formData.nombre,
-          descripcion: formData.descripcion,
-          visibility: formData.visibility,
-          joinApproval: formData.joinApproval,
+        setGroup((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            nombre: formData.nombre,
+            descripcion: formData.descripcion,
+            visibility: formData.visibility,
+            joinApproval: formData.joinApproval,
+          };
         });
 
         setEditMode(false);
@@ -225,33 +391,41 @@ export default function AdminGroupPage() {
     );
   };
 
-  const toggleActivo = () =>
-    run(
+  const toggleActivo = () => {
+    if (!group) return;
+
+    const currentActivo = !!group.activo;
+
+    return run(
       "toggle-activo",
       async () => {
         await toggleGroupActivo({
           groupId: group.id,
-          activo: !group.activo,
+          activo: !currentActivo,
         });
 
-        setGroup({
-          ...group,
-          activo: !group.activo,
+        setGroup((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            activo: !prev.activo,
+          };
         });
       },
       {
         confirm: {
-          message: group.activo
+          message: currentActivo
             ? "¿Seguro que querés desactivar este grupo?"
             : "¿Seguro que querés reactivar este grupo?",
-          confirmText: group.activo ? "Desactivar" : "Reactivar",
+          confirmText: currentActivo ? "Desactivar" : "Reactivar",
           cancelText: "Cancelar",
-          variant: group.activo ? "danger" : "success",
+          variant: currentActivo ? "danger" : "success",
         },
         successMessage: "Estado actualizado",
         errorMessage: "No se pudo actualizar el estado",
       }
     );
+  };
 
   if (loading || loadingData) return <GroupDetailSkeleton />;
   if (!group) return null;
@@ -267,12 +441,151 @@ export default function AdminGroupPage() {
     });
   };
 
+  /* =====================
+     Agregado
+  ===================== */
+
+  //helper para POST autenticado
+
+  const postWithAuth = async (url: string) => {
+    if (!firebaseUser) throw new Error("Debes iniciar sesión");
+
+    const token = await firebaseUser.getIdToken();
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const payload = (await readJsonSafely(res)) as { error?: string } | null;
+
+    if (!res.ok) {
+      throw new Error(payload?.error || "No se pudo completar la acción");
+    }
+
+    return payload;
+  };
+
+  //eliminar integrante
+
+  const removeMember = async (userId: string) => {
+    try {
+      setActingKey(`remove-${userId}`);
+
+      await postWithAuth(
+        `/api/groups/${groupId}/members/${userId}/remove`
+      );
+      await loadGroupDetails();
+
+    } finally {
+      setActingKey(null);
+    }
+  };
+
+  //buscar usuarios para agregar
+
+  const searchUsersToAdd = async (query: string) => {
+    if (!firebaseUser) return [];
+
+    const token = await firebaseUser.getIdToken();
+
+    const res = await fetch(
+      `/api/groups/${groupId}/members/search?q=${encodeURIComponent(query)}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    const payload = (await readJsonSafely(res)) as
+      | { users?: SearchableMember[] }
+      | null;
+
+    return payload?.users || [];
+  };
+
+  //agregar integrante
+
+  const addMember = async (userId: string) => {
+    try {
+      setActingKey(`add-${userId}`);
+
+      await postWithAuth(
+        `/api/groups/${groupId}/members/${userId}/add`
+      );
+      await loadGroupDetails();
+
+    } finally {
+      setActingKey(null);
+    }
+  };
+
+  //aceptar / rechazar solicitudes
+
+  const resolveRequest = async (
+    userId: string,
+    action: "approve" | "reject"
+  ) => {
+    try {
+      setActingKey(`${action}-${userId}`);
+
+      await postWithAuth(
+        `/api/groups/${groupId}/requests/${userId}/${action}`
+      );
+      await loadGroupDetails();
+
+    } finally {
+      setActingKey(null);
+    }
+  };
+
+  //aceptar / rechazar solicitudes de admin
+
+  const resolveAdminRequest = async (
+    userId: string,
+    action: "approve" | "reject"
+  ) => {
+    try {
+      setActingKey(`admin-${action}-${userId}`);
+
+      await postWithAuth(
+        `/api/groups/${groupId}/admin-requests/${userId}/${action}`
+      );
+      await loadGroupDetails();
+
+    } finally {
+      setActingKey(null);
+    }
+  };
+
+  //remover admin
+
+  const removeAdmin = async (userId: string) => {
+    try {
+      setActingKey(`remove-admin-${userId}`);
+
+      await postWithAuth(
+        `/api/groups/${groupId}/admins/${userId}/remove`
+      );
+      await loadGroupDetails();
+
+    } finally {
+      setActingKey(null);
+    }
+  };
+
+
+  const isPrimaryAdmin = !!firebaseUser?.uid && group.ownerId === firebaseUser.uid;
+  const pendingRequests: GroupMember[] = Array.isArray(group.pendingRequests) ? group.pendingRequests : [];
+  const pendingAdminRequests: GroupMember[] = Array.isArray(group.pendingAdminRequests) ? group.pendingAdminRequests : [];
+
   return (
-    <main className="max-w-3xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
 
       <AdminBreadcrumb
         items={[
-          { label: "Gestión"},
+          { label: "Mi gestión"},
           { label: "Grupos", href:"/admin/groups"},
           { label: group.nombre},
         ]}
@@ -427,7 +740,125 @@ export default function AdminGroupPage() {
         </section>
       )}
 
+      {/* ================= MEMBERS ================= */}
+
+      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
+
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-neutral-900">
+            Integrantes
+          </h2>
+
+          <ActionButton
+            variant="secondary"
+            compact
+            onClick={() => setIsAddMemberModalOpen(true)}
+          >
+            + Agregar integrante
+          </ActionButton>
+        </div>
+
+        {pendingAdminRequests.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-amber-700">Solicitudes para ser admin</p>
+            <ul className="space-y-2">
+              {pendingAdminRequests.map((member) => (
+                <li key={`admin-pending-${member.id}`} className="rounded-xl border border-neutral-200 p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
+                    <div>
+                      <p className="text-sm font-medium text-neutral-900">{member.name}</p>
+                      <p className="text-xs text-neutral-500">Postulación pendiente</p>
+                    </div>
+                  </div>
+                  {isPrimaryAdmin && (
+                    <div className="flex items-center gap-2">
+                      <ActionButton onClick={() => resolveAdminRequest(member.id, "approve")} loading={actingKey === `admin-approve-${member.id}`} variant="success_outline" compact>Aceptar</ActionButton>
+                      <ActionButton onClick={() => resolveAdminRequest(member.id, "reject")} loading={actingKey === `admin-reject-${member.id}`} variant="danger_outline" compact>Eliminar</ActionButton>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {pendingRequests.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-amber-700">Solicitudes de ingreso</p>
+            <ul className="space-y-2">
+              {pendingRequests.map((member) => (
+                <li key={`pending-${member.id}`} className="rounded-xl border border-neutral-200 p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
+                    <div>
+                      <p className="text-sm font-medium text-neutral-900">{member.name}</p>
+                      <p className="text-xs text-neutral-500">Solicitud pendiente</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <ActionButton onClick={() => resolveRequest(member.id, "approve")} loading={actingKey === `approve-${member.id}`} variant="success_outline" compact>Aceptar</ActionButton>
+                    <ActionButton onClick={() => resolveRequest(member.id, "reject")} loading={actingKey === `reject-${member.id}`} variant="danger_outline" compact>Eliminar</ActionButton>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {!group.members || group.members.length === 0 ? (
+          <p className="text-sm text-neutral-500">No hay integrantes en el grupo</p>
+        ) : (
+          <ul className="space-y-2">
+            {(group.members ?? []).map((member: GroupMember) => (
+              <li key={member.id} className="rounded-xl border border-neutral-200 p-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
+                  <div>
+                    <p className="text-sm font-medium text-neutral-900">{member.name}</p>
+                    <p className="text-xs text-neutral-500">{member.positions?.join(" · ") || "Sin posiciones"}</p>
+                  </div>
+                </div>
+
+                {member.isAdmin ? (
+                  <div className="flex items-center gap-2">
+                    <StatusPill label={member.id === group.ownerId ? "Admin principal" : "Admin"} variant="warning" />
+                    {isPrimaryAdmin && member.id !== firebaseUser?.uid && (
+                      <ActionButton onClick={() => removeAdmin(member.id)} loading={actingKey === `remove-admin-${member.id}`} variant="danger_outline" compact>Quitar admin</ActionButton>
+                    )}
+                  </div>
+                ) : (
+                  <ActionButton onClick={() => removeMember(member.id)} loading={actingKey === `remove-${member.id}`} variant="danger_outline" compact>Eliminar</ActionButton>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       {/* Matches */}
+      <section>
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-neutral-900">Torneos del grupo</h2>
+        </div>
+        {groupTournaments.length === 0 ? (
+          <p className="text-gray-500">Este grupo no tiene torneos asociados.</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 mb-6">
+            {groupTournaments.map((tournament) => (
+              <article key={tournament.id} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-1">
+                <p className="text-sm font-semibold text-neutral-900">{tournament.name}</p>
+                <p className="text-xs text-neutral-600">Tipo: <b>{tournament.format}</b></p>
+                <p className="text-xs text-neutral-600">Estado: <b>{tournament.status}</b></p>
+                <Link href={`/tournaments/${tournament.id}`} className="inline-block pt-1 text-sm font-medium text-blue-600 hover:underline">
+                  Ver detalle público
+                </Link>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
       <section>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-neutral-900">
@@ -480,7 +911,7 @@ export default function AdminGroupPage() {
                 </div>
 
                 <Link
-                  href={`/groups/${groupId}/matches/${m.id}`}
+                  href={`/profile/groups/${groupId}/matches/${m.id}`}
                   className="text-sm font-medium text-blue-600 hover:underline"
                 >
                   Ver detalle →
@@ -490,6 +921,13 @@ export default function AdminGroupPage() {
           </div>
         )}
       </section>
+
+      <AddMemberModal
+        open={isAddMemberModalOpen}
+        onClose={() => setIsAddMemberModalOpen(false)}
+        onSearch={searchUsersToAdd}
+        onAddMember={addMember}
+      />
     </main>
   );
 }

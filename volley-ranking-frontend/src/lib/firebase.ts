@@ -33,8 +33,8 @@ if (useEmulator && typeof window !== "undefined") {
   connectFunctionsEmulator(functions, "localhost", 5001);
 }
 
-console.log("USE_EMULATOR =", process.env.NEXT_PUBLIC_USE_EMULATOR);
-console.log("PROJECT_ID =", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+//console.log("USE_EMULATOR =", process.env.NEXT_PUBLIC_USE_EMULATOR);
+//console.log("PROJECT_ID =", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
 
 
 export { app, auth, db, functions };

@@ -1,11 +1,16 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getAuth, connectAuthEmulator } from "firebase/auth";
+import {
+  getAuth,
+  connectAuthEmulator,
+  setPersistence,
+  browserLocalPersistence,
+} from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  authDomain: "project-groupvolley.firebaseapp.com",
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
@@ -23,6 +28,13 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
 
+const authPersistenceReady =
+  typeof window !== "undefined"
+    ? setPersistence(auth, browserLocalPersistence).catch((error) => {
+        console.error("Error configurando persistencia de auth:", error);
+      })
+    : Promise.resolve();
+
 const useEmulator = process.env.NEXT_PUBLIC_USE_EMULATOR === "true";
 
 if (useEmulator && typeof window !== "undefined") {
@@ -37,4 +49,4 @@ if (useEmulator && typeof window !== "undefined") {
 //console.log("PROJECT_ID =", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
 
 
-export { app, auth, db, functions };
+export { app, auth, db, functions, authPersistenceReady };

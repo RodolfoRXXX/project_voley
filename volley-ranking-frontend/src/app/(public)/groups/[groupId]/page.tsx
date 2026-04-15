@@ -131,7 +131,7 @@ export default function GrupoPublicDetailPage() {
   const { showToast } = useToast();
 
   const loadGroup = useCallback(async () => {
-    if (!groupId || authLoading) return;
+    if (!groupId) return;
 
     try {
       setError(null);
@@ -171,7 +171,7 @@ export default function GrupoPublicDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [groupId, firebaseUser, authLoading]);
+  }, [groupId, firebaseUser]);
 
   useEffect(() => {
     loadGroup();

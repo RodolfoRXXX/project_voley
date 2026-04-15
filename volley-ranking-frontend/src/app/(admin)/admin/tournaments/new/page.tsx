@@ -293,6 +293,9 @@ export default function NewTournamentPage() {
   const estimatedLeagueMatchdays = Math.max(0, Math.max(teams - 1, 0) + (teams % 2 === 0 ? 0 : 1)) * leagueRounds;
 
   const knockoutPreview = getKnockoutPreview(form.structure.knockoutStage.startFrom);
+  const selectClassName =
+    "mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:[color-scheme:dark]";
+  const selectOptionClassName = "dark:bg-neutral-800 dark:text-neutral-100";
 
   return (
     <main className="max-w-3xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">
@@ -318,7 +321,7 @@ export default function NewTournamentPage() {
 
       <form
         onSubmit={onSubmit}
-        className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4"
+        className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4 dark:border-neutral-700 dark:bg-neutral-900"
       >
 
         {/* nombre */}
@@ -355,15 +358,15 @@ export default function NewTournamentPage() {
           <div>
             <label className="text-sm font-medium">Formato</label>
             <select
-              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              className={selectClassName}
               value={form.format}
               onChange={(e) =>
                 updateFormat(e.target.value as TournamentForm["format"])
               }
             >
-              <option value="liga">Liga</option>
-              <option value="eliminacion">Eliminación</option>
-              <option value="mixto">Grupos y eliminatorias</option>
+              <option className={selectOptionClassName} value="liga">Liga</option>
+              <option className={selectOptionClassName} value="eliminacion">Eliminación</option>
+              <option className={selectOptionClassName} value="mixto">Grupos y eliminatorias</option>
             </select>
           </div>
 
@@ -593,7 +596,7 @@ export default function NewTournamentPage() {
                   <label className="text-sm font-medium">Rondas</label>
 
                   <select
-                    className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                    className={selectClassName}
                     value={form.structure.groupStage.rounds}
                     onChange={(e) =>
                         setForm((prev) => normalizeMixedSettings({
@@ -608,9 +611,9 @@ export default function NewTournamentPage() {
                       }, advancedMode))
                     }
                   >
-                    <option value={1}>Una ronda</option>
-                    <option value={2}>Ida y vuelta</option>
-                    <option value={3}>Tres rondas</option>
+                    <option className={selectOptionClassName} value={1}>Una ronda</option>
+                    <option className={selectOptionClassName} value={2}>Ida y vuelta</option>
+                    <option className={selectOptionClassName} value={3}>Tres rondas</option>
                   </select>
                 </div>
 
@@ -649,7 +652,7 @@ export default function NewTournamentPage() {
                 </label>
 
                 <select
-                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                  className={selectClassName}
                   value={form.structure.knockoutStage.startFrom}
                   onChange={(e) => {
                     setForm((prev) => {
@@ -671,10 +674,10 @@ export default function NewTournamentPage() {
                     });
                   }}
                 >
-                  <option value="octavos">Octavos</option>
-                  <option value="cuartos">Cuartos</option>
-                  <option value="semi">Semifinal</option>
-                  <option value="final">Final</option>
+                  <option className={selectOptionClassName} value="octavos">Octavos</option>
+                  <option className={selectOptionClassName} value="cuartos">Cuartos</option>
+                  <option className={selectOptionClassName} value="semi">Semifinal</option>
+                  <option className={selectOptionClassName} value="final">Final</option>
                 </select>
               </div>
 
@@ -893,7 +896,7 @@ export default function NewTournamentPage() {
         <div className="flex items-center gap-3 pt-2">
           <button
             disabled={loading}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-800 disabled:opacity-60"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 bg-neutral-900 text-neutral-100 text-sm font-medium hover:bg-neutral-800 dark:border-neutral-300 dark:bg-neutral-900 dark:hover:bg-neutral-800 disabled:opacity-60"
           >
             {loading ? <Spinner /> : null}
             Crear torneo
@@ -901,7 +904,14 @@ export default function NewTournamentPage() {
 
           <Link
             href="/admin/tournaments"
-            className="text-sm text-neutral-600 hover:text-neutral-800"
+            aria-disabled={loading}
+            tabIndex={loading ? -1 : undefined}
+            onClick={(event) => {
+              if (loading) event.preventDefault();
+            }}
+            className={`text-sm text-neutral-600 hover:text-neutral-800 ${
+              loading ? "pointer-events-none opacity-50" : ""
+            }`}
           >
             Cancelar
           </Link>

@@ -321,7 +321,7 @@ export default function NewTournamentPage() {
 
       <form
         onSubmit={onSubmit}
-        className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4"
+        className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4 dark:border-neutral-700 dark:bg-neutral-900"
       >
 
         {/* nombre */}
@@ -896,7 +896,7 @@ export default function NewTournamentPage() {
         <div className="flex items-center gap-3 pt-2">
           <button
             disabled={loading}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-violet-600 bg-violet-600 text-white text-sm font-medium hover:bg-violet-500 dark:border-violet-400 dark:bg-violet-500 dark:hover:bg-violet-400 disabled:opacity-60"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 bg-neutral-900 text-neutral-100 text-sm font-medium hover:bg-neutral-800 dark:border-neutral-300 dark:bg-neutral-900 dark:hover:bg-neutral-800 disabled:opacity-60"
           >
             {loading ? <Spinner /> : null}
             Crear torneo

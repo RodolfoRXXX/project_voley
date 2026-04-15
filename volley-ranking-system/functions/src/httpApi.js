@@ -54,6 +54,31 @@ async function mapUser(userId) {
   };
 }
 
+async function mapUsersByIds(userIds = []) {
+  const normalizedIds = cleanStringArray(userIds);
+  if (normalizedIds.length === 0) return new Map();
+
+  const refs = normalizedIds.map((id) => db.collection("users").doc(id));
+  const snaps = await db.getAll(...refs);
+  const usersMap = new Map();
+
+  snaps.forEach((snap, index) => {
+    if (!snap.exists) return;
+    const userId = normalizedIds[index];
+    const user = snap.data();
+
+    usersMap.set(userId, {
+      id: userId,
+      name: user?.nombre || "Sin nombre",
+      email: user?.email || null,
+      photoURL: user?.photoURL || null,
+      positions: Array.isArray(user?.posicionesPreferidas) ? user.posicionesPreferidas : [],
+    });
+  });
+
+  return usersMap;
+}
+
 function sortMembersByName(members = []) {
   return [...members].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
 }
@@ -154,7 +179,14 @@ async function handleGroupDetail(req, res, authContext, groupId) {
     (id) => !adminIds.includes(id)
   );
 
-  const members = (await Promise.all(memberIds.map((id) => mapUser(String(id)))))
+  const usersMap = await mapUsersByIds([
+    ...memberIds,
+    ...pendingRequestIds,
+    ...pendingAdminRequestIds,
+  ]);
+
+  const members = memberIds
+    .map((id) => usersMap.get(String(id)))
     .filter(Boolean)
     .map((member) => ({ ...member, isAdmin: adminIds.includes(member.id) }));
 
@@ -162,10 +194,10 @@ async function handleGroupDetail(req, res, authContext, groupId) {
   const players = sortMembersByName(members.filter((member) => !member.isAdmin));
 
   const pendingRequests = sortMembersByName(
-    (await Promise.all(pendingRequestIds.map((id) => mapUser(String(id))))).filter(Boolean)
+    pendingRequestIds.map((id) => usersMap.get(String(id))).filter(Boolean)
   );
   const pendingAdminRequests = sortMembersByName(
-    (await Promise.all(pendingAdminRequestIds.map((id) => mapUser(String(id))))).filter(Boolean)
+    pendingAdminRequestIds.map((id) => usersMap.get(String(id))).filter(Boolean)
   );
 
   const canManageMembers = canManageGroup(group, authContext);

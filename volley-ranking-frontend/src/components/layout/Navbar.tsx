@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { signInWithRedirect, GoogleAuthProvider, signOut } from "firebase/auth";
+import { signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "../ui/avatar/UserAvatar";
@@ -34,7 +34,7 @@ export default function Navbar() {
   const login = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithRedirect(auth, provider);
+      await signInWithPopup(auth, provider);
       setOpen(false);
     } catch (err) {
       handleAuthPopupError(err, showToast);

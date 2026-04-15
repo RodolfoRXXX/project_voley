@@ -2,8 +2,6 @@ import { initializeApp, getApps } from "firebase/app";
 import {
   getAuth,
   connectAuthEmulator,
-  setPersistence,
-  browserLocalPersistence,
 } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
@@ -28,13 +26,6 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
 
-const authPersistenceReady =
-  typeof window !== "undefined"
-    ? setPersistence(auth, browserLocalPersistence).catch((error) => {
-        console.error("Error configurando persistencia de auth:", error);
-      })
-    : Promise.resolve();
-
 const useEmulator = process.env.NEXT_PUBLIC_USE_EMULATOR === "true";
 
 if (useEmulator && typeof window !== "undefined") {
@@ -49,4 +40,4 @@ if (useEmulator && typeof window !== "undefined") {
 //console.log("PROJECT_ID =", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
 
 
-export { app, auth, db, functions, authPersistenceReady };
+export { app, auth, db, functions };

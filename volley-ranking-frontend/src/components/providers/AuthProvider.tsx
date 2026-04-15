@@ -1,11 +1,11 @@
 "use client";
 
-import { getRedirectResult, onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-import { auth, authPersistenceReady, db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import type { UserDoc } from "@/types/UserDoc";
 
 type AuthState = {
@@ -21,23 +21,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [userDoc, setUserDoc] = useState<UserDoc | null>(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const handleRedirect = async () => {
-      try {
-        await authPersistenceReady;
-        const result = await getRedirectResult(auth);
-
-        if (result?.user) {
-          console.log("User logged in:", result.user);
-        }
-      } catch (error) {
-        console.error("Redirect error:", error);
-      }
-    };
-
-    void handleRedirect();
-  }, []);
 
   useEffect(() => {
     let unsubscribeUserDoc: (() => void) | null = null;

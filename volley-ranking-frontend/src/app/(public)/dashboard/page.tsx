@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { collection, getDocs, onSnapshot, query, where, Timestamp } from "firebase/firestore";
-import { GoogleAuthProvider, signInWithRedirect } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import MatchCard from "@/components/matchCard/MatchCard";
@@ -83,7 +83,7 @@ export default function DashboardPage() {
   const login = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithRedirect(auth, provider);
+      await signInWithPopup(auth, provider);
       return true;
     } catch (err) {
       handleAuthPopupError(err, showToast);

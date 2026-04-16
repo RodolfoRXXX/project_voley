@@ -294,8 +294,8 @@ export default function NewTournamentPage() {
 
   const knockoutPreview = getKnockoutPreview(form.structure.knockoutStage.startFrom);
   const selectClassName =
-    "mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:[color-scheme:dark]";
-  const selectOptionClassName = "dark:bg-neutral-900 dark:text-neutral-100";
+    "mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100";
+  const selectOptionClassName = "bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100";
 
   return (
     <main className="max-w-3xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">
@@ -722,7 +722,7 @@ export default function NewTournamentPage() {
                   <div>
                     <label className="text-sm font-medium">Cómo ordenar a los clasificados</label>
                     <select
-                      className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                      className={selectClassName}
                       value={form.structure.groupStage.seedingCriteria}
                       onChange={(e) =>
                         setForm((prev) => normalizeMixedSettings({
@@ -737,16 +737,16 @@ export default function NewTournamentPage() {
                         }, advancedMode))
                       }
                     >
-                      <option value="points">Puntos</option>
-                      <option value="group_position">Posición de grupo</option>
-                      <option value="setsDiff">Dif. de sets</option>
-                      <option value="pointsDiff">Dif. de puntos</option>
+                      <option className={selectOptionClassName} value="points">Puntos</option>
+                      <option className={selectOptionClassName} value="group_position">Posición de grupo</option>
+                      <option className={selectOptionClassName} value="setsDiff">Dif. de sets</option>
+                      <option className={selectOptionClassName} value="pointsDiff">Dif. de puntos</option>
                     </select>
                   </div>
                   <div>
                     <label className="text-sm font-medium">Cómo se cruzan en playoff</label>
                     <select
-                      className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                      className={selectClassName}
                       value={form.structure.groupStage.bracketMatchup}
                       onChange={(e) =>
                         setForm((prev) => normalizeMixedSettings({
@@ -762,11 +762,12 @@ export default function NewTournamentPage() {
                       }
                     >
                       <option
+                        className={selectOptionClassName}
                         value="1A_vs_2B"
                       >
                         Cruce 1° vs 2°
                       </option>
-                      <option value="standard_seeded">Ranking global</option>
+                      <option className={selectOptionClassName} value="standard_seeded">Ranking global</option>
                     </select>
                   </div>
                   <label className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700">

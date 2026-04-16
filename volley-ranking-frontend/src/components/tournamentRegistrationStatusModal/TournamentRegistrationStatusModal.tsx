@@ -272,10 +272,10 @@ export default function TournamentRegistrationStatusModal({
               type="button"
               onClick={onConfirmPayment}
               disabled={isTournamentFinalized || savingPayment || Number(paidAmountInput || 0) <= 0}
-              className="inline-flex items-center gap-2 h-10 rounded-lg bg-neutral-900 px-4 text-white text-sm font-medium dark:bg-neutral-200 dark:text-neutral-900 disabled:opacity-60"
+              className="inline-flex items-center gap-2 h-10 rounded-lg bg-neutral-900 px-4 text-white text-sm font-medium transition-colors hover:bg-neutral-800 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-neutral-300 disabled:cursor-not-allowed disabled:opacity-55"
             >
               {savingPayment ? <Spinner /> : null}
-              Guardar pago
+              Confirmar Pago
             </button>
           </div>
 

@@ -30,6 +30,7 @@ import StatusPill from "@/components/ui/status/StatusPill";
 import AddMemberModal from "@/components/addMemberModal/AddMemberModal";
 import { SearchableMember } from "@/components/addMemberModal/AddMemberModal.types";
 import { readJsonSafely } from "@/lib/http/readJsonSafely";
+import { getTournamentFormatLabel } from "@/types/tournaments/tournament";
 
 type GroupMember = {
   id: string;
@@ -471,17 +472,30 @@ export default function AdminGroupPage() {
   //eliminar integrante
 
   const removeMember = async (userId: string) => {
-    try {
-      setActingKey(`remove-${userId}`);
+    await run(
+      `remove-member-${userId}`,
+      async () => {
+        try {
+          setActingKey(`remove-${userId}`);
 
-      await postWithAuth(
-        `/api/groups/${groupId}/members/${userId}/remove`
-      );
-      await loadGroupDetails();
-
-    } finally {
-      setActingKey(null);
-    }
+          await postWithAuth(
+            `/api/groups/${groupId}/members/${userId}/remove`
+          );
+          await loadGroupDetails();
+        } finally {
+          setActingKey(null);
+        }
+      },
+      {
+        confirm: {
+          message: "¿Querés eliminar a este integrante del grupo?",
+          confirmText: "Eliminar integrante",
+          cancelText: "Cancelar",
+          variant: "danger",
+        },
+        successMessage: "Integrante eliminado",
+      }
+    );
   };
 
   //buscar usuarios para agregar
@@ -848,7 +862,7 @@ export default function AdminGroupPage() {
             {groupTournaments.map((tournament) => (
               <article key={tournament.id} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-1">
                 <p className="text-sm font-semibold text-neutral-900">{tournament.name}</p>
-                <p className="text-xs text-neutral-600">Tipo: <b>{tournament.format}</b></p>
+                <p className="text-xs text-neutral-600">Tipo: <b>{getTournamentFormatLabel(tournament.format)}</b></p>
                 <p className="text-xs text-neutral-600">Estado: <b>{tournament.status}</b></p>
                 <Link href={`/tournaments/${tournament.id}`} className="inline-block pt-1 text-sm font-medium text-blue-600 hover:underline">
                   Ver detalle público

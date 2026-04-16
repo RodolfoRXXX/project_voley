@@ -9,7 +9,6 @@ import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { useAction } from "@/components/ui/action/useAction";
-import StatusPill from "@/components/ui/status/StatusPill";
 
 type GroupItem = {
   id: string;
@@ -294,20 +293,6 @@ export default function ProfileGroupsPage() {
                   <p className="text-sm text-neutral-600">{group.description || "Sin descripción"}</p>
                 </div>
 
-                <div className="flex flex-col items-end gap-2">
-                  <StatusPill
-                    label={group.visibility === "public" ? "Público" : "Privado"}
-                    variant={group.visibility === "public" ? "info" : "neutral"}
-                    inline
-                  />
-                  {group.joinApproval && (
-                    <StatusPill
-                      label="Requiere aprobación"
-                      variant="warning"
-                      inline
-                    />
-                  )}
-                </div>
               </div>
 
               <div className="mt-auto pt-4 space-y-4">

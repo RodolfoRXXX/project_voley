@@ -636,10 +636,9 @@ export default function AdminGroupPage() {
         try {
           setActingKey(`add-admin-${userId}`);
 
-          await addGroupAdmin({
-            groupId,
-            userId,
-          });
+          await postWithAuth(
+            `/api/groups/${groupId}/admins/${userId}/add`
+          );
           await loadGroupDetails();
         } finally {
           setActingKey(null);

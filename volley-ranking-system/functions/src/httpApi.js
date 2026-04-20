@@ -719,6 +719,91 @@ async function handleAdminRemoval(req, res, authContext, groupId, userId) {
   }
 }
 
+async function handleAdminAdd(req, res, authContext, groupId, userId) {
+  const groupRef = db.collection("groups").doc(groupId);
+  const targetUserRef = db.collection("users").doc(String(userId));
+
+  await db.runTransaction(async (tx) => {
+    const [groupSnap, targetUserSnap] = await Promise.all([
+      tx.get(groupRef),
+      tx.get(targetUserRef),
+    ]);
+
+    if (!groupSnap.exists) {
+      throw new Error("not-found");
+    }
+
+    const group = groupSnap.data();
+    if (!canManageGroupAsOwner(group, authContext)) {
+      throw new Error("forbidden");
+    }
+
+    const memberIds = cleanStringArray(group.memberIds);
+    if (!memberIds.includes(String(userId))) {
+      throw new Error("not-member");
+    }
+
+    if (!targetUserSnap.exists || targetUserSnap.data()?.roles !== "admin") {
+      throw new Error("not-system-admin");
+    }
+
+    const normalized = normalizeGroupAdmins(group);
+    if (normalized.adminIds.includes(String(userId))) {
+      throw new Error("already-admin");
+    }
+
+    const admins = [
+      ...normalized.admins,
+      {
+        userId: String(userId),
+        role: "admin",
+        order: normalized.admins.length,
+        addedAt: admin.firestore.FieldValue.serverTimestamp(),
+        addedBy: authContext.uid,
+      },
+    ];
+
+    tx.update(groupRef, {
+      admins,
+      ownerId: admins[0]?.userId || null,
+      adminIds: admins.map((item) => item.userId),
+      pendingAdminRequestIds: cleanStringArray(group.pendingAdminRequestIds).filter(
+        (id) => id !== String(userId)
+      ),
+    });
+  }).catch((err) => {
+    if (err.message === "not-found") {
+      res.status(404).json({ error: "Grupo no encontrado" });
+      return;
+    }
+    if (err.message === "forbidden") {
+      res.status(403).json({ error: "Solo el owner puede agregar administradores" });
+      return;
+    }
+    if (err.message === "not-member") {
+      res.status(400).json({ error: "El usuario debe ser integrante del grupo" });
+      return;
+    }
+    if (err.message === "not-system-admin") {
+      res.status(400).json({ error: "El usuario a agregar no tiene rol admin" });
+      return;
+    }
+    if (err.message === "already-admin") {
+      res.status(409).json({ error: "El usuario ya es admin del grupo" });
+      return;
+    }
+    throw err;
+  });
+
+  if (!res.headersSent) {
+    emitDomainEvent(DOMAIN_EVENTS.GROUP_ADMIN_ADDED, {
+      userId: String(userId),
+      groupId,
+    });
+    res.status(200).json({ ok: true });
+  }
+}
+
 
 
 
@@ -861,6 +946,12 @@ module.exports = functions
   const removeAdminMatch = req.path.match(/^\/groups\/([^/]+)\/admins\/([^/]+)\/remove$/);
   if (req.method === "POST" && removeAdminMatch) {
     await handleAdminRemoval(req, res, authContext, removeAdminMatch[1], removeAdminMatch[2]);
+    return;
+  }
+
+  const addAdminMatch = req.path.match(/^\/groups\/([^/]+)\/admins\/([^/]+)\/add$/);
+  if (req.method === "POST" && addAdminMatch) {
+    await handleAdminAdd(req, res, authContext, addAdminMatch[1], addAdminMatch[2]);
     return;
   }
 

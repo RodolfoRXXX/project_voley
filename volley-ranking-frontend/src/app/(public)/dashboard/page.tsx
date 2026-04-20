@@ -68,6 +68,20 @@ type TournamentQueryRow = {
   format?: string;
 };
 
+type UserDashboardStats = {
+  groupsCount: number;
+  adminGroupsCount: number;
+  myUpcomingMatchesCount: number;
+};
+
+const chunkArray = <T,>(items: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const { firebaseUser, userDoc, loading: authLoading } = useAuth();
@@ -79,6 +93,12 @@ export default function DashboardPage() {
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [tournamentLoading, setTournamentLoading] = useState(true);
   const [groupsMap, setGroupsMap] = useState<Record<string, string>>({});
+  const [userStats, setUserStats] = useState<UserDashboardStats>({
+    groupsCount: 0,
+    adminGroupsCount: 0,
+    myUpcomingMatchesCount: 0,
+  });
+  const [userStatsLoading, setUserStatsLoading] = useState(false);
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
@@ -155,6 +175,79 @@ export default function DashboardPage() {
 
     return () => unsub();
   }, [firebaseUser?.uid, userDoc?.roles]);
+
+  useEffect(() => {
+    if (!firebaseUser?.uid) {
+      setUserStats({ groupsCount: 0, adminGroupsCount: 0, myUpcomingMatchesCount: 0 });
+      setUserStatsLoading(false);
+      return;
+    }
+
+    let active = true;
+    const loadUserStats = async () => {
+      setUserStatsLoading(true);
+      try {
+        const [memberGroupsSnap, adminGroupsSnap, participationsSnap] = await Promise.all([
+          getDocs(query(collection(db, "groups"), where("memberIds", "array-contains", firebaseUser.uid))),
+          getDocs(query(collection(db, "groups"), where("adminIds", "array-contains", firebaseUser.uid))),
+          getDocs(query(collection(db, "participations"), where("userId", "==", firebaseUser.uid))),
+        ]);
+
+        const groupIds = new Set<string>();
+        memberGroupsSnap.docs.forEach((docSnap) => groupIds.add(docSnap.id));
+        adminGroupsSnap.docs.forEach((docSnap) => groupIds.add(docSnap.id));
+
+        const matchIds = Array.from(
+          new Set(
+            participationsSnap.docs
+              .map((docSnap) => String((docSnap.data() as { matchId?: string }).matchId || ""))
+              .filter(Boolean)
+          )
+        );
+
+        const now = Timestamp.now().toMillis();
+        let upcomingCount = 0;
+
+        if (matchIds.length > 0) {
+          const idBatches = chunkArray(matchIds, 10);
+          const matchSnaps = await Promise.all(
+            idBatches.map((batch) => getDocs(query(collection(db, "matches"), where("__name__", "in", batch))))
+          );
+
+          matchSnaps.forEach((matchSnap) => {
+            matchSnap.docs.forEach((docSnap) => {
+              const matchData = docSnap.data() as { horaInicio?: Timestamp; estado?: string };
+              if (
+                matchData.horaInicio
+                && typeof matchData.horaInicio.toMillis === "function"
+                && matchData.horaInicio.toMillis() > now
+                && SOCIAL_MATCH_STATUSES.includes((matchData.estado || "") as (typeof SOCIAL_MATCH_STATUSES)[number])
+              ) {
+                upcomingCount += 1;
+              }
+            });
+          });
+        }
+
+        if (!active) return;
+        setUserStats({
+          groupsCount: groupIds.size,
+          adminGroupsCount: adminGroupsSnap.size,
+          myUpcomingMatchesCount: upcomingCount,
+        });
+      } finally {
+        if (active) {
+          setUserStatsLoading(false);
+        }
+      }
+    };
+
+    loadUserStats();
+
+    return () => {
+      active = false;
+    };
+  }, [firebaseUser?.uid]);
 
   useEffect(() => {
     const loadTournamentCards = async () => {
@@ -295,6 +388,9 @@ export default function DashboardPage() {
 
   const loading = matchesLoading || tournamentLoading;
   const showGuestHero = !authLoading && !firebaseUser;
+  const preferredPositions = userDoc?.posicionesPreferidas || [];
+  const hasPreferredPositions = preferredPositions.length > 0;
+  const isOnboarded = userDoc?.onboarded === true;
 
   const featureCards = [
     {
@@ -444,6 +540,66 @@ export default function DashboardPage() {
               ))}
             </div>
 
+          </div>
+        </section>
+      )}
+
+      {firebaseUser && (
+        <section className="space-y-4">
+          <header className="space-y-1">
+            <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+              Tu tablero CRM
+            </h2>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              Un resumen rápido de tu estado dentro de la plataforma.
+            </p>
+          </header>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <article className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
+              <p className="text-xs uppercase tracking-wide text-neutral-500">Perfil</p>
+              <p className="mt-2 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                {userDoc?.nombre || firebaseUser.displayName || "Usuario"}
+              </p>
+              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+                Rol: {userDoc?.roles === "admin" ? "Administrador" : "Jugador"}
+              </p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                Onboarding: {isOnboarded ? "Completo" : "Pendiente"}
+              </p>
+            </article>
+
+            <article className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
+              <p className="text-xs uppercase tracking-wide text-neutral-500">Posiciones</p>
+              <p className="mt-2 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                {hasPreferredPositions ? `${preferredPositions.length} elegidas` : "Sin definir"}
+              </p>
+              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+                {isOnboarded
+                  ? (hasPreferredPositions ? preferredPositions.join(" · ") : "No definiste posiciones todavía.")
+                  : "Todavía no completaste el onboarding."}
+              </p>
+            </article>
+
+            <article className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
+              <p className="text-xs uppercase tracking-wide text-neutral-500">Grupos</p>
+              <p className="mt-2 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                {userStatsLoading ? "Cargando..." : userStats.groupsCount}
+              </p>
+              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+                {userStatsLoading ? "Calculando membresías..." : `${userStats.adminGroupsCount} como admin`}
+              </p>
+            </article>
+
+            <article className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
+              <p className="text-xs uppercase tracking-wide text-neutral-500">Próximos partidos tuyos</p>
+              <p className="mt-2 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                {userStatsLoading ? "Cargando..." : userStats.myUpcomingMatchesCount}
+              </p>
+              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+                Torneos activos visibles: {activeTournamentCards.length}
+              </p>
+            </article>
           </div>
         </section>
       )}

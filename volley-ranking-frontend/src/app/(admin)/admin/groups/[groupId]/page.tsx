@@ -38,6 +38,7 @@ type GroupMember = {
   photoURL?: string | null;
   positions?: string[];
   isAdmin?: boolean;
+  hasAdminRole?: boolean;
 };
 
 type GroupMatch = {
@@ -280,6 +281,7 @@ export default function AdminGroupPage() {
         ? u.positions
         : [],
       isAdmin: adminUserIds.includes(uid),
+      hasAdminRole: u?.roles === "admin",
     };
   };
 
@@ -904,7 +906,7 @@ export default function AdminGroupPage() {
                     <StatusPill label={member.id === group.ownerId ? "Admin principal" : "Admin"} variant="warning" />
                   )}
 
-                  {isPrimaryAdmin && (
+                  {isPrimaryAdmin && member.hasAdminRole && (
                     <ActionButton
                       onClick={() =>
                         member.isAdmin ? removeAdmin(member.id) : addAdmin(member.id)

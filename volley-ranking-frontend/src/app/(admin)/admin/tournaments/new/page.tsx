@@ -294,7 +294,7 @@ export default function NewTournamentPage() {
 
   const knockoutPreview = getKnockoutPreview(form.structure.knockoutStage.startFrom);
   const selectClassName =
-    "mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
+    "mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-neutral-700 dark:text-neutral-100";
   const selectOptionClassName = "bg-white text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100";
 
   return (
@@ -312,7 +312,7 @@ export default function NewTournamentPage() {
           Crear torneo
         </h1>
         <p className="text-sm text-neutral-500">
-          El torneo inicia en estado draft.
+          El torneo inicia en estado Borrador.
         </p>
         <p className="text-xs text-neutral-500">
           Podés alternar entre modo simple (recomendado) y modo avanzado para opciones técnicas.
@@ -469,7 +469,7 @@ export default function NewTournamentPage() {
           <input
             type="datetime-local"
             required
-            className="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:[color-scheme:dark]"
+            className="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-neutral-700 dark:text-neutral-100 dark:[color-scheme:dark]"
             value={form.startDate}
             onChange={(e) =>
               setForm((prev) => ({ ...prev, startDate: e.target.value }))

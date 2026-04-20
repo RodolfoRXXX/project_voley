@@ -888,7 +888,7 @@ export default function AdminGroupPage() {
             onClick={(e) => {
               if (!group.activo) e.preventDefault();
             }}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition
+            className={`px-3 py-2 rounded-lg text-sm font-medium dark:border-neutral-300! transition 
               ${
                 group.activo
                   ? "bg-neutral-900 text-white hover:bg-neutral-800"
@@ -896,7 +896,7 @@ export default function AdminGroupPage() {
               }
             `}
           >
-            Crear Partido
+            Crear partido
           </Link>
         </div>
 

@@ -77,7 +77,7 @@ export default function CreateMatchQuickActionModal({
             type="button"
             disabled={disableCreateMatch}
             onClick={() => onCreateMatch(selectedGroupId)}
-            className="rounded-lg bg-neutral-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-neutral-300"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 bg-neutral-900 text-neutral-100 text-sm font-medium hover:bg-neutral-800 dark:border-neutral-300 dark:bg-neutral-900 dark:hover:bg-neutral-800 disabled:opacity-60"
           >
             Crear partido
           </button>

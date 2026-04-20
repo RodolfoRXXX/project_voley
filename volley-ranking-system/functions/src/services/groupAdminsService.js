@@ -55,8 +55,22 @@ function isGroupOwner(group, uid) {
   return String(ownerId) === String(uid);
 }
 
+function isGroupMember(group, uid) {
+  const normalizedUid = String(uid);
+  const memberIds = Array.isArray(group?.memberIds)
+    ? group.memberIds.map((memberId) => String(memberId))
+    : [];
+
+  if (memberIds.includes(normalizedUid)) {
+    return true;
+  }
+
+  return isGroupAdmin(group, normalizedUid);
+}
+
 module.exports = {
   normalizeGroupAdmins,
   isGroupAdmin,
+  isGroupMember,
   isGroupOwner,
 };

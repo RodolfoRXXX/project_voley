@@ -2,7 +2,7 @@
 
 const functions = require("firebase-functions/v1");
 const { db } = require("../src/firebase");
-const { isGroupAdmin } = require("../src/services/groupAdminsService");
+const { isGroupMember } = require("../src/services/groupAdminsService");
 
 module.exports = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -41,7 +41,7 @@ module.exports = functions.https.onCall(async (data, context) => {
     const userSnap = await db.collection("users").doc(userId).get();
     const isSystemAdmin = userSnap.exists && userSnap.data()?.roles === "admin";
 
-    if (!isSystemAdmin && !isGroupAdmin(group, userId)) {
+    if (!isSystemAdmin && !isGroupMember(group, userId)) {
       throw new functions.https.HttpsError(
         "permission-denied",
         "Este partido es solo para miembros del grupo"

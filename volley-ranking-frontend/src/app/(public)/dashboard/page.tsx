@@ -19,6 +19,7 @@ import useToast from "@/components/ui/toast/useToast";
 import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
 import { useRouter } from "next/navigation";
 import PublicTournamentDetailModal from "@/components/tournaments/public/PublicTournamentDetailModal";
+import CreateMatchQuickActionModal from "@/components/dashboard/CreateMatchQuickActionModal";
 
 const SOCIAL_MATCH_STATUSES = ["abierto", "verificando", "cerrado", "cancelado"] as const;
 
@@ -99,6 +100,8 @@ export default function DashboardPage() {
     myUpcomingMatchesCount: 0,
   });
   const [userStatsLoading, setUserStatsLoading] = useState(false);
+  const [showCreateMatchModal, setShowCreateMatchModal] = useState(false);
+  const [adminGroups, setAdminGroups] = useState<Array<{ id: string; nombre: string }>>([]);
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
@@ -248,6 +251,34 @@ export default function DashboardPage() {
       active = false;
     };
   }, [firebaseUser?.uid]);
+
+  useEffect(() => {
+    if (!firebaseUser?.uid || userDoc?.roles !== "admin") {
+      setAdminGroups([]);
+      return;
+    }
+
+    let active = true;
+    const loadAdminGroups = async () => {
+      const adminGroupsSnap = await getDocs(
+        query(collection(db, "groups"), where("adminIds", "array-contains", firebaseUser.uid))
+      );
+
+      if (!active) return;
+
+      const groups = adminGroupsSnap.docs.map((groupDoc) => ({
+        id: groupDoc.id,
+        nombre: String((groupDoc.data() as { nombre?: string }).nombre || "Grupo"),
+      }));
+      setAdminGroups(groups);
+    };
+
+    loadAdminGroups();
+
+    return () => {
+      active = false;
+    };
+  }, [firebaseUser?.uid, userDoc?.roles]);
 
   useEffect(() => {
     const loadTournamentCards = async () => {
@@ -528,34 +559,47 @@ export default function DashboardPage() {
 
     {firebaseUser && (
       <>
-        {/* Acciones rápidas */}
-        <section className="space-y-3">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-            Acciones rápidas
-          </h3>
+        {userDoc?.roles === "admin" && (
+          <section className="space-y-3">
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              Acciones rápidas
+            </h3>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <button className="rounded-xl border p-4 text-left hover:shadow-md hover:-translate-y-[2px] transition">
-              <p className="font-semibold">➕ Crear partido</p>
-              <p className="text-sm text-neutral-500">Organizá uno nuevo</p>
-            </button>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <button
+                className="rounded-xl border p-4 text-left hover:shadow-md hover:-translate-y-[2px] transition"
+                onClick={() => setShowCreateMatchModal(true)}
+              >
+                <p className="font-semibold">➕ Crear partido</p>
+                <p className="text-sm text-neutral-500">Organizá uno nuevo</p>
+              </button>
 
-            <button className="rounded-xl border p-4 text-left hover:shadow-md hover:-translate-y-[2px] transition">
-              <p className="font-semibold">🏆 Crear torneo</p>
-              <p className="text-sm text-neutral-500">Configurá uno nuevo</p>
-            </button>
+              <button
+                className="rounded-xl border p-4 text-left hover:shadow-md hover:-translate-y-[2px] transition"
+                onClick={() => router.push("/admin/tournaments/new")}
+              >
+                <p className="font-semibold">🏆 Crear torneo</p>
+                <p className="text-sm text-neutral-500">Configurá uno nuevo</p>
+              </button>
 
-            <button className="rounded-xl border p-4 text-left hover:shadow-md hover:-translate-y-[2px] transition">
-              <p className="font-semibold">👥 Crear grupo</p>
-              <p className="text-sm text-neutral-500">Sumá jugadores</p>
-            </button>
+              <button
+                className="rounded-xl border p-4 text-left hover:shadow-md hover:-translate-y-[2px] transition"
+                onClick={() => router.push("/admin/groups/new")}
+              >
+                <p className="font-semibold">👥 Crear grupo</p>
+                <p className="text-sm text-neutral-500">Sumá jugadores</p>
+              </button>
 
-            <button className="rounded-xl border p-4 text-left hover:shadow-md hover:-translate-y-[2px] transition">
-              <p className="font-semibold">👤 Completar perfil</p>
-              <p className="text-sm text-neutral-500">Mejorá tu info</p>
-            </button>
-          </div>
-        </section>
+              <button
+                className="rounded-xl border p-4 text-left hover:shadow-md hover:-translate-y-[2px] transition"
+                onClick={() => router.push("/profile/info?editGameProfile=1")}
+              >
+                <p className="font-semibold">👤 Editar perfíl</p>
+                <p className="text-sm text-neutral-500">Mejorá tu info</p>
+              </button>
+            </div>
+          </section>
+        )}
 
         {/* Panel */}
         <section className="space-y-4">
@@ -573,10 +617,9 @@ export default function DashboardPage() {
                 {userDoc?.nombre || firebaseUser.displayName || "Usuario"}
               </p>
               <p className="text-sm text-neutral-500">
-                {userDoc?.roles === "admin" ? "Administrador" : "Jugador"}
-              </p>
-              <p className="text-sm">
-                Perfil {isOnboarded ? "completo" : "incompleto"}
+                {!isOnboarded
+                  ? <span className="text-red-600 font-medium">Completar perfíl</span>
+                  : (userDoc?.roles === "admin" ? "Administrador" : "Jugador")}
               </p>
             </article>
 
@@ -597,9 +640,11 @@ export default function DashboardPage() {
               <p className="text-2xl font-bold">
                 {userStatsLoading ? "..." : userStats.groupsCount}
               </p>
-              <p className="text-sm text-neutral-500">
-                {userStats.adminGroupsCount} como admin
-              </p>
+              {userDoc?.roles === "admin" && (
+                <p className="text-sm text-neutral-500">
+                  {userStats.adminGroupsCount} como admin
+                </p>
+              )}
             </article>
 
             {/* Partidos */}
@@ -632,6 +677,9 @@ export default function DashboardPage() {
           />
         ))}
       </div>
+      {matches.length === 0 && (
+        <p className="text-sm text-neutral-500">No hay partidos</p>
+      )}
     </section>
 
     {/* Torneos */}
@@ -698,6 +746,19 @@ export default function DashboardPage() {
         const success = await login();
         if (!success) return;
         router.push(`/tournaments/${tournamentId}`);
+      }}
+    />
+    <CreateMatchQuickActionModal
+      open={showCreateMatchModal}
+      groups={adminGroups}
+      onClose={() => setShowCreateMatchModal(false)}
+      onCreateGroup={() => {
+        setShowCreateMatchModal(false);
+        router.push("/admin/groups/new");
+      }}
+      onCreateMatch={(groupId) => {
+        setShowCreateMatchModal(false);
+        router.push(`/admin/groups/${groupId}/matches/new`);
       }}
     />
 

@@ -721,13 +721,9 @@ async function handleAdminRemoval(req, res, authContext, groupId, userId) {
 
 async function handleAdminAdd(req, res, authContext, groupId, userId) {
   const groupRef = db.collection("groups").doc(groupId);
-  const targetUserRef = db.collection("users").doc(String(userId));
 
   await db.runTransaction(async (tx) => {
-    const [groupSnap, targetUserSnap] = await Promise.all([
-      tx.get(groupRef),
-      tx.get(targetUserRef),
-    ]);
+    const groupSnap = await tx.get(groupRef);
 
     if (!groupSnap.exists) {
       throw new Error("not-found");
@@ -741,10 +737,6 @@ async function handleAdminAdd(req, res, authContext, groupId, userId) {
     const memberIds = cleanStringArray(group.memberIds);
     if (!memberIds.includes(String(userId))) {
       throw new Error("not-member");
-    }
-
-    if (!targetUserSnap.exists || targetUserSnap.data()?.roles !== "admin") {
-      throw new Error("not-system-admin");
     }
 
     const normalized = normalizeGroupAdmins(group);
@@ -782,10 +774,6 @@ async function handleAdminAdd(req, res, authContext, groupId, userId) {
     }
     if (err.message === "not-member") {
       res.status(400).json({ error: "El usuario debe ser integrante del grupo" });
-      return;
-    }
-    if (err.message === "not-system-admin") {
-      res.status(400).json({ error: "El usuario a agregar no tiene rol admin" });
       return;
     }
     if (err.message === "already-admin") {

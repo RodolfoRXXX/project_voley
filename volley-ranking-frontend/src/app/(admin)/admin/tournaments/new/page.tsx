@@ -294,8 +294,8 @@ export default function NewTournamentPage() {
 
   const knockoutPreview = getKnockoutPreview(form.structure.knockoutStage.startFrom);
   const selectClassName =
-    "mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100";
-  const selectOptionClassName = "bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100";
+    "mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
+  const selectOptionClassName = "bg-white text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100";
 
   return (
     <main className="max-w-3xl mx-auto mt-6 sm:mt-10 pb-12 space-y-6">

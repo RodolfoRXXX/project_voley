@@ -75,6 +75,7 @@ type GroupTournamentRow = {
 const functions = getFunctions(app);
 const editGroup = httpsCallable(functions, "editGroup");
 const toggleGroupActivo = httpsCallable(functions, "toggleGroupActivo");
+const addGroupAdmin = httpsCallable(functions, "addGroupAdmin");
 
 const canAdminGroup = (
   group: Pick<GroupData, "adminIds" | "adminId"> | null | undefined,

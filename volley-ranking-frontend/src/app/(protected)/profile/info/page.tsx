@@ -11,6 +11,7 @@ import ProfileGame from "@/components/profile/profileGame";
 import ProfileMatches from "@/components/profile/ProfileMatches";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import EnablePushButton from "@/components/push/EnablePushButton";
+import { useSearchParams } from "next/navigation";
 
 /* =====================
    SKELETON
@@ -64,6 +65,8 @@ function ProfilePageSkeleton() {
 
 export default function ProfilePage() {
   const { userDoc, loading } = useAuth();
+  const searchParams = useSearchParams();
+  const autoStartEditing = searchParams.get("editGameProfile") === "1";
   if (loading || !userDoc) return <ProfilePageSkeleton />;
 
   return (
@@ -77,6 +80,7 @@ export default function ProfilePage() {
       <ProfileGame
         posicionesPreferidas={userDoc.posicionesPreferidas || []}
         role={userDoc.roles}
+        autoStartEditing={autoStartEditing}
       />
 
       <EnablePushButton />
@@ -87,4 +91,3 @@ export default function ProfilePage() {
     </main>
   );
 }
-

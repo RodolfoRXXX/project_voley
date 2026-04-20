@@ -13,6 +13,7 @@ type Role = "player" | "admin";
 type Props = {
   initial: string[];
   initialRole: Role;
+  autoStartEditing?: boolean;
 };
 
 const roleLabel: Record<Role, string> = {
@@ -23,6 +24,7 @@ const roleLabel: Record<Role, string> = {
 export default function PreferredPositionsEditor({
   initial,
   initialRole,
+  autoStartEditing = false,
 }: Props) {
   const [savedPositions, setSavedPositions] = useState<string[]>(initial);
   const [positions, setPositions] = useState<string[]>(initial);
@@ -79,6 +81,12 @@ export default function PreferredPositionsEditor({
 
     load();
   }, [functions, showToast]);
+
+  useEffect(() => {
+    if (autoStartEditing) {
+      setEditing(true);
+    }
+  }, [autoStartEditing]);
 
   const samePositions = (a: string[], b: string[]) =>
     a.length === b.length && a.every((value, i) => value === b[i]);

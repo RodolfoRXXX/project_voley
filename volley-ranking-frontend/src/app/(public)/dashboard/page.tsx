@@ -466,249 +466,241 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
-      {showGuestHero && (
-        <section className="relative overflow-hidden rounded-3xl border border-orange-200/70 dark:border-[var(--border)] bg-gradient-to-br from-orange-100 via-orange-50 to-amber-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-6 sm:p-8 shadow-sm">
-          <div className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-orange-300/20 dark:bg-orange-500/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-amber-300/20 dark:bg-amber-500/10 blur-3xl" />
+  <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-8">
 
-          <div className="relative space-y-8">
+    {showGuestHero && (
+      <section className="relative overflow-hidden rounded-3xl border border-orange-200/70 dark:border-[var(--border)] bg-gradient-to-br from-orange-100 via-orange-50 to-amber-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-6 sm:p-8 shadow-sm">
+        <div className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-orange-300/20 dark:bg-orange-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-amber-300/20 dark:bg-amber-500/10 blur-3xl" />
 
-            {/* Badge + título */}
-            <header className="space-y-5">
-              
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                
-                {/* Badge */}
-                <p className="inline-flex w-fit items-center rounded-full border border-orange-200/80 dark:border-orange-400/30 bg-white/80 dark:bg-slate-900/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-orange-600 dark:text-orange-300 backdrop-blur transition-all duration-300 hover:scale-[1.03]">
-                  Tu plataforma para deportes
-                </p>
+        <div className="relative space-y-8">
+          <header className="space-y-5">
 
-                {/* Espacio en desktop */}
-                <div className="hidden sm:block" />
-              </div>
-
-              {/* Título */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 dark:text-[var(--foreground)] leading-tight">
-                Organizá tu torneo con{" "}
-                <span className="inline-block">
-                  <span>Sporte</span>
-                  <span className="logo-x text-5xl sm:text-6xl lg:text-7xl align-middle mx-1 animate-pulse">
-                    X
-                  </span>
-                  <span>a</span>
-                </span>
-              </h1>
-
-              {/* Subtexto */}
-              <p className="max-w-2xl text-sm sm:text-base text-slate-600 dark:text-[var(--text-muted)]">
-                Organizá partidos, descubrí torneos y seguí tu evolución en una experiencia moderna, clara y hecha para la comunidad.
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <p className="inline-flex w-fit items-center rounded-full border border-orange-200/80 dark:border-orange-400/30 bg-white/80 dark:bg-slate-900/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-orange-600 dark:text-orange-300 backdrop-blur">
+                Tu plataforma para deportes
               </p>
-
-              {/* CTA */}
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={login}
-                  className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white transition-all duration-300 hover:bg-orange-600 hover:scale-[1.02] shadow-lg shadow-orange-500/20"
-                >
-                  Empezar ahora
-                </button>
-              </div>
-
-            </header>
-
-            {/* Cards */}
-            <div className="grid gap-4 md:grid-cols-3">
-              {featureCards.map((feature) => (
-                <article
-                  key={feature.title}
-                  className="group rounded-2xl border border-white/80 dark:border-[var(--border)] bg-white/80 dark:bg-slate-900/70 backdrop-blur px-4 py-5 shadow-[0_10px_30px_rgba(251,146,60,0.10)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_15px_40px_rgba(251,146,60,0.18)]"
-                >
-                  <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-500/20 dark:to-amber-500/20 text-xl shadow-inner ring-1 ring-orange-200/70 dark:ring-orange-300/20 transition-transform duration-300 group-hover:scale-110">
-                    <span className="-translate-y-[1px]">{feature.emoji}</span>
-                  </div>
-
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-[var(--foreground)]">
-                    {feature.title}
-                  </h3>
-
-                  <p className="mt-1 text-sm text-slate-600 dark:text-[var(--text-muted)]">
-                    {feature.description}
-                  </p>
-                </article>
-              ))}
             </div>
 
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 dark:text-[var(--foreground)] leading-tight">
+              Organizá tu torneo con{" "}
+              <span className="inline-block">
+                <span>Sporte</span>
+                <span className="logo-x text-5xl sm:text-6xl lg:text-7xl align-middle mx-1 animate-pulse">
+                  X
+                </span>
+                <span>a</span>
+              </span>
+            </h1>
+
+            <p className="max-w-2xl text-sm sm:text-base text-slate-600 dark:text-[var(--text-muted)]">
+              Organizá partidos, descubrí torneos y seguí tu evolución en una experiencia moderna y clara.
+            </p>
+
+            <button
+              type="button"
+              onClick={login}
+              className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white hover:bg-orange-600 hover:scale-[1.02] transition shadow-lg shadow-orange-500/20"
+            >
+              Empezar ahora
+            </button>
+
+          </header>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {featureCards.map((feature) => (
+              <article
+                key={feature.title}
+                className="group rounded-2xl border border-white/80 bg-white/80 dark:bg-slate-900/70 px-4 py-5 backdrop-blur hover:-translate-y-1 hover:shadow-xl transition"
+              >
+                <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 text-xl group-hover:scale-110 transition">
+                  {feature.emoji}
+                </div>
+                <h3 className="font-semibold">{feature.title}</h3>
+                <p className="text-sm text-neutral-600">{feature.description}</p>
+              </article>
+            ))}
+          </div>
+
+        </div>
+      </section>
+    )}
+
+    {firebaseUser && (
+      <>
+        {/* Acciones rápidas */}
+        <section className="space-y-3">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+            Acciones rápidas
+          </h3>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <button className="rounded-xl border p-4 text-left hover:shadow-md hover:-translate-y-[2px] transition">
+              <p className="font-semibold">➕ Crear partido</p>
+              <p className="text-sm text-neutral-500">Organizá uno nuevo</p>
+            </button>
+
+            <button className="rounded-xl border p-4 text-left hover:shadow-md hover:-translate-y-[2px] transition">
+              <p className="font-semibold">🏆 Crear torneo</p>
+              <p className="text-sm text-neutral-500">Configurá uno nuevo</p>
+            </button>
+
+            <button className="rounded-xl border p-4 text-left hover:shadow-md hover:-translate-y-[2px] transition">
+              <p className="font-semibold">👥 Crear grupo</p>
+              <p className="text-sm text-neutral-500">Sumá jugadores</p>
+            </button>
+
+            <button className="rounded-xl border p-4 text-left hover:shadow-md hover:-translate-y-[2px] transition">
+              <p className="font-semibold">👤 Completar perfil</p>
+              <p className="text-sm text-neutral-500">Mejorá tu info</p>
+            </button>
           </div>
         </section>
-      )}
 
-      {firebaseUser && (
+        {/* Panel */}
         <section className="space-y-4">
-          <header className="space-y-1">
-            <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-              Tu tablero CRM
-            </h2>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              Un resumen rápido de tu estado dentro de la plataforma.
-            </p>
+          <header>
+            <h2 className="text-2xl font-bold">Tu panel</h2>
+            <p className="text-sm text-neutral-600">Todo lo importante en un solo lugar.</p>
           </header>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <article className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
-              <p className="text-xs uppercase tracking-wide text-neutral-500">Perfil</p>
-              <p className="mt-2 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+
+            {/* Perfil */}
+            <article className="rounded-2xl border p-4 hover:shadow-md transition">
+              <p className="text-xs text-neutral-500">Perfil</p>
+              <p className="text-lg font-semibold">
                 {userDoc?.nombre || firebaseUser.displayName || "Usuario"}
               </p>
-              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                Rol: {userDoc?.roles === "admin" ? "Administrador" : "Jugador"}
+              <p className="text-sm text-neutral-500">
+                {userDoc?.roles === "admin" ? "Administrador" : "Jugador"}
               </p>
-              <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                Onboarding: {isOnboarded ? "Completo" : "Pendiente"}
-              </p>
-            </article>
-
-            <article className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
-              <p className="text-xs uppercase tracking-wide text-neutral-500">Posiciones</p>
-              <p className="mt-2 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-                {hasPreferredPositions ? `${preferredPositions.length} elegidas` : "Sin definir"}
-              </p>
-              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                {isOnboarded
-                  ? (hasPreferredPositions ? preferredPositions.join(" · ") : "No definiste posiciones todavía.")
-                  : "Todavía no completaste el onboarding."}
+              <p className="text-sm">
+                Perfil {isOnboarded ? "completo" : "incompleto"}
               </p>
             </article>
 
-            <article className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
-              <p className="text-xs uppercase tracking-wide text-neutral-500">Grupos</p>
-              <p className="mt-2 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-                {userStatsLoading ? "Cargando..." : userStats.groupsCount}
+            {/* Posiciones */}
+            <article className="rounded-2xl border p-4 hover:shadow-md transition">
+              <p className="text-xs text-neutral-500">Posiciones</p>
+              <p className="text-2xl font-bold">
+                {hasPreferredPositions ? preferredPositions.length : 0}
               </p>
-              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                {userStatsLoading ? "Calculando membresías..." : `${userStats.adminGroupsCount} como admin`}
+              <p className="text-sm text-neutral-500">
+                {hasPreferredPositions ? preferredPositions.join(" · ") : "Sin definir"}
               </p>
             </article>
 
-            <article className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
-              <p className="text-xs uppercase tracking-wide text-neutral-500">Próximos partidos tuyos</p>
-              <p className="mt-2 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-                {userStatsLoading ? "Cargando..." : userStats.myUpcomingMatchesCount}
+            {/* Grupos */}
+            <article className="rounded-2xl border p-4 hover:shadow-md transition">
+              <p className="text-xs text-neutral-500">Grupos</p>
+              <p className="text-2xl font-bold">
+                {userStatsLoading ? "..." : userStats.groupsCount}
               </p>
-              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                Torneos activos visibles: {activeTournamentCards.length}
+              <p className="text-sm text-neutral-500">
+                {userStats.adminGroupsCount} como admin
               </p>
             </article>
+
+            {/* Partidos */}
+            <article className="rounded-2xl border p-4 hover:shadow-md transition">
+              <p className="text-xs text-neutral-500">Próximos partidos</p>
+              <p className="text-2xl font-bold">
+                {userStatsLoading ? "..." : userStats.myUpcomingMatchesCount}
+              </p>
+              <p className="text-sm text-neutral-500">
+                {activeTournamentCards.length} torneos activos
+              </p>
+            </article>
+
           </div>
         </section>
-      )}
+      </>
+    )}
 
-      <h2 className="text-3xl font-bold text-neutral-800 dark:text-[var(--foreground)]">
-        Próximos partidos
-      </h2>
+    {/* Matches */}
+    <section className="space-y-3">
+      <h2 className="text-2xl font-bold">Próximos partidos</h2>
 
-      {matches.length === 0 && activeTournamentCards.length === 0 ? (
-        <p className="text-gray-500">No hay partidos disponibles.</p>
-      ) : (
-        <>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {matches.map((match) => (
-            <MatchCard
-              key={match.id}
-              match={match}
-              userId={firebaseUser?.uid}
-              groupNombre={groupsMap[match.groupId]}
-            />
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {matches.map((match) => (
+          <MatchCard
+            key={match.id}
+            match={match}
+            userId={firebaseUser?.uid}
+            groupNombre={groupsMap[match.groupId]}
+          />
+        ))}
+      </div>
+    </section>
+
+    {/* Torneos */}
+    {activeTournamentCards.length > 0 && (
+      <section className="space-y-3">
+        <h3 className="text-xl font-semibold">Torneos activos</h3>
+
+        <div className="flex gap-4 overflow-x-auto pb-2">
+          {activeTournamentCards.map((tournamentCard) => (
+            <article
+              key={tournamentCard.id}
+              className="min-w-[300px] rounded-2xl border p-4 space-y-4 hover:shadow-md transition"
+            >
+
+              <div>
+                <p className="font-semibold">{tournamentCard.name}</p>
+                <div className="text-xs text-neutral-500 flex gap-2">
+                  <span>{tournamentCard.format}</span>
+                  <span>•</span>
+                  <span>{tournamentPhaseTypeLabel[tournamentCard.phaseType]}</span>
+                </div>
+              </div>
+
+              <div className="bg-neutral-100 rounded-lg p-2 text-sm">
+                {tournamentCard.nextMatch
+                  ? `${tournamentCard.nextMatch.homeTeamName} vs ${tournamentCard.nextMatch.awayTeamName}`
+                  : "Sin partidos"}
+              </div>
+
+              {/* Top 3 */}
+              <div>
+                <p className="text-xs text-neutral-500">Top actual</p>
+                <ul className="text-sm">
+                  {tournamentCard.standings.slice(0, 3).map((team, i) => (
+                    <li key={team.id}>
+                      {i + 1}. {team.teamName}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <button
+                onClick={() => setSelectedTournamentCard(tournamentCard)}
+                className="text-sm text-orange-600"
+              >
+                Ver detalle →
+              </button>
+
+            </article>
           ))}
         </div>
+      </section>
+    )}
 
-        {activeTournamentCards.length > 0 && (
-          <section className="space-y-3">
-  <h3 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-    Torneos activos
-  </h3>
-
-  <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
-    {activeTournamentCards.map((tournamentCard) => (
-      <article
-        key={tournamentCard.id}
-        className="group min-w-[280px] sm:min-w-[330px] snap-start rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 space-y-4 shadow-sm hover:shadow-md transition-all duration-300"
-      >
-
-        {/* Header */}
-        <div className="space-y-1">
-          <p className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-            {tournamentCard.name}
-          </p>
-
-          <div className="flex items-center gap-2 text-xs text-neutral-500">
-            <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300">
-              {tournamentCard.format}
-            </span>
-            <span className="text-neutral-400">•</span>
-            <span>
-              {tournamentPhaseTypeLabel[tournamentCard.phaseType]}
-            </span>
-          </div>
-        </div>
-
-        {/* Próximo partido */}
-        <div className="rounded-lg bg-neutral-50 dark:bg-neutral-800/60 px-3 py-2 text-sm">
-          <p className="text-xs text-neutral-500 mb-1">
-            Próximo partido
-          </p>
-
-          {tournamentCard.nextMatch ? (
-            <p className="font-medium text-neutral-900 dark:text-neutral-100">
-              <span>{tournamentCard.nextMatch.homeTeamName}</span>
-              <span className="text-neutral-400 mx-1">vs</span>
-              <span>{tournamentCard.nextMatch.awayTeamName}</span>
-            </p>
-          ) : (
-            <p className="text-neutral-500">
-              Sin partidos pendientes
-            </p>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between pt-1">
-          <span className="text-xs text-neutral-500">
-            {tournamentCard.teamsCount} equipos
-          </span>
-
-          <button
-            type="button"
-            onClick={() => setSelectedTournamentCard(tournamentCard)}
-            className="text-sm font-medium text-orange-600 hover:text-orange-700 transition"
-          >
-            Ver detalle →
-          </button>
-        </div>
-
-      </article>
-    ))}
-  </div>
-</section>
-        )}
-        </>
-      )}
-      <PublicTournamentDetailModal
-        open={selectedTournamentCard !== null}
-        tournamentCard={selectedTournamentCard}
-        onClose={() => setSelectedTournamentCard(null)}
-        onOpenDetail={async (tournamentId) => {
-          if (firebaseUser) {
-            router.push(`/tournaments/${tournamentId}`);
-            return;
-          }
-          const success = await login();
-          if (!success) return;
+    <PublicTournamentDetailModal
+      open={selectedTournamentCard !== null}
+      tournamentCard={selectedTournamentCard}
+      onClose={() => setSelectedTournamentCard(null)}
+      onOpenDetail={async (tournamentId) => {
+        if (firebaseUser) {
           router.push(`/tournaments/${tournamentId}`);
-        }}
-      />
+          return;
+        }
+        const success = await login();
+        if (!success) return;
+        router.push(`/tournaments/${tournamentId}`);
+      }}
+    />
 
-    </main>
-  );
+  </main>
+);
 }

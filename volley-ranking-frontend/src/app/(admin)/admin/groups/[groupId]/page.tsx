@@ -86,6 +86,30 @@ const canAdminGroup = (
   return group?.adminId === uid;
 };
 
+const sortMembersWithAdminsFirst = (members: GroupMember[], ownerId?: string) => {
+  const normalizedOwnerId = ownerId ? String(ownerId) : null;
+  const collator = new Intl.Collator("es", { sensitivity: "base" });
+
+  const adminMembers = members.filter((member) => member.isAdmin);
+  const regularMembers = members.filter((member) => !member.isAdmin);
+
+  const owner = normalizedOwnerId
+    ? adminMembers.find((member) => member.id === normalizedOwnerId) || null
+    : null;
+
+  const sortedSecondaryAdmins = adminMembers
+    .filter((member) => member.id !== normalizedOwnerId)
+    .sort((a, b) => collator.compare(a.name, b.name));
+
+  const sortedRegularMembers = [...regularMembers].sort((a, b) =>
+    collator.compare(a.name, b.name)
+  );
+
+  return owner
+    ? [owner, ...sortedSecondaryAdmins, ...sortedRegularMembers]
+    : [...sortedSecondaryAdmins, ...sortedRegularMembers];
+};
+
 
 /* =====================
    SKELETON
@@ -259,7 +283,7 @@ export default function AdminGroupPage() {
     };
   };
 
-  const members = memberIds.map(buildMember);
+  const members = sortMembersWithAdminsFirst(memberIds.map(buildMember), data.ownerId);
   const pendingRequests = pendingIds.map(buildMember);
 
   const pendingAdminRequests: GroupMember[] = Array.isArray(data.pendingAdminRequestIds)
@@ -576,21 +600,62 @@ export default function AdminGroupPage() {
   //remover admin
 
   const removeAdmin = async (userId: string) => {
-    try {
-      setActingKey(`remove-admin-${userId}`);
+    await run(
+      `remove-admin-${userId}`,
+      async () => {
+        try {
+          setActingKey(`remove-admin-${userId}`);
 
-      await postWithAuth(
-        `/api/groups/${groupId}/admins/${userId}/remove`
-      );
-      await loadGroupDetails();
+          await postWithAuth(
+            `/api/groups/${groupId}/admins/${userId}/remove`
+          );
+          await loadGroupDetails();
+        } finally {
+          setActingKey(null);
+        }
+      },
+      {
+        confirm: {
+          message: "¿Querés quitar permisos de admin a este integrante?",
+          confirmText: "Quitar admin",
+          cancelText: "Cancelar",
+          variant: "danger",
+        },
+        successMessage: "Admin actualizado",
+      }
+    );
+  };
 
-    } finally {
-      setActingKey(null);
-    }
+  const addAdmin = async (userId: string) => {
+    await run(
+      `add-admin-${userId}`,
+      async () => {
+        try {
+          setActingKey(`add-admin-${userId}`);
+
+          await postWithAuth(
+            `/api/groups/${groupId}/admins/${userId}/add`
+          );
+          await loadGroupDetails();
+        } finally {
+          setActingKey(null);
+        }
+      },
+      {
+        confirm: {
+          message: "¿Querés agregar a este integrante como admin del grupo?",
+          confirmText: "Agregar admin",
+          cancelText: "Cancelar",
+          variant: "danger",
+        },
+        successMessage: "Admin actualizado",
+      }
+    );
   };
 
 
   const isPrimaryAdmin = !!firebaseUser?.uid && group.ownerId === firebaseUser.uid;
+  const adminMembersCount = (group.members ?? []).filter((member) => member.isAdmin).length;
   const pendingRequests: GroupMember[] = Array.isArray(group.pendingRequests) ? group.pendingRequests : [];
   const pendingAdminRequests: GroupMember[] = Array.isArray(group.pendingAdminRequests) ? group.pendingAdminRequests : [];
 
@@ -834,16 +899,42 @@ export default function AdminGroupPage() {
                   </div>
                 </div>
 
-                {member.isAdmin ? (
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                  {member.isAdmin && (
                     <StatusPill label={member.id === group.ownerId ? "Admin principal" : "Admin"} variant="warning" />
-                    {isPrimaryAdmin && member.id !== firebaseUser?.uid && (
-                      <ActionButton onClick={() => removeAdmin(member.id)} loading={actingKey === `remove-admin-${member.id}`} variant="danger_outline" compact>Quitar admin</ActionButton>
-                    )}
-                  </div>
-                ) : (
-                  <ActionButton onClick={() => removeMember(member.id)} loading={actingKey === `remove-${member.id}`} variant="danger_outline" compact>Eliminar</ActionButton>
-                )}
+                  )}
+
+                  {isPrimaryAdmin && (
+                    <ActionButton
+                      onClick={() =>
+                        member.isAdmin ? removeAdmin(member.id) : addAdmin(member.id)
+                      }
+                      loading={
+                        actingKey === `remove-admin-${member.id}` ||
+                        actingKey === `add-admin-${member.id}`
+                      }
+                      variant="danger_outline"
+                      compact
+                      disabled={
+                        member.id === firebaseUser?.uid &&
+                        member.isAdmin &&
+                        adminMembersCount <= 1
+                      }
+                    >
+                      {member.isAdmin ? "Quitar admin" : "Agregar admin"}
+                    </ActionButton>
+                  )}
+
+                  <ActionButton
+                    onClick={() => removeMember(member.id)}
+                    loading={actingKey === `remove-${member.id}`}
+                    variant="danger_outline"
+                    compact
+                    disabled={member.isAdmin}
+                  >
+                    Eliminar
+                  </ActionButton>
+                </div>
               </li>
             ))}
           </ul>

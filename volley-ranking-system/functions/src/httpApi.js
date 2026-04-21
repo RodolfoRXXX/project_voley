@@ -2,7 +2,7 @@ const functions = require("firebase-functions/v1");
 const { admin, db } = require("./firebase");
 const { normalizeGroupAdmins } = require("./services/groupAdminsService");
 const { sendEmail, getWebAppUrl } = require("./services/emailService");
-const { FieldValue } = require("firebase-admin/firestore");
+const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { emitDomainEvent } = require("./events/domainEventBus");
 const { DOMAIN_EVENTS } = require("./events/domainEvents");
 const { getPublicVapidKey } = require("./services/pushService");
@@ -750,7 +750,7 @@ async function handleAdminAdd(req, res, authContext, groupId, userId) {
         userId: String(userId),
         role: "admin",
         order: normalized.admins.length,
-        addedAt: admin.firestore.FieldValue.serverTimestamp(),
+        addedAt: Timestamp.now(),
         addedBy: authContext.uid,
       },
     ];

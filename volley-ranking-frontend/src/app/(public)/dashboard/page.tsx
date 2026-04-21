@@ -497,271 +497,318 @@ export default function DashboardPage() {
   }
 
   return (
-  <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-8">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-8">
 
-    {showGuestHero && (
-      <section className="relative overflow-hidden rounded-3xl border border-orange-200/70 dark:border-[var(--border)] bg-gradient-to-br from-orange-100 via-orange-50 to-amber-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-6 sm:p-8 shadow-sm">
-        <div className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-orange-300/20 dark:bg-orange-500/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-amber-300/20 dark:bg-amber-500/10 blur-3xl" />
+      {showGuestHero && (
+        <section className="relative overflow-hidden rounded-3xl border border-orange-200/70 dark:border-[var(--border)] bg-gradient-to-br from-orange-100 via-orange-50 to-amber-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-6 sm:p-8 shadow-sm">
+          <div className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-orange-300/20 dark:bg-orange-500/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-amber-300/20 dark:bg-amber-500/10 blur-3xl" />
 
-        <div className="relative space-y-8">
-          <header className="space-y-5">
+          <div className="relative space-y-8">
+            <header className="space-y-5">
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <p className="inline-flex w-fit items-center rounded-full border border-orange-200/80 dark:border-orange-400/30 bg-white/80 dark:bg-slate-900/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-orange-600 dark:text-orange-300 backdrop-blur">
-                Tu plataforma para deportes
-              </p>
-            </div>
-
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 dark:text-[var(--foreground)] leading-tight">
-              Organizá tu torneo con{" "}
-              <span className="inline-block">
-                <span>Sporte</span>
-                <span className="logo-x text-5xl sm:text-6xl lg:text-7xl align-middle mx-1 animate-pulse">
-                  X
-                </span>
-                <span>a</span>
-              </span>
-            </h1>
-
-            <p className="max-w-2xl text-sm sm:text-base text-slate-600 dark:text-[var(--text-muted)]">
-              Organizá partidos, descubrí torneos y seguí tu evolución en una experiencia moderna y clara.
-            </p>
-
-            <button
-              type="button"
-              onClick={login}
-              className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white hover:bg-orange-600 hover:scale-[1.02] transition shadow-lg shadow-orange-500/20"
-            >
-              Empezar ahora
-            </button>
-
-          </header>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            {featureCards.map((feature) => (
-              <article
-                key={feature.title}
-                className="group rounded-2xl border border-white/80 bg-white/80 dark:bg-slate-900/70 px-4 py-5 backdrop-blur hover:-translate-y-1 hover:shadow-xl transition"
-              >
-                <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 text-xl group-hover:scale-110 transition">
-                  {feature.emoji}
-                </div>
-                <h3 className="font-semibold">{feature.title}</h3>
-                <p className="text-sm text-neutral-600">{feature.description}</p>
-              </article>
-            ))}
-          </div>
-
-        </div>
-      </section>
-    )}
-
-    {firebaseUser && (
-      <>
-        {userDoc?.roles === "admin" && (
-          <section className="space-y-3">
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-              Acciones rápidas
-            </h3>
-
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <button
-                className="rounded-xl border p-4 text-left hover:shadow-md hover:-translate-y-[2px] transition"
-                onClick={() => setShowCreateMatchModal(true)}
-              >
-                <p className="font-semibold">➕ Crear partido</p>
-                <p className="text-sm text-neutral-500">Organizá uno nuevo</p>
-              </button>
-
-              <button
-                className="rounded-xl border p-4 text-left hover:shadow-md hover:-translate-y-[2px] transition"
-                onClick={() => router.push("/admin/tournaments/new")}
-              >
-                <p className="font-semibold">🏆 Crear torneo</p>
-                <p className="text-sm text-neutral-500">Configurá uno nuevo</p>
-              </button>
-
-              <button
-                className="rounded-xl border p-4 text-left hover:shadow-md hover:-translate-y-[2px] transition"
-                onClick={() => router.push("/admin/groups/new")}
-              >
-                <p className="font-semibold">👥 Crear grupo</p>
-                <p className="text-sm text-neutral-500">Sumá jugadores</p>
-              </button>
-
-              <button
-                className="rounded-xl border p-4 text-left hover:shadow-md hover:-translate-y-[2px] transition"
-                onClick={() => router.push("/profile/info?editGameProfile=1")}
-              >
-                <p className="font-semibold">👤 Editar perfíl</p>
-                <p className="text-sm text-neutral-500">Mejorá tu info</p>
-              </button>
-            </div>
-          </section>
-        )}
-
-        {/* Panel */}
-        <section className="space-y-4">
-          <header>
-            <h2 className="text-2xl font-bold">Tu panel</h2>
-            <p className="text-sm text-neutral-600">Todo lo importante en un solo lugar.</p>
-          </header>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-
-            {/* Perfil */}
-            <article className="rounded-2xl border p-4 hover:shadow-md transition">
-              <p className="text-xs text-neutral-500">Perfil</p>
-              <p className="text-lg font-semibold">
-                {userDoc?.nombre || firebaseUser.displayName || "Usuario"}
-              </p>
-              <p className="text-sm text-neutral-500">
-                {!isOnboarded
-                  ? <span className="text-red-600 font-medium">Completar perfíl</span>
-                  : (userDoc?.roles === "admin" ? "Administrador" : "Jugador")}
-              </p>
-            </article>
-
-            {/* Posiciones */}
-            <article className="rounded-2xl border p-4 hover:shadow-md transition">
-              <p className="text-xs text-neutral-500">Posiciones</p>
-              <p className="text-2xl font-bold">
-                {hasPreferredPositions ? preferredPositions.length : 0}
-              </p>
-              <p className="text-sm text-neutral-500">
-                {hasPreferredPositions ? preferredPositions.join(" · ") : "Sin definir"}
-              </p>
-            </article>
-
-            {/* Grupos */}
-            <article className="rounded-2xl border p-4 hover:shadow-md transition">
-              <p className="text-xs text-neutral-500">Grupos</p>
-              <p className="text-2xl font-bold">
-                {userStatsLoading ? "..." : userStats.groupsCount}
-              </p>
-              {userDoc?.roles === "admin" && (
-                <p className="text-sm text-neutral-500">
-                  {userStats.adminGroupsCount} como admin
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <p className="inline-flex w-fit items-center rounded-full border border-orange-200/80 dark:border-orange-400/30 bg-white/80 dark:bg-slate-900/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-orange-600 dark:text-orange-300 backdrop-blur">
+                  Tu plataforma para deportes
                 </p>
-              )}
-            </article>
+              </div>
 
-            {/* Partidos */}
-            <article className="rounded-2xl border p-4 hover:shadow-md transition">
-              <p className="text-xs text-neutral-500">Próximos partidos</p>
-              <p className="text-2xl font-bold">
-                {userStatsLoading ? "..." : userStats.myUpcomingMatchesCount}
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 dark:text-[var(--foreground)] leading-tight">
+                Organizá tu torneo con{" "}
+                <span className="inline-block">
+                  <span>Sporte</span>
+                  <span className="logo-x text-5xl sm:text-6xl lg:text-7xl align-middle mx-1 animate-pulse">
+                    X
+                  </span>
+                  <span>a</span>
+                </span>
+              </h1>
+
+              <p className="max-w-2xl text-sm sm:text-base text-slate-600 dark:text-[var(--text-muted)]">
+                Organizá partidos, descubrí torneos y seguí tu evolución en una experiencia moderna y clara.
               </p>
-              <p className="text-sm text-neutral-500">
-                {activeTournamentCards.length} torneos activos
-              </p>
-            </article>
+
+              <button
+                type="button"
+                onClick={login}
+                className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white hover:bg-orange-600 hover:scale-[1.02] transition shadow-lg shadow-orange-500/20"
+              >
+                Empezar ahora
+              </button>
+
+            </header>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              {featureCards.map((feature) => (
+                <article
+                  key={feature.title}
+                  className="group rounded-2xl border border-white/80 bg-white/80 dark:bg-slate-900/70 px-4 py-5 backdrop-blur hover:-translate-y-1 hover:shadow-xl transition"
+                >
+                  <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 text-xl group-hover:scale-110 transition">
+                    {feature.emoji}
+                  </div>
+                  <h3 className="font-semibold">{feature.title}</h3>
+                  <p className="text-sm text-neutral-600">{feature.description}</p>
+                </article>
+              ))}
+            </div>
 
           </div>
         </section>
-      </>
-    )}
-
-    {/* Matches */}
-    <section className="space-y-3">
-      <h2 className="text-2xl font-bold">Próximos partidos</h2>
-
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {matches.map((match) => (
-          <MatchCard
-            key={match.id}
-            match={match}
-            userId={firebaseUser?.uid}
-            groupNombre={groupsMap[match.groupId]}
-          />
-        ))}
-      </div>
-      {matches.length === 0 && (
-        <p className="text-sm text-neutral-500">No hay partidos</p>
       )}
-    </section>
 
-    {/* Torneos */}
-    {activeTournamentCards.length > 0 && (
+      {firebaseUser && (
+        <>
+          {userDoc?.roles === "admin" && (
+            <section className="space-y-3">
+              <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                Acciones rápidas
+              </h3>
+
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  {
+                    title: "Crear partido",
+                    desc: "Organizá uno nuevo",
+                    icon: "➕",
+                    onClick: () => setShowCreateMatchModal(true),
+                  },
+                  {
+                    title: "Crear torneo",
+                    desc: "Configurá uno nuevo",
+                    icon: "🏆",
+                    onClick: () => router.push("/admin/tournaments/new"),
+                  },
+                  {
+                    title: "Crear grupo",
+                    desc: "Sumá jugadores",
+                    icon: "👥",
+                    onClick: () => router.push("/admin/groups/new"),
+                  },
+                  {
+                    title: "Editar perfil",
+                    desc: "Mejorá tu info",
+                    icon: "👤",
+                    onClick: () => router.push("/profile/info?editGameProfile=1"),
+                  },
+                ].map((action) => (
+                  <button
+                    key={action.title}
+                    onClick={action.onClick}
+                    className="group rounded-2xl border border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4 text-left transition hover:-translate-y-[2px] hover:shadow-lg"
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-orange-100 to-amber-100 text-lg group-hover:scale-110 transition">
+                        {action.icon}
+                      </div>
+                      <p className="font-semibold text-sm">{action.title}</p>
+                    </div>
+                    <p className="text-xs text-neutral-500">{action.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Panel */}
+          <section className="space-y-4">
+            <header>
+              <h2 className="text-2xl font-bold">Tu panel</h2>
+              <p className="text-sm text-neutral-600">Todo lo importante en un solo lugar.</p>
+            </header>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+              <article className="rounded-2xl border border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4 shadow-sm hover:shadow-lg hover:-translate-y-[2px] transition">
+                <p className="text-xs text-neutral-500">Perfil</p>
+                <p className="text-lg font-semibold">
+                  {userDoc?.nombre || firebaseUser.displayName || "Usuario"}
+                </p>
+                <p className="text-sm">
+                  {!isOnboarded
+                    ? <span className="text-orange-600 font-medium">Completar perfil</span>
+                    : (userDoc?.roles === "admin" ? "Administrador" : "Jugador")}
+                </p>
+              </article>
+
+              <article className="rounded-2xl border border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4 shadow-sm hover:shadow-lg hover:-translate-y-[2px] transition">
+                <p className="text-xs text-neutral-500">Posiciones</p>
+                <p className="text-2xl font-bold">
+                  {hasPreferredPositions ? preferredPositions.length : 0}
+                </p>
+                <p className="text-sm text-neutral-500">
+                  {hasPreferredPositions ? preferredPositions.join(" · ") : "Sin definir"}
+                </p>
+              </article>
+
+              <article className="rounded-2xl border border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4 shadow-sm hover:shadow-lg hover:-translate-y-[2px] transition">
+                <p className="text-xs text-neutral-500">Grupos</p>
+                <p className="text-2xl font-bold">
+                  {userStatsLoading ? "..." : userStats.groupsCount}
+                </p>
+                {userDoc?.roles === "admin" && (
+                  <p className="text-sm text-neutral-500">
+                    {userStats.adminGroupsCount} como admin
+                  </p>
+                )}
+              </article>
+
+              <article className="rounded-2xl border border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4 shadow-sm hover:shadow-lg hover:-translate-y-[2px] transition">
+                <p className="text-xs text-neutral-500">Próximos partidos</p>
+                <p className="text-2xl font-bold">
+                  {userStatsLoading ? "..." : userStats.myUpcomingMatchesCount}
+                </p>
+                <p className="text-sm text-neutral-500">
+                  {activeTournamentCards.length} torneos activos
+                </p>
+              </article>
+
+            </div>
+          </section>
+        </>
+      )}
+
+      {/* Matches */}
       <section className="space-y-3">
-        <h3 className="text-xl font-semibold">Torneos activos</h3>
+        <h2 className="text-2xl font-bold">Próximos partidos</h2>
 
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          {activeTournamentCards.map((tournamentCard) => (
-            <article
-              key={tournamentCard.id}
-              className="min-w-[300px] rounded-2xl border p-4 space-y-4 hover:shadow-md transition"
-            >
-
-              <div>
-                <p className="font-semibold">{tournamentCard.name}</p>
-                <div className="text-xs text-neutral-500 flex gap-2">
-                  <span>{tournamentCard.format}</span>
-                  <span>•</span>
-                  <span>{tournamentPhaseTypeLabel[tournamentCard.phaseType]}</span>
-                </div>
-              </div>
-
-              <div className="bg-neutral-100 rounded-lg p-2 text-sm">
-                {tournamentCard.nextMatch
-                  ? `${tournamentCard.nextMatch.homeTeamName} vs ${tournamentCard.nextMatch.awayTeamName}`
-                  : "Sin partidos"}
-              </div>
-
-              {/* Top 3 */}
-              <div>
-                <p className="text-xs text-neutral-500">Top actual</p>
-                <ul className="text-sm">
-                  {tournamentCard.standings.slice(0, 3).map((team, i) => (
-                    <li key={team.id}>
-                      {i + 1}. {team.teamName}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <button
-                onClick={() => setSelectedTournamentCard(tournamentCard)}
-                className="text-sm text-orange-600"
-              >
-                Ver detalle →
-              </button>
-
-            </article>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {matches.map((match) => (
+            <MatchCard
+              key={match.id}
+              match={match}
+              userId={firebaseUser?.uid}
+              groupNombre={groupsMap[match.groupId]}
+            />
           ))}
         </div>
+        {matches.length === 0 && (
+          <p className="text-sm text-neutral-500">No hay partidos</p>
+        )}
       </section>
-    )}
 
-    <PublicTournamentDetailModal
-      open={selectedTournamentCard !== null}
-      tournamentCard={selectedTournamentCard}
-      onClose={() => setSelectedTournamentCard(null)}
-      onOpenDetail={async (tournamentId) => {
-        if (firebaseUser) {
+      {/* Torneos */}
+      {activeTournamentCards.length > 0 && (
+        <section className="space-y-3">
+          <h3 className="text-xl font-semibold">Torneos activos</h3>
+
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {activeTournamentCards.map((tournamentCard) => (
+              /*
+              <article
+                key={tournamentCard.id}
+                className="min-w-[300px] rounded-2xl border p-4 space-y-4 hover:shadow-md transition"
+              >
+
+                <div>
+                  <p className="font-semibold">{tournamentCard.name}</p>
+                  <div className="text-xs text-neutral-500 flex gap-2">
+                    <span>{tournamentCard.format}</span>
+                    <span>•</span>
+                    <span>{tournamentPhaseTypeLabel[tournamentCard.phaseType]}</span>
+                  </div>
+                </div>
+
+                <div className="bg-neutral-100 rounded-lg p-2 text-sm">
+                  {tournamentCard.nextMatch
+                    ? `${tournamentCard.nextMatch.homeTeamName} vs ${tournamentCard.nextMatch.awayTeamName}`
+                    : "Sin partidos"}
+                </div>
+
+                {/* Top 3 *//*}
+                <div>
+                  <p className="text-xs text-neutral-500">Top actual</p>
+                  <ul className="text-sm">
+                    {tournamentCard.standings.slice(0, 3).map((team, i) => (
+                      <li key={team.id}>
+                        {i + 1}. {team.teamName}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <button
+                  onClick={() => setSelectedTournamentCard(tournamentCard)}
+                  className="text-sm text-orange-600"
+                >
+                  Ver detalle →
+                </button>
+
+              </article>*/
+
+              <article
+                key={tournamentCard.id}
+                className="min-w-[300px] rounded-2xl border border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4 space-y-4 shadow-sm hover:shadow-lg hover:-translate-y-[2px] transition"
+              >
+
+                <div>
+                  <p className="font-semibold">{tournamentCard.name}</p>
+                  <div className="text-xs text-neutral-500 flex gap-2">
+                    <span>{tournamentCard.format}</span>
+                    <span>•</span>
+                    <span>{tournamentPhaseTypeLabel[tournamentCard.phaseType]}</span>
+                  </div>
+                </div>
+
+                <div className="bg-neutral-100/70 dark:bg-slate-800/60 rounded-lg p-2 text-sm">
+                  {tournamentCard.nextMatch
+                    ? `${tournamentCard.nextMatch.homeTeamName} vs ${tournamentCard.nextMatch.awayTeamName}`
+                    : "Sin partidos"}
+                </div>
+
+                <div>
+                  <p className="text-xs text-neutral-500 mb-1">Top actual</p>
+                  <ul className="text-sm space-y-0.5">
+                    {tournamentCard.standings.slice(0, 3).map((team, i) => (
+                      <li key={team.id}>
+                        <span className="text-neutral-400 mr-1">{i + 1}.</span>
+                        {team.teamName}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <button
+                  onClick={() => setSelectedTournamentCard(tournamentCard)}
+                  className="text-sm font-medium text-orange-600 hover:underline"
+                >
+                  Ver detalle →
+                </button>
+
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <PublicTournamentDetailModal
+        open={selectedTournamentCard !== null}
+        tournamentCard={selectedTournamentCard}
+        onClose={() => setSelectedTournamentCard(null)}
+        onOpenDetail={async (tournamentId) => {
+          if (firebaseUser) {
+            router.push(`/tournaments/${tournamentId}`);
+            return;
+          }
+          const success = await login();
+          if (!success) return;
           router.push(`/tournaments/${tournamentId}`);
-          return;
-        }
-        const success = await login();
-        if (!success) return;
-        router.push(`/tournaments/${tournamentId}`);
-      }}
-    />
-    <CreateMatchQuickActionModal
-      open={showCreateMatchModal}
-      groups={adminGroups}
-      onClose={() => setShowCreateMatchModal(false)}
-      onCreateGroup={() => {
-        setShowCreateMatchModal(false);
-        router.push("/admin/groups/new");
-      }}
-      onCreateMatch={(groupId) => {
-        setShowCreateMatchModal(false);
-        router.push(`/admin/groups/${groupId}/matches/new`);
-      }}
-    />
+        }}
+      />
+      <CreateMatchQuickActionModal
+        open={showCreateMatchModal}
+        groups={adminGroups}
+        onClose={() => setShowCreateMatchModal(false)}
+        onCreateGroup={() => {
+          setShowCreateMatchModal(false);
+          router.push("/admin/groups/new");
+        }}
+        onCreateMatch={(groupId) => {
+          setShowCreateMatchModal(false);
+          router.push(`/admin/groups/${groupId}/matches/new`);
+        }}
+      />
 
-  </main>
-);
+    </main>
+  );
 }

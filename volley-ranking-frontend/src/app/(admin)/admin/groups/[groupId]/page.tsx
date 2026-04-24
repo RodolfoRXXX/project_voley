@@ -824,10 +824,10 @@ export default function AdminGroupPage() {
 
       {/* ================= MEMBERS ================= */}
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
+      <section className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-5 space-y-4">
 
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-neutral-900">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
             Integrantes
           </h2>
 
@@ -845,7 +845,10 @@ export default function AdminGroupPage() {
             <p className="text-sm font-medium text-amber-700">Solicitudes para ser admin</p>
             <ul className="space-y-2">
               {pendingAdminRequests.map((member) => (
-                <li key={`admin-pending-${member.id}`} className="rounded-xl border border-neutral-200 p-3 flex items-center justify-between gap-3">
+                <li
+                  key={`admin-pending-${member.id}`}
+                  className="rounded-xl border border-neutral-200 p-3 flex items-center justify-between gap-3"
+                >
                   <div className="flex items-center gap-3">
                     <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
                     <div>
@@ -855,8 +858,12 @@ export default function AdminGroupPage() {
                   </div>
                   {isPrimaryAdmin && (
                     <div className="flex items-center gap-2">
-                      <ActionButton onClick={() => resolveAdminRequest(member.id, "approve")} loading={actingKey === `admin-approve-${member.id}`} variant="success_outline" compact>Aceptar</ActionButton>
-                      <ActionButton onClick={() => resolveAdminRequest(member.id, "reject")} loading={actingKey === `admin-reject-${member.id}`} variant="danger_outline" compact>Eliminar</ActionButton>
+                      <ActionButton onClick={() => resolveAdminRequest(member.id, "approve")} loading={actingKey === `admin-approve-${member.id}`} variant="success_outline" compact>
+                        Aceptar
+                      </ActionButton>
+                      <ActionButton onClick={() => resolveAdminRequest(member.id, "reject")} loading={actingKey === `admin-reject-${member.id}`} variant="danger_outline" compact>
+                        Eliminar
+                      </ActionButton>
                     </div>
                   )}
                 </li>
@@ -870,7 +877,10 @@ export default function AdminGroupPage() {
             <p className="text-sm font-medium text-amber-700">Solicitudes de ingreso</p>
             <ul className="space-y-2">
               {pendingRequests.map((member) => (
-                <li key={`pending-${member.id}`} className="rounded-xl border border-neutral-200 p-3 flex items-center justify-between gap-3">
+                <li
+                  key={`pending-${member.id}`}
+                  className="rounded-xl border border-neutral-200 p-3 flex items-center justify-between gap-3"
+                >
                   <div className="flex items-center gap-3">
                     <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
                     <div>
@@ -879,8 +889,12 @@ export default function AdminGroupPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <ActionButton onClick={() => resolveRequest(member.id, "approve")} loading={actingKey === `approve-${member.id}`} variant="success_outline" compact>Aceptar</ActionButton>
-                    <ActionButton onClick={() => resolveRequest(member.id, "reject")} loading={actingKey === `reject-${member.id}`} variant="danger_outline" compact>Eliminar</ActionButton>
+                    <ActionButton onClick={() => resolveRequest(member.id, "approve")} loading={actingKey === `approve-${member.id}`} variant="success_outline" compact>
+                      Aceptar
+                    </ActionButton>
+                    <ActionButton onClick={() => resolveRequest(member.id, "reject")} loading={actingKey === `reject-${member.id}`} variant="danger_outline" compact>
+                      Eliminar
+                    </ActionButton>
                   </div>
                 </li>
               ))}
@@ -893,20 +907,28 @@ export default function AdminGroupPage() {
         ) : (
           <ul className="space-y-2">
             {(group.members ?? []).map((member: GroupMember) => (
-              <li key={member.id} className="rounded-xl border border-neutral-200 p-3 flex items-center justify-between">
+              <li
+                key={member.id}
+                className={`
+                  rounded-xl p-3 flex items-center justify-between transition
+                  ${member.isAdmin
+                    ? "border border-orange-400/60 bg-orange-50/40 dark:bg-orange-500/5"
+                    : "border border-neutral-200 bg-white"}
+                `}
+              >
                 <div className="flex items-center gap-3">
                   <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
                   <div>
-                    <p className="text-sm font-medium text-neutral-900">{member.name}</p>
-                    <p className="text-xs text-neutral-500">{member.positions?.join(" · ") || "Sin posiciones"}</p>
+                    <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                      {member.name}
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                      {member.positions?.join(" · ") || "Sin posiciones"}
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {member.isAdmin && (
-                    <StatusPill label={member.id === group.ownerId ? "Admin principal" : "Admin"} variant="warning" />
-                  )}
-
                   {isPrimaryAdmin && member.hasAdminRole && (
                     <ActionButton
                       onClick={() =>
@@ -944,7 +966,7 @@ export default function AdminGroupPage() {
         )}
       </section>
 
-      {/* Matches */}
+      {/* Tournament */}
       <section>
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-neutral-900">Torneos del grupo</h2>
@@ -967,6 +989,7 @@ export default function AdminGroupPage() {
         )}
       </section>
 
+      {/* Matches */}
       <section>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-neutral-900">

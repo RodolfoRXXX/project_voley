@@ -165,7 +165,10 @@ export default function PreferredPositionsEditor({
         </div>
 
         {!editing && (
-          <ActionButton compact onClick={() => setEditing(true)}>
+          <ActionButton 
+            compact 
+            onClick={() => setEditing(true)}
+            variant="secondary">
             Editar
           </ActionButton>
         )}

@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
@@ -116,10 +116,7 @@ export default function GruposPage() {
   const [error, setError] = useState<string | null>(null);
   const { run, isLoading } = useAction();
 
-  const endpoint = useMemo(() => {
-    const base = process.env.NEXT_PUBLIC_FUNCTIONS_BASE_URL?.replace(/\/$/, "");
-    return base ? `${base}/api/groups/public` : "/api/groups/public";
-  }, []);
+  const endpoint = "/api/groups/public";
 
   useEffect(() => {
     const load = async () => {
@@ -144,7 +141,7 @@ export default function GruposPage() {
     };
 
     load();
-  }, [endpoint, firebaseUser]);
+  }, [firebaseUser]);
 
   useEffect(() => {
     if (groups.length === 0) return;

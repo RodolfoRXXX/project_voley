@@ -125,22 +125,18 @@ function GroupDetailSkeleton() {
       <SkeletonSoft className="h-4 w-56" />
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-2">
-          <Skeleton className="h-5 w-48" />
-          <SkeletonSoft className="h-4 w-64" />
-        </div>
-
-        <Skeleton className="h-9 w-32 rounded-lg" />
-      </div>
+      <SkeletonSoft className="h-4 w-64" />
 
       {/* Estado */}
       <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-4">
-        <Skeleton className="h-4 w-32" />
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-8 w-8 rounded-full" />
+        </div>
 
         <div className="flex items-center justify-between">
           <SkeletonSoft className="h-4 w-20" />
-          <Skeleton className="h-8 w-28 rounded-lg" />
+          <Skeleton className="h-10 w-24 rounded-full" />
         </div>
       </section>
 
@@ -674,37 +670,34 @@ export default function AdminGroupPage() {
       />
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold text-neutral-900">
-            {group.nombre}
-          </h1>
-
-          {group.descripcion && (
-            <p className="text-sm text-neutral-500">
-              {group.descripcion}
-            </p>
-          )}
-        </div>
-
-        {!editMode && (
-          <ActionButton
-            onClick={() => {
-              resetForm();
-              setEditMode(true);
-            }}
-            variant="secondary"
-          >
-            Editar grupo
-          </ActionButton>
-        )}
-      </div>
+      {group.descripcion && (
+        <p className="text-sm text-neutral-500">
+          {group.descripcion}
+        </p>
+      )}
 
       {/* Estado */}
       <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-3">
-        <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-          Estado del grupo
-        </h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+            {group.nombre}
+          </h2>
+
+          {!editMode && (
+            <button
+              onClick={() => {
+                resetForm();
+                setEditMode(true);
+              }}
+              type="button"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-base hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+              aria-label="Editar grupo"
+              title="Editar grupo"
+            >
+              ✏️
+            </button>
+          )}
+        </div>
 
         <div className="flex items-center justify-between">
           <span
@@ -715,14 +708,28 @@ export default function AdminGroupPage() {
             {group.activo ? "Activo" : "Inactivo"}
           </span>
 
-          <ActionButton
+          <button
             onClick={toggleActivo}
-            loading={isLoading("toggle-activo")}
-            variant={group.activo ? "danger_outline" : "success"}
-            compact
+            disabled={isLoading("toggle-activo")}
+            type="button"
+            role="switch"
+            aria-checked={!!group.activo}
+            aria-label={`Cambiar estado del grupo: ${group.activo ? "Activo" : "Inactivo"}`}
+            className={`relative inline-flex h-10 w-24 items-center rounded-full border transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 disabled:opacity-60 disabled:cursor-not-allowed ${
+              group.activo
+                ? "border-emerald-500 bg-emerald-400/90"
+                : "border-rose-400 bg-rose-200/60"
+            }`}
           >
-            {group.activo ? "Desactivar" : "Reactivar"}
-          </ActionButton>
+            <span
+              className={`absolute flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm text-xl leading-none transition-all duration-200 ${
+                group.activo ? "left-[3.35rem] text-emerald-600" : "left-1 text-rose-600"
+              }`}
+              aria-hidden
+            >
+              {group.activo ? "✓" : "✕"}
+            </span>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">

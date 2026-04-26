@@ -13,7 +13,7 @@ type Role = "player" | "admin";
 type Props = {
   initial: string[];
   initialRole: Role;
-  autoStartEditing?: boolean;
+  onClose: () => void;
 };
 
 const roleLabel: Record<Role, string> = {
@@ -24,14 +24,13 @@ const roleLabel: Record<Role, string> = {
 export default function PreferredPositionsEditor({
   initial,
   initialRole,
-  autoStartEditing = false,
+  onClose,
 }: Props) {
   const [savedPositions, setSavedPositions] = useState<string[]>(initial);
   const [positions, setPositions] = useState<string[]>(initial);
   const [savedRole, setSavedRole] = useState<Role>(initialRole);
   const [role, setRole] = useState<Role>(initialRole);
   const [allPositions, setAllPositions] = useState<string[]>([]);
-  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
   const { showToast } = useToast();
@@ -82,12 +81,6 @@ export default function PreferredPositionsEditor({
     load();
   }, [functions, showToast]);
 
-  useEffect(() => {
-    if (autoStartEditing) {
-      setEditing(true);
-    }
-  }, [autoStartEditing]);
-
   const samePositions = (a: string[], b: string[]) =>
     a.length === b.length && a.every((value, i) => value === b[i]);
 
@@ -112,7 +105,7 @@ export default function PreferredPositionsEditor({
     const changedRole = role !== savedRole;
 
     if (!changedPositions && !changedRole) {
-      setEditing(false);
+      onClose();
       return;
     }
 
@@ -129,7 +122,7 @@ export default function PreferredPositionsEditor({
         setSavedRole(role);
       }
 
-      setEditing(false);
+      onClose();
     } catch (err) {
       handleFirebaseError(
         err,
@@ -157,54 +150,32 @@ export default function PreferredPositionsEditor({
             Posiciones preferidas
           </h3>
 
-          {editing && (
-            <p className="text-xs text-neutral-500 mt-0.5 dark:text-[var(--text-muted)]">
-              Elegí hasta 3 y ordená por prioridad
-            </p>
-          )}
+          <p className="text-xs text-neutral-500 mt-0.5 dark:text-[var(--text-muted)]">
+            Elegí hasta 3 y ordená por prioridad
+          </p>
         </div>
-
-        {!editing && (
-          <ActionButton 
-            compact 
-            onClick={() => setEditing(true)}
-            variant="secondary">
-            Editar
-          </ActionButton>
-        )}
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {!editing &&
-          positions.map((p, i) => (
+        {allPositions.map((p) => {
+          const selected = isSelected(p);
+          const index = indexOf(p);
+          const disabled = !selected && positions.length >= 3;
+
+          return (
             <StatusPill
               key={p}
-              label={`${i + 1}. ${p}`}
-              variant="info"
+              label={
+                selected ? `${index + 1}. ${p}` : p
+              }
+              variant={selected ? "info" : "neutral"}
               size="md"
+              onClick={
+                disabled ? undefined : () => togglePosition(p)
+              }
             />
-          ))}
-
-        {editing &&
-          allPositions.map((p) => {
-            const selected = isSelected(p);
-            const index = indexOf(p);
-            const disabled = !selected && positions.length >= 3;
-
-            return (
-              <StatusPill
-                key={p}
-                label={
-                  selected ? `${index + 1}. ${p}` : p
-                }
-                variant={selected ? "info" : "neutral"}
-                size="md"
-                onClick={
-                  disabled ? undefined : () => togglePosition(p)
-                }
-              />
-            );
-          })}
+          );
+        })}
       </div>
 
       <div className="border-t border-neutral-200 pt-4 space-y-2 dark:border-[var(--border)]">
@@ -215,56 +186,45 @@ export default function PreferredPositionsEditor({
           Esta configuración es independiente de tus posiciones preferidas.
         </p>
 
-        {editing ? (
-          <div className="flex flex-wrap gap-2">
-            <StatusPill
-              label={roleLabel.player}
-              variant={role === "player" ? "success" : "neutral"}
-              onClick={() => setRole("player")}
-              size={role === "player" ? "md" : "sm"}
-            />
-            <StatusPill
-              label={roleLabel.admin}
-              variant={role === "admin" ? "warning" : "neutral"}
-              onClick={() => setRole("admin")}
-              size={role === "admin" ? "md" : "sm"}
-            />
-          </div>
-        ) : (
+        <div className="flex flex-wrap gap-2">
           <StatusPill
-            label={roleLabel[role]}
-            variant={role === "admin" ? "warning" : "success"}
-            size="md"
-            inline
+            label={roleLabel.player}
+            variant={role === "player" ? "success" : "neutral"}
+            onClick={() => setRole("player")}
+            size={role === "player" ? "md" : "sm"}
           />
-        )}
+          <StatusPill
+            label={roleLabel.admin}
+            variant={role === "admin" ? "warning" : "neutral"}
+            onClick={() => setRole("admin")}
+            size={role === "admin" ? "md" : "sm"}
+          />
+        </div>
       </div>
 
-      {editing && (
-        <div className="flex gap-2 pt-3">
-          <ActionButton
-            variant="success"
-            onClick={save}
-            loading={saving}
-            disabled={positions.length < 1}
-          >
-            Guardar cambios
-          </ActionButton>
+      <div className="flex gap-2 pt-3">
+        <ActionButton
+          variant="success"
+          onClick={save}
+          loading={saving}
+          disabled={positions.length < 1}
+        >
+          Guardar cambios
+        </ActionButton>
 
-          <ActionButton
-            variant="secondary"
-            compact
-            onClick={() => {
-              setPositions(savedPositions);
-              setRole(savedRole);
-              setEditing(false);
-            }}
-            disabled={saving}
-          >
-            Cancelar
-          </ActionButton>
-        </div>
-      )}
+        <ActionButton
+          variant="secondary"
+          compact
+          onClick={() => {
+            setPositions(savedPositions);
+            setRole(savedRole);
+            onClose();
+          }}
+          disabled={saving}
+        >
+          Cancelar
+        </ActionButton>
+      </div>
     </section>
   );
 }

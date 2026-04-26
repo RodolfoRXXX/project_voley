@@ -6,6 +6,8 @@ import { UserDoc } from "@/types/User";
 
 type Props = {
   user: UserDoc;
+  onToggleEdit?: () => void;
+  isEditing?: boolean;
 };
 
 function getCommitmentPill(value: number): { label: string; variant: StatusVariant } {
@@ -20,7 +22,7 @@ function getCommitmentPill(value: number): { label: string; variant: StatusVaria
   return { label: "🤝 Compromiso normal", variant: "warning" };
 }
 
-export default function ProfileHeader({ user }: Props) {
+export default function ProfileHeader({ user, onToggleEdit, isEditing = false }: Props) {
   const roleLabel = user.roles === "admin" ? "Administrador" : "Jugador";
   const roleVariant: StatusVariant =
     user.roles === "admin" ? "warning" : "success";
@@ -29,6 +31,7 @@ export default function ProfileHeader({ user }: Props) {
   return (
     <section
       className="
+        relative
         bg-white
         rounded-md
         p-6
@@ -38,6 +41,18 @@ export default function ProfileHeader({ user }: Props) {
         gap-6
       "
     >
+      {onToggleEdit && (
+        <button
+          type="button"
+          onClick={onToggleEdit}
+          className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+          aria-label={isEditing ? "Cerrar edición de perfil" : "Editar perfil"}
+          title={isEditing ? "Cerrar edición" : "Editar perfil"}
+        >
+          ✏️
+        </button>
+      )}
+
       <UserAvatar
         nombre={user.nombre}
         photoURL={user.photoURL}
@@ -57,6 +72,17 @@ export default function ProfileHeader({ user }: Props) {
         <div className="flex flex-wrap justify-center sm:justify-start items-center gap-2 mt-3">
           <StatusPill label={roleLabel} variant={roleVariant} />
           <StatusPill label={commitment.label} variant={commitment.variant} />
+        </div>
+
+        <div className="mt-3 flex flex-wrap justify-center sm:justify-start items-center gap-2">
+          {(user.posicionesPreferidas || []).map((position) => (
+            <span
+              key={position}
+              className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700"
+            >
+              {position}
+            </span>
+          ))}
         </div>
 
         {user.createdAt && (

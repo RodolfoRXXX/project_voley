@@ -5,13 +5,13 @@ import PreferredPositionsEditor from "./PreferredPositionsEditor";
 type Props = {
   posicionesPreferidas: string[];
   role: "player" | "admin";
-  autoStartEditing?: boolean;
+  onClose: () => void;
 };
 
-export default function ProfileGame({ posicionesPreferidas, role, autoStartEditing = false }: Props) {
+export default function EditionProfile({ posicionesPreferidas, role, onClose }: Props) {
   return (
     <section
-      id="perfil-usuario"
+      id="edicion-perfil-usuario"
       className="
         bg-white
         border border-neutral-200
@@ -21,14 +21,14 @@ export default function ProfileGame({ posicionesPreferidas, role, autoStartEditi
       "
     >
       <h2 className="text-lg font-semibold flex items-center gap-2">
-        <span className="text-base">🎮</span>
-        Perfil del usuario
+        <span className="text-base">✏️</span>
+        Edición del perfil del usuario
       </h2>
 
       <PreferredPositionsEditor
         initial={posicionesPreferidas || []}
         initialRole={role}
-        autoStartEditing={autoStartEditing}
+        onClose={onClose}
       />
     </section>
   );

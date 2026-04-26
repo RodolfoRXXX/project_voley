@@ -5,9 +5,10 @@
 
 "use client";
 
+import { useState } from "react";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useAuth } from "@/hooks/useAuth";
-import ProfileGame from "@/components/profile/profileGame";
+import EditionProfile from "@/components/profile/EditionProfile";
 import ProfileMatches from "@/components/profile/ProfileMatches";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import EnablePushButton from "@/components/push/EnablePushButton";
@@ -67,21 +68,28 @@ export default function ProfilePage() {
   const { userDoc, loading } = useAuth();
   const searchParams = useSearchParams();
   const autoStartEditing = searchParams.get("editGameProfile") === "1";
+  const [editingProfile, setEditingProfile] = useState(autoStartEditing);
+
   if (loading || !userDoc) return <ProfilePageSkeleton />;
 
   return (
     <main className="mx-auto mt-6 sm:mt-10 pb-12 space-y-8">
 
       {/* Profile Header */}
-      <ProfileHeader user={userDoc} />
+      <ProfileHeader
+        user={userDoc}
+        onToggleEdit={() => setEditingProfile((prev) => !prev)}
+        isEditing={editingProfile}
+      />
 
       {/* Profile Game */}
-
-      <ProfileGame
-        posicionesPreferidas={userDoc.posicionesPreferidas || []}
-        role={userDoc.roles}
-        autoStartEditing={autoStartEditing}
-      />
+      {editingProfile && (
+        <EditionProfile
+          posicionesPreferidas={userDoc.posicionesPreferidas || []}
+          role={userDoc.roles}
+          onClose={() => setEditingProfile(false)}
+        />
+      )}
 
       <EnablePushButton />
 

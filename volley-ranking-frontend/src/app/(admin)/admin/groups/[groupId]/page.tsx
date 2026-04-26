@@ -690,16 +690,18 @@ export default function AdminGroupPage() {
                 setEditMode(true);
               }}
               type="button"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-base hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+              className="group inline-flex h-24 w-24 items-center justify-center rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/70 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
               aria-label="Editar grupo"
               title="Editar grupo"
             >
-              ✏️
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white dark:bg-neutral-900 text-xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 transition-transform duration-200 group-hover:scale-105" aria-hidden>
+                ✏️
+              </span>
             </button>
           )}
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <span
             className={`text-sm font-medium ${
               group.activo ? "text-green-600" : "text-red-600"
@@ -715,20 +717,29 @@ export default function AdminGroupPage() {
             role="switch"
             aria-checked={!!group.activo}
             aria-label={`Cambiar estado del grupo: ${group.activo ? "Activo" : "Inactivo"}`}
-            className={`relative inline-flex h-10 w-24 items-center rounded-full border transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 disabled:opacity-60 disabled:cursor-not-allowed ${
+            className={`relative inline-flex h-7 w-14 items-center rounded-full border transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 disabled:opacity-60 disabled:cursor-not-allowed ${
               group.activo
-                ? "border-emerald-500 bg-emerald-400/90"
-                : "border-rose-400 bg-rose-200/60"
+                ? "border-emerald-500 bg-emerald-500/90"
+                : "border-rose-400 bg-rose-500/80"
             }`}
           >
             <span
-              className={`absolute flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm text-xl leading-none transition-all duration-200 ${
-                group.activo ? "left-[3.35rem] text-emerald-600" : "left-1 text-rose-600"
+              className={`absolute inline-flex h-5 w-5 items-center justify-center rounded-full text-xs leading-none transition-all duration-200 ${
+                group.activo
+                  ? "left-1.5 bg-emerald-700/60 text-white"
+                  : "right-1.5 bg-rose-700/60 text-white"
               }`}
               aria-hidden
             >
               {group.activo ? "✓" : "✕"}
             </span>
+
+            <span
+              className={`ml-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                group.activo ? "translate-x-7" : "translate-x-0"
+              }`}
+              aria-hidden
+            />
           </button>
         </div>
 

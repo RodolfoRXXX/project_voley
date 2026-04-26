@@ -669,19 +669,19 @@ export default function AdminGroupPage() {
         ]}
       />
 
-      {/* Header */}
-      {group.descripcion && (
-        <p className="text-sm text-neutral-500">
-          {group.descripcion}
-        </p>
-      )}
-
       {/* Estado */}
       <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-3">
         <div className="flex items-start justify-between gap-3">
-          <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-            {group.nombre}
-          </h2>
+          <div className="space-y-1">
+            <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+              {group.nombre}
+            </h2>
+            {group.descripcion && (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                {group.descripcion}
+              </p>
+            )}
+          </div>
 
           {!editMode && (
             <button

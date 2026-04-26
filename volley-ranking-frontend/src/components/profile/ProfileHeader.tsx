@@ -46,8 +46,8 @@ export default function ProfileHeader({ user, onToggleEdit, isEditing = false }:
           type="button"
           onClick={onToggleEdit}
           className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
-          aria-label={isEditing ? "Cerrar edición de perfil" : "Editar perfil"}
-          title={isEditing ? "Cerrar edición" : "Editar perfil"}
+          aria-label="Editar perfil"
+          title="Editar perfíl"
         >
           ✏️
         </button>

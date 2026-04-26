@@ -75,7 +75,6 @@ type GroupTournamentRow = {
 const functions = getFunctions(app);
 const editGroup = httpsCallable(functions, "editGroup");
 const toggleGroupActivo = httpsCallable(functions, "toggleGroupActivo");
-const addGroupAdmin = httpsCallable(functions, "addGroupAdmin");
 
 const canAdminGroup = (
   group: Pick<GroupData, "adminIds" | "adminId"> | null | undefined,
@@ -670,7 +669,7 @@ export default function AdminGroupPage() {
       />
 
       {/* Estado */}
-      <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-3">
+      <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-3 relative">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
@@ -690,13 +689,11 @@ export default function AdminGroupPage() {
                 setEditMode(true);
               }}
               type="button"
-              className="group inline-flex h-24 w-24 items-center justify-center rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/70 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
               aria-label="Editar grupo"
               title="Editar grupo"
             >
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white dark:bg-neutral-900 text-xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 transition-transform duration-200 group-hover:scale-105" aria-hidden>
-                ✏️
-              </span>
+              ✏️
             </button>
           )}
         </div>

@@ -239,15 +239,23 @@ function MemberRow({
   onToggleAdmin: () => Promise<void>;
 }) {
   const [confirmAction, setConfirmAction] = useState<null | "remove" | "toggleAdmin">(null);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   const handleConfirm = async () => {
-    if (confirmAction === "remove") {
-      await onRemove();
+    if (isConfirming || !confirmAction) return;
+
+    setIsConfirming(true);
+    try {
+      if (confirmAction === "remove") {
+        await onRemove();
+      }
+      if (confirmAction === "toggleAdmin") {
+        await onToggleAdmin();
+      }
+      setConfirmAction(null);
+    } finally {
+      setIsConfirming(false);
     }
-    if (confirmAction === "toggleAdmin") {
-      await onToggleAdmin();
-    }
-    setConfirmAction(null);
   };
 
   return (
@@ -268,13 +276,15 @@ function MemberRow({
             <button
               type="button"
               onClick={handleConfirm}
-              className="font-medium text-green-600 hover:text-green-700"
+              disabled={isConfirming}
+              className="font-medium text-green-600 hover:text-green-700 disabled:cursor-not-allowed disabled:text-green-400"
             >
               Sí
             </button>
             <button
               type="button"
               onClick={() => setConfirmAction(null)}
+              disabled={isConfirming}
               className="font-medium text-neutral-500 hover:text-neutral-700"
             >
               Cancelar

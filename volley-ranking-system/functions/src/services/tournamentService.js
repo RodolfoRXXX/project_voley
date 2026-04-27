@@ -463,7 +463,6 @@ async function editTournament({ uid, tournamentId, data }) {
     trx.update(tournamentRef, nextPayload);
   });
 
-  emitDomainEvent(DOMAIN_EVENTS.TOURNAMENT_ADMIN_ADDED, { userId: adminUserId, tournamentId, tournamentName });
   return { ok: true };
 }
 
@@ -473,15 +472,18 @@ async function addTournamentAdmin({ uid, tournamentId, adminUserId }) {
   const targetUserSnap = await db.collection("users").doc(adminUserId).get();
   if (!targetUserSnap.exists || targetUserSnap.data().roles !== "admin") throw new functions.https.HttpsError("failed-precondition", "El usuario a agregar no es admin");
   const tournamentRef = db.collection("tournaments").doc(tournamentId);
+  let tournamentName = "Torneo";
   await db.runTransaction(async (trx) => {
     const tournamentSnap = await trx.get(tournamentRef);
     if (!tournamentSnap.exists) throw new functions.https.HttpsError("not-found", "El torneo no existe");
     const tournament = tournamentSnap.data();
+    tournamentName = tournament?.name || tournament?.nombre || "Torneo";
     assertTournamentOwner(tournament, uid);
     const currentAdminIds = Array.isArray(tournament.adminIds) ? tournament.adminIds : [];
     if (currentAdminIds.includes(adminUserId)) throw new functions.https.HttpsError("already-exists", "El admin ya está asignado al torneo");
     trx.update(tournamentRef, { adminIds: [...currentAdminIds, adminUserId], updatedBy: uid, updatedAt: FieldValue.serverTimestamp() });
   });
+  emitDomainEvent(DOMAIN_EVENTS.TOURNAMENT_ADMIN_ADDED, { userId: adminUserId, tournamentId, tournamentName });
   return { ok: true };
 }
 

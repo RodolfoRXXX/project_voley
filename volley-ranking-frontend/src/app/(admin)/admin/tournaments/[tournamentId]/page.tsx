@@ -124,6 +124,7 @@ export default function AdminTournamentDetailPage() {
   const [registrations, setRegistrations] = useState<TournamentRegistrationItem[]>([]);
   const [acceptedTeams, setAcceptedTeams] = useState<TournamentRegistrationItem[]>([]);
   const [loadingRegistrations, setLoadingRegistrations] = useState(false);
+  const [registrationsTab, setRegistrationsTab] = useState<"pendientes" | "aceptados" | "rechazados">("pendientes");
 
   const tournamentStatus = tournament?.status as string | undefined;
   const canEdit = tournamentStatus === "draft" || tournamentStatus === "inscripciones_abiertas" || tournamentStatus === "inscripciones_cerradas";
@@ -351,6 +352,7 @@ export default function AdminTournamentDetailPage() {
     ...registrations.filter((r) => r.status === "rechazado"),
     ...acceptedTeams.filter((team) => team.status === "rechazado"),
   ];
+  const totalRegistrationEntries = pendingRegistrations.length + acceptedRegistrations.length + rejectedRegistrations.length;
   const isRegistrationReady = (item: TournamentRegistrationItem) => {
     const teamMembersCount = Array.isArray(item.playerIds)
       ? item.playerIds.length
@@ -441,81 +443,117 @@ export default function AdminTournamentDetailPage() {
           <p className="text-sm text-neutral-500">Cargando registraciones...</p>
         )}
 
-        {!loadingRegistrations && registrations.length === 0 && (
+        {!loadingRegistrations && totalRegistrationEntries === 0 && (
           <p className="text-sm text-neutral-500">
             Todavía no hay equipos registrados en este torneo.
           </p>
         )}
 
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-yellow-700">
-            Pendientes ({pendingRegistrations.length})
-          </h3>
-
-          {pendingRegistrations.map((r) => (
-            <div
-              key={r.id}
-              className="flex justify-between items-center border rounded-lg px-3 py-2 text-sm"
-            >
-              <span>
-                Equipo: {r.nameTeam || "Sin nombre"} {isRegistrationReady(r) ? "✅" : "🕒"}
-              </span>
-
+        {!loadingRegistrations && totalRegistrationEntries > 0 && (
+          <>
+            <div className="inline-flex rounded-xl border border-neutral-200 p-1">
               <button
-                onClick={() => setSelectedRegistration(r)}
-                disabled={isLockedTournament}
-                className="text-xs px-2 py-1 rounded border hover:bg-neutral-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                type="button"
+                onClick={() => setRegistrationsTab("pendientes")}
+                className={`rounded-lg px-3 py-1.5 text-sm transition ${
+                  registrationsTab === "pendientes"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : "text-neutral-600 hover:bg-neutral-100"
+                }`}
               >
-                Ver estado
+                Pendientes ({pendingRegistrations.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRegistrationsTab("aceptados")}
+                className={`rounded-lg px-3 py-1.5 text-sm transition ${
+                  registrationsTab === "aceptados"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "text-neutral-600 hover:bg-neutral-100"
+                }`}
+              >
+                Aceptados ({acceptedRegistrations.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRegistrationsTab("rechazados")}
+                className={`rounded-lg px-3 py-1.5 text-sm transition ${
+                  registrationsTab === "rechazados"
+                    ? "bg-red-100 text-red-800"
+                    : "text-neutral-600 hover:bg-neutral-100"
+                }`}
+              >
+                Rechazados ({rejectedRegistrations.length})
               </button>
             </div>
-          ))}
-        </div>
 
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-green-700">
-            Aceptados ({acceptedRegistrations.length})
-          </h3>
+            <div className="space-y-2">
+              {registrationsTab === "pendientes" && pendingRegistrations.length === 0 && (
+                <p className="text-sm text-neutral-500">No hay equipos pendientes.</p>
+              )}
 
-          {acceptedRegistrations.map((r) => (
-            <div
-              key={r.id}
-              className="flex justify-between items-center border rounded-lg px-3 py-2 text-sm"
-            >
-              <span>Equipo: {r.nameTeam || "Sin nombre"}</span>
+              {registrationsTab === "pendientes" && pendingRegistrations.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex justify-between items-center border rounded-lg px-3 py-2 text-sm"
+                >
+                  <span>
+                    Equipo: {r.nameTeam || "Sin nombre"} {isRegistrationReady(r) ? "✅" : "🕒"}
+                  </span>
 
-              <button
-                onClick={() => setSelectedRegistration(r)}
-                disabled={isLockedTournament}
-                className="text-xs px-2 py-1 rounded border hover:bg-neutral-50 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                Ver estado
-              </button>
+                  <button
+                    onClick={() => setSelectedRegistration(r)}
+                    disabled={isLockedTournament}
+                    className="text-xs px-2 py-1 rounded border hover:bg-neutral-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    Ver estado
+                  </button>
+                </div>
+              ))}
+
+              {registrationsTab === "aceptados" && acceptedRegistrations.length === 0 && (
+                <p className="text-sm text-neutral-500">No hay equipos aceptados.</p>
+              )}
+
+              {registrationsTab === "aceptados" && acceptedRegistrations.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex justify-between items-center border rounded-lg px-3 py-2 text-sm"
+                >
+                  <span>Equipo: {r.nameTeam || "Sin nombre"}</span>
+
+                  <button
+                    onClick={() => setSelectedRegistration(r)}
+                    disabled={isLockedTournament}
+                    className="text-xs px-2 py-1 rounded border hover:bg-neutral-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    Ver estado
+                  </button>
+                </div>
+              ))}
+
+              {registrationsTab === "rechazados" && rejectedRegistrations.length === 0 && (
+                <p className="text-sm text-neutral-500">No hay equipos rechazados.</p>
+              )}
+
+              {registrationsTab === "rechazados" && rejectedRegistrations.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex justify-between items-center border rounded-lg px-3 py-2 text-sm"
+                >
+                  <span>Equipo: {r.nameTeam || "Sin nombre"}</span>
+
+                  <button
+                    disabled
+                    className="text-xs px-2 py-1 rounded border text-neutral-400 cursor-not-allowed"
+                  >
+                    Ver estado
+                  </button>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-red-700">
-            Rechazados ({rejectedRegistrations.length})
-          </h3>
-
-          {rejectedRegistrations.map((r) => (
-            <div
-              key={r.id}
-              className="flex justify-between items-center border rounded-lg px-3 py-2 text-sm"
-            >
-              <span>Equipo: {r.nameTeam || "Sin nombre"}</span>
-
-              <button
-                disabled
-                className="text-xs px-2 py-1 rounded border text-neutral-400 cursor-not-allowed"
-              >
-                Ver estado
-              </button>
-            </div>
-          ))}
-        </div>
+          </>
+        )}
       </section>
 
       <TournamentAdminPanel tournament={tournament} onTournamentRefresh={loadTournament} />

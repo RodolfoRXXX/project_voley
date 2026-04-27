@@ -418,21 +418,28 @@ export default function AdminGroupPage() {
   const users = await loadUsersByIds(allUserIds);
 
   const userMap = new Map(users.map((u) => [u.id, u]));
+  const getString = (value: unknown): string | null =>
+    typeof value === "string" && value.trim().length > 0 ? value : null;
+  const getStringArray = (value: unknown): string[] =>
+    Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
   const buildMember = (uid: string): GroupMember => {
     const u = userMap.get(uid);
+    const name =
+      getString(u?.nombre) ||
+      getString(u?.name) ||
+      getString(u?.displayName) ||
+      "Usuario";
+    const preferredPositions = getStringArray(u?.posicionesPreferidas);
+    const fallbackPositions = getStringArray(u?.positions);
 
     return {
       id: uid,
-      name: u?.nombre || u?.name || u?.displayName || "Usuario",
-      photoURL: u?.photoURL || null,
-      positions: Array.isArray(u?.posicionesPreferidas)
-        ? u.posicionesPreferidas
-        : Array.isArray(u?.positions)
-        ? u.positions
-        : [],
+      name,
+      photoURL: getString(u?.photoURL),
+      positions: preferredPositions.length ? preferredPositions : fallbackPositions,
       isAdmin: adminUserIds.includes(uid),
-      hasAdminRole: u?.roles === "admin",
+      hasAdminRole: getString(u?.roles) === "admin",
     };
   };
 
@@ -971,11 +978,12 @@ export default function AdminGroupPage() {
           ) : (
             <ul className="space-y-2">
               {(group.members ?? []).map((member: GroupMember) => {
-                const canToggleAdmin = isPrimaryAdmin && member.hasAdminRole;
-                const isLastSelfAdmin =
+                const canToggleAdmin = !!(isPrimaryAdmin && member.hasAdminRole);
+                const isLastSelfAdmin = !!(
                   member.id === firebaseUser?.uid &&
                   member.isAdmin &&
-                  adminMembersCount <= 1;
+                  adminMembersCount <= 1
+                );
 
                 return (
                   <MemberRow

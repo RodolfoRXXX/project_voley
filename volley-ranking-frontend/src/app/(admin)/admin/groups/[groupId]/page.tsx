@@ -26,7 +26,6 @@ import { formatDateTime } from "@/lib/date";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
-import StatusPill from "@/components/ui/status/StatusPill";
 import AddMemberModal from "@/components/addMemberModal/AddMemberModal";
 import { SearchableMember } from "@/components/addMemberModal/AddMemberModal.types";
 import { readJsonSafely } from "@/lib/http/readJsonSafely";
@@ -167,6 +166,159 @@ function GroupDetailSkeleton() {
   );
 }
 
+function MemberIdentity({
+  member,
+  subtitle,
+}: {
+  member: GroupMember;
+  subtitle: string;
+}) {
+  return (
+    <div className="min-w-0 flex items-center gap-3">
+      <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">
+          {member.name}
+        </p>
+        <p className="truncate text-xs text-neutral-500">{subtitle}</p>
+      </div>
+    </div>
+  );
+}
+
+function MembersTabs({
+  tab,
+  onChange,
+  requestsCount,
+}: {
+  tab: "members" | "requests";
+  onChange: (tab: "members" | "requests") => void;
+  requestsCount: number;
+}) {
+  return (
+    <div className="inline-flex rounded-xl border border-white/60 bg-white/70 p-1">
+      <button
+        type="button"
+        onClick={() => onChange("members")}
+        className={`rounded-lg px-3 py-1.5 text-sm transition ${
+          tab === "members"
+            ? "bg-neutral-900 text-white"
+            : "text-neutral-600 hover:bg-neutral-100"
+        }`}
+      >
+        Integrantes
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("requests")}
+        className={`rounded-lg px-3 py-1.5 text-sm transition ${
+          tab === "requests"
+            ? "bg-neutral-900 text-white"
+            : "text-neutral-600 hover:bg-neutral-100"
+        }`}
+      >
+        Solicitudes ({requestsCount})
+      </button>
+    </div>
+  );
+}
+
+function MemberRow({
+  member,
+  canToggleAdmin,
+  isLastSelfAdmin,
+  onViewProfile,
+  onRemove,
+  onToggleAdmin,
+}: {
+  member: GroupMember;
+  canToggleAdmin: boolean;
+  isLastSelfAdmin: boolean;
+  onViewProfile: () => void;
+  onRemove: () => Promise<void>;
+  onToggleAdmin: () => Promise<void>;
+}) {
+  const [confirmAction, setConfirmAction] = useState<null | "remove" | "toggleAdmin">(null);
+
+  const handleConfirm = async () => {
+    if (confirmAction === "remove") {
+      await onRemove();
+    }
+    if (confirmAction === "toggleAdmin") {
+      await onToggleAdmin();
+    }
+    setConfirmAction(null);
+  };
+
+  return (
+    <li
+      className={`relative rounded-xl border border-white/60 bg-white/70 p-3 transition hover:bg-white ${
+        member.isAdmin ? "ring-1 ring-orange-400/50" : ""
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <MemberIdentity
+          member={member}
+          subtitle={member.positions?.join(" · ") || "Sin posiciones"}
+        />
+
+        {confirmAction ? (
+          <div className="flex shrink-0 items-center gap-2 whitespace-nowrap text-xs transition-opacity">
+            <span className="text-neutral-600">¿Confirmar?</span>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              className="font-medium text-green-600 hover:text-green-700"
+            >
+              Sí
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmAction(null)}
+              className="font-medium text-neutral-500 hover:text-neutral-700"
+            >
+              Cancelar
+            </button>
+          </div>
+        ) : (
+          <details className="group relative shrink-0">
+            <summary className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100">
+              ⋯
+            </summary>
+            <div className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-white/70 bg-white p-1 shadow-lg">
+              <button
+                type="button"
+                className="w-full rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100"
+                onClick={onViewProfile}
+              >
+                Ver perfil
+              </button>
+              {canToggleAdmin && (
+                <button
+                  type="button"
+                  disabled={isLastSelfAdmin}
+                  onClick={() => setConfirmAction("toggleAdmin")}
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:text-neutral-400"
+                >
+                  {member.isAdmin ? "Quitar admin" : "Agregar admin"}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setConfirmAction("remove")}
+                disabled={member.isAdmin}
+                className="w-full rounded-lg px-3 py-2 text-left text-sm text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:text-neutral-400"
+              >
+                Eliminar del grupo
+              </button>
+            </div>
+          </details>
+        )}
+      </div>
+    </li>
+  );
+}
+
 export default function AdminGroupPage() {
   const { groupId } = useParams<{ groupId: string }>();
   const router = useRouter();
@@ -180,6 +332,7 @@ export default function AdminGroupPage() {
   const [editMode, setEditMode] = useState(false);
   const [actingKey, setActingKey] = useState<string | null>(null);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+  const [membersTab, setMembersTab] = useState<"members" | "requests">("members");
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
@@ -224,7 +377,9 @@ export default function AdminGroupPage() {
 
   const adminUserIds =
     Array.isArray(data.admins) && data.admins.length > 0
-      ? data.admins.map((a: any) => a.userId)
+      ? data.admins
+          .map((admin: { userId?: string }) => admin.userId)
+          .filter((userId): userId is string => typeof userId === "string")
       : Array.isArray(data.adminIds)
       ? data.adminIds
       : [];
@@ -239,7 +394,7 @@ export default function AdminGroupPage() {
       chunks.push(ids.slice(i, i + 10));
     }
 
-    const results: any[] = [];
+    const results: Array<{ id: string; [key: string]: unknown }> = [];
 
     for (const chunk of chunks) {
       const q = query(
@@ -494,30 +649,13 @@ export default function AdminGroupPage() {
   //eliminar integrante
 
   const removeMember = async (userId: string) => {
-    await run(
-      `remove-member-${userId}`,
-      async () => {
-        try {
-          setActingKey(`remove-${userId}`);
-
-          await postWithAuth(
-            `/api/groups/${groupId}/members/${userId}/remove`
-          );
-          await loadGroupDetails();
-        } finally {
-          setActingKey(null);
-        }
-      },
-      {
-        confirm: {
-          message: "¿Querés eliminar a este integrante del grupo?",
-          confirmText: "Eliminar integrante",
-          cancelText: "Cancelar",
-          variant: "danger",
-        },
-        successMessage: "Integrante eliminado",
-      }
-    );
+    try {
+      setActingKey(`remove-${userId}`);
+      await postWithAuth(`/api/groups/${groupId}/members/${userId}/remove`);
+      await loadGroupDetails();
+    } finally {
+      setActingKey(null);
+    }
   };
 
   //buscar usuarios para agregar
@@ -598,57 +736,23 @@ export default function AdminGroupPage() {
   //remover admin
 
   const removeAdmin = async (userId: string) => {
-    await run(
-      `remove-admin-${userId}`,
-      async () => {
-        try {
-          setActingKey(`remove-admin-${userId}`);
-
-          await postWithAuth(
-            `/api/groups/${groupId}/admins/${userId}/remove`
-          );
-          await loadGroupDetails();
-        } finally {
-          setActingKey(null);
-        }
-      },
-      {
-        confirm: {
-          message: "¿Querés quitar permisos de admin a este integrante?",
-          confirmText: "Quitar admin",
-          cancelText: "Cancelar",
-          variant: "danger",
-        },
-        successMessage: "Admin actualizado",
-      }
-    );
+    try {
+      setActingKey(`remove-admin-${userId}`);
+      await postWithAuth(`/api/groups/${groupId}/admins/${userId}/remove`);
+      await loadGroupDetails();
+    } finally {
+      setActingKey(null);
+    }
   };
 
   const addAdmin = async (userId: string) => {
-    await run(
-      `add-admin-${userId}`,
-      async () => {
-        try {
-          setActingKey(`add-admin-${userId}`);
-
-          await postWithAuth(
-            `/api/groups/${groupId}/admins/${userId}/add`
-          );
-          await loadGroupDetails();
-        } finally {
-          setActingKey(null);
-        }
-      },
-      {
-        confirm: {
-          message: "¿Querés agregar a este integrante como admin del grupo?",
-          confirmText: "Agregar admin",
-          cancelText: "Cancelar",
-          variant: "danger",
-        },
-        successMessage: "Admin actualizado",
-      }
-    );
+    try {
+      setActingKey(`add-admin-${userId}`);
+      await postWithAuth(`/api/groups/${groupId}/admins/${userId}/add`);
+      await loadGroupDetails();
+    } finally {
+      setActingKey(null);
+    }
   };
 
 
@@ -855,129 +959,102 @@ export default function AdminGroupPage() {
           </ActionButton>
         </div>
 
-        {pendingAdminRequests.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-amber-700">Solicitudes para ser admin</p>
+        <MembersTabs
+          tab={membersTab}
+          onChange={setMembersTab}
+          requestsCount={pendingRequests.length}
+        />
+
+        {membersTab === "members" && (
+          !group.members || group.members.length === 0 ? (
+            <p className="text-sm text-neutral-500">No hay integrantes en el grupo</p>
+          ) : (
             <ul className="space-y-2">
-              {pendingAdminRequests.map((member) => (
-                <li
-                  key={`admin-pending-${member.id}`}
-                  className="rounded-xl border border-neutral-200 p-3 flex items-center justify-between gap-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
-                    <div>
-                      <p className="text-sm font-medium text-neutral-900">{member.name}</p>
-                      <p className="text-xs text-neutral-500">Postulación pendiente</p>
-                    </div>
-                  </div>
-                  {isPrimaryAdmin && (
-                    <div className="flex items-center gap-2">
-                      <ActionButton onClick={() => resolveAdminRequest(member.id, "approve")} loading={actingKey === `admin-approve-${member.id}`} variant="success_outline" compact>
-                        Aceptar
-                      </ActionButton>
-                      <ActionButton onClick={() => resolveAdminRequest(member.id, "reject")} loading={actingKey === `admin-reject-${member.id}`} variant="danger_outline" compact>
-                        Eliminar
-                      </ActionButton>
-                    </div>
-                  )}
-                </li>
-              ))}
+              {(group.members ?? []).map((member: GroupMember) => {
+                const canToggleAdmin = isPrimaryAdmin && member.hasAdminRole;
+                const isLastSelfAdmin =
+                  member.id === firebaseUser?.uid &&
+                  member.isAdmin &&
+                  adminMembersCount <= 1;
+
+                return (
+                  <MemberRow
+                    key={member.id}
+                    member={member}
+                    canToggleAdmin={canToggleAdmin}
+                    isLastSelfAdmin={isLastSelfAdmin}
+                    onViewProfile={() => router.push(`/profile/info?memberId=${member.id}`)}
+                    onRemove={() => removeMember(member.id)}
+                    onToggleAdmin={() =>
+                      member.isAdmin ? removeAdmin(member.id) : addAdmin(member.id)
+                    }
+                  />
+                );
+              })}
             </ul>
-          </div>
+          )
         )}
 
-        {pendingRequests.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-amber-700">Solicitudes de ingreso</p>
-            <ul className="space-y-2">
-              {pendingRequests.map((member) => (
-                <li
-                  key={`pending-${member.id}`}
-                  className="rounded-xl border border-neutral-200 p-3 flex items-center justify-between gap-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
-                    <div>
-                      <p className="text-sm font-medium text-neutral-900">{member.name}</p>
-                      <p className="text-xs text-neutral-500">Solicitud pendiente</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <ActionButton onClick={() => resolveRequest(member.id, "approve")} loading={actingKey === `approve-${member.id}`} variant="success_outline" compact>
-                      Aceptar
-                    </ActionButton>
-                    <ActionButton onClick={() => resolveRequest(member.id, "reject")} loading={actingKey === `reject-${member.id}`} variant="danger_outline" compact>
-                      Eliminar
-                    </ActionButton>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {!group.members || group.members.length === 0 ? (
-          <p className="text-sm text-neutral-500">No hay integrantes en el grupo</p>
-        ) : (
-          <ul className="space-y-2">
-            {(group.members ?? []).map((member: GroupMember) => (
-              <li
-                key={member.id}
-                className={`
-                  rounded-xl p-3 flex items-center justify-between transition
-                  ${member.isAdmin
-                    ? "border border-orange-400/60 bg-orange-50/40 dark:bg-orange-500/5"
-                    : "border border-neutral-200 bg-white"}
-                `}
-              >
-                <div className="flex items-center gap-3">
-                  <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
-                  <div>
-                    <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                      {member.name}
-                    </p>
-                    <p className="text-xs text-neutral-500">
-                      {member.positions?.join(" · ") || "Sin posiciones"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {isPrimaryAdmin && member.hasAdminRole && (
-                    <ActionButton
-                      onClick={() =>
-                        member.isAdmin ? removeAdmin(member.id) : addAdmin(member.id)
-                      }
-                      loading={
-                        actingKey === `remove-admin-${member.id}` ||
-                        actingKey === `add-admin-${member.id}`
-                      }
-                      variant="danger_outline"
-                      compact
-                      disabled={
-                        member.id === firebaseUser?.uid &&
-                        member.isAdmin &&
-                        adminMembersCount <= 1
-                      }
+        {membersTab === "requests" && (
+          <div className="space-y-4">
+            {pendingAdminRequests.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-amber-700">Solicitudes para ser admin</p>
+                <ul className="space-y-2">
+                  {pendingAdminRequests.map((member) => (
+                    <li
+                      key={`admin-pending-${member.id}`}
+                      className="rounded-xl border border-white/60 bg-white/70 p-3 transition hover:bg-white"
                     >
-                      {member.isAdmin ? "Quitar admin" : "Agregar admin"}
-                    </ActionButton>
-                  )}
+                      <div className="flex items-center justify-between gap-3">
+                        <MemberIdentity member={member} subtitle="Postulación pendiente" />
+                        {isPrimaryAdmin && (
+                          <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+                            <ActionButton onClick={() => resolveAdminRequest(member.id, "approve")} loading={actingKey === `admin-approve-${member.id}`} variant="success_outline" compact>
+                              Aceptar
+                            </ActionButton>
+                            <ActionButton onClick={() => resolveAdminRequest(member.id, "reject")} loading={actingKey === `admin-reject-${member.id}`} variant="danger_outline" compact>
+                              Eliminar
+                            </ActionButton>
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-                  <ActionButton
-                    onClick={() => removeMember(member.id)}
-                    loading={actingKey === `remove-${member.id}`}
-                    variant="danger_outline"
-                    compact
-                    disabled={member.isAdmin}
-                  >
-                    Eliminar
-                  </ActionButton>
-                </div>
-              </li>
-            ))}
-          </ul>
+            {pendingRequests.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-amber-700">Solicitudes de ingreso</p>
+                <ul className="space-y-2">
+                  {pendingRequests.map((member) => (
+                    <li
+                      key={`pending-${member.id}`}
+                      className="rounded-xl border border-white/60 bg-white/70 p-3 transition hover:bg-white"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <MemberIdentity member={member} subtitle="Solicitud pendiente" />
+                        <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+                          <ActionButton onClick={() => resolveRequest(member.id, "approve")} loading={actingKey === `approve-${member.id}`} variant="success_outline" compact>
+                            Aceptar
+                          </ActionButton>
+                          <ActionButton onClick={() => resolveRequest(member.id, "reject")} loading={actingKey === `reject-${member.id}`} variant="danger_outline" compact>
+                            Eliminar
+                          </ActionButton>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {pendingRequests.length === 0 && pendingAdminRequests.length === 0 && (
+              <p className="text-sm text-neutral-500">No hay solicitudes pendientes.</p>
+            )}
+          </div>
         )}
       </section>
 

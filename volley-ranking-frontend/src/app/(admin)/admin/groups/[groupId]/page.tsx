@@ -196,7 +196,7 @@ function MembersTabs({
   requestsCount: number;
 }) {
   return (
-    <div className="inline-flex rounded-xl border border-white/60 bg-white/70 p-1">
+    <div className="inline-flex rounded-xl border border-white/60 p-1">
       <button
         type="button"
         onClick={() => onChange("members")}
@@ -252,7 +252,7 @@ function MemberRow({
 
   return (
     <li
-      className={`relative rounded-xl border border-white/60 bg-white/70 p-3 transition hover:bg-white ${
+      className={`relative rounded-xl border border-white/60 p-3 transition hover:bg-white/10 ${
         member.isAdmin ? "ring-1 ring-orange-400/50" : ""
       }`}
     >

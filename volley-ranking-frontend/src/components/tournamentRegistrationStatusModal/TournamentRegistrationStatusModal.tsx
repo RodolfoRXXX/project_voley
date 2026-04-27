@@ -198,128 +198,144 @@ export default function TournamentRegistrationStatusModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4 py-3 sm:py-6">
-      <div className="bg-white rounded-2xl w-full max-w-xl shadow-xl max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="flex items-start justify-between gap-4 p-6 border-b border-neutral-200">
-          <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-neutral-900">Estado del equipo</h2>
-            <p className="text-xs text-neutral-500">Detalle administrativo del estado del equipo.</p>
-          </div>
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4 py-3">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg shadow-xl max-h-[90vh] flex flex-col overflow-hidden">
 
-          <button
-            onClick={onClose}
-            className="text-sm font-medium text-neutral-500 hover:text-neutral-700 transition"
-          >
-            Cerrar
-          </button>
-        </div>
+      {/* HEADER */}
+      <div className="flex items-start justify-between gap-4 p-5 border-b border-neutral-200 dark:border-white/10">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
+            {registration.nameTeam || registration.name || "Equipo"}
+          </h2>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
-        <div className="grid sm:grid-cols-2 gap-3 text-sm">
-          <div className="rounded-xl border border-neutral-200 p-3">
-            <p className="text-xs text-neutral-500">Equipo</p>
-            <p className="font-medium text-center text-neutral-900">{registration.nameTeam || registration.name || "Sin nombre"}</p>
-          </div>
-
-          <div className="rounded-xl border border-neutral-200 p-3">
-            <p className="text-xs text-neutral-500">Integrantes del equipo</p>
-            <p className="font-medium text-center text-neutral-900">{teamMembersCount}</p>
-          </div>
-
-          <div className="rounded-xl border border-neutral-200 p-3 space-y-1">
-            <p className="text-xs text-neutral-500">Estado de revisión</p>
+          <div className="flex items-center gap-2">
             <StatusPill label={statusBadge.label} variant={statusBadge.variant} />
+
+            <span className="text-xs text-neutral-500">
+              Pago: {
+                paymentBadge.label === "Pagado"
+                  ? "Completo"
+                  : paymentBadge.label === "Parcial"
+                  ? "Parcial"
+                  : "Pendiente"
+              }
+            </span>
           </div>
 
-
-          <div className="rounded-xl border border-neutral-200 p-3">
-            <p className="text-xs text-neutral-500">Fecha de registro</p>
-            <p className="font-medium text-neutral-900">{formatTimestamp(registrationDate)}</p>
+          <div className="text-xs text-neutral-500">
+            {teamMembersCount} jugadores
           </div>
-          
         </div>
 
-        <div className="rounded-xl border border-neutral-200 p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-neutral-900">Pago</h3>
-          <div className="grid sm:grid-cols-3 gap-3 text-sm">
-            <div className="rounded-lg border border-neutral-200 p-3 space-y-1">
-              <p className="text-xs text-neutral-500">Estado de pago</p>
-              <StatusPill label={paymentBadge.label} variant={paymentBadge.variant} />
-            </div>
-            <div className="rounded-lg border border-neutral-200 p-3">
-              <p className="text-xs text-neutral-500">Abonado / Esperado</p>
-              <p className="font-medium text-neutral-900">${paidAmount} / ${expectedAmount}</p>
-            </div>
-            <div className="rounded-lg border border-neutral-200 p-3">
-              <p className="text-xs text-neutral-500">Pago pendiente</p>
-              <p className="font-medium text-neutral-900">${pendingAmount}</p>
-            </div>
+        <button
+          onClick={onClose}
+          className="text-sm text-neutral-500 hover:text-neutral-700"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* BODY */}
+      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+
+        {/* ALERTA CONDICIONES */}
+        {!isTeamSource && !canApprove && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <p className="font-medium">No podés aceptar todavía:</p>
+            <ul className="list-disc pl-4 mt-1 text-xs space-y-0.5">
+              {missingConditions.map((condition) => (
+                <li key={condition}>{condition}</li>
+              ))}
+            </ul>
           </div>
-          <div className="grid sm:grid-cols-2 gap-3 items-end">
-            <label className="text-xs text-neutral-500 space-y-1 block">
-              Monto a sumar al pago actual
+        )}
+
+        {/* PAGO */}
+        <div className="rounded-xl border border-neutral-200 dark:border-white/10 p-4 space-y-3">
+
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-neutral-900 dark:text-white">
+              Pago
+            </p>
+          </div>
+
+          {/* DETALLE DE PAGO */}
+          <div className="text-sm space-y-1 text-neutral-800 dark:text-neutral-200">
+            <p>
+              <span className="text-neutral-500">Pagado:</span>{" "}
+              <span className="font-medium">${paidAmount}</span>
+            </p>
+
+            <p>
+              <span className="text-neutral-500">Falta:</span>{" "}
+              <span className="font-medium">${pendingAmount}</span>
+            </p>
+
+            <p className="text-xs text-neutral-400">
+              Total: ${expectedAmount}
+            </p>
+          </div>
+
+          {/* FEEDBACK */}
+          <div className="text-xs">
+            {pendingAmount === 0 ? (
+              <span className="text-emerald-600">✔ Pago completo</span>
+            ) : (
+              <span className="text-amber-600">⚠️ Falta completar el pago</span>
+            )}
+          </div>
+
+          {/* INPUT */}
+          {!isTournamentFinalized && (
+            <div className="flex gap-2">
               <input
                 type="number"
                 min={0}
                 value={paidAmountInput}
                 onChange={(e) => setPaidAmountInput(Number(e.target.value || 0))}
-                disabled={isTournamentFinalized}
-                className="w-full mt-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900"
+                className="flex-1 h-9 rounded-lg border border-neutral-300 px-3 text-sm dark:bg-slate-800 dark:border-white/10"
               />
-            </label>
 
-            <button
-              type="button"
-              onClick={onConfirmPayment}
-              disabled={isTournamentFinalized || savingPayment || Number(paidAmountInput || 0) <= 0}
-              className="inline-flex items-center gap-2 h-10 rounded-lg bg-neutral-900 px-4 text-white text-sm font-medium transition-colors hover:bg-neutral-800 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-neutral-300 disabled:cursor-not-allowed disabled:opacity-55"
-            >
-              {savingPayment ? <Spinner /> : null}
-              Confirmar Pago
-            </button>
-          </div>
-
-        </div>
-
-        </div>
-
-        <div className="p-6 border-t border-neutral-200 space-y-3">
-          {!isTeamSource && !canApprove && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-              <p className="font-medium">Faltan condiciones para poder aceptar:</p>
-              <ul className="list-disc pl-4 mt-1 space-y-0.5">
-                {missingConditions.map((condition) => (
-                  <li key={condition}>{condition}</li>
-                ))}
-              </ul>
+              <button
+                onClick={onConfirmPayment}
+                disabled={savingPayment || Number(paidAmountInput || 0) <= 0}
+                className="h-9 px-3 rounded-lg bg-neutral-900 text-white text-sm hover:bg-neutral-800 disabled:opacity-50 dark:bg-white dark:text-black"
+              >
+                {savingPayment ? <Spinner /> : "Confirmar pago"}
+              </button>
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => onReviewRegistration(isTeamSource ? "equipo_rechazado" : "rechazado")}
-              disabled={isTournamentFinalized || reviewing !== null}
-              className="inline-flex items-center gap-2 h-10 rounded-lg bg-red-600 px-4 text-white text-sm font-medium disabled:opacity-60"
-            >
-              {reviewing === "rechazado" || reviewing === "equipo_rechazado" ? <Spinner /> : null}
-              {isTeamSource ? "Eliminar equipo" : "Rechazar inscripción"}
-            </button>
-
-            {!isTeamSource && (
-              <button
-                type="button"
-                onClick={() => onReviewRegistration("aceptado")}
-                disabled={isTournamentFinalized || !canApprove || reviewing !== null}
-                className="inline-flex items-center gap-2 h-10 rounded-lg bg-emerald-600 px-4 text-white text-sm font-medium disabled:opacity-60"
-              >
-                {reviewing === "aceptado" ? <Spinner /> : null}
-                Aceptar inscripción
-              </button>
-            )}
-          </div>
         </div>
       </div>
+
+      {/* FOOTER */}
+      <div className="p-5 border-t border-neutral-200 dark:border-white/10 flex justify-end gap-2">
+
+        <button
+          onClick={() =>
+            onReviewRegistration(isTeamSource ? "equipo_rechazado" : "rechazado")
+          }
+          disabled={isTournamentFinalized || reviewing !== null}
+          className="text-sm text-neutral-500 hover:text-red-600"
+        >
+          {reviewing === "rechazado" || reviewing === "equipo_rechazado"
+            ? <Spinner />
+            : (isTeamSource ? "Eliminar equipo" : "Rechazar")}
+        </button>
+
+        {!isTeamSource && (
+          <button
+            onClick={() => onReviewRegistration("aceptado")}
+            disabled={isTournamentFinalized || !canApprove || reviewing !== null}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-500 disabled:opacity-50"
+          >
+            {reviewing === "aceptado" ? <Spinner /> : "Aceptar"}
+          </button>
+        )}
+
+      </div>
     </div>
-  );
+  </div>
+);
 }

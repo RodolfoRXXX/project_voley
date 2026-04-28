@@ -20,7 +20,17 @@ type Filter =
   | "cancelado"
   | "jugado";
 
-export default function ProfileMatches() {
+type Props = {
+  userId?: string;
+  maxItems?: number;
+  title?: string;
+};
+
+export default function ProfileMatches({
+  userId,
+  maxItems,
+  title = "🏐 Historial de partidos",
+}: Props) {
   const { firebaseUser } = useAuth();
 
   const [filter, setFilter] = useState<Filter>("todos");
@@ -29,15 +39,14 @@ export default function ProfileMatches() {
   const [matchesMap, setMatchesMap] = useState<Record<string, any>>({});
   const [groupsMap, setGroupsMap] = useState<Record<string, any>>({});
 
-  /* =====================
-     PARTICIPATIONS
-  ===================== */
+  const targetUserId = userId || firebaseUser?.uid;
+
   useEffect(() => {
-    if (!firebaseUser) return;
+    if (!targetUserId) return;
 
     const q = query(
       collection(db, "participations"),
-      where("userId", "==", firebaseUser.uid)
+      where("userId", "==", targetUserId)
     );
 
     const unsub = onSnapshot(q, (snap) => {
@@ -47,11 +56,8 @@ export default function ProfileMatches() {
     });
 
     return () => unsub();
-  }, [firebaseUser]);
+  }, [targetUserId]);
 
-  /* =====================
-     MATCHES
-  ===================== */
   useEffect(() => {
     const matchIds = Array.from(
       new Set(participations.map((p) => p.matchId))
@@ -76,9 +82,6 @@ export default function ProfileMatches() {
     return () => unsubs.forEach((u) => u());
   }, [participations]);
 
-  /* =====================
-     GROUPS
-  ===================== */
   useEffect(() => {
     const groupIds = Array.from(
       new Set(
@@ -107,11 +110,8 @@ export default function ProfileMatches() {
     return () => unsubs.forEach((u) => u());
   }, [matchesMap]);
 
-  /* =====================
-     BUILD HISTORY
-  ===================== */
   const history = useMemo(() => {
-    return participations
+    const rows = participations
       .map((p) => {
         const match = matchesMap[p.matchId];
         if (!match) return null;
@@ -140,11 +140,10 @@ export default function ProfileMatches() {
         if (!b.horaInicio) return -1;
         return b.horaInicio.getTime() - a.horaInicio.getTime();
       });
-  }, [participations, matchesMap, groupsMap]);
 
-  /* =====================
-     FILTER
-  ===================== */
+    return typeof maxItems === "number" ? rows.slice(0, maxItems) : rows;
+  }, [participations, matchesMap, groupsMap, maxItems]);
+
   const filtered = history.filter((h: any) => {
     if (filter === "todos") return true;
 
@@ -158,9 +157,6 @@ export default function ProfileMatches() {
     return h.matchEstado === filter;
   });
 
-  /* =====================
-     RENDER
-  ===================== */
   return (
     <section className="
       bg-white
@@ -171,7 +167,7 @@ export default function ProfileMatches() {
     ">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-lg font-semibold flex items-center gap-2">
-          🏐 Historial de partidos
+          {title}
         </h2>
 
         <select

@@ -651,7 +651,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           <button
             onClick={onMainAction}
             disabled={isMainActionDisabled}
-            className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white dark:ring-1 dark:ring-neutral-500/60"
+            className="inline-flex items-center gap-2 rounded-lg bg-neutral-700 hover:bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-white dark:ring-1 dark:ring-neutral-500/60"
           >
             {busyAction ? <Spinner /> : null}
             {action.label}
@@ -659,7 +659,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
           <button
             onClick={onCancelTournament}
             disabled={busyAction}
-            className="rounded-lg bg-red-700 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+            className="rounded-lg bg-red-600 hover:bg-red-500 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
           >
             Cancelar torneo
           </button>

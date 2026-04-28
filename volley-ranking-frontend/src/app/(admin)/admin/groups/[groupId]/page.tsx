@@ -1001,7 +1001,7 @@ export default function AdminGroupPage() {
                     member={member}
                     canToggleAdmin={canToggleAdmin}
                     isLastSelfAdmin={isLastSelfAdmin}
-                    onViewProfile={() => router.push(`/profile/info?memberId=${member.id}`)}
+                    onViewProfile={() => router.push(`/admin/groups/${groupId}/members/${member.id}`)}
                     onRemove={() => removeMember(member.id)}
                     onToggleAdmin={() =>
                       member.isAdmin ? removeAdmin(member.id) : addAdmin(member.id)

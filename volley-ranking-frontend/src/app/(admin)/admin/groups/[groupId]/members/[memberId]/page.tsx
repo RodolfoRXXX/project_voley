@@ -94,18 +94,18 @@ export default function AdminMemberProfilePage() {
 
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-8">
-      <Link
-        href={`/admin/groups/${groupId}`}
-        className="text-sm font-medium text-blue-600 hover:underline"
-      >
-        ← Volver al grupo
-      </Link>
+      <div className="flex items-center justify-between">
+  <Link
+    href={`/admin/groups/${groupId}`}
+    className="text-sm font-medium text-blue-600 hover:underline"
+  >
+    ← Volver al grupo
+  </Link>
 
-      {isTargetGroupAdmin && (
-        <div className="flex items-center">
-          <StatusPill label="Admin del grupo" variant="warning" icon="🛡️" />
-        </div>
-      )}
+  {isTargetGroupAdmin && (
+    <StatusPill label="Admin del grupo" variant="warning" icon="🛡️" />
+  )}
+</div>
 
       <ProfileHeader user={targetUser} />
 

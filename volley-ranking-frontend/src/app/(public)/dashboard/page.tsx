@@ -18,6 +18,7 @@ import { getTournamentFormatLabel, tournamentStatusLabel } from "@/types/tournam
 import useToast from "@/components/ui/toast/useToast";
 import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import PublicTournamentDetailModal from "@/components/tournaments/public/PublicTournamentDetailModal";
 import CreateMatchQuickActionModal from "@/components/dashboard/CreateMatchQuickActionModal";
 
@@ -616,6 +617,20 @@ export default function DashboardPage() {
               <h2 className="text-2xl font-bold">Tu panel</h2>
               <p className="text-sm text-neutral-600">Todo lo importante en un solo lugar.</p>
             </header>
+
+            {!isOnboarded && (
+              <div className="w-full rounded-2xl border border-orange-300 bg-orange-100/70 px-4 py-3">
+                <p className="text-sm text-orange-900">
+                  Completá tu perfil para ser parte de grupos y jugar partidos.
+                </p>
+                <Link
+                  href="/profile/info"
+                  className="mt-1 inline-block text-sm font-semibold text-orange-700 underline underline-offset-2 hover:text-orange-800"
+                >
+                  Completar perfil
+                </Link>
+              </div>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 

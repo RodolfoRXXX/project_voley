@@ -619,18 +619,31 @@ export default function DashboardPage() {
             </header>
 
             {!isOnboarded && (
-              <div className="w-full rounded-2xl border border-orange-300 bg-orange-100/70 px-4 py-3">
-                <p className="text-sm text-orange-900">
-                  Completá tu perfil para ser parte de grupos y jugar partidos.
-                </p>
-                <Link
-                  href="/profile/info"
-                  className="mt-1 inline-block text-sm font-semibold text-orange-700 underline underline-offset-2 hover:text-orange-800"
-                >
-                  Completar perfil
-                </Link>
-              </div>
-            )}
+  <div className="w-full rounded-2xl border border-orange-200/70 bg-gradient-to-br from-orange-100/80 via-orange-50 to-amber-100/70 dark:from-orange-500/10 dark:via-slate-900 dark:to-slate-900 p-4 backdrop-blur-sm shadow-sm">
+    
+    <div className="flex items-start justify-between gap-4">
+      
+      {/* Texto */}
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-orange-900 dark:text-orange-200">
+          Completá tu perfil
+        </p>
+        <p className="text-xs text-orange-800/80 dark:text-orange-300/80">
+          Necesario para unirte a grupos y participar en partidos.
+        </p>
+      </div>
+
+      {/* CTA */}
+      <Link
+        href="/profile/info"
+        className="shrink-0 inline-flex items-center justify-center rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-600 transition"
+      >
+        Completar
+      </Link>
+
+    </div>
+  </div>
+)}
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 

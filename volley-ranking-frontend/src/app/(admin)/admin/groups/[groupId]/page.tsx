@@ -260,7 +260,7 @@ function MemberRow({
 
   return (
     <li
-      className={`relative rounded-xl border border-white/60 p-3 transition hover:bg-white/10 ${
+      className={`relative rounded-xl border border-white/60 p-3 transition ${
         member.isAdmin ? "ring-1 ring-orange-400/50" : ""
       }`}
     >
@@ -317,7 +317,7 @@ function MemberRow({
                 type="button"
                 onClick={() => setConfirmAction("remove")}
                 disabled={member.isAdmin}
-                className="w-full rounded-lg px-3 py-2 text-left text-sm text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:text-neutral-400"
+                className="w-full rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:text-neutral-400"
               >
                 Eliminar del grupo
               </button>
@@ -1050,7 +1050,7 @@ export default function AdminGroupPage() {
                   {pendingRequests.map((member) => (
                     <li
                       key={`pending-${member.id}`}
-                      className="rounded-xl border border-white/60 bg-white/70 p-3 transition hover:bg-white"
+                      className="rounded-xl border border-white/60 bg-white/70 dark:bg-slate-900/60 p-3 transition"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <MemberIdentity member={member} subtitle="Solicitud pendiente" />

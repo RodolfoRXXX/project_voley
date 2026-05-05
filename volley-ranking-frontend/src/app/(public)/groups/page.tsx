@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { ActionButton } from "@/components/ui/action/ActionButton";
@@ -111,9 +112,13 @@ function GroupsSkeleton() {
 
 export default function GruposPage() {
   const { firebaseUser } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [groups, setGroups] = useState<PublicGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState(searchParams.get("q") ?? "");
   const { run, isLoading } = useAction();
 
   const endpoint = "/api/groups/public";
@@ -184,6 +189,23 @@ export default function GruposPage() {
       !group.adminIds?.includes(firebaseUser.uid)
     );
   });
+
+  const searchTerm = (searchParams.get("q") ?? "").trim();
+  const filteredGroups = availableGroups.filter((group) =>
+    group.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const applySearch = (rawTerm: string) => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+    const term = rawTerm.trim();
+    if (term) {
+      nextParams.set("q", term);
+    } else {
+      nextParams.delete("q");
+    }
+    const queryString = nextParams.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname);
+  };
 
   const getJoinState = (group: PublicGroup): JoinState => {
     if (!firebaseUser?.uid) return "none";
@@ -276,6 +298,47 @@ export default function GruposPage() {
         <h1 className="text-3xl font-bold text-neutral-800 dark:text-[var(--foreground)]">
           Grupos
         </h1>
+        <form
+          className="pt-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            applySearch(searchInput);
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Buscar por nombre de grupo"
+              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+            />
+            <button
+              type="submit"
+              className="inline-flex h-10 items-center justify-center rounded-full bg-gray-800 px-4 text-sm font-medium text-white transition-all hover:bg-gray-900"
+            >
+              Buscar
+            </button>
+          </div>
+        </form>
+        {searchTerm && (
+          <div className="pt-2">
+            <span className="inline-flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-700">
+              {searchTerm}
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput("");
+                  applySearch("");
+                }}
+                className="text-neutral-500 hover:text-neutral-800"
+                aria-label="Limpiar búsqueda"
+              >
+                ×
+              </button>
+            </span>
+          </div>
+        )}
         <p className="text-sm text-neutral-500">
           Explora y únete a grupos públicos
         </p>
@@ -283,13 +346,13 @@ export default function GruposPage() {
 
       {error && <p className="text-red-500">{error}</p>}
 
-      {availableGroups.length === 0 && (
+      {filteredGroups.length === 0 && (
         <p className="text-gray-500">No hay grupos disponibles.</p>
       )}
-      {availableGroups.length > 0 && (
+      {filteredGroups.length > 0 && (
         <section className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {availableGroups.map((group) => {
+            {filteredGroups.map((group) => {
               const buttonConfig = getButtonConfig(group);
 
               return (

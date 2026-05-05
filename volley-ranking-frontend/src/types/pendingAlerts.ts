@@ -22,8 +22,14 @@ export type PendingAlert = {
   message: string;
   status: PendingAlertStatus;
   priority: number;
+  dedupeKey?: string;
+  actorScope?: {
+    userId: string;
+    roleAtCreation?: "player" | "admin" | null;
+  };
   createdAt?: number;
   updatedAt?: number;
+  expiresAt?: number | null;
   link?: {
     path: string;
     label: string;
@@ -32,6 +38,12 @@ export type PendingAlert = {
     groupId?: string;
     tournamentId?: string;
     requestUserId?: string;
+  };
+  meta?: {
+    groupName?: string;
+    tournamentName?: string;
+    decision?: "accepted" | "rejected";
+    pendingCount?: number;
   };
 };
 

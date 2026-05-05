@@ -433,6 +433,7 @@ export default function DashboardPage() {
       return;
     }
 
+    setPendingAlerts([]);
     setPendingAlertsLoading(true);
 
     const alertsRef = collection(db, "users", firebaseUser.uid, "pendingAlerts");
@@ -443,6 +444,7 @@ export default function DashboardPage() {
         const data = docSnap.data() as Partial<PendingAlert> & {
           createdAt?: Timestamp;
           updatedAt?: Timestamp;
+          expiresAt?: Timestamp | null;
         };
 
         return {
@@ -453,10 +455,14 @@ export default function DashboardPage() {
           message: String(data.message || "Revisá esta acción pendiente."),
           status: (data.status || "active") as PendingAlert["status"],
           priority: Number(data.priority || pendingAlertPriority[(data.severity || "info") as PendingAlert["severity"]]),
+          dedupeKey: data.dedupeKey,
+          actorScope: data.actorScope,
           createdAt: data.createdAt?.toMillis(),
           updatedAt: data.updatedAt?.toMillis(),
+          expiresAt: data.expiresAt ? data.expiresAt.toMillis() : null,
           link: data.link,
           resource: data.resource,
+          meta: data.meta,
         } satisfies PendingAlert;
       });
 
@@ -481,6 +487,7 @@ export default function DashboardPage() {
       setPendingAlerts(sorted);
       setPendingAlertsLoading(false);
     }, () => {
+      setPendingAlerts([]);
       setPendingAlertsLoading(false);
     });
 

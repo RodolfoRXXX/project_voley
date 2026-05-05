@@ -7,6 +7,7 @@ const { emitDomainEvent } = require("./events/domainEventBus");
 const { DOMAIN_EVENTS } = require("./events/domainEvents");
 const { getPublicVapidKey } = require("./services/pushService");
 const { MAIL_AND_PUSH_SECRETS } = require("./config/functionSecrets");
+const { createGroupMembershipResultAlert } = require("./services/pendingAlertsService");
 
 
 function getBearerToken(authHeader = "") {
@@ -524,6 +525,13 @@ async function handleJoinRequestAction(req, res, authContext, groupId, userId, a
   await db.collection("groups").doc(groupId).update({
     memberIds: Array.from(new Set(memberIds)),
     pendingRequestIds,
+  });
+
+  await createGroupMembershipResultAlert({
+    userId: String(userId),
+    groupId,
+    groupName: group?.nombre || group?.name || "Grupo",
+    decision: action === "approve" ? "accepted" : "rejected",
   });
 
   res.status(200).json({

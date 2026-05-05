@@ -6,7 +6,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, onSnapshot, query, where, Timestamp } from "firebase/firestore";
+import { collection, getDocs, limit, onSnapshot, orderBy, query, where, Timestamp } from "firebase/firestore";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,9 +18,11 @@ import { getTournamentFormatLabel, tournamentStatusLabel } from "@/types/tournam
 import useToast from "@/components/ui/toast/useToast";
 import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import PublicTournamentDetailModal from "@/components/tournaments/public/PublicTournamentDetailModal";
 import CreateMatchQuickActionModal from "@/components/dashboard/CreateMatchQuickActionModal";
+import PendingAlertsSection from "@/components/dashboard/PendingAlertsSection";
+import type { PendingAlert } from "@/types/pendingAlerts";
+import { pendingAlertPriority } from "@/types/pendingAlerts";
 
 const SOCIAL_MATCH_STATUSES = ["abierto", "verificando", "cerrado", "cancelado"] as const;
 
@@ -88,6 +90,9 @@ export default function DashboardPage() {
   const router = useRouter();
   const { firebaseUser, userDoc, loading: authLoading } = useAuth();
   const { showToast } = useToast();
+  const preferredPositions = userDoc?.posicionesPreferidas || [];
+  const hasPreferredPositions = preferredPositions.length > 0;
+  const isOnboarded = userDoc?.onboarded === true;
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [activeTournamentCards, setActiveTournamentCards] = useState<TournamentDashboardCard[]>([]);
@@ -103,6 +108,8 @@ export default function DashboardPage() {
   const [userStatsLoading, setUserStatsLoading] = useState(false);
   const [showCreateMatchModal, setShowCreateMatchModal] = useState(false);
   const [adminGroups, setAdminGroups] = useState<Array<{ id: string; nombre: string }>>([]);
+  const [pendingAlerts, setPendingAlerts] = useState<PendingAlert[]>([]);
+  const [pendingAlertsLoading, setPendingAlertsLoading] = useState(false);
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
@@ -418,11 +425,84 @@ export default function DashboardPage() {
     loadTournamentCards().finally(() => setTournamentLoading(false));
   }, []);
 
+
+  useEffect(() => {
+    if (!firebaseUser?.uid) {
+      setPendingAlerts([]);
+      setPendingAlertsLoading(false);
+      return;
+    }
+
+    setPendingAlerts([]);
+    setPendingAlertsLoading(true);
+
+    const alertsRef = collection(db, "users", firebaseUser.uid, "pendingAlerts");
+    const alertsQuery = query(
+      alertsRef,
+      where("status", "==", "active"),
+      orderBy("priority", "asc"),
+      orderBy("updatedAt", "desc"),
+      limit(20)
+    );
+
+    const unsub = onSnapshot(alertsQuery, (snap) => {
+      const loaded = snap.docs.map((docSnap) => {
+        const data = docSnap.data() as Partial<PendingAlert> & {
+          createdAt?: Timestamp;
+          updatedAt?: Timestamp;
+          expiresAt?: Timestamp | null;
+        };
+
+        return {
+          id: docSnap.id,
+          kind: (data.kind || "group_membership_result") as PendingAlert["kind"],
+          severity: (data.severity || "info") as PendingAlert["severity"],
+          title: String(data.title || "Pendiente"),
+          message: String(data.message || "Revisá esta acción pendiente."),
+          status: (data.status || "active") as PendingAlert["status"],
+          priority: Number(data.priority || pendingAlertPriority[(data.severity || "info") as PendingAlert["severity"]]),
+          dedupeKey: data.dedupeKey,
+          actorScope: data.actorScope,
+          createdAt: data.createdAt?.toMillis(),
+          updatedAt: data.updatedAt?.toMillis(),
+          expiresAt: data.expiresAt ? data.expiresAt.toMillis() : null,
+          link: data.link,
+          resource: data.resource,
+          meta: data.meta,
+        } satisfies PendingAlert;
+      });
+
+      const loadedWithoutProfileFallback = loaded.filter((alert) => alert.kind !== "complete_profile");
+      const normalized = !isOnboarded
+        ? [
+          {
+            id: "complete-profile-fallback",
+            kind: "complete_profile",
+            severity: "urgent",
+            title: "Completá tu perfil",
+            message: "Necesario para unirte a grupos y participar en partidos.",
+            status: "active",
+            priority: pendingAlertPriority.urgent,
+            link: { path: "/profile/info", label: "Ir a Mi info" },
+            updatedAt: Date.now(),
+          } satisfies PendingAlert,
+          ...loadedWithoutProfileFallback,
+        ]
+        : loadedWithoutProfileFallback;
+
+      const sorted = normalized.sort((a, b) => a.priority - b.priority || (b.updatedAt || 0) - (a.updatedAt || 0));
+      setPendingAlerts(sorted);
+      setPendingAlertsLoading(false);
+    }, () => {
+      setPendingAlerts([]);
+      setPendingAlertsLoading(false);
+    });
+
+    return () => unsub();
+  }, [firebaseUser?.uid, isOnboarded]);
+
   const loading = matchesLoading || tournamentLoading;
   const showGuestHero = !authLoading && !firebaseUser;
-  const preferredPositions = userDoc?.posicionesPreferidas || [];
-  const hasPreferredPositions = preferredPositions.length > 0;
-  const isOnboarded = userDoc?.onboarded === true;
 
   const featureCards = [
     {
@@ -618,33 +698,6 @@ export default function DashboardPage() {
               <p className="text-sm text-neutral-600">Todo lo importante en un solo lugar.</p>
             </header>
 
-            {!isOnboarded && (
-  <div className="w-full rounded-2xl border border-orange-200/70 bg-gradient-to-br from-orange-100/80 via-orange-50 to-amber-100/70 dark:from-orange-500/10 dark:via-slate-900 dark:to-slate-900 p-4 backdrop-blur-sm shadow-sm">
-    
-    <div className="flex items-start justify-between gap-4">
-      
-      {/* Texto */}
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-orange-900 dark:text-orange-200">
-          Completá tu perfil
-        </p>
-        <p className="text-xs text-orange-800/80 dark:text-orange-300/80">
-          Necesario para unirte a grupos y participar en partidos.
-        </p>
-      </div>
-
-      {/* CTA */}
-      <Link
-        href="/profile/info"
-        className="shrink-0 inline-flex items-center justify-center rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-600 transition"
-      >
-        Completar
-      </Link>
-
-    </div>
-  </div>
-)}
-
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 
               <article className="rounded-2xl border border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4 shadow-sm hover:shadow-lg hover:-translate-y-[2px] transition">
@@ -693,6 +746,11 @@ export default function DashboardPage() {
 
             </div>
           </section>
+
+          <PendingAlertsSection
+            loading={pendingAlertsLoading}
+            alerts={pendingAlerts}
+          />
         </>
       )}
 

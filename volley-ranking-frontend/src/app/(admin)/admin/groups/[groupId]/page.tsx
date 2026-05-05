@@ -789,14 +789,13 @@ export default function AdminGroupPage() {
     try {
       await navigator.clipboard.writeText(publicGroupSearchLink);
       showToast({
-        title: "Link copiado",
-        description: "Se copió el link público del grupo.",
+        type: "success",
+        message: "Se copió el link público del grupo.",
       });
     } catch {
       showToast({
-        title: "No se pudo copiar",
-        description: "Copiá el link manualmente.",
-        variant: "error",
+        type: "error",
+        message: "No se pudo copiar el link. Copialo manualmente.",
       });
     }
   };

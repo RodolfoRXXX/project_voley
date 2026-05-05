@@ -298,6 +298,9 @@ export default function GruposPage() {
         <h1 className="text-3xl font-bold text-neutral-800 dark:text-[var(--foreground)]">
           Grupos
         </h1>
+        <p className="text-sm text-neutral-500">
+          Explora y únete a grupos públicos
+        </p>
         <form
           className="pt-2"
           onSubmit={(e) => {
@@ -339,9 +342,6 @@ export default function GruposPage() {
             </span>
           </div>
         )}
-        <p className="text-sm text-neutral-500">
-          Explora y únete a grupos públicos
-        </p>
       </div>
 
       {error && <p className="text-red-500">{error}</p>}

@@ -7,7 +7,9 @@
     "migrate:group-admins": "node src/scripts/migrateGroupAdmins.js",
     "migrate:group-admins:write": "node src/scripts/migrateGroupAdmins.js --write",
     "seed:dev": "node src/scripts/seedDevelopmentData.js",
-    "seed:dev:dry": "node src/scripts/seedDevelopmentData.js --dry-run"
+    "seed:dev:dry": "node src/scripts/seedDevelopmentData.js --dry-run",
+    "backfill:pending-alerts": "node src/scripts/backfillPendingAlerts.js",
+    "backfill:pending-alerts:write": "node src/scripts/backfillPendingAlerts.js --write"
   },
   "keywords": [],
   "author": "",

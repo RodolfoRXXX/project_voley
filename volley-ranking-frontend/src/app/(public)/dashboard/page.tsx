@@ -6,7 +6,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, onSnapshot, query, where, Timestamp } from "firebase/firestore";
+import { collection, getDocs, limit, onSnapshot, orderBy, query, where, Timestamp } from "firebase/firestore";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
@@ -437,7 +437,13 @@ export default function DashboardPage() {
     setPendingAlertsLoading(true);
 
     const alertsRef = collection(db, "users", firebaseUser.uid, "pendingAlerts");
-    const alertsQuery = query(alertsRef, where("status", "==", "active"));
+    const alertsQuery = query(
+      alertsRef,
+      where("status", "==", "active"),
+      orderBy("priority", "asc"),
+      orderBy("updatedAt", "desc"),
+      limit(20)
+    );
 
     const unsub = onSnapshot(alertsQuery, (snap) => {
       const loaded = snap.docs.map((docSnap) => {
@@ -466,6 +472,7 @@ export default function DashboardPage() {
         } satisfies PendingAlert;
       });
 
+      const loadedWithoutProfileFallback = loaded.filter((alert) => alert.kind !== "complete_profile");
       const normalized = !isOnboarded
         ? [
           {
@@ -479,9 +486,9 @@ export default function DashboardPage() {
             link: { path: "/profile/info", label: "Ir a Mi info" },
             updatedAt: Date.now(),
           } satisfies PendingAlert,
-          ...loaded.filter((alert) => alert.kind !== "complete_profile"),
+          ...loadedWithoutProfileFallback,
         ]
-        : loaded;
+        : loadedWithoutProfileFallback;
 
       const sorted = normalized.sort((a, b) => a.priority - b.priority || (b.updatedAt || 0) - (a.updatedAt || 0));
       setPendingAlerts(sorted);

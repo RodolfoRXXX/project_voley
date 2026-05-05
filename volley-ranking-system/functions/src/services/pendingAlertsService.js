@@ -25,6 +25,7 @@ async function upsertPendingAlert({
   link,
   resource = {},
   meta = {},
+  expiresAt = null,
 }) {
   if (!userId || !alertId || !kind || !severity) return;
 
@@ -46,6 +47,7 @@ async function upsertPendingAlert({
     link,
     resource,
     meta,
+    expiresAt,
     updatedAt: now,
   };
 
@@ -94,8 +96,44 @@ async function syncCompleteProfilePendingAlert(userId, user = {}) {
   });
 }
 
+async function createGroupMembershipResultAlert({
+  userId,
+  groupId,
+  groupName,
+  decision,
+}) {
+  if (!userId || !groupId || !["accepted", "rejected"].includes(decision)) return;
+
+  const isAccepted = decision === "accepted";
+  const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
+  await upsertPendingAlert({
+    userId,
+    alertId: `group_membership_result_${groupId}`,
+    kind: "group_membership_result",
+    severity: "info",
+    title: isAccepted ? "Solicitud de grupo aceptada" : "Solicitud de grupo rechazada",
+    message: isAccepted
+      ? `Fuiste aceptado en ${groupName || "el grupo"}.`
+      : `Tu solicitud para unirte a ${groupName || "el grupo"} fue rechazada.`,
+    link: {
+      path: isAccepted ? `/groups/${groupId}` : "/groups",
+      label: isAccepted ? "Ver grupo" : "Ver grupos",
+    },
+    resource: {
+      groupId,
+    },
+    meta: {
+      groupName: groupName || "Grupo",
+      decision,
+    },
+    expiresAt,
+  });
+}
+
 module.exports = {
   PENDING_ALERT_PRIORITIES,
+  createGroupMembershipResultAlert,
   resolvePendingAlert,
   syncCompleteProfilePendingAlert,
   upsertPendingAlert,

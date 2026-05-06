@@ -15,28 +15,38 @@
 
 3. **Backfill inicial**
    - `cd volley-ranking-system/functions && npm run backfill:pending-alerts` ejecuta el relevamiento en modo dry-run.
-   - `cd volley-ranking-system/functions && npm run backfill:pending-alerts:write` genera `complete_profile`, `group_join_requests_pending` y `group_admin_requests_pending` para datos ya cargados antes de desplegar los triggers.
+   - `cd volley-ranking-system/functions && npm run backfill:pending-alerts:write` genera `complete_profile`, `group_join_requests_pending`, `group_admin_requests_pending` y los pendientes de torneos para datos ya cargados antes de desplegar los triggers.
 
 4. **Reglas e índices de Firestore**
    - Se agregó una regla específica para que cada usuario autenticado lea solo `users/{uid}/pendingAlerts/*`.
    - La escritura cliente queda bloqueada porque los producers usan Admin SDK.
    - Se agregó el índice compuesto `status ASC, priority ASC, updatedAt DESC` para la query final del dashboard.
+   - Se agregaron índices compuestos de soporte para queries de producers sobre `tournamentRegistrations` y `tournamentTeams`.
 
 5. **Pendientes informativos de grupos**
    - `group_membership_result` se crea cuando una solicitud de ingreso a grupo es aprobada o rechazada.
    - El aviso expira a los 14 días mediante `expiresAt`.
    - Si la solicitud fue aprobada, el CTA apunta al detalle público del grupo; si fue rechazada, apunta al listado de grupos.
 
+6. **Pendientes de torneos**
+   - `tournament_draft_open_registrations`: se sincroniza para admins de torneo cuando el torneo está en `draft`.
+   - `tournament_registrations_pending_review`: se sincroniza para admins de torneo cuando hay inscripciones `pendiente` durante `inscripciones_abiertas`.
+   - `tournament_ready_to_close_registrations`: se sincroniza para admins de torneo cuando las inscripciones están abiertas y la cantidad de equipos aceptados permite cerrar.
+   - `tournament_registrations_closed`: se sincroniza para admins de torneo cuando el torneo está en `inscripciones_cerradas`, para continuar con fixture/inicio.
+   - `tournament_active_results_pending`: se sincroniza para admins de torneo cuando el torneo está `activo` y existen partidos sin resultado completado.
+   - `group_accepted_in_tournament`: se sincroniza para admins del grupo aceptado mientras el torneo no esté `cancelado` ni `finalizado`.
+   - Los producers se activan desde cambios en `tournaments`, `tournamentRegistrations`, `tournamentMatches`, `tournamentTeams` y refrescos de admins en `groups`.
+   - El backfill inicial también releva torneos y equipos aceptados existentes.
+
 ## Siguientes pasos
 
-1. **Pendientes de torneos**
-   - Crear producers para torneos en `draft`, `inscripciones_abiertas`, `inscripciones_cerradas` y `activo`.
-   - Crear alerta para grupo aceptado en torneo no cancelado/finalizado.
-   - Crear alerta para resultados pendientes en torneos activos.
-
-2. **Limpieza y mantenimiento**
+1. **Limpieza y mantenimiento**
    - Agregar job programado para cerrar o borrar alertas expiradas/resueltas antiguas.
    - Agregar métricas/logs para controlar cantidad de pendientes activos por usuario.
+
+2. **Observabilidad de pendientes de torneos**
+   - Agregar métricas/logs específicos por kind (`tournament_*` y `group_accepted_in_tournament`) para detectar alertas activas o resueltas en exceso.
+   - Evaluar si `tournament_registrations_closed` debe diferenciar “fixture pendiente” de “torneo listo para iniciar” cuando el fixture ya existe.
 
 3. **Permisos globales de Firestore**
    - Reemplazar la regla catch-all temporal heredada por reglas específicas para el resto de colecciones de la app.

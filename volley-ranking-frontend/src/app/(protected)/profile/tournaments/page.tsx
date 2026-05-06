@@ -28,7 +28,7 @@ export default function ProfileTournamentsPage() {
   const [rows, setRows] = useState<ProfileTournamentListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<TournamentTypeFilter>("all");
-  const [statusFilter, setStatusFilter] = useState<TournamentStatusFilter>("activo");
+  const [statusFilter, setStatusFilter] = useState<TournamentStatusFilter>("all");
 
   useEffect(() => {
     const load = async () => {

@@ -4,6 +4,8 @@ export type PendingAlertKind =
   | "complete_profile"
   | "group_membership_result"
   | "group_accepted_in_tournament"
+  | "group_tournament_team_missing_players"
+  | "group_tournament_team_payment_pending"
   | "group_join_requests_pending"
   | "group_admin_requests_pending"
   | "tournament_draft_open_registrations"
@@ -44,6 +46,11 @@ export type PendingAlert = {
     tournamentName?: string;
     decision?: "accepted" | "rejected";
     pendingCount?: number;
+    minPlayers?: number;
+    selectedPlayersCount?: number;
+    missingPlayersCount?: number;
+    paymentStatus?: "pendiente" | "parcial" | "pagado";
+    pendingAmount?: number;
   };
 };
 

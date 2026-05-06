@@ -52,12 +52,42 @@ function groupAcceptedInTournamentAlertId(tournamentId, groupId) {
   return `group_accepted_in_tournament_${tournamentId}_${groupId}`;
 }
 
+function groupTournamentTeamMissingPlayersAlertId(tournamentId, groupId, source = "team") {
+  return `group_tournament_${source}_missing_players_${tournamentId}_${groupId}`;
+}
+
+function groupTournamentTeamPaymentAlertId(tournamentId, groupId, source = "team") {
+  return `group_tournament_${source}_payment_${tournamentId}_${groupId}`;
+}
+
 function isTournamentActiveForAcceptedGroups(tournament = {}) {
   return tournament && !CLOSED_TOURNAMENT_STATUSES.has(String(tournament.status || ""));
 }
 
 function isResultPendingMatch(match = {}) {
   return !["completed", "cancelled", "cancelado"].includes(String(match.status || ""));
+}
+
+function getSelectedPlayersCount(entry = {}) {
+  if (Array.isArray(entry.playerIds)) return entry.playerIds.length;
+  if (Array.isArray(entry.playersIds)) return entry.playersIds.length;
+  return Number(entry.teamMembersCount || 0);
+}
+
+function getMinPlayers(tournament = {}) {
+  return Number(tournament.settings?.minPlayers || tournament.minPlayers || 0);
+}
+
+function getPaymentStatus(entry = {}) {
+  return String(entry.paymentStatus || "pendiente");
+}
+
+function isPaymentPendingOrPartial(entry = {}) {
+  return ["pendiente", "parcial"].includes(getPaymentStatus(entry));
+}
+
+function getTournamentTeamDetailPath(tournamentId, groupId, team = {}) {
+  return `/profile/tournaments/teams/${team.registrationId || team.id || `${tournamentId}_${groupId}`}`;
 }
 
 async function getPendingRegistrationsCount(tournamentId) {
@@ -194,33 +224,92 @@ async function syncAcceptedGroupTournamentAlert({ tournamentId, groupId, team = 
   const currentTournament = tournament || (tournamentSnap?.exists ? tournamentSnap.data() : null);
   const currentGroup = group || (groupSnap?.exists ? groupSnap.data() : null);
   const groupAdminIds = getGroupAdminIds(currentGroup || {});
-  const alertId = groupAcceptedInTournamentAlertId(tournamentId, groupId);
+  const acceptedAlertId = groupAcceptedInTournamentAlertId(tournamentId, groupId);
+  const missingPlayersAlertId = groupTournamentTeamMissingPlayersAlertId(tournamentId, groupId);
+  const paymentAlertId = groupTournamentTeamPaymentAlertId(tournamentId, groupId);
   const isActive =
     team?.status === "aceptado" &&
     currentTournament &&
     currentGroup &&
     isTournamentActiveForAcceptedGroups(currentTournament);
+  const selectedPlayersCount = getSelectedPlayersCount(team || {});
+  const minPlayers = getMinPlayers(currentTournament || {});
+  const missingPlayersCount = Math.max(minPlayers - selectedPlayersCount, 0);
+  const tournamentName = getTournamentName(currentTournament || {});
+  const groupName = getGroupName(currentGroup || {});
+  const teamDetailPath = getTournamentTeamDetailPath(tournamentId, groupId, team || {});
+  const paymentStatus = getPaymentStatus(team || {});
+  const pendingAmount = Math.max(Number(team?.pendingAmount || 0), 0);
 
   await Promise.all(
-    groupAdminIds.map((adminId) => {
+    groupAdminIds.flatMap((adminId) => {
+      const operations = [];
+
       if (isActive) {
-        return upsertPendingAlert({
+        operations.push(upsertPendingAlert({
           userId: adminId,
-          alertId,
+          alertId: acceptedAlertId,
           kind: "group_accepted_in_tournament",
           severity: "info",
           title: "Grupo aceptado en torneo",
-          message: `${getGroupName(currentGroup)} fue aceptado en ${getTournamentName(currentTournament)}.`,
+          message: `${groupName} fue aceptado en ${tournamentName}.`,
           link: { path: `/tournaments/${tournamentId}`, label: "Ver torneo" },
           resource: { groupId, tournamentId },
           meta: {
-            groupName: getGroupName(currentGroup),
-            tournamentName: getTournamentName(currentTournament),
+            groupName,
+            tournamentName,
           },
-        });
+        }));
+      } else {
+        operations.push(resolvePendingAlert(adminId, acceptedAlertId));
       }
 
-      return resolvePendingAlert(adminId, alertId);
+      if (isActive && minPlayers > 0 && missingPlayersCount > 0) {
+        operations.push(upsertPendingAlert({
+          userId: adminId,
+          alertId: missingPlayersAlertId,
+          kind: "group_tournament_team_missing_players",
+          severity: "warning",
+          title: "Faltan jugadores para el torneo",
+          message: `${groupName} necesita ${missingPlayersCount} jugador${pluralize(missingPlayersCount, "", "es")} más para llegar al mínimo de ${minPlayers} en ${tournamentName}.`,
+          link: { path: teamDetailPath, label: "Completar equipo" },
+          resource: { groupId, tournamentId },
+          meta: {
+            groupName,
+            tournamentName,
+            minPlayers,
+            selectedPlayersCount,
+            missingPlayersCount,
+          },
+        }));
+      } else {
+        operations.push(resolvePendingAlert(adminId, missingPlayersAlertId));
+      }
+
+      if (isActive && isPaymentPendingOrPartial(team || {})) {
+        operations.push(upsertPendingAlert({
+          userId: adminId,
+          alertId: paymentAlertId,
+          kind: "group_tournament_team_payment_pending",
+          severity: "warning",
+          title: paymentStatus === "parcial" ? "Pago parcial del torneo" : "Pago pendiente del torneo",
+          message: pendingAmount > 0
+            ? `${groupName} tiene un pago ${paymentStatus} de ${tournamentName}. Saldo pendiente: $${pendingAmount}.`
+            : `${groupName} tiene un pago ${paymentStatus} de ${tournamentName}.`,
+          link: { path: teamDetailPath, label: "Ver inscripción" },
+          resource: { groupId, tournamentId },
+          meta: {
+            groupName,
+            tournamentName,
+            paymentStatus,
+            pendingAmount,
+          },
+        }));
+      } else {
+        operations.push(resolvePendingAlert(adminId, paymentAlertId));
+      }
+
+      return operations;
     })
   );
 }
@@ -241,38 +330,29 @@ async function syncAcceptedTournamentAlertsForGroup(groupId, beforeGroup, afterG
 
   await Promise.all(
     teamsSnap.docs.map(async (teamDoc) => {
-      const team = teamDoc.data();
+      const team = { id: teamDoc.id, ...teamDoc.data() };
       const tournamentId = team.tournamentId;
       if (!tournamentId) return;
 
       const tournamentSnap = await db.collection("tournaments").doc(String(tournamentId)).get();
       const tournament = tournamentSnap.exists ? tournamentSnap.data() : null;
-      const alertId = groupAcceptedInTournamentAlertId(tournamentId, groupId);
-      const isActive = afterGroup && tournament && isTournamentActiveForAcceptedGroups(tournament);
       const afterAdminIdsSet = new Set(afterAdminIds);
+      const removedAdminIds = affectedAdminIds.filter((adminId) => !afterAdminIdsSet.has(adminId));
 
-      await Promise.all(
-        affectedAdminIds.map((adminId) => {
-          if (isActive && afterAdminIdsSet.has(adminId)) {
-            return upsertPendingAlert({
-              userId: adminId,
-              alertId,
-              kind: "group_accepted_in_tournament",
-              severity: "info",
-              title: "Grupo aceptado en torneo",
-              message: `${getGroupName(afterGroup)} fue aceptado en ${getTournamentName(tournament)}.`,
-              link: { path: `/tournaments/${tournamentId}`, label: "Ver torneo" },
-              resource: { groupId, tournamentId },
-              meta: {
-                groupName: getGroupName(afterGroup),
-                tournamentName: getTournamentName(tournament),
-              },
-            });
-          }
-
-          return resolvePendingAlert(adminId, alertId);
-        })
-      );
+      await Promise.all([
+        syncAcceptedGroupTournamentAlert({
+          tournamentId,
+          groupId,
+          team,
+          tournament,
+          group: afterGroup,
+        }),
+        ...removedAdminIds.map((adminId) => Promise.all([
+          resolvePendingAlert(adminId, groupAcceptedInTournamentAlertId(tournamentId, groupId)),
+          resolvePendingAlert(adminId, groupTournamentTeamMissingPlayersAlertId(tournamentId, groupId)),
+          resolvePendingAlert(adminId, groupTournamentTeamPaymentAlertId(tournamentId, groupId)),
+        ])),
+      ]);
     })
   );
 }
@@ -288,7 +368,7 @@ async function syncAcceptedGroupsForTournament(tournamentId, tournament) {
 
   await Promise.all(
     teamsSnap.docs.map((teamDoc) => {
-      const team = teamDoc.data();
+      const team = { id: teamDoc.id, ...teamDoc.data() };
       return syncAcceptedGroupTournamentAlert({
         tournamentId,
         groupId: team.groupId,
@@ -312,6 +392,128 @@ async function syncTournamentPendingAlertsById(tournamentId) {
   const tournamentSnap = await db.collection("tournaments").doc(String(tournamentId)).get();
   const tournament = tournamentSnap.exists ? tournamentSnap.data() : null;
   await syncTournamentPendingAlerts(String(tournamentId), null, tournament);
+}
+
+
+async function syncGroupTournamentRegistrationPendingAlerts({ tournamentId, groupId, registration = null, registrationId = null }) {
+  if (!tournamentId || !groupId) return;
+
+  const [tournamentSnap, groupSnap] = await Promise.all([
+    db.collection("tournaments").doc(String(tournamentId)).get(),
+    db.collection("groups").doc(String(groupId)).get(),
+  ]);
+
+  const tournament = tournamentSnap.exists ? tournamentSnap.data() : null;
+  const group = groupSnap.exists ? groupSnap.data() : null;
+  const groupAdminIds = getGroupAdminIds(group || {});
+  const missingPlayersAlertId = groupTournamentTeamMissingPlayersAlertId(tournamentId, groupId, "registration");
+  const paymentAlertId = groupTournamentTeamPaymentAlertId(tournamentId, groupId, "registration");
+  const isActive =
+    registration?.status === "pendiente" &&
+    tournament &&
+    group &&
+    isTournamentActiveForAcceptedGroups(tournament);
+  const selectedPlayersCount = getSelectedPlayersCount(registration || {});
+  const minPlayers = getMinPlayers(tournament || {});
+  const missingPlayersCount = Math.max(minPlayers - selectedPlayersCount, 0);
+  const tournamentName = getTournamentName(tournament || {});
+  const groupName = getGroupName(group || {});
+  const detailPath = `/profile/tournaments/registrations/${registrationId || `${tournamentId}_${groupId}`}`;
+  const paymentStatus = getPaymentStatus(registration || {});
+  const pendingAmount = Math.max(Number(registration?.pendingAmount || 0), 0);
+
+  await Promise.all(
+    groupAdminIds.flatMap((adminId) => {
+      const operations = [];
+
+      if (isActive && minPlayers > 0 && missingPlayersCount > 0) {
+        operations.push(upsertPendingAlert({
+          userId: adminId,
+          alertId: missingPlayersAlertId,
+          kind: "group_tournament_team_missing_players",
+          severity: "warning",
+          title: "Faltan jugadores para el torneo",
+          message: `${groupName} necesita ${missingPlayersCount} jugador${pluralize(missingPlayersCount, "", "es")} más para llegar al mínimo de ${minPlayers} en ${tournamentName}.`,
+          link: { path: detailPath, label: "Completar inscripción" },
+          resource: { groupId, tournamentId },
+          meta: {
+            groupName,
+            tournamentName,
+            minPlayers,
+            selectedPlayersCount,
+            missingPlayersCount,
+          },
+        }));
+      } else {
+        operations.push(resolvePendingAlert(adminId, missingPlayersAlertId));
+      }
+
+      if (isActive && isPaymentPendingOrPartial(registration || {})) {
+        operations.push(upsertPendingAlert({
+          userId: adminId,
+          alertId: paymentAlertId,
+          kind: "group_tournament_team_payment_pending",
+          severity: "warning",
+          title: paymentStatus === "parcial" ? "Pago parcial del torneo" : "Pago pendiente del torneo",
+          message: pendingAmount > 0
+            ? `${groupName} tiene un pago ${paymentStatus} de ${tournamentName}. Saldo pendiente: $${pendingAmount}.`
+            : `${groupName} tiene un pago ${paymentStatus} de ${tournamentName}.`,
+          link: { path: detailPath, label: "Ver inscripción" },
+          resource: { groupId, tournamentId },
+          meta: {
+            groupName,
+            tournamentName,
+            paymentStatus,
+            pendingAmount,
+          },
+        }));
+      } else {
+        operations.push(resolvePendingAlert(adminId, paymentAlertId));
+      }
+
+      return operations;
+    })
+  );
+}
+
+
+async function syncPendingRegistrationAlertsForGroup(groupId, beforeGroup, afterGroup) {
+  if (!groupId) return;
+
+  const beforeAdminIds = beforeGroup ? getGroupAdminIds(beforeGroup) : [];
+  const afterAdminIds = afterGroup ? getGroupAdminIds(afterGroup) : [];
+  const affectedAdminIds = Array.from(new Set([...beforeAdminIds, ...afterAdminIds]));
+  if (!affectedAdminIds.length) return;
+
+  const registrationsSnap = await db
+    .collection("tournamentRegistrations")
+    .where("groupId", "==", String(groupId))
+    .where("status", "==", "pendiente")
+    .get();
+
+  await Promise.all(
+    registrationsSnap.docs.map(async (registrationDoc) => {
+      const registration = registrationDoc.data();
+      const tournamentId = registration.tournamentId;
+      if (!tournamentId) return;
+
+      const afterAdminIdsSet = new Set(afterAdminIds);
+      const removedAdminIds = affectedAdminIds.filter((adminId) => !afterAdminIdsSet.has(adminId));
+
+      await Promise.all([
+        syncGroupTournamentRegistrationPendingAlerts({
+          tournamentId,
+          groupId,
+          registration,
+          registrationId: registrationDoc.id,
+        }),
+        ...removedAdminIds.map((adminId) => Promise.all([
+          resolvePendingAlert(adminId, groupTournamentTeamMissingPlayersAlertId(tournamentId, groupId, "registration")),
+          resolvePendingAlert(adminId, groupTournamentTeamPaymentAlertId(tournamentId, groupId, "registration")),
+        ])),
+      ]);
+    })
+  );
 }
 
 async function syncAcceptedGroupTournamentAlertByIds(tournamentId, groupId, team = undefined) {
@@ -339,9 +541,13 @@ module.exports = {
   getTournamentAdminIds,
   getTournamentName,
   groupAcceptedInTournamentAlertId,
+  groupTournamentTeamMissingPlayersAlertId,
+  groupTournamentTeamPaymentAlertId,
   isTournamentActiveForAcceptedGroups,
   syncAcceptedGroupTournamentAlert,
   syncAcceptedGroupTournamentAlertByIds,
+  syncGroupTournamentRegistrationPendingAlerts,
+  syncPendingRegistrationAlertsForGroup,
   syncAcceptedTournamentAlertsForGroup,
   syncTournamentPendingAlerts,
   syncTournamentPendingAlertsById,

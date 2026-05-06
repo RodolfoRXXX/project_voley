@@ -3,7 +3,10 @@ const {
   resolvePendingAlert,
   upsertPendingAlert,
 } = require("../services/pendingAlertsService");
-const { syncAcceptedTournamentAlertsForGroup } = require("../services/tournamentPendingAlertsService");
+const {
+  syncAcceptedTournamentAlertsForGroup,
+  syncPendingRegistrationAlertsForGroup,
+} = require("../services/tournamentPendingAlertsService");
 
 function cleanStringArray(value) {
   if (!Array.isArray(value)) return [];
@@ -136,6 +139,7 @@ module.exports = functions.firestore
       syncJoinRequestsAlerts(groupId, beforeGroup, afterGroup),
       syncAdminRequestsAlerts(groupId, beforeGroup, afterGroup),
       syncAcceptedTournamentAlertsForGroup(groupId, beforeGroup, afterGroup),
+      syncPendingRegistrationAlertsForGroup(groupId, beforeGroup, afterGroup),
     ]);
 
     return null;

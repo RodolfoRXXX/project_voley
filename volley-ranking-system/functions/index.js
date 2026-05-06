@@ -16,6 +16,7 @@ exports.onTournamentPendingAlertsSync = require("./src/triggers/onTournamentPend
 exports.onTournamentRegistrationPendingAlertsSync = require("./src/triggers/onTournamentRegistrationPendingAlertsSync");
 exports.onTournamentMatchPendingAlertsSync = require("./src/triggers/onTournamentMatchPendingAlertsSync");
 exports.onTournamentTeamPendingAlertsSync = require("./src/triggers/onTournamentTeamPendingAlertsSync");
+exports.onPendingAlertsMaintenance = require("./src/triggers/onPendingAlertsMaintenance");
 exports.completeOnboarding = require("./callables/completeOnboarding");
 exports.getFormaciones = require("./callables/getFormaciones");
 exports.createMatch = require("./callables/createMatch");

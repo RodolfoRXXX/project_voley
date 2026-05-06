@@ -3,6 +3,7 @@ const {
   resolvePendingAlert,
   upsertPendingAlert,
 } = require("../services/pendingAlertsService");
+const { syncAcceptedTournamentAlertsForGroup } = require("../services/tournamentPendingAlertsService");
 
 function cleanStringArray(value) {
   if (!Array.isArray(value)) return [];
@@ -134,6 +135,7 @@ module.exports = functions.firestore
     await Promise.all([
       syncJoinRequestsAlerts(groupId, beforeGroup, afterGroup),
       syncAdminRequestsAlerts(groupId, beforeGroup, afterGroup),
+      syncAcceptedTournamentAlertsForGroup(groupId, beforeGroup, afterGroup),
     ]);
 
     return null;

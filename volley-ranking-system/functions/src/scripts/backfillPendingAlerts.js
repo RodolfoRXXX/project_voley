@@ -3,6 +3,7 @@ const {
   syncCompleteProfilePendingAlert,
   upsertPendingAlert,
 } = require("../services/pendingAlertsService");
+const { syncTournamentPendingAlerts } = require("../services/tournamentPendingAlertsService");
 
 const shouldWrite = process.argv.includes("--write");
 
@@ -142,16 +143,33 @@ async function backfillGroupAlerts() {
   return processed;
 }
 
+async function backfillTournamentAlerts() {
+  const tournamentsSnap = await db.collection("tournaments").get();
+  let processed = 0;
+
+  for (const tournamentDoc of tournamentsSnap.docs) {
+    const tournament = tournamentDoc.data();
+    processed += 1;
+    await maybeWrite(`tournament_pending_alerts -> ${tournamentDoc.id}`, () =>
+      syncTournamentPendingAlerts(tournamentDoc.id, null, tournament)
+    );
+  }
+
+  return processed;
+}
+
 async function main() {
   console.log(`Backfill de pendingAlerts iniciado en modo ${shouldWrite ? "write" : "dry-run"}.`);
 
   const completeProfileCount = await backfillCompleteProfileAlerts();
   const groupAlertsCount = await backfillGroupAlerts();
+  const tournamentAlertsCount = await backfillTournamentAlerts();
 
   console.log("Backfill de pendingAlerts finalizado.", {
     mode: shouldWrite ? "write" : "dry-run",
     completeProfileCount,
     groupAlertsCount,
+    tournamentAlertsCount,
   });
 }
 

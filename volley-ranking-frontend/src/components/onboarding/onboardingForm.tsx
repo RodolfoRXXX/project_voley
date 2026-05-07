@@ -50,7 +50,7 @@ export default function OnboardingForm() {
   const router = useRouter();
   const functions = getFunctions(app);
 
-  const [roles, setRol] = useState<"player" | "admin">("player");
+  const [roles, setRol] = useState<"player" | "admin">();
   const [posiciones, setPosiciones] = useState<string[]>([]);
   const [allPositions, setAllPositions] = useState<string[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(true);

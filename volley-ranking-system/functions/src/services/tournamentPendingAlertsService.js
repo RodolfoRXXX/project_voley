@@ -100,6 +100,19 @@ async function getPendingRegistrationsCount(tournamentId) {
   return registrationsSnap.size;
 }
 
+async function hasCurrentPhaseFixture(tournament = {}) {
+  const phaseId = typeof tournament.currentPhaseId === "string" ? tournament.currentPhaseId : "";
+  if (!phaseId) return false;
+
+  const fixtureSnap = await db
+    .collection("tournamentMatches")
+    .where("phaseId", "==", phaseId)
+    .limit(1)
+    .get();
+
+  return !fixtureSnap.empty;
+}
+
 async function getPendingTournamentResultsCount(tournamentId) {
   const matchesSnap = await db
     .collection("tournamentMatches")
@@ -137,6 +150,7 @@ async function syncTournamentAdminPendingAlerts(tournamentId, beforeTournament, 
   const status = String(afterTournament?.status || "");
   const pendingRegistrationsCount = afterTournament ? await getPendingRegistrationsCount(tournamentId) : 0;
   const pendingResultsCount = afterTournament ? await getPendingTournamentResultsCount(tournamentId) : 0;
+  const currentPhaseHasFixture = afterTournament ? await hasCurrentPhaseFixture(afterTournament) : false;
 
   const definitions = [
     {
@@ -168,12 +182,32 @@ async function syncTournamentAdminPendingAlerts(tournamentId, beforeTournament, 
     },
     {
       kind: "tournament_registrations_closed",
-      active: status === "inscripciones_cerradas",
+      active: false,
       severity: "warning",
       title: "Inscripciones cerradas",
       message: `${tournamentName} ya cerró inscripciones. Confirmá el fixture e iniciá el torneo.`,
       link: { path: `/admin/tournaments/${tournamentId}`, label: "Gestionar fixture" },
       pendingCount: null,
+    },
+    {
+      kind: "tournament_fixture_pending",
+      active: status === "inscripciones_cerradas" && !currentPhaseHasFixture,
+      severity: "warning",
+      title: "Fixture pendiente",
+      message: `${tournamentName} ya cerró inscripciones. Confirmá el fixture para poder iniciar el torneo.`,
+      link: { path: `/admin/tournaments/${tournamentId}`, label: "Confirmar fixture" },
+      pendingCount: null,
+      fixtureReady: false,
+    },
+    {
+      kind: "tournament_ready_to_start",
+      active: status === "inscripciones_cerradas" && currentPhaseHasFixture,
+      severity: "warning",
+      title: "Torneo listo para iniciar",
+      message: `${tournamentName} ya tiene fixture confirmado. Iniciá el torneo cuando esté todo listo.`,
+      link: { path: `/admin/tournaments/${tournamentId}`, label: "Iniciar torneo" },
+      pendingCount: null,
+      fixtureReady: true,
     },
     {
       kind: "tournament_active_results_pending",
@@ -203,6 +237,7 @@ async function syncTournamentAdminPendingAlerts(tournamentId, beforeTournament, 
             meta: {
               tournamentName,
               ...(typeof definition.pendingCount === "number" ? { pendingCount: definition.pendingCount } : {}),
+              ...(typeof definition.fixtureReady === "boolean" ? { fixtureReady: definition.fixtureReady } : {}),
             },
           });
         }

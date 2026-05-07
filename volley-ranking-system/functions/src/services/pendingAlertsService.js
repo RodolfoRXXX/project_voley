@@ -7,6 +7,35 @@ const PENDING_ALERT_PRIORITIES = {
   info: 300,
 };
 
+const TOURNAMENT_PENDING_ALERT_KIND_PREFIX = "tournament_";
+const TOURNAMENT_GROUP_PENDING_ALERT_KINDS = new Set([
+  "group_accepted_in_tournament",
+  "group_tournament_team_missing_players",
+  "group_tournament_team_payment_pending",
+]);
+
+function isTournamentPendingAlertKind(kind) {
+  return String(kind || "").startsWith(TOURNAMENT_PENDING_ALERT_KIND_PREFIX)
+    || TOURNAMENT_GROUP_PENDING_ALERT_KINDS.has(String(kind || ""));
+}
+
+function logTournamentPendingAlertChange(action, { userId, alertId, kind, severity, resource = {}, meta = {} }) {
+  if (!isTournamentPendingAlertKind(kind)) return;
+
+  console.log("pendingAlerts.tournamentKindChange", {
+    action,
+    kind,
+    severity: severity || null,
+    userId: String(userId),
+    alertId: String(alertId),
+    tournamentId: resource?.tournamentId || null,
+    groupId: resource?.groupId || null,
+    pendingCount: typeof meta?.pendingCount === "number" ? meta.pendingCount : null,
+    missingPlayersCount: typeof meta?.missingPlayersCount === "number" ? meta.missingPlayersCount : null,
+    paymentStatus: meta?.paymentStatus || null,
+  });
+}
+
 function getPendingAlertRef(userId, alertId) {
   return db
     .collection("users")
@@ -56,6 +85,7 @@ async function upsertPendingAlert({
   }
 
   await ref.set(payload, { merge: true });
+  logTournamentPendingAlertChange("active", payload);
 }
 
 async function resolvePendingAlert(userId, alertId) {
@@ -65,6 +95,8 @@ async function resolvePendingAlert(userId, alertId) {
   const snap = await ref.get();
   if (!snap.exists || snap.data()?.status !== "active") return;
 
+  const alert = snap.data() || {};
+
   await ref.set(
     {
       status: "resolved",
@@ -72,6 +104,15 @@ async function resolvePendingAlert(userId, alertId) {
     },
     { merge: true }
   );
+
+  logTournamentPendingAlertChange("resolved", {
+    userId,
+    alertId,
+    kind: alert.kind,
+    severity: alert.severity,
+    resource: alert.resource,
+    meta: alert.meta,
+  });
 }
 
 async function syncCompleteProfilePendingAlert(userId, user = {}) {
@@ -133,7 +174,9 @@ async function createGroupMembershipResultAlert({
 
 module.exports = {
   PENDING_ALERT_PRIORITIES,
+  TOURNAMENT_GROUP_PENDING_ALERT_KINDS,
   createGroupMembershipResultAlert,
+  isTournamentPendingAlertKind,
   resolvePendingAlert,
   syncCompleteProfilePendingAlert,
   upsertPendingAlert,

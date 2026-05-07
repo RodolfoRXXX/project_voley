@@ -1,11 +1,22 @@
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { db } = require("../firebase");
+const { isTournamentPendingAlertKind } = require("./pendingAlertsService");
 
 const DEFAULT_DELETE_AFTER_DAYS = 30;
 const DEFAULT_BATCH_LIMIT = 500;
 
 function getParentUserId(alertDoc) {
   return alertDoc.ref.parent?.parent?.id || "unknown";
+}
+
+function incrementCounter(map, key) {
+  map.set(key, (map.get(key) || 0) + 1);
+}
+
+function buildSortedCountObject(counter) {
+  return Object.fromEntries(
+    Array.from(counter.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+  );
 }
 
 async function resolveExpiredAlerts(now = Timestamp.now(), batchLimit = DEFAULT_BATCH_LIMIT) {
@@ -97,12 +108,60 @@ async function logActivePendingAlertMetrics(batchLimit = 5000) {
   };
 }
 
+async function logTournamentPendingAlertKindMetrics(batchLimit = 5000) {
+  const [activeSnap, resolvedSnap] = await Promise.all([
+    db.collectionGroup("pendingAlerts").where("status", "==", "active").limit(batchLimit).get(),
+    db.collectionGroup("pendingAlerts").where("status", "==", "resolved").limit(batchLimit).get(),
+  ]);
+
+  const byKindStatus = {
+    active: new Map(),
+    resolved: new Map(),
+  };
+  const activeByTournament = new Map();
+
+  activeSnap.docs.forEach((doc) => {
+    const alert = doc.data();
+    const kind = String(alert.kind || "unknown");
+    if (!isTournamentPendingAlertKind(kind)) return;
+
+    incrementCounter(byKindStatus.active, kind);
+    const tournamentId = String(alert.resource?.tournamentId || "unknown");
+    incrementCounter(activeByTournament, tournamentId);
+  });
+
+  resolvedSnap.docs.forEach((doc) => {
+    const alert = doc.data();
+    const kind = String(alert.kind || "unknown");
+    if (!isTournamentPendingAlertKind(kind)) return;
+
+    incrementCounter(byKindStatus.resolved, kind);
+  });
+
+  const topTournaments = Array.from(activeByTournament.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([tournamentId, count]) => ({ tournamentId, count }));
+
+  const metrics = {
+    limited: activeSnap.size >= batchLimit || resolvedSnap.size >= batchLimit,
+    activeByKind: buildSortedCountObject(byKindStatus.active),
+    resolvedByKind: buildSortedCountObject(byKindStatus.resolved),
+    topTournamentsWithActiveAlerts: topTournaments,
+  };
+
+  console.log("pendingAlerts.tournamentKindMetrics", metrics);
+
+  return metrics;
+}
+
 async function cleanupPendingAlerts() {
   const now = Timestamp.now();
-  const [expiredResolvedCount, oldInactiveDeletedCount, activeMetrics] = await Promise.all([
+  const [expiredResolvedCount, oldInactiveDeletedCount, activeMetrics, tournamentKindMetrics] = await Promise.all([
     resolveExpiredAlerts(now),
     deleteOldInactiveAlerts(now),
     logActivePendingAlertMetrics(),
+    logTournamentPendingAlertKindMetrics(),
   ]);
 
   console.log("pendingAlerts.cleanupSummary", {
@@ -110,6 +169,8 @@ async function cleanupPendingAlerts() {
     oldInactiveDeletedCount,
     activeCount: activeMetrics.activeCount,
     usersWithActiveAlerts: activeMetrics.usersWithActiveAlerts,
+    tournamentActiveByKind: tournamentKindMetrics.activeByKind,
+    tournamentResolvedByKind: tournamentKindMetrics.resolvedByKind,
   });
 
   return {
@@ -123,5 +184,6 @@ module.exports = {
   cleanupPendingAlerts,
   deleteOldInactiveAlerts,
   logActivePendingAlertMetrics,
+  logTournamentPendingAlertKindMetrics,
   resolveExpiredAlerts,
 };

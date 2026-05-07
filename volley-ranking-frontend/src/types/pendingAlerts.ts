@@ -12,6 +12,8 @@ export type PendingAlertKind =
   | "tournament_registrations_pending_review"
   | "tournament_ready_to_close_registrations"
   | "tournament_registrations_closed"
+  | "tournament_fixture_pending"
+  | "tournament_ready_to_start"
   | "tournament_active_results_pending";
 
 export type PendingAlertStatus = "active" | "resolved" | "dismissed";
@@ -51,6 +53,7 @@ export type PendingAlert = {
     missingPlayersCount?: number;
     paymentStatus?: "pendiente" | "parcial" | "pagado";
     pendingAmount?: number;
+    fixtureReady?: boolean;
   };
 };
 

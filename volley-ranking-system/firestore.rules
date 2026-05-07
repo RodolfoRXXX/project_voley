@@ -2,22 +2,146 @@ rules_version='2'
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId}/pendingAlerts/{alertId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function currentUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAppAdmin() {
+      return signedIn()
+        && currentUserDoc().data.roles == "admin";
+    }
+
+    function isGroupAdmin() {
+      return signedIn()
+        && request.resource.data.adminIds is list
+        && request.auth.uid in request.resource.data.adminIds;
+    }
+
+    function isExistingGroupAdmin() {
+      return signedIn()
+        && resource.data.adminIds is list
+        && request.auth.uid in resource.data.adminIds;
+    }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          "roles",
+          "createdAt",
+          "updatedAt",
+        ]);
+      allow delete: if false;
+
+      match /pendingAlerts/{alertId} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
+    }
+
+    match /groups/{groupId} {
+      allow read: if true;
+      allow create: if isAppAdmin() && isGroupAdmin();
+      allow update: if isAppAdmin() && isExistingGroupAdmin();
+      allow delete: if false;
+    }
+
+    match /matches/{matchId} {
+      allow read: if true;
       allow write: if false;
     }
 
+    match /participations/{participationId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /teams/{teamId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /groupStats/{statId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /tournaments/{tournamentId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /tournamentPhases/{phaseId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /tournamentRegistrations/{registrationId} {
+      allow read: if true;
+      allow update: if signedIn()
+        && resource.data.groupId is string
+        && exists(/databases/$(database)/documents/groups/$(resource.data.groupId))
+        && request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.adminIds
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "playerIds",
+          "playersIds",
+          "teamMembersCount",
+          "expectedAmount",
+          "pendingAmount",
+          "paymentStatus",
+          "updatedAt",
+        ]);
+      allow create, delete: if false;
+    }
+
+    match /tournamentTeams/{teamId} {
+      allow read: if true;
+      allow update: if signedIn()
+        && resource.data.groupId is string
+        && exists(/databases/$(database)/documents/groups/$(resource.data.groupId))
+        && request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.adminIds
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "playerIds",
+          "playersIds",
+          "teamMembersCount",
+          "expectedAmount",
+          "pendingAmount",
+          "paymentStatus",
+          "updatedAt",
+        ]);
+      allow create, delete: if false;
+    }
+
+    match /tournamentMatches/{matchId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /tournamentStandings/{standingId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /tournamentAdvancementRules/{ruleId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /push_subscriptions/{subscriptionId} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2026, 2, 13);
+      allow read, write: if false;
     }
   }
 }

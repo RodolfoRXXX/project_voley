@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
-  tournamentPhaseStatusLabel,
   tournamentPhaseTypeLabel,
   tournamentStatusLabel,
   type Tournament,
@@ -65,21 +64,8 @@ export function TournamentSummaryCard({
   const winnerTeamNames = Array.isArray(winnerTeamNamesProp) ? winnerTeamNamesProp.filter(Boolean) : [];
   const occupancyLabel = `${metrics.acceptedTeamsCount}/${metrics.maxTeams || metrics.acceptedTeamsCount || 0}`;
   const phaseLabel = phaseSnapshot ? tournamentPhaseTypeLabel[phaseSnapshot.type] : "Sin fase activa";
-  const phaseStatusLabel = phaseSnapshot ? tournamentPhaseStatusLabel[phaseSnapshot.status] : "Pendiente";
-  const completionLabel = metrics.matchesCount > 0
-    ? `${metrics.completedMatchesCount}/${metrics.matchesCount}`
-    : "Sin fixtures";
   const isFinalized = tournament.status === "finalizado";
   const isActive = tournament.status === "activo";
-  const currentPhaseType = phaseSnapshot?.type || "registration";
-  const progress = currentPhaseType === "registration"
-    ? metrics.occupancyPercent
-    : metrics.matchesCount > 0
-      ? Math.min(100, Math.round((metrics.completedMatchesCount / metrics.matchesCount) * 100))
-      : 0;
-  const progressLabel = currentPhaseType === "registration"
-    ? `Inscripción: ${metrics.acceptedTeamsCount}/${metrics.maxTeams || metrics.acceptedTeamsCount || 0} equipos`
-    : `Partidos: ${metrics.completedMatchesCount}/${metrics.matchesCount}`;
   const podiumLabels = ["1° puesto", "2° puesto", "3° puesto"];
   const statusBadgeClass = isFinalized
     ? "bg-emerald-100 text-emerald-700"
@@ -111,11 +97,6 @@ export function TournamentSummaryCard({
             {winnerTeamNames[0] ? ` Campeón: ${winnerTeamNames[0]}.` : ""}
           </p>
         </section>
-      ) : isActive ? (
-        <section className="rounded-xl border border-orange-200 bg-orange-50 p-3">
-          <p className="text-xs uppercase tracking-wide text-orange-700 font-semibold">Torneo en juego</p>
-          <p className="text-sm text-orange-900">Seguimiento en vivo de fase actual, standings y próximos partidos.</p>
-        </section>
       ) : null}
 
       {variant === "profile" && userState ? (
@@ -145,46 +126,28 @@ export function TournamentSummaryCard({
       ) : null}
 
       {showPhaseProgress ? (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-3 text-sm text-neutral-700">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-neutral-500">Fase actual</p>
-              <p className="font-semibold text-neutral-900">{phaseLabel}</p>
-            </div>
-            <span className="rounded-full bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-700">
-              {phaseStatusLabel}
-            </span>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-neutral-500">Fase actual</p>
+            <p className="text-sm font-semibold text-neutral-900">{phaseLabel}</p>
           </div>
-
-          <div className="h-2 overflow-hidden rounded-full bg-neutral-100">
-            <div className="h-full rounded-full bg-orange-500" style={{ width: `${progress}%` }} />
-          </div>
-          <div className="flex items-center justify-between text-xs text-neutral-500">
-            <span>{progressLabel}</span>
-            <span>{progress}% completo</span>
+          <div className="text-sm text-neutral-700 sm:text-right">
+            <p className="text-xs uppercase tracking-wide text-neutral-500">Equipos aceptados</p>
+            <p className="font-semibold text-neutral-900">{occupancyLabel}</p>
           </div>
         </div>
       ) : null}
 
-      {showMetrics ? (
-        isFinalized ? (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {podiumLabels.map((label, index) => (
-              <MetricPill
-                key={label}
-                label={label}
-                value={winnerTeamNames[index] || "Sin definir"}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <MetricPill label="Equipos" value={occupancyLabel} />
-            <MetricPill label="Partidos" value={completionLabel} />
-            <MetricPill label="Posiciones" value={String(metrics.standingsCount)} />
-            <MetricPill label="Clasificados" value={String(metrics.qualifiedTeamsCount)} />
-          </div>
-        )
+      {showMetrics && isFinalized ? (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {podiumLabels.map((label, index) => (
+            <MetricPill
+              key={label}
+              label={label}
+              value={winnerTeamNames[index] || "Sin definir"}
+            />
+          ))}
+        </div>
       ) : null}
 
       {footer || href ? (

@@ -106,6 +106,7 @@ export default function TorneosPage() {
                 phaseSnapshot={phaseSnapshot}
                 winnerTeamNames={winnerTeamNames}
                 href={`/tournaments/${tournament.id}`}
+                showRegistrationHelp
                 footer={userDoc?.roles === "admin" ? (
                   <ActionButton
                     onClick={() => openRegisterModal(tournament.id)}
@@ -134,6 +135,7 @@ export default function TorneosPage() {
                 phaseSnapshot={phaseSnapshot}
                 winnerTeamNames={winnerTeamNames}
                 href={`/tournaments/${tournament.id}`}
+                showRegistrationHelp
                 footer={userDoc?.roles === "admin" ? (
                   <ActionButton
                     onClick={() => openRegisterModal(tournament.id)}
@@ -162,6 +164,7 @@ export default function TorneosPage() {
                 phaseSnapshot={phaseSnapshot}
                 winnerTeamNames={winnerTeamNames}
                 href={`/tournaments/${tournament.id}`}
+                showRegistrationHelp
                 footer={userDoc?.roles === "admin" ? (
                   <ActionButton
                     onClick={() => openRegisterModal(tournament.id)}

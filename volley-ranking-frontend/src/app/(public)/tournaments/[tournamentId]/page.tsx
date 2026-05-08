@@ -97,6 +97,7 @@ export default function PublicTournamentDetailPage() {
         description={tournament.description || "Seguimiento público del torneo y sus métricas principales."}
         showPhaseProgress={false}
         showMetrics={false}
+        showRegistrationHelp
       />
       {isFinalized ? (
         <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 space-y-2">

@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   tournamentPhaseTypeLabel,
@@ -7,6 +9,7 @@ import {
 } from "@/types/tournaments";
 import type { TournamentPhaseSnapshot, TournamentProgressMetrics } from "@/services/tournaments/tournamentQueries";
 import type { UserTournamentState } from "@/services/tournaments/tournamentViewModels";
+import TournamentRegistrationHelpModal from "@/components/tournamentRegistrationHelpModal/TournamentRegistrationHelpModal";
 
 type TournamentSummaryCardProps = {
   tournament: Tournament;
@@ -22,6 +25,7 @@ type TournamentSummaryCardProps = {
   highlightAsWinner?: boolean;
   showPhaseProgress?: boolean;
   showMetrics?: boolean;
+  showRegistrationHelp?: boolean;
 };
 
 const userStateBadgeClass: Record<UserTournamentState["status"], string> = {
@@ -60,7 +64,9 @@ export function TournamentSummaryCard({
   highlightAsWinner = false,
   showPhaseProgress = true,
   showMetrics = true,
+  showRegistrationHelp = false,
 }: TournamentSummaryCardProps) {
+  const [registrationHelpOpen, setRegistrationHelpOpen] = useState(false);
   const winnerTeamNames = Array.isArray(winnerTeamNamesProp) ? winnerTeamNamesProp.filter(Boolean) : [];
   const occupancyLabel = `${metrics.acceptedTeamsCount}/${metrics.maxTeams || metrics.acceptedTeamsCount || 0}`;
   const phaseLabel = phaseSnapshot ? tournamentPhaseTypeLabel[phaseSnapshot.type] : "Sin fase activa";
@@ -73,6 +79,7 @@ export function TournamentSummaryCard({
       ? "bg-orange-100 text-orange-700"
       : "bg-neutral-100 text-neutral-700";
   const linkLabel = isFinalized ? "Ver resultados finales →" : "Seguir torneo →";
+  const canShowRegistrationHelp = showRegistrationHelp && tournament.status === "inscripciones_abiertas";
 
   return (
     <article
@@ -246,26 +253,28 @@ export function TournamentSummaryCard({
       ) : null}
 
       {/* FOOTER */}
-      {(footer || href) ? (
+      {(footer || href || canShowRegistrationHelp) ? (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-neutral-100 dark:border-white/10 pt-4">
 
-          {/* BOTÓN DECORATIVO */}
-          <button
-            type="button"
-            className="
-              inline-flex items-center justify-center gap-2
-              rounded-lg
-              border border-neutral-200 dark:border-white/10
-              bg-white/70 dark:bg-slate-900/40
-              px-3 py-2
-              text-sm font-medium
-              text-neutral-700 dark:text-neutral-200
-              hover:bg-neutral-50 dark:hover:bg-slate-800
-              transition
-            "
-          >
-            ❓ Cómo me inscribo
-          </button>
+          {canShowRegistrationHelp ? (
+            <button
+              type="button"
+              onClick={() => setRegistrationHelpOpen(true)}
+              className="
+                inline-flex items-center justify-center gap-2
+                rounded-lg
+                border border-neutral-200 dark:border-white/10
+                bg-white/70 dark:bg-slate-900/40
+                px-3 py-2
+                text-sm font-medium
+                text-neutral-700 dark:text-neutral-200
+                hover:bg-neutral-50 dark:hover:bg-slate-800
+                transition
+              "
+            >
+              ❓ Cómo me inscribo
+            </button>
+          ) : null}
 
           {/* ACCIONES */}
           <div className="flex items-center gap-3">
@@ -281,6 +290,14 @@ export function TournamentSummaryCard({
             ) : null}
           </div>
         </div>
+      ) : null}
+
+      {registrationHelpOpen ? (
+        <TournamentRegistrationHelpModal
+          open={registrationHelpOpen}
+          onClose={() => setRegistrationHelpOpen(false)}
+          tournament={tournament}
+        />
       ) : null}
     </article>
   );

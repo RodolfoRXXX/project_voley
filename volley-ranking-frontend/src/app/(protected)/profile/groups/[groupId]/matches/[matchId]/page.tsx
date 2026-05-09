@@ -34,6 +34,7 @@ import MatchActions from "@/components/matchDetail/MatchActions";
 import type { Match } from "@/types/match";
 import StatusPill from "@/components/ui/status/StatusPill";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
+import ShareOptionsButton from "@/components/ui/share/ShareOptionsButton";
 
 /* =====================
    Firebase functions
@@ -666,28 +667,6 @@ export default function MatchDetailPage() {
     return `${fecha} · ${hora} hs`;
   };
 
-  const getMatchShareLink = (): string | null => {
-    if (!match) return null;
-
-    const url = window.location.href;
-
-    const text = `
-      ¡Sumate al partido!
-      ${group?.nombre ?? "Grupo"}
-      ${match.horaInicio ? formatMatchDate(match.horaInicio) : ""}
-      ${url}
-    `;
-
-    return `https://wa.me/?text=${encodeURIComponent(text)}`;
-  };
-
-  const handleShareMatch = () => {
-    const link = getMatchShareLink();
-    if (!link) return;
-
-    window.open(link, "_blank");
-  };
-
   /* =====================
      Render
   ===================== */
@@ -698,6 +677,16 @@ export default function MatchDetailPage() {
 
       <MatchHeader
         group={group}
+        shareAction={
+          <ShareOptionsButton
+            buttonLabel="Compartir partido"
+            copySuccessMessage="Se copió el link del partido."
+            whatsappMessage={(url) => `¡Sumate al partido!
+${group?.nombre ?? "Grupo"}
+${match.horaInicio ? formatMatchDate(match.horaInicio) : ""}
+${url}`}
+          />
+        }
       />
 
       {/* ================= DETALLES ================= */}
@@ -1095,7 +1084,6 @@ export default function MatchDetailPage() {
         onClose={handleCerrarMatch}
         onReopen={handleReabrirMatch}
         onTeams={() => setTeamsModalOpen(true)}
-        onShare={handleShareMatch}
       />
 
       {/* ================ MODALES ================ */}

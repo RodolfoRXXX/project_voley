@@ -20,6 +20,7 @@ import { TournamentAdminsCard } from "@/components/tournaments/TournamentAdminsC
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton/Skeleton";
 import { Spinner } from "@/components/ui/spinner/spinner";
+import ShareOptionsButton from "@/components/ui/share/ShareOptionsButton";
 
 import { addTournamentAdmin, editTournament, removeTournamentAdmin } from "@/services/tournaments/tournamentMutations";
 import { getAdminTournamentRegistrationsView, getTournamentById, getTournamentTeams, getUsersByIds, searchAdminsByName } from "@/services/tournaments/tournamentQueries";
@@ -392,12 +393,16 @@ export default function AdminTournamentDetailPage() {
             <p className="text-sm text-neutral-600">{tournament.description || "Sin descripción"}</p>
           </div>
 
-          <div className="flex flex-col items-end justify-between gap-2">
+          <div className="flex items-start gap-2">
             <StatusPill
               label={tournamentStatusLabel[tournament.status]}
               variant={statusVariant(tournament.status)}
             />
-
+            <ShareOptionsButton
+              buttonLabel="Compartir torneo"
+              copySuccessMessage="Se copió el link del torneo."
+              whatsappMessage={(url) => `Mirá este torneo: ${url}`}
+            />
           </div>
         </div>
       </header>

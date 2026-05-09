@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { tournamentStatusLabel } from "@/types/tournaments";
 import { TournamentPodiumCard } from "@/components/tournaments/TournamentPodiumCard";
 import { TournamentAdminsCard } from "@/components/tournaments/TournamentAdminsCard";
+import ShareOptionsButton from "@/components/ui/share/ShareOptionsButton";
 import { getProfileTournamentDetailView, getTournamentTeams, getUsersByIds, type ProfileTournamentDetailView } from "@/services/tournaments/tournamentQueries";
 
 export default function ProfileTournamentDetailPage() {
@@ -54,11 +55,20 @@ export default function ProfileTournamentDetailPage() {
       <Link href="/profile/tournaments" className="text-sm text-neutral-600 hover:underline">← Volver a mis torneos</Link>
 
       <header className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
-        <h1 className="text-2xl font-bold text-neutral-900">{tournament.name}</h1>
-        <p className="text-sm text-neutral-600">{tournament.description || "Sin descripción"}</p>
-        <span className="inline-block text-xs rounded-full px-2 py-1 bg-orange-100 text-orange-700">
-          {tournamentStatusLabel[tournament.status]}
-        </span>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-2">
+            <h1 className="text-2xl font-bold text-neutral-900">{tournament.name}</h1>
+            <p className="text-sm text-neutral-600">{tournament.description || "Sin descripción"}</p>
+            <span className="inline-block text-xs rounded-full px-2 py-1 bg-orange-100 text-orange-700">
+              {tournamentStatusLabel[tournament.status]}
+            </span>
+          </div>
+          <ShareOptionsButton
+            buttonLabel="Compartir torneo"
+            copySuccessMessage="Se copió el link del torneo."
+            whatsappMessage={(url) => `Mirá este torneo: ${url}`}
+          />
+        </div>
       </header>
       <TournamentPodiumCard winnerTeamNames={winnerTeamNames} status={tournament.status} />
       <TournamentAdminsCard admins={adminUsers} />

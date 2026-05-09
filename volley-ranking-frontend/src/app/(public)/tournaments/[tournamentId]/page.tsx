@@ -8,6 +8,7 @@ import { TournamentSummaryCard } from "@/components/tournaments/TournamentSummar
 import { TournamentPodiumCard } from "@/components/tournaments/TournamentPodiumCard";
 import { TournamentAdminsCard } from "@/components/tournaments/TournamentAdminsCard";
 import { Skeleton } from "@/components/ui/skeleton/Skeleton";
+import ShareOptionsButton from "@/components/ui/share/ShareOptionsButton";
 import {
   getTournamentLeagueProgress,
   groupTournamentMatches,
@@ -97,6 +98,13 @@ export default function PublicTournamentDetailPage() {
         description={tournament.description || "Seguimiento público del torneo y sus métricas principales."}
         showPhaseProgress={false}
         showMetrics={false}
+        shareAction={
+          <ShareOptionsButton
+            buttonLabel="Compartir torneo"
+            copySuccessMessage="Se copió el link del torneo."
+            whatsappMessage={(url) => `Mirá este torneo: ${url}`}
+          />
+        }
       />
       {isFinalized ? (
         <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 space-y-2">

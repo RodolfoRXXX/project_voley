@@ -30,7 +30,7 @@ import AddMemberModal from "@/components/addMemberModal/AddMemberModal";
 import { SearchableMember } from "@/components/addMemberModal/AddMemberModal.types";
 import { readJsonSafely } from "@/lib/http/readJsonSafely";
 import { getTournamentFormatLabel } from "@/types/tournaments/tournament";
-import useToast from "@/components/ui/toast/useToast";
+import ShareOptionsButton from "@/components/ui/share/ShareOptionsButton";
 
 type GroupMember = {
   id: string;
@@ -335,7 +335,6 @@ export default function AdminGroupPage() {
   const router = useRouter();
   const { firebaseUser, userDoc, loading } = useAuth();
   const { run, isLoading } = useAction();
-  const { showToast } = useToast();
 
   const [group, setGroup] = useState<GroupData | null>(null);
   const [matches, setMatches] = useState<GroupMatch[]>([]);
@@ -779,34 +778,6 @@ export default function AdminGroupPage() {
   const adminMembersCount = (group.members ?? []).filter((member) => member.isAdmin).length;
   const pendingRequests: GroupMember[] = Array.isArray(group.pendingRequests) ? group.pendingRequests : [];
   const pendingAdminRequests: GroupMember[] = Array.isArray(group.pendingAdminRequests) ? group.pendingAdminRequests : [];
-  const publicGroupSearchLink =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/groups?q=${encodeURIComponent(group.nombre)}`
-      : "";
-
-  const handleCopyPublicLink = async () => {
-    if (!publicGroupSearchLink) return;
-    try {
-      await navigator.clipboard.writeText(publicGroupSearchLink);
-      showToast({
-        type: "success",
-        message: "Se copió el link público del grupo.",
-      });
-    } catch {
-      showToast({
-        type: "error",
-        message: "No se pudo copiar el link. Copialo manualmente.",
-      });
-    }
-  };
-
-  const handleSharePublicLinkWhatsapp = () => {
-    if (!publicGroupSearchLink) return;
-    const message = `Mirá este grupo: ${publicGroupSearchLink}`;
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-  };
-
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
 
@@ -835,24 +806,6 @@ export default function AdminGroupPage() {
           {!editMode && (
             <div className="absolute right-4 top-4 flex items-center gap-2">
               <button
-                onClick={handleCopyPublicLink}
-                type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
-                aria-label="Copiar link público del grupo"
-                title="Copiar link público del grupo"
-              >
-                🔗
-              </button>
-              <button
-                onClick={handleSharePublicLinkWhatsapp}
-                type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
-                aria-label="Compartir link del grupo por WhatsApp"
-                title="Compartir link del grupo por WhatsApp"
-              >
-                🟢
-              </button>
-              <button
                 onClick={() => {
                   resetForm();
                   setEditMode(true);
@@ -864,6 +817,11 @@ export default function AdminGroupPage() {
               >
                 ✏️
               </button>
+              <ShareOptionsButton
+                buttonLabel="Compartir grupo"
+                copySuccessMessage="Se copió el link del grupo."
+                whatsappMessage={(url) => `Mirá este grupo: ${url}`}
+              />
             </div>
           )}
         </div>

@@ -26,6 +26,7 @@ type TournamentSummaryCardProps = {
   showPhaseProgress?: boolean;
   showMetrics?: boolean;
   showRegistrationHelp?: boolean;
+  shareAction?: ReactNode;
 };
 
 const userStateBadgeClass: Record<UserTournamentState["status"], string> = {
@@ -65,6 +66,7 @@ export function TournamentSummaryCard({
   showPhaseProgress = true,
   showMetrics = true,
   showRegistrationHelp = false,
+  shareAction,
 }: TournamentSummaryCardProps) {
   const [registrationHelpOpen, setRegistrationHelpOpen] = useState(false);
   const winnerTeamNames = Array.isArray(winnerTeamNamesProp) ? winnerTeamNamesProp.filter(Boolean) : [];
@@ -119,14 +121,17 @@ export function TournamentSummaryCard({
           </p>
         </div>
 
-        <span
-          className={`
-            text-[11px] font-medium rounded-full px-2.5 py-1 whitespace-nowrap
-            ${statusBadgeClass}
-          `}
-        >
-          {tournamentStatusLabel[tournament.status]}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`
+              text-[11px] font-medium rounded-full px-2.5 py-1 whitespace-nowrap
+              ${statusBadgeClass}
+            `}
+          >
+            {tournamentStatusLabel[tournament.status]}
+          </span>
+          {shareAction}
+        </div>
       </div>
 
       {/* FINALIZADO */}

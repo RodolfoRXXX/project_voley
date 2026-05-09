@@ -10,6 +10,7 @@ import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { tournamentStatusLabel, type TournamentStatus } from "@/types/tournaments";
 import { getTournamentFormatLabel } from "@/types/tournaments/tournament";
+import ShareOptionsButton from "@/components/ui/share/ShareOptionsButton";
 
 type GroupDoc = {
   nombre?: string;
@@ -188,8 +189,17 @@ export default function ProfileGroupDetailPage() {
     <section className="space-y-5">
       <Link href="/profile/groups" className="text-sm text-neutral-600 hover:underline">← Volver a mis grupos</Link>
       <header className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
-        <h1 className="text-2xl font-bold text-neutral-900">{group.nombre || group.name || "Grupo"}</h1>
-        <p className="text-sm text-neutral-600">{group.descripcion || group.description || "Sin descripción"}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-2">
+            <h1 className="text-2xl font-bold text-neutral-900">{group.nombre || group.name || "Grupo"}</h1>
+            <p className="text-sm text-neutral-600">{group.descripcion || group.description || "Sin descripción"}</p>
+          </div>
+          <ShareOptionsButton
+            buttonLabel="Compartir grupo"
+            copySuccessMessage="Se copió el link del grupo."
+            whatsappMessage={(url) => `Mirá este grupo: ${url}`}
+          />
+        </div>
       </header>
 
       <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">

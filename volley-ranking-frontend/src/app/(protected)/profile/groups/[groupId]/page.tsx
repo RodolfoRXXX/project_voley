@@ -11,6 +11,7 @@ import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { tournamentStatusLabel, type TournamentStatus } from "@/types/tournaments";
 import { getTournamentFormatLabel } from "@/types/tournaments/tournament";
 import ShareOptionsButton from "@/components/ui/share/ShareOptionsButton";
+import { getPublicGroupDetailUrl } from "@/lib/share/publicShareUrls";
 
 type GroupDoc = {
   nombre?: string;
@@ -197,6 +198,7 @@ export default function ProfileGroupDetailPage() {
           <ShareOptionsButton
             buttonLabel="Compartir grupo"
             copySuccessMessage="Se copió el link del grupo."
+            getShareUrl={() => getPublicGroupDetailUrl(groupId)}
             whatsappMessage={(url) => `Mirá este grupo: ${url}`}
           />
         </div>

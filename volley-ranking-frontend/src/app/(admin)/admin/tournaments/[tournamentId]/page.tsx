@@ -21,6 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton/Skeleton";
 import { Spinner } from "@/components/ui/spinner/spinner";
 import ShareOptionsButton from "@/components/ui/share/ShareOptionsButton";
+import { getPublicTournamentDetailUrl } from "@/lib/share/publicShareUrls";
 
 import { addTournamentAdmin, editTournament, removeTournamentAdmin } from "@/services/tournaments/tournamentMutations";
 import { getAdminTournamentRegistrationsView, getTournamentById, getTournamentTeams, getUsersByIds, searchAdminsByName } from "@/services/tournaments/tournamentQueries";
@@ -401,6 +402,7 @@ export default function AdminTournamentDetailPage() {
             <ShareOptionsButton
               buttonLabel="Compartir torneo"
               copySuccessMessage="Se copió el link del torneo."
+              getShareUrl={() => getPublicTournamentDetailUrl(tournament.id)}
               whatsappMessage={(url) => `Mirá este torneo: ${url}`}
             />
           </div>

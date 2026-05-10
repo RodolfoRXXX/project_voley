@@ -31,6 +31,7 @@ import { SearchableMember } from "@/components/addMemberModal/AddMemberModal.typ
 import { readJsonSafely } from "@/lib/http/readJsonSafely";
 import { getTournamentFormatLabel } from "@/types/tournaments/tournament";
 import ShareOptionsButton from "@/components/ui/share/ShareOptionsButton";
+import { getPublicGroupDetailUrl } from "@/lib/share/publicShareUrls";
 
 type GroupMember = {
   id: string;
@@ -820,6 +821,7 @@ export default function AdminGroupPage() {
               <ShareOptionsButton
                 buttonLabel="Compartir grupo"
                 copySuccessMessage="Se copió el link del grupo."
+                getShareUrl={() => getPublicGroupDetailUrl(group.id)}
                 whatsappMessage={(url) => `Mirá este grupo: ${url}`}
               />
             </div>

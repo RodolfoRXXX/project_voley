@@ -35,6 +35,7 @@ import type { Match } from "@/types/match";
 import StatusPill from "@/components/ui/status/StatusPill";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
 import ShareOptionsButton from "@/components/ui/share/ShareOptionsButton";
+import { getPublicMatchDetailUrl } from "@/lib/share/publicShareUrls";
 
 /* =====================
    Firebase functions
@@ -162,7 +163,7 @@ function MatchPageSkeleton() {
 export default function MatchDetailPage() {
   const { run, isLoading } = useAction();
   const { showToast } = useToast();
-  const { matchId } = useParams<{ matchId: string }>();
+  const { groupId, matchId } = useParams<{ groupId: string; matchId: string }>();
   const router = useRouter();
   const { firebaseUser, userDoc, loading: authLoading } = useAuth();
 
@@ -681,6 +682,7 @@ export default function MatchDetailPage() {
           <ShareOptionsButton
             buttonLabel="Compartir partido"
             copySuccessMessage="Se copió el link del partido."
+            getShareUrl={() => getPublicMatchDetailUrl(groupId, matchId)}
             whatsappMessage={(url) => `¡Sumate al partido!
 ${group?.nombre ?? "Grupo"}
 ${match.horaInicio ? formatMatchDate(match.horaInicio) : ""}

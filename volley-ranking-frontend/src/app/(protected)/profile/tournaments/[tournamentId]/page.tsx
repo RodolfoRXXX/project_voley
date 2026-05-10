@@ -8,6 +8,7 @@ import { tournamentStatusLabel } from "@/types/tournaments";
 import { TournamentPodiumCard } from "@/components/tournaments/TournamentPodiumCard";
 import { TournamentAdminsCard } from "@/components/tournaments/TournamentAdminsCard";
 import ShareOptionsButton from "@/components/ui/share/ShareOptionsButton";
+import { getPublicTournamentDetailUrl } from "@/lib/share/publicShareUrls";
 import { getProfileTournamentDetailView, getTournamentTeams, getUsersByIds, type ProfileTournamentDetailView } from "@/services/tournaments/tournamentQueries";
 
 export default function ProfileTournamentDetailPage() {
@@ -66,6 +67,7 @@ export default function ProfileTournamentDetailPage() {
           <ShareOptionsButton
             buttonLabel="Compartir torneo"
             copySuccessMessage="Se copió el link del torneo."
+            getShareUrl={() => getPublicTournamentDetailUrl(tournament.id)}
             whatsappMessage={(url) => `Mirá este torneo: ${url}`}
           />
         </div>

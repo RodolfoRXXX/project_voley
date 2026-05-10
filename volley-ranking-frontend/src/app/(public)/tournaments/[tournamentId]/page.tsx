@@ -16,6 +16,7 @@ import {
   TournamentMatchSummaryList,
 } from "@/components/tournaments/admin/TournamentMatchSections";
 import { getPublicTournamentDetailView, type PublicTournamentDetailView } from "@/services/tournaments/tournamentQueries";
+import { useAuth } from "@/hooks/useAuth";
 
 function PublicTournamentDetailSkeleton() {
   return (
@@ -49,6 +50,7 @@ function PublicTournamentDetailSkeleton() {
 
 export default function PublicTournamentDetailPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
+  const { firebaseUser } = useAuth();
   const [view, setView] = useState<PublicTournamentDetailView | null>(null);
 
   useEffect(() => {
@@ -89,7 +91,7 @@ export default function PublicTournamentDetailPage() {
 
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
-      <Link href="/tournaments" className="text-sm text-neutral-600 hover:underline">← Volver a torneos</Link>
+      <Link href={firebaseUser ? "/tournaments" : "/"} className="text-sm text-neutral-600 hover:underline">← Volver a torneos</Link>
 
       <TournamentSummaryCard
         tournament={tournament}

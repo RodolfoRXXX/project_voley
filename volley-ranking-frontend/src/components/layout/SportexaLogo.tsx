@@ -8,7 +8,7 @@ import Link from "next/link";
 export default function SportexaLogo() {
   return (
     <Link
-      href="/dashboard"
+      href="/"
       className="sportexa-logo md:absolute md:left-1/2 md:-translate-x-1/2"
     >
       <span className="logo-text">sporte</span>

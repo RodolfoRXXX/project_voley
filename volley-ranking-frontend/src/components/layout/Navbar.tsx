@@ -7,7 +7,6 @@ import { auth } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "../ui/avatar/UserAvatar";
 import { usePathname, useRouter } from "next/navigation";
-import { Arizonia } from "next/font/google";
 import useToast from "@/components/ui/toast/useToast";
 import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
@@ -15,10 +14,6 @@ import ThemeSwitch from "@/components/layout/ThemeSwitch";
 import { useThemeMode } from "@/hooks/useThemeMode";
 import SportexaLogo from "./SportexaLogo";
 
-const arizonia = Arizonia({
-  weight: "400",
-  subsets: ["latin"],
-});
 
 export default function Navbar() {
   const { firebaseUser, userDoc, loading } = useAuth();
@@ -53,7 +48,7 @@ export default function Navbar() {
 
     await signOut(auth);
     setOpen(false);
-    router.replace("/dashboard");
+    router.replace("/");
   };
 
   const navItems = [

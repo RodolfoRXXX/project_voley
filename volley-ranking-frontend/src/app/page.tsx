@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { collection, getDocs, onSnapshot, query, Timestamp, where } from "firebase/firestore";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -58,6 +59,7 @@ function HomeSkeleton() {
 
 export default function HomePage() {
   const { firebaseUser } = useAuth();
+  const router = useRouter();
   const { showToast } = useToast();
   const [matches, setMatches] = useState<Match[]>([]);
   const [groupsMap, setGroupsMap] = useState<Record<string, string>>({});
@@ -74,6 +76,12 @@ export default function HomePage() {
     }
   };
 
+
+  useEffect(() => {
+    if (firebaseUser) {
+      router.replace("/dashboard");
+    }
+  }, [firebaseUser, router]);
   useEffect(() => {
     const q = query(
       collection(db, "matches"),

@@ -25,11 +25,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" data-theme="light">
-      <body className={`h-screen overflow-hidden ${outfit.variable} ${arizonia.variable}`}>
+      <body className={`min-h-screen overflow-y-auto ${outfit.variable} ${arizonia.variable}`}>
         <AuthProvider>
           <ToastProvider>
             <ConfirmProvider>
-              <div className="h-full flex flex-col">
+              <div className="min-h-screen flex flex-col">
                 {/* Header mobile */}
                 <Navbar />
                 <main className="flex-1 flex flex-col min-h-0">{children}</main>

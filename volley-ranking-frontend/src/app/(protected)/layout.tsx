@@ -63,10 +63,6 @@ export default function ProtectedLayout({
       return;
     }
 
-    if (firebaseUser && (!userDoc || !userDoc.onboarded)) {
-      router.replace("/onboarding");
-      return;
-    }
   }, [firebaseUser, userDoc, loading, router]);
 
   const isLoggedIn = !!firebaseUser && !!userDoc;

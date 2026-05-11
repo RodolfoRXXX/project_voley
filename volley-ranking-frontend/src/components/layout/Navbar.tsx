@@ -31,6 +31,7 @@ export default function Navbar() {
     try {
       await signInWithPopup(auth, provider);
       setOpen(false);
+      router.replace("/dashboard");
     } catch (err) {
       handleAuthPopupError(err, showToast);
     }
@@ -102,7 +103,7 @@ export default function Navbar() {
           )}
 
           {firebaseUser && (
-            <div className="flex items-center gap-2">
+            <div className="relative group flex items-center gap-2">
               {userDoc?.roles === "admin" && (
                 <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded">
                   ADMIN
@@ -120,6 +121,23 @@ export default function Navbar() {
               <span className="text-sm font-medium text-[var(--foreground)]">
                 {firebaseUser.displayName}
               </span>
+
+              {pathname === "/" && (
+                <div className="pointer-events-none invisible absolute right-0 top-full z-50 mt-2 w-44 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 opacity-0 shadow-lg transition-all group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100">
+                  <Link
+                    href="/dashboard"
+                    className="block rounded-lg px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--surface-muted)]"
+                  >
+                    Tablero
+                  </Link>
+                  <button
+                    onClick={logout}
+                    className="mt-1 w-full rounded-lg px-3 py-2 text-left text-sm text-[var(--text-muted)] hover:bg-orange-500/10 hover:text-orange-600"
+                  >
+                    Cerrar sesión
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -23,6 +23,8 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const { theme, themeLabel, toggleTheme } = useThemeMode();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   const pathname = usePathname();
 
@@ -84,6 +86,21 @@ export default function Navbar() {
     }));
   };
 
+
+  useEffect(() => {
+    if (!userMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!userMenuRef.current?.contains(target)) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [userMenuOpen]);
+
   return (
     <nav className="sticky top-0 z-50 bg-[var(--nav-bg)] border-b border-[var(--border)] shadow-sm transition-colors">
       <div className="relative max-w-7xl mx-auto px-4 py-3 flex items-center">
@@ -103,7 +120,7 @@ export default function Navbar() {
           )}
 
           {firebaseUser && (
-            <div className="relative group flex items-center gap-2">
+            <div ref={userMenuRef} className="relative flex items-center gap-2">
               {userDoc?.roles === "admin" && (
                 <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded">
                   ADMIN
@@ -118,20 +135,30 @@ export default function Navbar() {
                 />
               )}
 
-              <span className="text-sm font-medium text-[var(--foreground)]">
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((prev) => !prev)}
+                className="text-sm font-medium text-[var(--foreground)] hover:opacity-80"
+                aria-expanded={userMenuOpen}
+                aria-haspopup="menu"
+              >
                 {firebaseUser.displayName}
-              </span>
+              </button>
 
               {pathname === "/" && (
-                <div className="pointer-events-none invisible absolute right-0 top-full z-50 mt-2 w-44 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 opacity-0 shadow-lg transition-all group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100">
+                <div className={`absolute right-0 top-full z-50 mt-2 w-44 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg transition-all ${userMenuOpen ? "pointer-events-auto visible opacity-100" : "pointer-events-none invisible opacity-0"}`}>
                   <Link
                     href="/dashboard"
+                    onClick={() => setUserMenuOpen(false)}
                     className="block rounded-lg px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--surface-muted)]"
                   >
                     Tablero
                   </Link>
                   <button
-                    onClick={logout}
+                    onClick={async () => {
+                      setUserMenuOpen(false);
+                      await logout();
+                    }}
                     className="mt-1 w-full rounded-lg px-3 py-2 text-left text-sm text-[var(--text-muted)] hover:bg-orange-500/10 hover:text-orange-600"
                   >
                     Cerrar sesión
@@ -253,7 +280,10 @@ export default function Navbar() {
           <div className="p-2">
             {firebaseUser ? (
               <button
-                onClick={logout}
+                onClick={async () => {
+                      setUserMenuOpen(false);
+                      await logout();
+                    }}
                 className="w-full rounded-lg px-4 py-2 text-left text-sm text-[var(--text-muted)] hover:bg-orange-500/10 hover:text-orange-600 transition-colors"
               >
                 Cerrar sesión

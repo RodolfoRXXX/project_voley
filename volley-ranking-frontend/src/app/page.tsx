@@ -215,7 +215,6 @@ export default function HomePage() {
       <section className="space-y-3">
         <div>
           <h2 className="text-2xl font-bold">Torneos vigentes</h2>
-          <p className="text-sm text-neutral-500">Seguí los torneos activos o con inscripción en curso.</p>
         </div>
 
         {tournaments.length > 0 ? (
@@ -251,7 +250,7 @@ export default function HomePage() {
           ))}
         </div>
         {matches.length === 0 && (
-          <p className="text-sm text-neutral-500">No hay partidos</p>
+          <p className="text-sm text-neutral-500">No hay nuevos partidos</p>
         )}
       </section>
     </main>

@@ -119,7 +119,7 @@ export default function OnboardingForm() {
         posicionesPreferidas: posiciones,
       });
 
-      router.replace("/");
+      router.replace("/dashboard");
     } catch (err: any) {
       console.error("❌ completeOnboarding error:", err);
 

@@ -15,6 +15,7 @@ import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 import ThemeSwitch from "@/components/layout/ThemeSwitch";
 import { useThemeMode } from "@/hooks/useThemeMode";
 import { useEffect, useState } from "react";
+import { ChevronRight } from "lucide-react";
 
 export default function AppSidebar() {
   const pathname = usePathname();
@@ -135,12 +136,26 @@ export default function AppSidebar() {
             <div key={item.label}>
               <button
                 onClick={() => toggleMenu(item.label)}
-                className="w-full flex items-center justify-between rounded-lg px-4 py-2 text-sm font-medium text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)] transition-colors"
+                className="
+                  w-full flex items-center justify-between
+                  rounded-lg px-4 py-2
+                  text-sm font-medium
+                  text-[var(--text-muted)]
+                  hover:bg-[var(--surface-muted)]
+                  hover:text-[var(--foreground)]
+                  transition-colors
+                "
               >
                 {item.label}
-                <span className={`transition-transform ${isOpen ? "rotate-90" : ""}`}>
-                  ▶
-                </span>
+
+                <ChevronRight
+                  className={`
+                    h-4 w-4 shrink-0
+                    text-neutral-400
+                    transition-transform duration-200
+                    ${isOpen ? "rotate-90" : ""}
+                  `}
+                />
               </button>
 
               {isOpen && (
@@ -152,7 +167,8 @@ export default function AppSidebar() {
                       <Link
                         key={sub.href}
                         href={sub.href}
-                        className={`block rounded-lg px-4 py-2 text-sm transition-colors
+                        className={`
+                          block rounded-lg px-4 py-2 text-sm transition-colors
                           ${
                             isActive
                               ? "bg-orange-500/10 text-orange-600"

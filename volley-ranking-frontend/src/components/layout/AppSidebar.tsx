@@ -15,7 +15,6 @@ import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 import ThemeSwitch from "@/components/layout/ThemeSwitch";
 import { useThemeMode } from "@/hooks/useThemeMode";
 import { useEffect, useState } from "react";
-import { ChevronRight } from "lucide-react";
 
 export default function AppSidebar() {
   const pathname = usePathname();
@@ -148,14 +147,17 @@ export default function AppSidebar() {
               >
                 {item.label}
 
-                <ChevronRight
+                <span
+                  aria-hidden="true"
                   className={`
-                    h-4 w-4 shrink-0
+                    inline-flex h-4 w-4 shrink-0 items-center justify-center
                     text-neutral-400
                     transition-transform duration-200
                     ${isOpen ? "rotate-90" : ""}
                   `}
-                />
+                >
+                  ›
+                </span>
               </button>
 
               {isOpen && (

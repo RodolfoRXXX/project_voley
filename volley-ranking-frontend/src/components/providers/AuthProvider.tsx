@@ -28,6 +28,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsub = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
 
+      console.log("UID producción:", firebaseUser?.uid);
+      console.log("PROJECT:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+
       if (!user) {
         if (unsubscribeUserDoc) {
           unsubscribeUserDoc();

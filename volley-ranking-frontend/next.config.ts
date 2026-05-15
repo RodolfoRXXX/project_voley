@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
 
+const workspaceRoot = __dirname;
+
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: workspaceRoot,
   turbopack: {
-    root: __dirname,
+    root: workspaceRoot,
   },
   async headers() {
     return [

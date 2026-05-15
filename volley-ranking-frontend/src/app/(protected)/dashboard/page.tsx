@@ -493,7 +493,8 @@ export default function DashboardPage() {
       const sorted = normalized.sort((a, b) => a.priority - b.priority || (b.updatedAt || 0) - (a.updatedAt || 0));
       setPendingAlerts(sorted);
       setPendingAlertsLoading(false);
-    }, () => {
+    }, (error) => {
+      console.error("❌ pendingAlerts onSnapshot error:", error.code, error.message);
       setPendingAlerts([]);
       setPendingAlertsLoading(false);
     });

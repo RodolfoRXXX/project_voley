@@ -1,6 +1,7 @@
 // rankingService.js
 // Implementación REAL y FINAL de ranking por grupo
 
+const functions = require("firebase-functions/v1");
 const { db } = require("../firebase");
 const { FACTORES_POSICION } = require("../config/factorPosicion");
 

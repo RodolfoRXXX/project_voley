@@ -44,7 +44,6 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId, nameT
     }
 
     const tournament = tournamentSnap.data();
-    acceptedTournamentName = tournament?.name || tournament?.nombre || "Torneo";
 
     if (tournament.status !== TOURNAMENT_STATUS.OPEN) {
       throw new functions.https.HttpsError(

@@ -7,8 +7,8 @@ Este documento registra el backlog priorizado de mejoras detectadas en la audito
 | Prioridad | Punto | Estado | Última actualización |
 |---|---|---|---|
 | P1 | `joinMatch` con transacción, ID determinístico y validación de estado | ✅ Implementado | 2026-05-18 |
-| P1 | Bug de `rankingService` por `functions` no importado | ⏳ Pendiente | 2026-05-18 |
-| P1 | Variable global accidental en `requestTournamentRegistration` | ⏳ Pendiente | 2026-05-18 |
+| P1 | Bug de `rankingService` por `functions` no importado | ✅ Implementado | 2026-05-18 |
+| P1 | Variable global accidental en `requestTournamentRegistration` | ✅ Implementado | 2026-05-18 |
 | P1 | Acceso correcto a grupos privados para miembros | ⏳ Pendiente | 2026-05-18 |
 | P2 | Restringir lectura pública de `users` | ⏳ Pendiente | 2026-05-18 |
 | P2 | Revisar reglas públicas de colecciones sensibles | ⏳ Pendiente | 2026-05-18 |
@@ -50,6 +50,22 @@ Por qué se hizo:
 - Evita inscripciones tardías en partidos ya iniciados o no inscribibles.
 - Evita crear participaciones mientras el ranking está bloqueado, caso que podía dejar usuarios en estado `pendiente` sin recálculo.
 - Facilita futuras migraciones porque el ID de participación pasa a ser predecible e idempotente.
+
+
+### 2026-05-18 — P1: import faltante y global accidental
+
+Se implementaron los puntos 1.3 y 1.4 del backlog.
+
+Acciones aplicadas:
+
+- Se importó `firebase-functions/v1` en `rankingService.js` para que el error `functions.https.HttpsError` por match inexistente no derive en `ReferenceError`.
+- Se eliminó la asignación no declarada de `acceptedTournamentName` dentro de `requestTournamentRegistration`, ya que ese valor no se utiliza en el flujo de creación de inscripción.
+
+Por qué se hizo:
+
+- Preserva el error funcional esperado cuando el partido no existe.
+- Evita contaminar el scope global de Cloud Functions entre invocaciones.
+- Reduce riesgos de comportamiento no determinista y mejora compatibilidad con lint/modo estricto.
 
 ---
 
@@ -101,13 +117,13 @@ Por qué hacerlo:
 ## 1.3. `rankingService` puede lanzar `ReferenceError` al manejar un match inexistente
 
 **Importancia:** Alta.
-**Estado:** ⏳ Pendiente.
+**Estado:** ✅ Implementado.
 
-`rankingService.js` usa `functions.https.HttpsError`, pero no importa `firebase-functions/v1`.
+`rankingService.js` usaba `functions.https.HttpsError`, pero no importaba `firebase-functions/v1`.
 
 Acciones:
 
-- Importar `functions` en `rankingService.js`.
+- Se importó `functions` en `rankingService.js`.
 - O reemplazar `HttpsError` por errores de dominio internos.
 - Agregar un test unitario para el caso `matchId` inexistente.
 - Revisar otros services para detectar referencias no importadas.
@@ -121,13 +137,13 @@ Por qué hacerlo:
 ## 1.4. Variable global accidental en `requestTournamentRegistration`
 
 **Importancia:** Alta.
-**Estado:** ⏳ Pendiente.
+**Estado:** ✅ Implementado.
 
-Dentro de `requestTournamentRegistration`, se asigna `acceptedTournamentName` sin declaración previa.
+Dentro de `requestTournamentRegistration`, se asignaba `acceptedTournamentName` sin declaración previa.
 
 Acciones:
 
-- Eliminar la línea si no se usa.
+- Se eliminó la asignación porque no se usa en el flujo de solicitud de inscripción.
 - O declarar la variable localmente con `let` / `const`.
 - Activar lint para el código de Cloud Functions.
 - Agregar regla ESLint `no-undef`.

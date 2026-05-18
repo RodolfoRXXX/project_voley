@@ -216,26 +216,181 @@ function validateTournamentPayload(data) {
   };
 }
 
+function isPlainObject(value) {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function assertNumber(value, fieldName, predicate = () => true) {
+  if (typeof value !== "number" || !Number.isFinite(value) || !predicate(value)) {
+    throw new functions.https.HttpsError("invalid-argument", `${fieldName} inválido`);
+  }
+}
+
+function timestampToMillis(value) {
+  return value && typeof value.toMillis === "function" ? value.toMillis() : null;
+}
+
+function getTournamentNumber(tournament, fieldName, settingsFieldName = fieldName) {
+  const directValue = tournament?.[fieldName];
+  if (typeof directValue === "number") return directValue;
+  const settingsValue = tournament?.settings?.[settingsFieldName];
+  return typeof settingsValue === "number" ? settingsValue : undefined;
+}
+
+function mergeTournamentStructure(currentStructure = {}, patchStructure = {}, format = "liga") {
+  return {
+    groupStage: {
+      ...(currentStructure.groupStage || {}),
+      ...(patchStructure.groupStage || {}),
+      enabled: format !== "eliminacion",
+      groupCount: format === "liga"
+        ? 1
+        : Number(patchStructure.groupStage?.groupCount ?? currentStructure.groupStage?.groupCount ?? 2),
+      rounds: Number(patchStructure.groupStage?.rounds ?? currentStructure.groupStage?.rounds ?? 1),
+      qualifyPerGroup: Number(patchStructure.groupStage?.qualifyPerGroup ?? currentStructure.groupStage?.qualifyPerGroup ?? 0),
+      wildcardsCount: Number(patchStructure.groupStage?.wildcardsCount ?? currentStructure.groupStage?.wildcardsCount ?? 0),
+      seedingCriteria: patchStructure.groupStage?.seedingCriteria || currentStructure.groupStage?.seedingCriteria || "points",
+      crossGroupSeeding: patchStructure.groupStage?.crossGroupSeeding ?? currentStructure.groupStage?.crossGroupSeeding ?? true,
+      bracketMatchup: patchStructure.groupStage?.bracketMatchup || currentStructure.groupStage?.bracketMatchup || "standard_seeded",
+    },
+    knockoutStage: {
+      ...(currentStructure.knockoutStage || {}),
+      ...(patchStructure.knockoutStage || {}),
+      enabled: format !== "liga",
+      startFrom: patchStructure.knockoutStage?.startFrom || currentStructure.knockoutStage?.startFrom || "semi",
+      allowByes: false,
+    },
+  };
+}
+
 function validateTournamentUpdate(data) {
   const update = {};
-  if (typeof data.name === "string" && data.name.trim()) update.name = data.name.trim();
-  if (typeof data.description === "string") update.description = data.description.trim();
-  if (typeof data.maxTeams === "number" && data.maxTeams > 1) update.maxTeams = data.maxTeams;
-  if (typeof data.minTeams === "number" && data.minTeams > 1) update.minTeams = data.minTeams;
-  if (typeof data.minPlayers === "number" && data.minPlayers >= 1) update.minPlayers = data.minPlayers;
-  if (typeof data.maxPlayers === "number" && data.maxPlayers >= 1) update.maxPlayers = data.maxPlayers;
-  if (typeof data.paymentForPlayer === "number" && data.paymentForPlayer >= 0) update.paymentForPlayer = data.paymentForPlayer;
-  if (typeof data.startDateMillis === "number") update.startDate = Timestamp.fromMillis(data.startDateMillis);
-  if (typeof data.endDateMillis === "number") update.endDate = Timestamp.fromMillis(data.endDateMillis);
-  if (typeof data.format === "string") update.format = data.format;
-  if (data.rules && typeof data.rules === "object") update.rules = Object.fromEntries(Object.entries(data.rules).filter(([, v]) => typeof v === "number"));
-  if (data.structure && typeof data.structure === "object") update.structure = data.structure;
-  if (Array.isArray(data.phases) && data.phases.length) {
+
+  if (Object.prototype.hasOwnProperty.call(data, "name")) {
+    if (typeof data.name !== "string" || !data.name.trim()) throw new functions.https.HttpsError("invalid-argument", "name inválido");
+    update.name = data.name.trim();
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "description")) {
+    if (typeof data.description !== "string") throw new functions.https.HttpsError("invalid-argument", "description inválido");
+    update.description = data.description.trim();
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "maxTeams")) {
+    assertNumber(data.maxTeams, "maxTeams", (value) => value > 1);
+    update.maxTeams = data.maxTeams;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "minTeams")) {
+    assertNumber(data.minTeams, "minTeams", (value) => value > 1);
+    update.minTeams = data.minTeams;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "minPlayers")) {
+    assertNumber(data.minPlayers, "minPlayers", (value) => value >= 1);
+    update.minPlayers = data.minPlayers;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "maxPlayers")) {
+    assertNumber(data.maxPlayers, "maxPlayers", (value) => value >= 1);
+    update.maxPlayers = data.maxPlayers;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "paymentForPlayer")) {
+    assertNumber(data.paymentForPlayer, "paymentForPlayer", (value) => value >= 0);
+    update.paymentForPlayer = data.paymentForPlayer;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "startDateMillis")) {
+    assertNumber(data.startDateMillis, "Fecha de inicio");
+    update.startDate = Timestamp.fromMillis(data.startDateMillis);
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "endDateMillis")) {
+    assertNumber(data.endDateMillis, "Fecha de fin");
+    update.endDate = Timestamp.fromMillis(data.endDateMillis);
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "format")) {
+    if (!["liga", "eliminacion", "mixto"].includes(data.format)) throw new functions.https.HttpsError("invalid-argument", "format inválido");
+    update.format = data.format;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "rules")) {
+    if (!isPlainObject(data.rules)) throw new functions.https.HttpsError("invalid-argument", "rules inválido");
+    const rules = {};
+    for (const [key, value] of Object.entries(data.rules)) {
+      if (!["pointsWin", "pointsDraw", "pointsLose", "setsToWin"].includes(key)) continue;
+      assertNumber(value, `rules.${key}`);
+      rules[key] = value;
+    }
+    if (!Object.keys(rules).length) throw new functions.https.HttpsError("invalid-argument", "rules inválido");
+    update.rules = rules;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "structure")) {
+    if (!isPlainObject(data.structure)) throw new functions.https.HttpsError("invalid-argument", "structure inválida");
+    if (data.structure.groupStage !== undefined && !isPlainObject(data.structure.groupStage)) throw new functions.https.HttpsError("invalid-argument", "structure.groupStage inválida");
+    if (data.structure.knockoutStage !== undefined && !isPlainObject(data.structure.knockoutStage)) throw new functions.https.HttpsError("invalid-argument", "structure.knockoutStage inválida");
+    update.structure = data.structure;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "phases")) {
+    if (!Array.isArray(data.phases) || !data.phases.length) throw new functions.https.HttpsError("invalid-argument", "phases inválidas");
     const phases = normalizePhases(data);
     update.phaseOrder = phases.map(({ type, order }) => ({ type, order }));
     update.phaseDefinitions = phases;
   }
+
   return update;
+}
+
+function buildTournamentStateAfterUpdate(tournament, restrictedPayload) {
+  const format = restrictedPayload.format || tournament.format;
+  const minTeams = restrictedPayload.minTeams ?? getTournamentNumber(tournament, "minTeams");
+  const maxTeams = restrictedPayload.maxTeams ?? getTournamentNumber(tournament, "maxTeams");
+  const minPlayers = restrictedPayload.minPlayers ?? getTournamentNumber(tournament, "minPlayers");
+  const maxPlayers = restrictedPayload.maxPlayers ?? getTournamentNumber(tournament, "maxPlayers");
+  const paymentForPlayer = restrictedPayload.paymentForPlayer ?? getTournamentNumber(tournament, "paymentForPlayer", "paymentPerPlayer");
+  const rules = { ...(tournament.rules || {}) };
+  if (typeof tournament.settings?.setsToWin === "number" && rules.setsToWin === undefined) rules.setsToWin = tournament.settings.setsToWin;
+  if (typeof tournament.settings?.pointsWin === "number" && rules.pointsWin === undefined) rules.pointsWin = tournament.settings.pointsWin;
+  if (typeof tournament.settings?.pointsDraw === "number" && rules.pointsDraw === undefined) rules.pointsDraw = tournament.settings.pointsDraw;
+  if (typeof tournament.settings?.pointsLose === "number" && rules.pointsLose === undefined) rules.pointsLose = tournament.settings.pointsLose;
+  Object.assign(rules, restrictedPayload.rules || {});
+
+  const structure = restrictedPayload.structure
+    ? mergeTournamentStructure(tournament.structure || {}, restrictedPayload.structure, format)
+    : (tournament.structure || mergeTournamentStructure({}, {}, format));
+
+  return {
+    name: restrictedPayload.name ?? tournament.name,
+    description: restrictedPayload.description ?? tournament.description ?? "",
+    sport: tournament.sport || "voley",
+    format,
+    minTeams,
+    maxTeams,
+    minPlayers,
+    maxPlayers,
+    paymentForPlayer,
+    startDate: restrictedPayload.startDate || tournament.startDate,
+    endDate: restrictedPayload.endDate || tournament.endDate,
+    rules,
+    structure,
+  };
+}
+
+function validateCompleteTournamentState(nextTournament) {
+  if (typeof nextTournament.name !== "string" || !nextTournament.name.trim()) throw new functions.https.HttpsError("invalid-argument", "name inválido");
+  if (typeof nextTournament.description !== "string") throw new functions.https.HttpsError("invalid-argument", "description inválido");
+  if (!["liga", "eliminacion", "mixto"].includes(nextTournament.format)) throw new functions.https.HttpsError("invalid-argument", "format inválido");
+  if (typeof nextTournament.sport !== "string" || !nextTournament.sport.trim()) throw new functions.https.HttpsError("invalid-argument", "sport inválido");
+  assertNumber(nextTournament.maxTeams, "maxTeams", (value) => value > 1);
+  assertNumber(nextTournament.minTeams, "minTeams", (value) => value > 1 && value <= nextTournament.maxTeams);
+  assertNumber(nextTournament.minPlayers, "minPlayers", (value) => value >= 1);
+  assertNumber(nextTournament.maxPlayers, "maxPlayers", (value) => value >= nextTournament.minPlayers);
+  assertNumber(nextTournament.paymentForPlayer, "paymentForPlayer", (value) => value >= 0);
+  if (!nextTournament.startDate || typeof nextTournament.startDate.toMillis !== "function") throw new functions.https.HttpsError("invalid-argument", "Fecha de inicio inválida");
+  if (nextTournament.endDate && typeof nextTournament.endDate.toMillis !== "function") throw new functions.https.HttpsError("invalid-argument", "Fecha de fin inválida");
+  if (nextTournament.endDate && timestampToMillis(nextTournament.endDate) < timestampToMillis(nextTournament.startDate)) throw new functions.https.HttpsError("invalid-argument", "La fecha de fin no puede ser anterior a la fecha de inicio");
+  if (!isPlainObject(nextTournament.rules)) throw new functions.https.HttpsError("invalid-argument", "rules inválido");
+  for (const key of ["pointsWin", "pointsDraw", "pointsLose", "setsToWin"]) {
+    assertNumber(nextTournament.rules[key], `rules.${key}`);
+  }
+  if (!isPlainObject(nextTournament.structure)) throw new functions.https.HttpsError("invalid-argument", "structure inválida");
+  if (!isPlainObject(nextTournament.structure.groupStage)) throw new functions.https.HttpsError("invalid-argument", "structure.groupStage inválida");
+  if (!isPlainObject(nextTournament.structure.knockoutStage)) throw new functions.https.HttpsError("invalid-argument", "structure.knockoutStage inválida");
+  if (nextTournament.format === "mixto") {
+    validateMixedAdvancement({ structure: nextTournament.structure, context: "editar el torneo de grupos y eliminatorias" });
+  }
 }
 
 function restrictUpdateByStatus(status, updatePayload) {
@@ -372,61 +527,46 @@ async function editTournament({ uid, tournamentId, data }) {
       throw new functions.https.HttpsError("failed-precondition", "No hay campos editables para el estado actual del torneo");
     }
 
+    const nextTournament = buildTournamentStateAfterUpdate(tournament, restrictedPayload);
+    validateCompleteTournamentState(nextTournament);
+
     const nextPayload = { ...restrictedPayload, updatedBy: uid, updatedAt: FieldValue.serverTimestamp() };
-    if (restrictedPayload.minTeams || restrictedPayload.maxTeams || restrictedPayload.minPlayers || restrictedPayload.maxPlayers || restrictedPayload.paymentForPlayer || restrictedPayload.rules) {
-      nextPayload.settings = {
-        ...(tournament.settings || {}),
-        ...(typeof restrictedPayload.minTeams === "number" ? { minTeams: restrictedPayload.minTeams } : {}),
-        ...(typeof restrictedPayload.maxTeams === "number" ? { maxTeams: restrictedPayload.maxTeams } : {}),
-        ...(typeof restrictedPayload.minPlayers === "number" ? { minPlayers: restrictedPayload.minPlayers } : {}),
-        ...(typeof restrictedPayload.maxPlayers === "number" ? { maxPlayers: restrictedPayload.maxPlayers } : {}),
-        ...(typeof restrictedPayload.paymentForPlayer === "number" ? { paymentPerPlayer: restrictedPayload.paymentForPlayer } : {}),
-        ...(restrictedPayload.rules || {}),
-      };
+
+    if (restrictedPayload.rules) {
+      nextPayload.rules = nextTournament.rules;
     }
 
     if (restrictedPayload.structure) {
-      const currentStructure = tournament.structure || {};
-      const nextFormat = restrictedPayload.format || tournament.format;
-      nextPayload.structure = {
-        groupStage: {
-          ...(currentStructure.groupStage || {}),
-          ...(restrictedPayload.structure.groupStage || {}),
-          enabled: nextFormat !== "eliminacion",
-          groupCount: nextFormat === "liga"
-            ? 1
-            : Number(restrictedPayload.structure.groupStage?.groupCount || currentStructure.groupStage?.groupCount || 2),
-          rounds: Number(restrictedPayload.structure.groupStage?.rounds || currentStructure.groupStage?.rounds || 1),
-          qualifyPerGroup: Number(restrictedPayload.structure.groupStage?.qualifyPerGroup || currentStructure.groupStage?.qualifyPerGroup || 0),
-          wildcardsCount: Number(restrictedPayload.structure.groupStage?.wildcardsCount || currentStructure.groupStage?.wildcardsCount || 0),
-          seedingCriteria: restrictedPayload.structure.groupStage?.seedingCriteria || currentStructure.groupStage?.seedingCriteria || "points",
-          crossGroupSeeding: restrictedPayload.structure.groupStage?.crossGroupSeeding ?? currentStructure.groupStage?.crossGroupSeeding ?? true,
-          bracketMatchup: restrictedPayload.structure.groupStage?.bracketMatchup || currentStructure.groupStage?.bracketMatchup || "standard_seeded",
-        },
-        knockoutStage: {
-          ...(currentStructure.knockoutStage || {}),
-          ...(restrictedPayload.structure.knockoutStage || {}),
-          enabled: nextFormat !== "liga",
-          startFrom: restrictedPayload.structure.knockoutStage?.startFrom || currentStructure.knockoutStage?.startFrom || "semi",
-          allowByes: false,
-        },
+      nextPayload.structure = nextTournament.structure;
+    }
+
+    if (restrictedPayload.minTeams || restrictedPayload.maxTeams || restrictedPayload.minPlayers || restrictedPayload.maxPlayers || restrictedPayload.paymentForPlayer || restrictedPayload.rules) {
+      nextPayload.settings = {
+        ...(tournament.settings || {}),
+        minTeams: nextTournament.minTeams,
+        maxTeams: nextTournament.maxTeams,
+        minPlayers: nextTournament.minPlayers,
+        maxPlayers: nextTournament.maxPlayers,
+        paymentPerPlayer: nextTournament.paymentForPlayer,
+        setsToWin: nextTournament.rules.setsToWin,
+        pointsWin: nextTournament.rules.pointsWin,
+        pointsDraw: nextTournament.rules.pointsDraw,
+        pointsLose: nextTournament.rules.pointsLose,
       };
     }
 
-    if ((restrictedPayload.structure || restrictedPayload.format) && (restrictedPayload.format || tournament.format) === "mixto") {
-      validateMixedAdvancement({ structure: nextPayload.structure || tournament.structure || {}, context: "editar el torneo de grupos y eliminatorias" });
-    }
-
     if (!restrictedPayload.phaseDefinitions && (restrictedPayload.structure || restrictedPayload.format)) {
-      const derivedPhases = buildDefaultPhases(restrictedPayload.format || tournament.format, nextPayload.structure || tournament.structure || {});
+      const derivedPhases = buildDefaultPhases(nextTournament.format, nextTournament.structure || {});
       nextPayload.phaseDefinitions = derivedPhases;
       nextPayload.phaseOrder = derivedPhases.map(({ type, order }) => ({ type, order }));
     }
 
-    if (restrictedPayload.phaseDefinitions) {
+    const phaseDefinitionsForAdvancement = nextPayload.phaseDefinitions;
+
+    if (nextPayload.phaseDefinitions) {
       const phaseSnap = await trx.get(db.collection("tournamentPhases").where("tournamentId", "==", tournamentId));
       const phasesByType = new Map(phaseSnap.docs.map((doc) => [doc.data().type, { id: doc.id, ...doc.data() }]));
-      for (const phase of updatePayload.phaseDefinitions) {
+      for (const phase of nextPayload.phaseDefinitions) {
         const existing = phasesByType.get(phase.type);
         if (!existing) continue;
         if (existing.status !== PHASE_STATUS.PENDING) {
@@ -437,12 +577,13 @@ async function editTournament({ uid, tournamentId, data }) {
       delete nextPayload.phaseDefinitions;
     }
 
-    if ((restrictedPayload.format || tournament.format) === "mixto") {
-      const groupPhase = (nextPayload.phaseDefinitions || buildDefaultPhases(restrictedPayload.format || tournament.format, nextPayload.structure || tournament.structure || {})).find((phase) => phase.type === PHASE_TYPES.GROUP_STAGE);
-      const knockoutPhase = (nextPayload.phaseDefinitions || buildDefaultPhases(restrictedPayload.format || tournament.format, nextPayload.structure || tournament.structure || {})).find((phase) => phase.type === PHASE_TYPES.KNOCKOUT);
+    if (nextTournament.format === "mixto") {
+      const phases = phaseDefinitionsForAdvancement || buildDefaultPhases(nextTournament.format, nextTournament.structure || {});
+      const groupPhase = phases.find((phase) => phase.type === PHASE_TYPES.GROUP_STAGE);
+      const knockoutPhase = phases.find((phase) => phase.type === PHASE_TYPES.KNOCKOUT);
       if (groupPhase && knockoutPhase) {
         const rulesRef = db.collection("tournamentAdvancementRules").doc(`${tournamentId}_${groupPhase.type}_${knockoutPhase.type}`);
-        const advancementRules = buildDefaultAdvancementRules(nextPayload.structure || tournament.structure || {});
+        const advancementRules = buildDefaultAdvancementRules(nextTournament.structure || {});
         trx.set(rulesRef, {
           tournamentId,
           fromPhaseType: groupPhase.type,

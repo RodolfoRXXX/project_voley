@@ -133,12 +133,18 @@ async function buildGroupPayload(groupDoc) {
   };
 }
 
-async function getPublicGroupOrAdmin(groupId, authContext) {
+async function getGroupVisibleToAuthContext(groupId, authContext) {
   const groupSnap = await db.collection("groups").doc(groupId).get();
   if (!groupSnap.exists) return null;
 
   const group = groupSnap.data();
-  const canSee = authContext.isSystemAdmin || group?.visibility === "public";
+  const memberIds = cleanStringArray(group.memberIds);
+  const adminIds = getGroupAdminIds(group);
+  const uid = authContext?.uid ? String(authContext.uid) : null;
+  const canSee =
+    authContext?.isSystemAdmin ||
+    group?.visibility === "public" ||
+    (!!uid && (memberIds.includes(uid) || adminIds.includes(uid)));
 
   if (!canSee) return null;
 
@@ -156,7 +162,7 @@ async function handleListPublicGroups(req, res, authContext) {
 }
 
 async function handleGroupDetail(req, res, authContext, groupId) {
-  const group = await getPublicGroupOrAdmin(groupId, authContext);
+  const group = await getGroupVisibleToAuthContext(groupId, authContext);
 
   if (!group) {
     res.status(404).json({ error: "Grupo no encontrado" });
@@ -254,7 +260,7 @@ async function handleJoinGroup(req, res, authContext, groupId) {
     return;
   }
 
-  const group = await getPublicGroupOrAdmin(groupId, authContext);
+  const group = await getGroupVisibleToAuthContext(groupId, authContext);
   if (!group) {
     res.status(404).json({ error: "Grupo no encontrado" });
     return;
@@ -332,7 +338,7 @@ async function handleJoinGroup(req, res, authContext, groupId) {
 }
 
 async function handleGroupMemberRemoval(req, res, authContext, groupId, userId) {
-  const group = await getPublicGroupOrAdmin(groupId, authContext);
+  const group = await getGroupVisibleToAuthContext(groupId, authContext);
   if (!group) {
     res.status(404).json({ error: "Grupo no encontrado" });
     return;
@@ -357,7 +363,7 @@ async function handleGroupMemberRemoval(req, res, authContext, groupId, userId) 
 }
 
 async function handleGroupMemberSearch(req, res, authContext, groupId) {
-  const group = await getPublicGroupOrAdmin(groupId, authContext);
+  const group = await getGroupVisibleToAuthContext(groupId, authContext);
   if (!group) {
     res.status(404).json({ error: "Grupo no encontrado" });
     return;
@@ -413,7 +419,7 @@ async function handleGroupMemberSearch(req, res, authContext, groupId) {
 }
 
 async function handleGroupMemberAdd(req, res, authContext, groupId, userId) {
-  const group = await getPublicGroupOrAdmin(groupId, authContext);
+  const group = await getGroupVisibleToAuthContext(groupId, authContext);
   if (!group) {
     res.status(404).json({ error: "Grupo no encontrado" });
     return;
@@ -504,7 +510,7 @@ async function handleGroupMemberAdd(req, res, authContext, groupId, userId) {
 }
 
 async function handleJoinRequestAction(req, res, authContext, groupId, userId, action) {
-  const group = await getPublicGroupOrAdmin(groupId, authContext);
+  const group = await getGroupVisibleToAuthContext(groupId, authContext);
   if (!group) {
     res.status(404).json({ error: "Grupo no encontrado" });
     return;
@@ -547,7 +553,7 @@ async function handleAdminApplication(req, res, authContext, groupId) {
     return;
   }
 
-  const group = await getPublicGroupOrAdmin(groupId, authContext);
+  const group = await getGroupVisibleToAuthContext(groupId, authContext);
   if (!group) {
     res.status(404).json({ error: "Grupo no encontrado" });
     return;

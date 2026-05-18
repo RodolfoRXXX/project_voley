@@ -9,7 +9,7 @@ Este documento registra el backlog priorizado de mejoras detectadas en la audito
 | P1 | `joinMatch` con transacción, ID determinístico y validación de estado | ✅ Implementado | 2026-05-18 |
 | P1 | Bug de `rankingService` por `functions` no importado | ✅ Implementado | 2026-05-18 |
 | P1 | Variable global accidental en `requestTournamentRegistration` | ✅ Implementado | 2026-05-18 |
-| P1 | Acceso correcto a grupos privados para miembros | ⏳ Pendiente | 2026-05-18 |
+| P1 | Acceso correcto a grupos privados para miembros | ✅ Implementado | 2026-05-18 |
 | P2 | Restringir lectura pública de `users` | ⏳ Pendiente | 2026-05-18 |
 | P2 | Revisar reglas públicas de colecciones sensibles | ⏳ Pendiente | 2026-05-18 |
 | P2 | Restringir CORS | ⏳ Pendiente | 2026-05-18 |
@@ -20,7 +20,7 @@ Este documento registra el backlog priorizado de mejoras detectadas en la audito
 | P3 | Desnormalizar conteo de matches en grupos | ⏳ Pendiente | 2026-05-18 |
 | P3 | Paginación en detalle de grupo | ⏳ Pendiente | 2026-05-18 |
 | P3 | Limitar concurrencia de push | ⏳ Pendiente | 2026-05-18 |
-| P4 | Validaciones completas en edición de torneos | ⏳ Pendiente | 2026-05-18 |
+| P4 | Validaciones completas en edición de torneos | ✅ Implementado | 2026-05-18 |
 | P4 | Tests reales para Cloud Functions y reglas Firestore | ⏳ Pendiente | 2026-05-18 |
 | P4 | Lint para backend | ⏳ Pendiente | 2026-05-18 |
 | P4 | Fuentes locales para builds reproducibles | ⏳ Pendiente | 2026-05-18 |
@@ -66,6 +66,53 @@ Por qué se hizo:
 - Preserva el error funcional esperado cuando el partido no existe.
 - Evita contaminar el scope global de Cloud Functions entre invocaciones.
 - Reduce riesgos de comportamiento no determinista y mejora compatibilidad con lint/modo estricto.
+
+
+### 2026-05-18 — Verificación P1: puntos 1.1 a 1.4
+
+Se verificó que los puntos 1.1, 1.2, 1.3 y 1.4 siguen correctamente implementados.
+
+Evidencia revisada:
+
+- `joinMatch` usa `participations/{matchId}_{userId}` como ID determinístico y ejecuta la creación dentro de `db.runTransaction`.
+- `joinMatch` valida dentro del flujo transaccional que el partido exista, esté `abierto`, tenga `horaInicio` futura y no esté bloqueado.
+- `rankingService.js` importa `firebase-functions/v1` antes de usar `functions.https.HttpsError`.
+- `requestTournamentRegistration` no mantiene asignaciones globales accidentales; el nombre de torneo aceptado que existe en el service está declarado localmente en el flujo de revisión de inscripciones.
+
+
+### 2026-05-18 — P1: acceso a grupos privados para miembros
+
+Se implementó el punto 1.5 del backlog.
+
+Acciones aplicadas:
+
+- Se renombró `getPublicGroupOrAdmin` a `getGroupVisibleToAuthContext` para reflejar que ya no solo contempla grupos públicos o system admins.
+- Se permite cargar un grupo privado cuando el usuario autenticado es integrante (`memberIds`) o administrador (`adminIds`, `admins` u `ownerId`).
+- Se mantuvo el comportamiento de ocultar grupos privados a visitantes y usuarios sin relación con el grupo.
+
+Por qué se hizo:
+
+- Evita que miembros legítimos de grupos privados reciban 404 antes de que `handleGroupDetail` pueda verificar su membresía.
+- Mantiene una única regla de visibilidad reutilizable por detalle, solicitudes y endpoints administrativos.
+
+
+### 2026-05-18 — P4: validaciones completas al editar torneos
+
+Se implementó el punto 1.6 del backlog.
+
+Acciones aplicadas:
+
+- `editTournament` ahora fusiona el estado actual del torneo con el payload permitido según estado antes de validar.
+- Se valida el objeto final completo para impedir invariantes rotos como `minTeams > maxTeams` o `maxPlayers < minPlayers`.
+- Se rechazan valores inválidos explícitos en campos críticos, reglas, fechas, estructura y formato.
+- Las reglas parciales se fusionan con las reglas existentes en lugar de reemplazar el objeto completo.
+- La estructura parcial del torneo se normaliza mediante un merge centralizado antes de recalcular fases y reglas de avance.
+
+Por qué se hizo:
+
+- Evita que updates parciales dejen torneos imposibles de iniciar, cerrar o avanzar.
+- Reduce riesgos de perder claves de `rules` cuando la UI envía solo una configuración parcial.
+- Alinea edición y creación bajo validaciones de dominio equivalentes para campos críticos.
 
 ---
 
@@ -159,7 +206,7 @@ Por qué hacerlo:
 ## 1.5. Usuarios miembros de grupos privados pueden quedar bloqueados por la API HTTP
 
 **Importancia:** Alta.
-**Estado:** ⏳ Pendiente.
+**Estado:** ✅ Implementado.
 
 `getPublicGroupOrAdmin` devuelve el grupo solo si el usuario es system admin o si el grupo es público. Después, `handleGroupDetail` intenta verificar si el usuario es miembro, pero esa validación puede no ejecutarse porque el grupo privado ya fue descartado.
 
@@ -179,7 +226,7 @@ Por qué hacerlo:
 ## 1.6. Validaciones de edición de torneo pueden romper invariantes
 
 **Importancia:** Media/alta.
-**Estado:** ⏳ Pendiente.
+**Estado:** ✅ Implementado.
 
 `validateTournamentUpdate` permite updates parciales de campos críticos, pero no revalida completamente el estado final del torneo como sí ocurre durante la creación.
 

@@ -885,6 +885,41 @@ function isValidPushSubscription(subscription) {
   );
 }
 
+const MAX_PUSH_SUBSCRIPTIONS_PER_USER = 5;
+const PUSH_SUBSCRIPTION_RETENTION_DAYS = 180;
+
+async function cleanupUserPushSubscriptions(userId) {
+  if (!userId) return;
+
+  const retentionCutoff = new Date(Date.now() - PUSH_SUBSCRIPTION_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  const userSubsSnap = await db
+    .collection("push_subscriptions")
+    .where("user_id", "==", String(userId))
+    .orderBy("created_at", "desc")
+    .get();
+
+  if (userSubsSnap.empty) return;
+
+  const batch = db.batch();
+  let deleted = 0;
+
+  userSubsSnap.docs.forEach((docSnap, index) => {
+    const data = docSnap.data();
+    const createdAtDate = data?.created_at?.toDate?.();
+    const isExpired = createdAtDate instanceof Date && createdAtDate <= retentionCutoff;
+    const isOverLimit = index >= MAX_PUSH_SUBSCRIPTIONS_PER_USER;
+
+    if (isExpired || isOverLimit) {
+      batch.delete(docSnap.ref);
+      deleted += 1;
+    }
+  });
+
+  if (deleted > 0) {
+    await batch.commit();
+  }
+}
+
 async function handlePushSubscribe(req, res, authContext) {
   if (!authContext.uid) {
     res.status(401).json({ error: "Debes iniciar sesión" });
@@ -921,6 +956,8 @@ async function handlePushSubscribe(req, res, authContext) {
       last_used_at: now,
     });
   }
+
+  await cleanupUserPushSubscriptions(authContext.uid);
 
   res.status(200).json({ ok: true, vapidPublicKey: getPublicVapidKey() });
 }

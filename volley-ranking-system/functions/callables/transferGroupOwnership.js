@@ -1,5 +1,6 @@
 const functions = require("firebase-functions/v1");
-const { admin, db } = require("../src/firebase");
+const { FieldValue } = require("firebase-admin/firestore");
+const { db } = require("../src/firebase");
 const { assertIsAdmin, assertGroupOwner } = require("../src/services/adminAccessService");
 const { normalizeGroupAdmins } = require("../src/services/groupAdminsService");
 
@@ -50,7 +51,7 @@ module.exports = functions.region("southamerica-east1").https.onCall(async (data
       admins,
       ownerId: admins[0].userId,
       adminIds: admins.map((a) => a.userId),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
       updatedBy: context.auth.uid,
     });
   });

@@ -13,8 +13,8 @@ Este documento registra el backlog priorizado de mejoras detectadas en la audito
 | P2 | Restringir lectura pública de `users` | ⏳ Pendiente | 2026-05-18 |
 | P2 | Revisar reglas públicas de colecciones sensibles | ⏳ Pendiente | 2026-05-18 |
 | P2 | Restringir CORS | ✅ Implementado | 2026-05-18 |
-| P2 | Validar URLs de push notifications | ⏳ Pendiente | 2026-05-18 |
-| P2 | Codificar parámetros en rutas proxy | ⏳ Pendiente | 2026-05-18 |
+| P2 | Validar URLs de push notifications | ✅ Implementado | 2026-05-19 |
+| P2 | Codificar parámetros en rutas proxy | ✅ Implementado | 2026-05-19 |
 | P3 | Optimizar N+1 en `recalcularRanking` | ⏳ Pendiente | 2026-05-18 |
 | P3 | Reducir transacción pesada en `onMatchStart` | ⏳ Pendiente | 2026-05-18 |
 | P3 | Desnormalizar conteo de matches en grupos | ⏳ Pendiente | 2026-05-18 |
@@ -27,6 +27,27 @@ Este documento registra el backlog priorizado de mejoras detectadas en la audito
 | P4 | Reducir logs excesivos en jobs recurrentes | ⏳ Pendiente | 2026-05-18 |
 
 ## Reparaciones realizadas
+
+
+### 2026-05-19 — P2: endurecimiento de navegación push, rutas proxy y retención de suscripciones
+
+Se implementaron los puntos 2.4, 2.5 y 2.6 del backlog.
+
+Acciones aplicadas:
+
+- Se reforzó el service worker para parsear `payload.url` con `new URL(..., self.location.origin)` y forzar navegación solo a mismo origen.
+- Se normaliza cualquier URL inválida o externa al fallback `/` antes de `client.navigate` y `clients.openWindow`.
+- Se añadió validación/normalización en backend para URLs push salientes, emitiendo solo rutas internas cuando la URL no pertenece al origen permitido.
+- Se codificaron con `encodeURIComponent` los parámetros dinámicos (`groupId`, `userId`) en las rutas proxy de Next hacia Functions.
+- Se incorporó limpieza automática de suscripciones push por usuario: retención de 180 días y límite máximo de 5 suscripciones activas por usuario, eliminando excedentes antiguas.
+
+Por qué se hizo:
+
+- Evita redirecciones inesperadas desde notificaciones push.
+- Reduce errores/bypasses en rutas proxy ante IDs con caracteres especiales.
+- Disminuye exposición de datos sensibles al limitar persistencia de endpoints y claves antiguas.
+- Controla crecimiento de datos y posibles costos operativos de push.
+
 
 ### 2026-05-18 — P1: endurecimiento de `joinMatch`
 
@@ -378,7 +399,7 @@ Por qué hacerlo:
 ## 2.4. Service worker navega a URLs de notificaciones sin validar origen
 
 **Importancia:** Media/alta.
-**Estado:** ⏳ Pendiente.
+**Estado:** ✅ Implementado.
 
 El service worker usa `payload.url` para navegar o abrir ventanas.
 
@@ -399,7 +420,7 @@ Por qué hacerlo:
 ## 2.5. Parámetros de rutas proxy interpolados sin `encodeURIComponent`
 
 **Importancia:** Media.
-**Estado:** ⏳ Pendiente.
+**Estado:** ✅ Implementado.
 
 Las rutas Next proxy interpolan parámetros directamente al construir URLs upstream.
 
@@ -420,7 +441,7 @@ Por qué hacerlo:
 ## 2.6. Suscripciones push almacenan secretos de endpoints en Firestore
 
 **Importancia:** Media.
-**Estado:** ⏳ Pendiente.
+**Estado:** ✅ Implementado.
 
 Las suscripciones push almacenan `endpoint`, `p256dh_key` y `auth_key`. Las reglas bloquean lectura/escritura directa, pero estos datos siguen siendo sensibles.
 

@@ -15,8 +15,9 @@ export async function GET(
   }
 
   const { groupId } = await params;
+  const safeGroupId = encodeURIComponent(groupId);
 
-  const upstream = await fetch(`${base}/api/groups/${groupId}/public`, {
+  const upstream = await fetch(`${base}/api/groups/${safeGroupId}/public`, {
     method: "GET",
     headers: {
       Authorization: req.headers.get("authorization") || "",

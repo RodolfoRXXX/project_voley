@@ -15,8 +15,10 @@ export async function POST(
   }
 
   const { groupId, userId } = await params;
+  const safeGroupId = encodeURIComponent(groupId);
+  const safeUserId = encodeURIComponent(userId);
 
-  const upstream = await fetch(`${base}/api/groups/${groupId}/admin-requests/${userId}/approve`, {
+  const upstream = await fetch(`${base}/api/groups/${safeGroupId}/admin-requests/${safeUserId}/approve`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

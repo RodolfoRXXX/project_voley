@@ -15,8 +15,9 @@ export async function POST(
   }
 
   const { groupId } = await params;
+  const safeGroupId = encodeURIComponent(groupId);
 
-  const upstream = await fetch(`${base}/api/groups/${groupId}/join`, {
+  const upstream = await fetch(`${base}/api/groups/${safeGroupId}/join`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -15,10 +15,11 @@ export async function GET(
   }
 
   const { groupId } = await params;
+  const safeGroupId = encodeURIComponent(groupId);
   const query = req.nextUrl.searchParams.get("q") || "";
 
   const upstream = await fetch(
-    `${base}/api/groups/${groupId}/members/search?q=${encodeURIComponent(query)}`,
+    `${base}/api/groups/${safeGroupId}/members/search?q=${encodeURIComponent(query)}`,
     {
       method: "GET",
       headers: {

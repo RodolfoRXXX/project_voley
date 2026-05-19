@@ -9,6 +9,14 @@ const vapidPrivateKey = process.env.PUSH_VAPID_PRIVATE_KEY;
 const vapidSubject = process.env.PUSH_VAPID_SUBJECT || "mailto:soporte@sportexa.app";
 
 const isFunctionsEmulator = process.env.FUNCTIONS_EMULATOR === "true";
+const webAppUrl = process.env.WEB_APP_URL || "";
+const webAppOrigin = (() => {
+  try {
+    return webAppUrl ? new URL(webAppUrl).origin : "";
+  } catch (_error) {
+    return "";
+  }
+})();
 
 if (vapidPublicKey && vapidPrivateKey) {
   webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
@@ -17,10 +25,21 @@ if (vapidPublicKey && vapidPrivateKey) {
 }
 
 function normalizePayload(payload) {
+  let normalizedUrl;
+  if (payload?.url) {
+    try {
+      const parsed = new URL(String(payload.url), webAppOrigin || "http://localhost");
+      const isAllowedOrigin = !webAppOrigin || parsed.origin === webAppOrigin;
+      normalizedUrl = isAllowedOrigin ? `${parsed.pathname}${parsed.search}${parsed.hash}` : "/";
+    } catch (_error) {
+      normalizedUrl = "/";
+    }
+  }
+
   return {
     title: String(payload?.title || "Notificación"),
     body: String(payload?.body || ""),
-    url: payload?.url ? String(payload.url) : undefined,
+    url: normalizedUrl,
   };
 }
 

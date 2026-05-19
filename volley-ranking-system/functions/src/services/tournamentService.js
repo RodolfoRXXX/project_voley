@@ -797,10 +797,12 @@ async function removeTournamentAdmin({ uid, tournamentId, adminUserId }) {
 async function cancelTournament({ uid, tournamentId }) {
   if (typeof tournamentId !== "string" || !tournamentId) throw new functions.https.HttpsError("invalid-argument", "tournamentId inválido");
   const tournamentRef = db.collection("tournaments").doc(tournamentId);
+  let tournamentName = "";
   await db.runTransaction(async (trx) => {
     const tournamentSnap = await trx.get(tournamentRef);
     if (!tournamentSnap.exists) throw new functions.https.HttpsError("not-found", "El torneo no existe");
     const tournament = tournamentSnap.data();
+    tournamentName = tournament.name || "";
     assertTournamentAdmin(tournament, uid);
     if ([TOURNAMENT_STATUS.CANCELLED, TOURNAMENT_STATUS.FINISHED].includes(tournament.status)) {
       throw new functions.https.HttpsError("failed-precondition", "El torneo ya está cerrado definitivamente");
@@ -812,6 +814,7 @@ async function cancelTournament({ uid, tournamentId }) {
       updatedAt: FieldValue.serverTimestamp(),
     });
   });
+  emitDomainEvent(DOMAIN_EVENTS.TOURNAMENT_CANCELLED, { tournamentId, tournamentName });
   return { ok: true };
 }
 

@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   doc,
@@ -242,6 +242,17 @@ function MemberRow({
 }) {
   const [confirmAction, setConfirmAction] = useState<null | "remove" | "toggleAdmin">(null);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setIsMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [isMenuOpen]);
 
   const handleConfirm = async () => {
     if (isConfirming || !confirmAction) return;
@@ -293,15 +304,23 @@ function MemberRow({
             </button>
           </div>
         ) : (
-          <details className="group relative shrink-0">
-            <summary className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100">
+          <div className="group relative shrink-0" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen((prev) => !prev)}
+              className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100"
+            >
               ⋯
-            </summary>
-            <div className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-white/70 bg-white p-1 shadow-lg">
+            </button>
+            {isMenuOpen && (
+              <div className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-white/70 bg-white p-1 shadow-lg">
               <button
                 type="button"
                 className="w-full rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100"
-                onClick={onViewProfile}
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  onViewProfile();
+                }}
               >
                 Ver perfil
               </button>
@@ -309,7 +328,10 @@ function MemberRow({
                 <button
                   type="button"
                   disabled={isLastSelfAdmin}
-                  onClick={() => setConfirmAction("toggleAdmin")}
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    setConfirmAction("toggleAdmin");
+                  }}
                   className="w-full rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:text-neutral-400"
                 >
                   {member.isAdmin ? "Quitar admin" : "Agregar admin"}
@@ -317,14 +339,18 @@ function MemberRow({
               )}
               <button
                 type="button"
-                onClick={() => setConfirmAction("remove")}
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  setConfirmAction("remove");
+                }}
                 disabled={member.isAdmin}
                 className="w-full rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:text-neutral-400"
               >
                 Eliminar del grupo
               </button>
-            </div>
-          </details>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </li>

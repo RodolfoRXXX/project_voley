@@ -122,6 +122,23 @@ function registerNotificationHandlers() {
       url: `/tournaments/${tournamentId}`,
     });
   });
+
+  onDomainEvent(DOMAIN_EVENTS.TOURNAMENT_CANCELLED, async ({ tournamentId, tournamentName }) => {
+    const recipients = await getTournamentParticipantGroupAdminIds(tournamentId);
+    await sendToManyUsers(recipients, {
+      title: "🛑 Torneo cancelado",
+      body: `${tournamentName || "El torneo"} fue cancelado en Sportexa. Revisá el detalle para ver el estado final.`,
+      url: `/tournaments/${tournamentId}`,
+    });
+  });
+
+  onDomainEvent(DOMAIN_EVENTS.MATCH_STARTER_REMOVED, async ({ userId, groupId }) => {
+    await sendToUser(userId, {
+      title: "📋 Cambio en tu partido ocasional",
+      body: "Te sacaron del listado de titulares de un partido ocasional en Sportexa. Revisá el partido para ver tu estado actual.",
+      url: `/groups/${groupId}`,
+    });
+  });
 }
 
 module.exports = {

@@ -4,6 +4,8 @@ const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const { reemplazarTitular } = require("../services/replacementService");
 const { recalcularRanking } = require("../services/rankingService");
+const { emitDomainEvent } = require("../events/domainEventBus");
+const { DOMAIN_EVENTS } = require("../events/domainEvents");
 
 const db = admin.firestore();
 
@@ -70,6 +72,11 @@ module.exports = functions.firestore
 
       const match = matchSnap.data();
       if (!match.horaInicio) return null;
+
+      emitDomainEvent(DOMAIN_EVENTS.MATCH_STARTER_REMOVED, {
+        userId: after.userId,
+        groupId: match.groupId || "",
+      });
 
       const diffHoras =
         (match.horaInicio.toDate() - new Date()) / 36e5;

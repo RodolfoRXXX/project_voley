@@ -3,6 +3,7 @@
 // services/adminGroupService.js
 
 const admin = require("firebase-admin");
+const { FieldValue } = require("firebase-admin/firestore");
 const db = admin.firestore();
 
 /**
@@ -27,7 +28,7 @@ async function crearGrupo({
     partidosTotales: 0,
     visibility,
     joinApproval,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   });
 }
 

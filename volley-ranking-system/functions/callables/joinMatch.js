@@ -1,6 +1,7 @@
 // Callable que dispara la unión al match
 
 const functions = require("firebase-functions/v1");
+const { FieldValue } = require("firebase-admin/firestore");
 const { admin, db } = require("../src/firebase");
 const { isGroupMember } = require("../src/services/groupAdminsService");
 
@@ -123,7 +124,7 @@ module.exports = functions.https.onCall(async (data, context) => {
       rankingSuplente: null,
       puntaje: 0,
       pagoEstado: "pendiente",
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     });
   });
 

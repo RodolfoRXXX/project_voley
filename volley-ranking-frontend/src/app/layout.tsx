@@ -4,19 +4,6 @@ import "./globals.css";
 import { ToastProvider } from "@/components/ui/toast/ToastProvider";
 import Navbar from "@/components/layout/Navbar";
 import { AuthProvider } from "@/components/providers/AuthProvider";
-import { Outfit, Arizonia } from "next/font/google";
-
-export const outfit = Outfit({
-  subsets: ["latin"],
-  weight: ["600", "700"],
-  variable: "--font-outfit",
-});
-
-export const arizonia = Arizonia({
-  subsets: ["latin"],
-  weight: ["400"],
-  variable: "--font-arizonia",
-});
 
 export default function RootLayout({
   children,
@@ -25,7 +12,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" data-theme="light">
-      <body className={`h-screen overflow-y-auto ${outfit.variable} ${arizonia.variable}`}>
+      <body
+        className="h-screen overflow-y-auto"
+        style={{
+          ["--font-outfit" as string]: "'Segoe UI', Inter, Roboto, Arial, sans-serif",
+          ["--font-arizonia" as string]: "'Brush Script MT', 'Lucida Handwriting', cursive",
+        }}
+      >
         <AuthProvider>
           <ToastProvider>
             <ConfirmProvider>

@@ -10,6 +10,67 @@ const { MAIL_AND_PUSH_SECRETS } = require("./config/functionSecrets");
 const { createGroupMembershipResultAlert } = require("./services/pendingAlertsService");
 
 
+const DEFAULT_ALLOWED_CORS_ORIGINS = [
+  "https://sportexa.site",
+  "https://www.sportexa.site",
+];
+
+const LOCAL_ALLOWED_CORS_ORIGINS = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:3001",
+];
+
+function normalizeOrigin(value) {
+  if (!value) return null;
+
+  try {
+    return new URL(String(value).trim()).origin;
+  } catch (_err) {
+    return null;
+  }
+}
+
+function getAllowedCorsOrigins() {
+  const configuredOrigins = String(process.env.HTTP_API_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map(normalizeOrigin)
+    .filter(Boolean);
+  const webAppOrigin = normalizeOrigin(process.env.WEB_APP_URL);
+  const environmentDefaults = process.env.FUNCTIONS_EMULATOR === "true" ? LOCAL_ALLOWED_CORS_ORIGINS : [];
+
+  return new Set([
+    ...DEFAULT_ALLOWED_CORS_ORIGINS,
+    ...environmentDefaults,
+    ...configuredOrigins,
+    ...(webAppOrigin ? [webAppOrigin] : []),
+  ]);
+}
+
+function applyCors(req, res) {
+  const rawOrigin = req.headers.origin;
+
+  if (!rawOrigin) {
+    return true;
+  }
+
+  const requestOrigin = normalizeOrigin(rawOrigin);
+
+  if (!requestOrigin || !getAllowedCorsOrigins().has(requestOrigin)) {
+    console.warn("[httpApi] Rejected CORS origin", { origin: rawOrigin, path: req.path });
+    return false;
+  }
+
+  res.set("Access-Control-Allow-Origin", requestOrigin);
+  res.set("Vary", "Origin");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.set("Access-Control-Max-Age", "3600");
+  return true;
+}
+
+
 function getBearerToken(authHeader = "") {
   if (!authHeader.startsWith("Bearer ")) return null;
   return authHeader.slice(7).trim() || null;
@@ -869,12 +930,15 @@ module.exports = functions
     secrets: MAIL_AND_PUSH_SECRETS,
   })
   .https.onRequest(async (req, res) => {
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  const isAllowedCorsOrigin = applyCors(req, res);
 
   if (req.method === "OPTIONS") {
-    res.status(204).send("");
+    res.status(isAllowedCorsOrigin ? 204 : 403).send("");
+    return;
+  }
+
+  if (!isAllowedCorsOrigin) {
+    res.status(403).json({ error: "Origen no permitido" });
     return;
   }
 

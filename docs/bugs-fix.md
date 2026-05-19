@@ -12,7 +12,7 @@ Este documento registra el backlog priorizado de mejoras detectadas en la audito
 | P1 | Acceso correcto a grupos privados para miembros | ✅ Implementado | 2026-05-18 |
 | P2 | Restringir lectura pública de `users` | ⏳ Pendiente | 2026-05-18 |
 | P2 | Revisar reglas públicas de colecciones sensibles | ⏳ Pendiente | 2026-05-18 |
-| P2 | Restringir CORS | ⏳ Pendiente | 2026-05-18 |
+| P2 | Restringir CORS | ✅ Implementado | 2026-05-18 |
 | P2 | Validar URLs de push notifications | ⏳ Pendiente | 2026-05-18 |
 | P2 | Codificar parámetros en rutas proxy | ⏳ Pendiente | 2026-05-18 |
 | P3 | Optimizar N+1 en `recalcularRanking` | ⏳ Pendiente | 2026-05-18 |
@@ -23,7 +23,7 @@ Este documento registra el backlog priorizado de mejoras detectadas en la audito
 | P4 | Validaciones completas en edición de torneos | ✅ Implementado | 2026-05-18 |
 | P4 | Tests reales para Cloud Functions y reglas Firestore | ⏳ Pendiente | 2026-05-18 |
 | P4 | Lint para backend | ⏳ Pendiente | 2026-05-18 |
-| P4 | Fuentes locales para builds reproducibles | ⏳ Pendiente | 2026-05-18 |
+| P4 | Fuentes locales para builds reproducibles | ✅ Implementado | 2026-05-18 |
 | P4 | Reducir logs excesivos en jobs recurrentes | ⏳ Pendiente | 2026-05-18 |
 
 ## Reparaciones realizadas
@@ -94,6 +94,28 @@ Por qué se hizo:
 
 - Evita que miembros legítimos de grupos privados reciban 404 antes de que `handleGroupDetail` pueda verificar su membresía.
 - Mantiene una única regla de visibilidad reutilizable por detalle, solicitudes y endpoints administrativos.
+
+
+
+### 2026-05-18 — P2/P1.7: fuentes locales y CORS restringido
+
+Se implementaron los puntos 1.7 y 2.2 del backlog.
+
+Acciones aplicadas:
+
+- Se eliminó `next/font/google` del layout principal para evitar descargas en build.
+- Se reemplazaron las fuentes remotas por stacks de sistema definidos localmente en el layout para eliminar descargas externas y evitar assets binarios en el repositorio.
+- Se definieron familias fallback para las variables `--font-outfit` y `--font-arizonia`.
+- La HTTP Cloud Function ahora valida `Origin` contra una allowlist.
+- `Access-Control-Allow-Origin` solo se responde cuando el origen está permitido.
+- Se permite configurar orígenes adicionales por entorno con `HTTP_API_ALLOWED_ORIGINS` y `WEB_APP_URL`; el emulador conserva orígenes locales de desarrollo.
+- Se agregan logs de advertencia para orígenes rechazados.
+
+Por qué se hizo:
+
+- El build del frontend ya no depende de Google Fonts ni de red externa para resolver fuentes.
+- La API HTTP deja de combinar `Access-Control-Allow-Origin: *` con el header `Authorization`.
+- Se reduce la superficie de abuso desde sitios externos sin bloquear llamadas server-to-server que no envían `Origin`.
 
 
 ### 2026-05-18 — P4: validaciones completas al editar torneos
@@ -247,15 +269,15 @@ Por qué hacerlo:
 ## 1.7. El build depende de Google Fonts en tiempo de compilación
 
 **Importancia:** Media.
-**Estado:** ⏳ Pendiente.
+**Estado:** ✅ Implementado.
 
 El layout importa fuentes mediante `next/font/google`, lo que hace que el build dependa de una descarga externa.
 
 Acciones:
 
-- Descargar y versionar las fuentes en el repositorio.
-- Migrar a `next/font/local`.
-- Definir fallback fonts.
+- Eliminar `next/font/google` del layout.
+- Definir fuentes locales mediante stacks de sistema en variables CSS.
+- Mantener fallback fonts explícitas.
 - Validar el build en CI sin depender de red externa.
 
 Por qué hacerlo:
@@ -313,7 +335,7 @@ Por qué hacerlo:
 ## 2.2. CORS abierto en la HTTP Cloud Function
 
 **Importancia:** Alta.
-**Estado:** ⏳ Pendiente.
+**Estado:** ✅ Implementado.
 
 La función HTTP responde con `Access-Control-Allow-Origin: *` y permite el header `Authorization`.
 

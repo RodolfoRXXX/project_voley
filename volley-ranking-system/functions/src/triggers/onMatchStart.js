@@ -5,6 +5,7 @@
 
 const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
+const { FieldValue } = require("firebase-admin/firestore");
 
 const db = admin.firestore();
 
@@ -27,12 +28,7 @@ module.exports = functions.pubsub
 
     for (const doc of matchesSnap.docs) {
       const matchRef = doc.ref;
-      const match = doc.data();
-
-      if (match.lock === true) continue;
-      if (!["cerrado", "abierto", "verificando"].includes(match.estado)) {
-        continue;
-      }
+      let shouldApplyStats = false;
 
       try {
         await db.runTransaction(async (tx) => {
@@ -57,92 +53,77 @@ module.exports = functions.pubsub
           }
 
           if (match.estado !== "cerrado") return;
+          if (match.statsAppliedAt) return;
 
-          /* =========================
-            EFECTOS DE MATCH JUGADO
-          ========================= */
-
-          const groupRef = db.collection("groups").doc(match.groupId);
-          const groupSnap = await tx.get(groupRef);
-          if (!groupSnap.exists) return;
-
-          const partidosTotales =
-            groupSnap.data().partidosTotales || 0;
-
-          // 🔹 Traer participaciones
-          const participationsSnap = await tx.get(
-            db
-              .collection("participations")
-              .where("matchId", "==", matchRef.id)
-              .where("estado", "==", "titular")
-          );
-
-          // 🔹 PRIMERO: leer todos los stats
-          const statsData = [];
-          const userCommitmentData = [];
-
-          for (const pDoc of participationsSnap.docs) {
-            const p = pDoc.data();
-            if (!p.userId) continue;
-
-            const statRef = db
-              .collection("groupStats")
-              .doc(`${match.groupId}_${p.userId}`);
-
-            const statSnap = await tx.get(statRef);
-            const userRef = db.collection("users").doc(p.userId);
-            const userSnap = await tx.get(userRef);
-
-            statsData.push({
-              ref: statRef,
-              partidosJugados: (statSnap.data()?.partidosJugados || 0) + 1,
-              userId: p.userId,
-            });
-
-            userCommitmentData.push({
-              ref: userRef,
-              estadoCompromiso:
-                (userSnap.data()?.estadoCompromiso || 0) + 1,
-            });
-          }
-
-          // 🔹 SEGUNDO: hacer todos los writes
-          for (const stat of statsData) {
-            tx.set(
-              stat.ref,
-              {
-                groupId: match.groupId,
-                userId: stat.userId,
-                partidosJugados: stat.partidosJugados,
-              },
-              { merge: true }
-            );
-          }
-
-          for (const user of userCommitmentData) {
-            tx.set(
-              user.ref,
-              {
-                estadoCompromiso: user.estadoCompromiso,
-              },
-              { merge: true }
-            );
-          }
-
-          tx.update(groupRef, {
-            partidosTotales: partidosTotales + 1,
-          });
-
-          tx.update(matchRef, {
-            estado: "jugado",
-            lock: false,
-          });
-
+          tx.update(matchRef, { lock: true });
+          shouldApplyStats = true;
         });
 
+        if (!shouldApplyStats) {
+          console.log(`ℹ️ Match ${doc.id} no requiere aplicar estadísticas`);
+          continue;
+        }
+
+        const currentMatchSnap = await matchRef.get();
+        if (!currentMatchSnap.exists) continue;
+        const currentMatch = currentMatchSnap.data();
+
+        const participationsSnap = await db
+          .collection("participations")
+          .where("matchId", "==", matchRef.id)
+          .where("estado", "==", "titular")
+          .get();
+
+        const userIds = [
+          ...new Set(
+            participationsSnap.docs
+              .map((pDoc) => pDoc.data().userId)
+              .filter(Boolean)
+          ),
+        ];
+
+        const batch = db.batch();
+
+        userIds.forEach((userId) => {
+          const statRef = db
+            .collection("groupStats")
+            .doc(`${currentMatch.groupId}_${userId}`);
+          batch.set(
+            statRef,
+            {
+              groupId: currentMatch.groupId,
+              userId,
+              partidosJugados: FieldValue.increment(1),
+            },
+            { merge: true }
+          );
+
+          const userRef = db.collection("users").doc(userId);
+          batch.set(
+            userRef,
+            { estadoCompromiso: FieldValue.increment(1) },
+            { merge: true }
+          );
+        });
+
+        const groupRef = db.collection("groups").doc(currentMatch.groupId);
+        batch.set(
+          groupRef,
+          { partidosTotales: FieldValue.increment(1) },
+          { merge: true }
+        );
+
+        batch.update(matchRef, {
+          estado: "jugado",
+          lock: false,
+          statsAppliedAt: FieldValue.serverTimestamp(),
+        });
+
+        await batch.commit();
         console.log(`🏐 Match ${doc.id} procesado`);
       } catch (err) {
         console.error(`🔥 Error procesando match ${doc.id}`, err);
+        await matchRef.set({ lock: false }, { merge: true });
       }
     }
 

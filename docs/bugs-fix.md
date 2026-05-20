@@ -477,7 +477,6 @@ Acciones:
 - Leer `groupStats` con `db.getAll(...refs)`.
 - Procesar en memoria.
 - Mantener un único batch de escritura.
-- Considerar guardar campos necesarios de ranking directamente en la participación.
 
 Por qué hacerlo:
 

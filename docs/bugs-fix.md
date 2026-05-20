@@ -15,8 +15,8 @@ Este documento registra el backlog priorizado de mejoras detectadas en la audito
 | P2 | Restringir CORS | ✅ Implementado | 2026-05-18 |
 | P2 | Validar URLs de push notifications | ✅ Implementado | 2026-05-19 |
 | P2 | Codificar parámetros en rutas proxy | ✅ Implementado | 2026-05-19 |
-| P3 | Optimizar N+1 en `recalcularRanking` | ⏳ Pendiente | 2026-05-18 |
-| P3 | Reducir transacción pesada en `onMatchStart` | ⏳ Pendiente | 2026-05-18 |
+| P3 | Optimizar N+1 en `recalcularRanking` | ✅ Implementado | 2026-05-20 |
+| P3 | Reducir transacción pesada en `onMatchStart` | ✅ Implementado | 2026-05-20 |
 | P3 | Desnormalizar conteo de matches en grupos | ⏳ Pendiente | 2026-05-18 |
 | P3 | Paginación en detalle de grupo | ⏳ Pendiente | 2026-05-18 |
 | P3 | Limitar concurrencia de push | ⏳ Pendiente | 2026-05-18 |
@@ -27,6 +27,33 @@ Este documento registra el backlog priorizado de mejoras detectadas en la audito
 | P4 | Reducir logs excesivos en jobs recurrentes | ⏳ Pendiente | 2026-05-18 |
 
 ## Reparaciones realizadas
+
+### 2026-05-20 — P3: optimización de ranking y aligeramiento de cierre de match
+
+Se implementaron los puntos 3.1 y 3.2 del backlog.
+
+Acciones aplicadas:
+
+- `recalcularRanking` deja de hacer lecturas secuenciales por participación y ahora:
+  - recolecta `userId` únicos;
+  - hace carga masiva de `users` y `groupStats` con `db.getAll(...refs)`;
+  - procesa en memoria usando mapas por usuario;
+  - mantiene un único `batch.commit()` para persistir titulares/suplentes.
+- Se corrigió además el cálculo de suplentes para enviar `posicion` (campo esperado por `calcularPuntaje`) en el fallback.
+- `onMatchStart` reduce la transacción a una sección mínima para decidir estado:
+  - cancela matches `abierto/verificando`;
+  - para `cerrado`, marca lock transaccional y sale de la transacción.
+- El procesamiento pesado de estadísticas pasa fuera de transacción y usa `FieldValue.increment(1)` para:
+  - `groupStats.partidosJugados`;
+  - `users.estadoCompromiso`;
+  - `groups.partidosTotales`.
+- El flujo se vuelve idempotente con `statsAppliedAt` al finalizar; si ya existe, no reaplica.
+
+Por qué se hizo:
+
+- Reduce latencia y costo de lecturas en partidos con muchas participaciones.
+- Disminuye conflictos/reintentos de transacción al sacar lecturas/escrituras masivas del bloque transaccional.
+- Mejora la confiabilidad ante ejecuciones repetidas del scheduler gracias al flag idempotente.
 
 
 ### 2026-05-19 — P2: endurecimiento de navegación push, rutas proxy y retención de suscripciones

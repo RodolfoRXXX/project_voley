@@ -112,6 +112,38 @@ async function recalcularRanking(matchId) {
     participationsSnap.size
   );
 
+  const participations = participationsSnap.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
+  const userIds = [
+    ...new Set(participations.map((p) => p.userId).filter(Boolean)),
+  ];
+
+  const userRefs = userIds.map((userId) =>
+    db.collection("users").doc(userId)
+  );
+  const statsRefs = userIds.map((userId) =>
+    db.collection("groupStats").doc(`${match.groupId}_${userId}`)
+  );
+
+  const [userSnaps, statsSnaps] = await Promise.all([
+    userRefs.length ? db.getAll(...userRefs) : [],
+    statsRefs.length ? db.getAll(...statsRefs) : [],
+  ]);
+
+  const usersById = new Map();
+  userSnaps.forEach((snap) => {
+    if (snap.exists) usersById.set(snap.id, snap.data());
+  });
+
+  const statsByUserId = new Map();
+  statsSnaps.forEach((snap) => {
+    if (!snap.exists) return;
+    const data = snap.data() || {};
+    if (data.userId) statsByUserId.set(data.userId, data);
+  });
+
   const titulares = [];
   const suplentes = [];
 
@@ -119,27 +151,13 @@ async function recalcularRanking(matchId) {
      PROCESO DE RANKING
   ========================= */
 
-  for (const doc of participationsSnap.docs) {
-    const participation = { id: doc.id, ...doc.data() };
+  for (const participation of participations) {
+    const user = usersById.get(participation.userId);
+    if (!user) continue;
 
-    // USER
-    const userSnap = await db
-      .collection("users")
-      .doc(participation.userId)
-      .get();
-
-    if (!userSnap.exists) continue;
-
-    const user = userSnap.data();
-
-    // GROUP STATS
-    const statsSnap = await db
-      .collection("groupStats")
-      .doc(`${match.groupId}_${participation.userId}`)
-      .get();
-
-    const partidosJugadosGrupo = statsSnap.exists
-      ? statsSnap.data().partidosJugados
+    const stats = statsByUserId.get(participation.userId);
+    const partidosJugadosGrupo = stats
+      ? stats.partidosJugados
       : 0;
 
     let asignado = false;
@@ -182,7 +200,7 @@ async function recalcularRanking(matchId) {
         estadoCompromiso: user.estadoCompromiso,
         partidosJugadosGrupo,
         partidosTotalesGrupo,
-        posicionFallback
+        posicion: posicionFallback
       });
 
       suplentes.push({

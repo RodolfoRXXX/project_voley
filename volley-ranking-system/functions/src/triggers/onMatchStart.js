@@ -67,6 +67,16 @@ module.exports = functions.pubsub
         const currentMatchSnap = await matchRef.get();
         if (!currentMatchSnap.exists) continue;
         const currentMatch = currentMatchSnap.data();
+        const groupRef = db.collection("groups").doc(currentMatch.groupId);
+        const groupSnap = await groupRef.get();
+
+        if (!groupSnap.exists) {
+          console.warn(
+            `⚠️ Grupo ${currentMatch.groupId} inexistente para match ${doc.id}; se omite cierre a jugado`
+          );
+          await matchRef.update({ lock: false });
+          continue;
+        }
 
         const participationsSnap = await db
           .collection("participations")
@@ -106,7 +116,6 @@ module.exports = functions.pubsub
           );
         });
 
-        const groupRef = db.collection("groups").doc(currentMatch.groupId);
         batch.set(
           groupRef,
           { partidosTotales: FieldValue.increment(1) },
@@ -123,7 +132,16 @@ module.exports = functions.pubsub
         console.log(`🏐 Match ${doc.id} procesado`);
       } catch (err) {
         console.error(`🔥 Error procesando match ${doc.id}`, err);
-        await matchRef.set({ lock: false }, { merge: true });
+        try {
+          await matchRef.update({ lock: false });
+        } catch (unlockErr) {
+          if (unlockErr?.code !== 5) {
+            console.error(
+              `🔥 Error liberando lock para match ${doc.id}`,
+              unlockErr
+            );
+          }
+        }
       }
     }
 

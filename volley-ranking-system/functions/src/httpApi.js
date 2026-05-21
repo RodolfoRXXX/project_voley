@@ -410,15 +410,27 @@ async function handleGroupMemberRemoval(req, res, authContext, groupId, userId) 
     return;
   }
 
-  const memberIds = cleanStringArray(group.memberIds).filter((id) => id !== String(userId));
+  const normalizedUserId = String(userId);
+  const currentMemberIds = cleanStringArray(group.memberIds);
+  const wasMember = currentMemberIds.includes(normalizedUserId);
+  const memberIds = currentMemberIds.filter((id) => id !== normalizedUserId);
 
   await db.collection("groups").doc(groupId).update({ memberIds });
 
-  emitDomainEvent(DOMAIN_EVENTS.GROUP_USER_REMOVED, {
-    userId: String(userId),
-    groupId,
-    groupName: group?.nombre || "Grupo",
-  });
+  if (wasMember) {
+    await createGroupMembershipResultAlert({
+      userId: normalizedUserId,
+      groupId,
+      groupName: group?.nombre || group?.name || "Grupo",
+      decision: "removed",
+    });
+
+    emitDomainEvent(DOMAIN_EVENTS.GROUP_USER_REMOVED, {
+      userId: normalizedUserId,
+      groupId,
+      groupName: group?.nombre || "Grupo",
+    });
+  }
 
   res.status(200).json({ ok: true, memberIds });
 }

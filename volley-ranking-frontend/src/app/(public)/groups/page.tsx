@@ -111,7 +111,7 @@ function GroupsSkeleton() {
 ===================== */
 
 export default function GruposPage() {
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, userDoc } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -279,6 +279,8 @@ export default function GruposPage() {
     }
   };
 
+  const isOnboarded = userDoc?.onboarded === true;
+
   const getButtonConfig = (group: PublicGroup) => {
     const state = getJoinState(group);
     if (state === "member")
@@ -413,14 +415,20 @@ export default function GruposPage() {
                     </div>
 
                     <div className="pt-2">
-                      <ActionButton
-                        onClick={() => joinGroup(group)}
-                        loading={isLoading(`leave-group-${group.id}`) || isLoading(`join-group-${group.id}`)}
-                        variant={buttonConfig.variant}
-                        compact
-                      >
-                        {buttonConfig.label}
-                      </ActionButton>
+                      {firebaseUser && !isOnboarded ? (
+                        <p className="text-sm text-amber-700">
+                          Debes completar tu perfil para unirte a este grupo.
+                        </p>
+                      ) : (
+                        <ActionButton
+                          onClick={() => joinGroup(group)}
+                          loading={isLoading(`leave-group-${group.id}`) || isLoading(`join-group-${group.id}`)}
+                          variant={buttonConfig.variant}
+                          compact
+                        >
+                          {buttonConfig.label}
+                        </ActionButton>
+                      )}
                     </div>
 
                   </div>

@@ -414,6 +414,13 @@ async function handleGroupMemberRemoval(req, res, authContext, groupId, userId) 
 
   await db.collection("groups").doc(groupId).update({ memberIds });
 
+  await createGroupMembershipResultAlert({
+    userId: String(userId),
+    groupId,
+    groupName: group?.nombre || group?.name || "Grupo",
+    decision: "removed",
+  });
+
   emitDomainEvent(DOMAIN_EVENTS.GROUP_USER_REMOVED, {
     userId: String(userId),
     groupId,

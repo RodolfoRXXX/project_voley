@@ -143,24 +143,33 @@ async function createGroupMembershipResultAlert({
   groupName,
   decision,
 }) {
-  if (!userId || !groupId || !["accepted", "rejected"].includes(decision)) return;
+  if (!userId || !groupId || !["accepted", "rejected", "removed"].includes(decision)) return;
 
   const isAccepted = decision === "accepted";
-  const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+  const isRemoved = decision === "removed";
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
   await upsertPendingAlert({
     userId,
     alertId: `group_membership_result_${groupId}`,
     kind: "group_membership_result",
     severity: "info",
-    title: isAccepted ? "Solicitud de grupo aceptada" : "Solicitud de grupo rechazada",
+    title: isAccepted
+      ? "Solicitud de grupo aceptada"
+      : isRemoved
+        ? "Integrante eliminado del grupo"
+        : "Solicitud de grupo rechazada",
     message: isAccepted
       ? `Fuiste aceptado en ${groupName || "el grupo"}.`
-      : `Tu solicitud para unirte a ${groupName || "el grupo"} fue rechazada.`,
-    link: {
-      path: isAccepted ? `/groups/${groupId}` : "/groups",
-      label: isAccepted ? "Ver grupo" : "Ver grupos",
-    },
+      : isRemoved
+        ? `Fuiste eliminado de ${groupName || "el grupo"}.`
+        : `Tu solicitud para unirte a ${groupName || "el grupo"} fue rechazada.`,
+    link: isRemoved
+      ? null
+      : {
+          path: isAccepted ? `/groups/${groupId}` : "/groups",
+          label: isAccepted ? "Ver grupo" : "Ver grupos",
+        },
     resource: {
       groupId,
     },

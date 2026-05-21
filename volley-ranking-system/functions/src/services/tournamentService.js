@@ -569,7 +569,8 @@ async function editTournament({ uid, tournamentId, data }) {
       for (const phase of nextPayload.phaseDefinitions) {
         const existing = phasesByType.get(phase.type);
         if (!existing) continue;
-        if (existing.status !== PHASE_STATUS.PENDING) {
+        const canEditLockedPhaseInDraft = tournament.status === TOURNAMENT_STATUS.DRAFT;
+        if (existing.status !== PHASE_STATUS.PENDING && !canEditLockedPhaseInDraft) {
           throw new functions.https.HttpsError("failed-precondition", `La fase ${phase.type} ya no se puede editar`);
         }
         trx.update(db.collection("tournamentPhases").doc(existing.id), { config: phase.config || {}, order: phase.order, updatedAt: FieldValue.serverTimestamp() });

@@ -92,7 +92,13 @@ export default function AdminTournamentsPage() {
 
               <Link
                 href={`/admin/tournaments/${tournament.id}`}
-                className="px-3 py-1.5 rounded-lg border text-sm text-neutral-700 hover:bg-neutral-50 text-center"
+                className="
+                  shrink-0 whitespace-nowrap
+                  px-3 py-1.5 rounded-lg border
+                  text-sm text-neutral-700
+                  hover:bg-neutral-50
+                  text-center
+                "
               >
                 Ver detalle
               </Link>

@@ -171,8 +171,15 @@ export default function TournamentRegistrationHelpModal({
   const visibleChecks = checks.slice(0, visibleCount);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg space-y-5 rounded-2xl bg-white p-6 shadow-xl dark:bg-neutral-900">
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="w-full max-w-lg space-y-5 rounded-2xl bg-white p-6 shadow-xl dark:bg-neutral-900"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">

@@ -101,6 +101,11 @@ export default function OnboardingForm() {
   const submit = async () => {
     setError(null);
 
+    if (!roles) {
+      setError("Elegí un rol");
+      return;
+    }
+
     if (posiciones.length === 0) {
       setError("Elegí al menos 1 posición");
       return;
@@ -227,7 +232,7 @@ export default function OnboardingForm() {
       <ActionButton
         onClick={submit}
         loading={loading}
-        disabled={posiciones.length === 0}
+        disabled={!roles || posiciones.length === 0}
         variant="success"
         className="w-full mt-2"
       >

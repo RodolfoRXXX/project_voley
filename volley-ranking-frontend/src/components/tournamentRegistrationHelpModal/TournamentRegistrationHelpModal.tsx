@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { getUserManagedGroups } from "@/services/tournaments/tournamentQueries";
 import type { Tournament } from "@/types/tournaments";
@@ -82,6 +83,7 @@ export default function TournamentRegistrationHelpModal({
   const [visibleCount, setVisibleCount] = useState(0);
   const [resultMessage, setResultMessage] = useState("");
   const [resultType, setResultType] = useState<"success" | "fail" | null>(null);
+
 
   useEffect(() => {
     if (!open || authLoading) return;
@@ -166,11 +168,11 @@ export default function TournamentRegistrationHelpModal({
     };
   }, [authLoading, checks, firebaseUser, minPlayers, open, userDoc?.roles]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
   const visibleChecks = checks.slice(0, visibleCount);
 
-  return (
+  return createPortal((
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
       onClick={onClose}
@@ -186,7 +188,10 @@ export default function TournamentRegistrationHelpModal({
               ¿Cómo me inscribo?
             </h2>
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              Verificamos las condiciones necesarias para inscribir a tu equipo en {tournament.name}.
+              Verificamos las condiciones necesarias para inscribir a tu equipo en este torneo.
+            </p>
+            <p className="text-base font-bold text-orange-600 dark:text-orange-400">
+              {tournament.name}
             </p>
           </div>
 
@@ -239,5 +244,5 @@ export default function TournamentRegistrationHelpModal({
         ) : null}
       </div>
     </div>
-  );
+  ), document.body);
 }

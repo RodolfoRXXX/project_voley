@@ -422,6 +422,12 @@ function restrictUpdateByStatus(status, updatePayload) {
   return {};
 }
 
+function isDraftTournament(status) {
+  if (typeof status !== "string") return false;
+  const normalized = status.trim().toLowerCase();
+  return normalized === TOURNAMENT_STATUS.DRAFT || normalized === "borrador";
+}
+
 async function createTournament({ data, uid }) {
   const payload = validateTournamentPayload(data);
   const docRef = db.collection("tournaments").doc();
@@ -569,7 +575,7 @@ async function editTournament({ uid, tournamentId, data }) {
       for (const phase of nextPayload.phaseDefinitions) {
         const existing = phasesByType.get(phase.type);
         if (!existing) continue;
-        const canEditLockedPhaseInDraft = tournament.status === TOURNAMENT_STATUS.DRAFT;
+        const canEditLockedPhaseInDraft = isDraftTournament(tournament.status);
         if (existing.status !== PHASE_STATUS.PENDING && !canEditLockedPhaseInDraft) {
           throw new functions.https.HttpsError("failed-precondition", `La fase ${phase.type} ya no se puede editar`);
         }

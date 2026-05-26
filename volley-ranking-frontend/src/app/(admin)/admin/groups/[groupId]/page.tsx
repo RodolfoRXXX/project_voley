@@ -1117,16 +1117,18 @@ export default function AdminGroupPage() {
           <h2 className="text-lg font-semibold text-neutral-900">Torneos del grupo</h2>
         </div>
         {groupTournaments.length === 0 ? (
-          <p className="text-gray-500">Este grupo no tiene torneos asociados.</p>
+          <p className="text-gray-500">No hay nuevos torneos.</p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 mb-6">
             {groupTournaments.map((tournament) => (
-              <article key={tournament.id} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-1">
-                <p className="text-sm font-semibold text-neutral-900">{tournament.name}</p>
-                <p className="text-xs text-neutral-600">Tipo: <b>{getTournamentFormatLabel(tournament.format)}</b></p>
-                <p className="text-xs text-neutral-600">Estado: <b>{tournament.status}</b></p>
+              <article key={tournament.id} className="rounded-xl border border-neutral-200 bg-white p-4 flex justify-between items-center">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-neutral-900">{tournament.name}</p>
+                  <p className="text-xs text-neutral-600">Tipo: <b>{getTournamentFormatLabel(tournament.format)}</b></p>
+                  <p className="text-xs text-neutral-600">Estado: <b>{tournament.status}</b></p>
+                </div>
                 <Link href={`/tournaments/${tournament.id}`} className="inline-block pt-1 text-sm font-medium text-blue-600 hover:underline">
-                  Ver detalle público
+                  Ver detalle →
                 </Link>
               </article>
             ))}
@@ -1164,10 +1166,10 @@ export default function AdminGroupPage() {
 
         {matches.length === 0 ? (
           <p className="text-gray-500">
-            Todavía no hay partidos en este grupo.
+            No hay partidos programados.
           </p>
         ) : (
-          <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 mb-6">
             {matches.map((m) => (
               <div
                 key={m.id}
@@ -1185,7 +1187,6 @@ export default function AdminGroupPage() {
                       : "Sin definir"}
                   </p>
                 </div>
-
                 <Link
                   href={`/profile/groups/${groupId}/matches/${m.id}`}
                   className="text-sm font-medium text-blue-600 hover:underline"

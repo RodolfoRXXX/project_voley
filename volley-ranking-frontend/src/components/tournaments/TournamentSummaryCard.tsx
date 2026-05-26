@@ -86,15 +86,12 @@ export function TournamentSummaryCard({
   return (
     <article
       className={`
-        rounded-2xl
-        border
-        bg-white/80 dark:bg-slate-900/70
-        backdrop-blur
+        rounded-md
+        bg-white
+        border border-neutral-200
         p-5
         space-y-5
-        shadow-sm shadow-black/5
-        hover:shadow-lg
-        hover:-translate-y-[2px]
+        shadow-xs
         transition
         ${
           highlightAsWinner

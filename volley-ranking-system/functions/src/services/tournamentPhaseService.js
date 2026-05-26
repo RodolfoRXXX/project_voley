@@ -143,6 +143,27 @@ function getKnockoutPodium(matches = []) {
   return [winnerId || null, runnerUpId || null, null];
 }
 
+function sumPoints(list = []) {
+  return list.reduce((acc, value) => acc + Number(value || 0), 0);
+}
+
+function applyStatsDelta(baseStats, delta, sign = 1) {
+  const next = {
+    played: Number(baseStats.played || 0) + sign * Number(delta.played || 0),
+    won: Number(baseStats.won || 0) + sign * Number(delta.won || 0),
+    draw: Number(baseStats.draw || 0) + sign * Number(delta.draw || 0),
+    lost: Number(baseStats.lost || 0) + sign * Number(delta.lost || 0),
+    points: Number(baseStats.points || 0) + sign * Number(delta.points || 0),
+    setsFor: Number(baseStats.setsFor || 0) + sign * Number(delta.setsFor || 0),
+    setsAgainst: Number(baseStats.setsAgainst || 0) + sign * Number(delta.setsAgainst || 0),
+    pointsFor: Number(baseStats.pointsFor || 0) + sign * Number(delta.pointsFor || 0),
+    pointsAgainst: Number(baseStats.pointsAgainst || 0) + sign * Number(delta.pointsAgainst || 0),
+  };
+  next.setsDiff = next.setsFor - next.setsAgainst;
+  next.pointsDiff = next.pointsFor - next.pointsAgainst;
+  return next;
+}
+
 async function advancePhase({ tournament, phase }) {
   const phasesSnap = await db.collection("tournamentPhases").where("tournamentId", "==", tournament.id).get();
   const phases = phasesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })).sort((a, b) => a.order - b.order);
@@ -381,37 +402,67 @@ async function recordMatchResult({ matchId, result }) {
 
     const homeStats = { ...(homeStandingSnap.data()?.stats || {}) };
     const awayStats = { ...(awayStandingSnap.data()?.stats || {}) };
-    const sum = (list) => list.reduce((acc, value) => acc + Number(value || 0), 0);
-    const homeWon = winnerId === match.homeTeamId;
-    const awayWon = winnerId === match.awayTeamId;
+    const previousResult = match.status === "completed" && match.result ? match.result : null;
+    const previousWinnerId = previousResult
+      ? (previousResult.winnerId || (Number(previousResult.homeSets || 0) > Number(previousResult.awaySets || 0) ? match.homeTeamId : match.awayTeamId))
+      : null;
 
-    const nextHome = {
-      played: Number(homeStats.played || 0) + 1,
-      won: Number(homeStats.won || 0) + (homeWon ? 1 : 0),
-      draw: Number(homeStats.draw || 0),
-      lost: Number(homeStats.lost || 0) + (homeWon ? 0 : 1),
-      points: Number(homeStats.points || 0) + (homeWon ? Number(settings.pointsWin || 0) : Number(settings.pointsLose || 0)),
-      setsFor: Number(homeStats.setsFor || 0) + homeSets,
-      setsAgainst: Number(homeStats.setsAgainst || 0) + awaySets,
-      pointsFor: Number(homeStats.pointsFor || 0) + sum(homePointsList),
-      pointsAgainst: Number(homeStats.pointsAgainst || 0) + sum(awayPointsList),
-    };
-    nextHome.setsDiff = nextHome.setsFor - nextHome.setsAgainst;
-    nextHome.pointsDiff = nextHome.pointsFor - nextHome.pointsAgainst;
+    const previousHomeContribution = previousResult
+      ? {
+          played: 1,
+          won: previousWinnerId === match.homeTeamId ? 1 : 0,
+          draw: 0,
+          lost: previousWinnerId === match.homeTeamId ? 0 : 1,
+          points: previousWinnerId === match.homeTeamId ? Number(settings.pointsWin || 0) : Number(settings.pointsLose || 0),
+          setsFor: Number(previousResult.homeSets || 0),
+          setsAgainst: Number(previousResult.awaySets || 0),
+          pointsFor: sumPoints(Array.isArray(previousResult.homePoints) ? previousResult.homePoints : []),
+          pointsAgainst: sumPoints(Array.isArray(previousResult.awayPoints) ? previousResult.awayPoints : []),
+        }
+      : null;
+    const previousAwayContribution = previousResult
+      ? {
+          played: 1,
+          won: previousWinnerId === match.awayTeamId ? 1 : 0,
+          draw: 0,
+          lost: previousWinnerId === match.awayTeamId ? 0 : 1,
+          points: previousWinnerId === match.awayTeamId ? Number(settings.pointsWin || 0) : Number(settings.pointsLose || 0),
+          setsFor: Number(previousResult.awaySets || 0),
+          setsAgainst: Number(previousResult.homeSets || 0),
+          pointsFor: sumPoints(Array.isArray(previousResult.awayPoints) ? previousResult.awayPoints : []),
+          pointsAgainst: sumPoints(Array.isArray(previousResult.homePoints) ? previousResult.homePoints : []),
+        }
+      : null;
 
-    const nextAway = {
-      played: Number(awayStats.played || 0) + 1,
-      won: Number(awayStats.won || 0) + (awayWon ? 1 : 0),
-      draw: Number(awayStats.draw || 0),
-      lost: Number(awayStats.lost || 0) + (awayWon ? 0 : 1),
-      points: Number(awayStats.points || 0) + (awayWon ? Number(settings.pointsWin || 0) : Number(settings.pointsLose || 0)),
-      setsFor: Number(awayStats.setsFor || 0) + awaySets,
-      setsAgainst: Number(awayStats.setsAgainst || 0) + homeSets,
-      pointsFor: Number(awayStats.pointsFor || 0) + sum(awayPointsList),
-      pointsAgainst: Number(awayStats.pointsAgainst || 0) + sum(homePointsList),
+    const newHomeContribution = {
+      played: 1,
+      won: winnerId === match.homeTeamId ? 1 : 0,
+      draw: 0,
+      lost: winnerId === match.homeTeamId ? 0 : 1,
+      points: winnerId === match.homeTeamId ? Number(settings.pointsWin || 0) : Number(settings.pointsLose || 0),
+      setsFor: homeSets,
+      setsAgainst: awaySets,
+      pointsFor: sumPoints(homePointsList),
+      pointsAgainst: sumPoints(awayPointsList),
     };
-    nextAway.setsDiff = nextAway.setsFor - nextAway.setsAgainst;
-    nextAway.pointsDiff = nextAway.pointsFor - nextAway.pointsAgainst;
+    const newAwayContribution = {
+      played: 1,
+      won: winnerId === match.awayTeamId ? 1 : 0,
+      draw: 0,
+      lost: winnerId === match.awayTeamId ? 0 : 1,
+      points: winnerId === match.awayTeamId ? Number(settings.pointsWin || 0) : Number(settings.pointsLose || 0),
+      setsFor: awaySets,
+      setsAgainst: homeSets,
+      pointsFor: sumPoints(awayPointsList),
+      pointsAgainst: sumPoints(homePointsList),
+    };
+
+    let nextHome = { ...homeStats };
+    let nextAway = { ...awayStats };
+    if (previousHomeContribution) nextHome = applyStatsDelta(nextHome, previousHomeContribution, -1);
+    if (previousAwayContribution) nextAway = applyStatsDelta(nextAway, previousAwayContribution, -1);
+    nextHome = applyStatsDelta(nextHome, newHomeContribution, 1);
+    nextAway = applyStatsDelta(nextAway, newAwayContribution, 1);
 
     trx.update(matchRef, { result: { ...result, winnerId }, status: "completed", updatedAt: FieldValue.serverTimestamp() });
     trx.set(homeStandingRef, { ...buildStandingsDoc({ tournamentId: match.tournamentId, phase, teamId: match.homeTeamId, groupLabel: match.groupLabel || null }), stats: nextHome }, { merge: true });

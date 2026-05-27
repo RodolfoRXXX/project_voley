@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import type { PendingAlert, PendingAlertSeverity } from "@/types/pendingAlerts";
 import { pendingAlertSeverityLabel } from "@/types/pendingAlerts";
 
 type Props = {
   alerts: PendingAlert[];
+  showLinks?: boolean;
 };
 
 const severityOrder: PendingAlertSeverity[] = ["urgent", "warning", "info"];
@@ -15,7 +17,7 @@ const severityStyles: Record<PendingAlertSeverity, string> = {
   info: "border-sky-300 bg-sky-50/80 text-sky-900",
 };
 
-export default function AdminResourcePendingAlerts({ alerts }: Props) {
+export default function AdminResourcePendingAlerts({ alerts, showLinks = true }: Props) {
   if (alerts.length === 0) return null;
 
   const grouped = severityOrder
@@ -41,6 +43,17 @@ export default function AdminResourcePendingAlerts({ alerts }: Props) {
               <li key={alert.id}>
                 {alert.title}
                 {alert.message ? ` — ${alert.message}` : ""}
+                {showLinks && alert.link?.path ? (
+                  <>
+                    {" "}
+                    <Link
+                      href={alert.link.path}
+                      className="font-semibold underline underline-offset-2 hover:opacity-80"
+                    >
+                      {alert.link.label || "Ver detalle"}
+                    </Link>
+                  </>
+                ) : null}
               </li>
             ))}
           </ul>

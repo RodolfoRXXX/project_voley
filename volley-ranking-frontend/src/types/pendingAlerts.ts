@@ -42,6 +42,8 @@ export type PendingAlert = {
     groupId?: string;
     tournamentId?: string;
     requestUserId?: string;
+    registrationId?: string;
+    teamId?: string;
   };
   meta?: {
     groupName?: string;

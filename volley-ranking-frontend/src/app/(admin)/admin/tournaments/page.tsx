@@ -70,14 +70,19 @@ export default function AdminTournamentsPage() {
       const nextPendingByTournamentId: Record<string, number> = {};
       pendingAlertsSnap.docs.forEach((alertDoc) => {
         const alertData = alertDoc.data() as {
+          kind?: string;
           severity?: string;
-          resource?: { tournamentId?: string };
+          resource?: { groupId?: string; tournamentId?: string };
         };
         const tournamentId = alertData.resource?.tournamentId;
         const isPendingSeverity =
           alertData.severity === "warning" || alertData.severity === "urgent";
+        const isTournamentAdminAlert =
+          typeof alertData.kind === "string" &&
+          alertData.kind.startsWith("tournament_") &&
+          !alertData.resource?.groupId;
 
-        if (!tournamentId || !isPendingSeverity) return;
+        if (!tournamentId || !isPendingSeverity || !isTournamentAdminAlert) return;
 
         nextPendingByTournamentId[tournamentId] =
           (nextPendingByTournamentId[tournamentId] ?? 0) + 1;
@@ -159,7 +164,6 @@ export default function AdminTournamentsPage() {
 
               <div className="flex items-center justify-between pt-2 text-sm">
 
-                <div className="flex items-center gap-3">
                   <StatusPill
                     label={tournamentStatusLabel[tournament.status]}
                     variant="info"
@@ -174,16 +178,6 @@ export default function AdminTournamentsPage() {
                       </span>
                     </div>
                   ) : null}
-                </div>
-
-                <span className="text-neutral-600">
-                  <span className="text-xs">
-                    Equipos
-                    </span>{" "}
-                  <b>
-                    {tournament.acceptedTeamsCount || 0}/{tournament.maxTeams}
-                  </b>
-                </span>
               </div>
             </article>
           );

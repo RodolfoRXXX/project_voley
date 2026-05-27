@@ -221,8 +221,12 @@ export default function AdminTournamentDetailPage() {
             message: data.message || "",
             status: (data.status ?? "active") as PendingAlert["status"],
             priority: Number(data.priority ?? pendingAlertPriority[severity]),
+            link: data.link,
+            resource: data.resource,
+            meta: data.meta,
           } as PendingAlert;
         })
+        .filter((alert) => alert.kind.startsWith("tournament_") && !alert.resource?.groupId)
         .sort((a, b) => a.priority - b.priority);
 
       setPendingAlerts(nextAlerts);
@@ -454,7 +458,7 @@ export default function AdminTournamentDetailPage() {
         </div>
       </header>
 
-      <AdminResourcePendingAlerts alerts={pendingAlerts} />
+      <AdminResourcePendingAlerts alerts={pendingAlerts} showLinks={false} />
 
       {tournament.status === "finalizado" ? (
         <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-1">

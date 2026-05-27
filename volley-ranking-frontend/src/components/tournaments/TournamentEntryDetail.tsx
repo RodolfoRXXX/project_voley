@@ -2,12 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebase";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { tournamentStatusLabel, type Tournament } from "@/types/tournaments";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { tournamentPhaseTypeLabel } from "@/types/tournaments/tournamentPhase";
+import AdminResourcePendingAlerts from "@/components/admin/AdminResourcePendingAlerts";
+import type { PendingAlert } from "@/types/pendingAlerts";
+import { pendingAlertPriority } from "@/types/pendingAlerts";
 import {
   groupTournamentMatches,
   TournamentMatchSummaryList,
@@ -107,10 +112,12 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [members, setMembers] = useState<Array<UserDoc & { id: string }>>([]);
   const [developmentView, setDevelopmentView] = useState<PublicTournamentDetailView | null>(null);
+  const [pendingAlerts, setPendingAlerts] = useState<PendingAlert[]>([]);
 
   useEffect(() => {
     const load = async () => {
       if (!entryId || !firebaseUser) return;
+      setPendingAlerts([]);
 
       const entryData = await getTournamentRegistrationById(entryId, source);
 
@@ -153,6 +160,45 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
 
       const uniqueMemberIds = Array.from(new Set([...(groupData.adminIds || []), ...(groupData.memberIds || [])]));
       setMembers(await getUsersByIds(uniqueMemberIds));
+      const alertsSnap = await getDocs(
+        query(
+          collection(db, "users", firebaseUser.uid, "pendingAlerts"),
+          where("actorScope.userId", "==", firebaseUser.uid),
+          where("status", "==", "active"),
+          where("resource.groupId", "==", entryData.groupId),
+        ),
+      );
+      const detailPath = `/profile/tournaments/${source === "registration" ? "registrations" : "teams"}/${entryId}`;
+      const nextAlerts = alertsSnap.docs
+        .map((alertDoc) => {
+          const data = alertDoc.data() as Partial<PendingAlert>;
+          const severity =
+            data.severity === "urgent" || data.severity === "warning" || data.severity === "info"
+              ? data.severity
+              : "info";
+
+          return {
+            id: alertDoc.id,
+            kind: (data.kind ?? "group_tournament_team_missing_players") as PendingAlert["kind"],
+            severity,
+            title: data.title || "Acción pendiente",
+            message: data.message || "",
+            status: (data.status ?? "active") as PendingAlert["status"],
+            priority: Number(data.priority ?? pendingAlertPriority[severity]),
+            link: data.link || { path: detailPath, label: "Ver inscripción" },
+            resource: data.resource,
+            meta: data.meta,
+          } as PendingAlert;
+        })
+        .filter((alert) => (
+          alert.kind === "group_tournament_team_missing_players"
+          || alert.kind === "group_tournament_team_payment_pending"
+        ))
+        .filter((alert) => alert.resource?.tournamentId === entryData.tournamentId)
+        .filter((alert) => source !== "registration" || alert.link?.path === detailPath)
+        .sort((a, b) => a.priority - b.priority);
+
+      setPendingAlerts(nextAlerts);
       if (source === "team") {
         setDevelopmentView(await getPublicTournamentDetailView(entryData.tournamentId));
       }
@@ -245,6 +291,8 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
         <p className="text-sm text-neutral-600">{tournament.description || "Sin descripción"}</p>
         <p className="text-sm text-neutral-700">Estado del torneo: {tournamentStatusLabel[tournament.status]}</p>
       </header>
+
+      <AdminResourcePendingAlerts alerts={pendingAlerts} showLinks={false} />
 
       <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2 text-sm">
         <h2 className="text-base font-semibold text-neutral-900">Información del torneo y equipo</h2>

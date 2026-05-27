@@ -420,6 +420,9 @@ export default function AdminGroupPage() {
             message: data.message || "",
             status: (data.status ?? "active") as PendingAlert["status"],
             priority: Number(data.priority ?? pendingAlertPriority[severity]),
+            link: data.link,
+            resource: data.resource,
+            meta: data.meta,
           } as PendingAlert;
         })
         .sort((a, b) => a.priority - b.priority);
@@ -859,8 +862,6 @@ export default function AdminGroupPage() {
         ]}
       />
 
-      <AdminResourcePendingAlerts alerts={pendingAlerts} />
-
       {/* Estado */}
       <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-3 relative">
         <div className="flex items-start justify-between gap-3">
@@ -950,6 +951,8 @@ export default function AdminGroupPage() {
           </p>
         </div>
       </section>
+
+      <AdminResourcePendingAlerts alerts={pendingAlerts} />
 
       {/* Edit */}
       {editMode && (

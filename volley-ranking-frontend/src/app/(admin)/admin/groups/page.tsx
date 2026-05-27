@@ -5,14 +5,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  collection,
-  collectionGroup,
-  getDocs,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
+import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
@@ -101,7 +94,7 @@ export default function AdminGroupsPage() {
         ),
         getDocs(
           query(
-            collectionGroup(db, "pendingAlerts"),
+            collection(db, "users", firebaseUser.uid, "pendingAlerts"),
             where("actorScope.userId", "==", firebaseUser.uid),
             where("status", "==", "active"),
           ),

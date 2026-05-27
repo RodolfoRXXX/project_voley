@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collectionGroup, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
@@ -60,7 +60,7 @@ export default function AdminTournamentsPage() {
         getAdminTournaments(firebaseUser.uid),
         getDocs(
           query(
-            collectionGroup(db, "pendingAlerts"),
+            collection(db, "users", firebaseUser.uid, "pendingAlerts"),
             where("actorScope.userId", "==", firebaseUser.uid),
             where("status", "==", "active"),
           ),

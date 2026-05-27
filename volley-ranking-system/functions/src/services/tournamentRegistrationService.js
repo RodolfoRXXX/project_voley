@@ -161,6 +161,13 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
         updatedAt: FieldValue.serverTimestamp(),
       });
 
+      const acceptedTeamsCount = Number(tournament.acceptedTeamsCount || 0);
+      trx.update(tournamentRef, {
+        acceptedTeamsCount: Math.max(acceptedTeamsCount - 1, 0),
+        updatedAt: FieldValue.serverTimestamp(),
+        updatedBy: uid,
+      });
+
       return;
     }
 
@@ -229,6 +236,13 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
         status: "rechazado",
         updatedAt: FieldValue.serverTimestamp(),
         decidedByUserId: uid,
+      });
+
+      const acceptedTeamsCount = Number(tournament.acceptedTeamsCount || 0);
+      trx.update(tournamentRef, {
+        acceptedTeamsCount: Math.max(acceptedTeamsCount - 1, 0),
+        updatedAt: FieldValue.serverTimestamp(),
+        updatedBy: uid,
       });
 
       return;

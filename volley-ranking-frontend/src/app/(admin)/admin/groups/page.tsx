@@ -1,4 +1,3 @@
-
 // -------------------
 // Admin Group Page
 // -------------------
@@ -6,7 +5,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
+import {
+  collection,
+  collectionGroup,
+  getDocs,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
@@ -14,6 +20,7 @@ import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
 
 interface Group {
+  pendingActionsCount?: number;
   id: string;
   nombre: string;
   descripcion: string;
@@ -33,7 +40,6 @@ interface Group {
 function GroupsSkeleton() {
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 space-y-6">
-
       {/* Breadcrumb */}
       <SkeletonSoft className="h-4 w-40" />
 
@@ -71,7 +77,6 @@ function GroupsSkeleton() {
           </div>
         ))}
       </div>
-
     </main>
   );
 }
@@ -86,24 +91,49 @@ export default function AdminGroupsPage() {
 
     const loadGroups = async () => {
       const groupsRef = collection(db, "groups");
-      const multiAdminSnap = await getDocs(
-        query(
-          groupsRef,
-          where("adminIds", "array-contains", firebaseUser.uid),
-          orderBy("createdAt", "desc")
-        )
-      );
+      const [multiAdminSnap, pendingAlertsSnap] = await Promise.all([
+        getDocs(
+          query(
+            groupsRef,
+            where("adminIds", "array-contains", firebaseUser.uid),
+            orderBy("createdAt", "desc"),
+          ),
+        ),
+        getDocs(
+          query(
+            collectionGroup(db, "pendingAlerts"),
+            where("actorScope.userId", "==", firebaseUser.uid),
+            where("status", "==", "active"),
+          ),
+        ),
+      ]);
+
+      const pendingByGroupId = new Map<string, number>();
+      pendingAlertsSnap.docs.forEach((alertDoc) => {
+        const alertData = alertDoc.data() as {
+          severity?: string;
+          resource?: { groupId?: string };
+        };
+        const groupId = alertData.resource?.groupId;
+        const isPendingSeverity =
+          alertData.severity === "warning" || alertData.severity === "urgent";
+
+        if (!groupId || !isPendingSeverity) return;
+
+        pendingByGroupId.set(groupId, (pendingByGroupId.get(groupId) ?? 0) + 1);
+      });
 
       const data = multiAdminSnap.docs
         .map((groupDoc) => ({
           id: groupDoc.id,
           ...(groupDoc.data() as Omit<Group, "id">),
+          pendingActionsCount: pendingByGroupId.get(groupDoc.id) ?? 0,
         }))
         .sort((a, b) => {
-        const aTime = a.createdAt?.seconds ?? 0;
-        const bTime = b.createdAt?.seconds ?? 0;
-        return bTime - aTime;
-      });
+          const aTime = a.createdAt?.seconds ?? 0;
+          const bTime = b.createdAt?.seconds ?? 0;
+          return bTime - aTime;
+        });
 
       setGroups(data);
 
@@ -117,19 +147,13 @@ export default function AdminGroupsPage() {
 
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
-
       <AdminBreadcrumb
-        items={[
-          { label: "Mis gestión"},
-          { label: "Grupos"},
-        ]}
+        items={[{ label: "Mis gestión" }, { label: "Grupos" }]}
       />
 
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold text-neutral-900">
-            Grupos
-          </h1>
+          <h1 className="text-xl font-semibold text-neutral-900">Grupos</h1>
           <p className="text-sm text-neutral-500">
             Gestión de grupos y partidos asociados
           </p>
@@ -153,7 +177,6 @@ export default function AdminGroupsPage() {
             key={group.id}
             className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col h-full"
           >
-
             {/* Contenido superior */}
             <div className="space-y-1">
               <div className="flex items-start justify-between gap-4">
@@ -169,10 +192,14 @@ export default function AdminGroupsPage() {
                 </Link>
               </div>
 
-              <p className="text-sm text-neutral-600">
-                {group.descripcion}
-              </p>
+              <p className="text-sm text-neutral-600">{group.descripcion}</p>
             </div>
+
+            {group.pendingActionsCount ? (
+              <div className="rounded-lg bg-orange-50 border border-orange-200 px-3 py-2 text-sm text-orange-800">
+                Tenés {group.pendingActionsCount} acciones pendientes
+              </div>
+            ) : null}
 
             {/* Footer de la card */}
             <div className="mt-auto flex gap-4 text-xs text-neutral-500 pt-3">
@@ -187,7 +214,6 @@ export default function AdminGroupsPage() {
                 Integrantes: <b>{group.memberIds?.length || 0}</b>
               </span>
             </div>
-
           </div>
         ))}
       </div>

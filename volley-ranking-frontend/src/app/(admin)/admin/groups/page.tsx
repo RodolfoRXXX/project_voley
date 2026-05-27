@@ -179,33 +179,52 @@ export default function AdminGroupsPage() {
 
                 <Link
                   href={`/admin/groups/${group.id}`}
-                  className="flex items-center whitespace-nowrap px-3 py-1.5 rounded-lg border text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
+                  className="
+                    flex items-center shrink-0 whitespace-nowrap
+                    px-3 py-1.5 rounded-lg border
+                    text-sm text-neutral-700
+                    hover:bg-neutral-50
+                    transition-colors
+                  "
                 >
                   Ver detalle
                 </Link>
               </div>
 
-              <p className="text-sm text-neutral-600">{group.descripcion}</p>
+              <p className="text-sm text-neutral-600">
+                {group.descripcion}
+              </p>
             </div>
 
-            {group.pendingActionsCount ? (
-              <div className="rounded-lg bg-orange-50 border border-orange-200 px-3 py-2 text-sm text-orange-800">
-                Tenés {group.pendingActionsCount} acciones pendientes
-              </div>
-            ) : null}
-
             {/* Footer de la card */}
-            <div className="mt-auto flex gap-4 text-xs text-neutral-500 pt-3">
-              <span>
-                Estado:{" "}
-                <b className={group.activo ? "text-green-600" : "text-red-500"}>
-                  {group.activo ? "Activo" : "Inactivo"}
-                </b>
-              </span>
+            <div className="mt-auto flex items-center justify-between pt-3 text-sm">
 
-              <span>
+              <div className="flex items-center gap-3">
+
+                <span className="text-neutral-600">
+                  Estado:{" "}
+                  <b className={group.activo ? "text-green-600" : "text-red-500"}>
+                    {group.activo ? "Activo" : "Inactivo"}
+                  </b>
+                </span>
+
+                {group.pendingActionsCount ? (
+                  <div className="flex items-center gap-1.5 text-xs text-orange-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+
+                    <span>
+                      {group.pendingActionsCount} pendiente
+                      {group.pendingActionsCount > 1 ? "s" : ""}
+                    </span>
+                  </div>
+                ) : null}
+
+              </div>
+
+              <span className="text-neutral-600 text-xs">
                 Integrantes: <b>{group.memberIds?.length || 0}</b>
               </span>
+
             </div>
           </div>
         ))}

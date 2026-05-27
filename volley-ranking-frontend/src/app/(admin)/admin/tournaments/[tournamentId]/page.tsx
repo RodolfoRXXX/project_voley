@@ -429,7 +429,6 @@ export default function AdminTournamentDetailPage() {
           { label: tournament.name },
         ]}
       />
-      <AdminResourcePendingAlerts alerts={pendingAlerts} />
 
       <header className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
         <div className="flex content-start justify-between gap-3">
@@ -454,6 +453,8 @@ export default function AdminTournamentDetailPage() {
           </div>
         </div>
       </header>
+
+      <AdminResourcePendingAlerts alerts={pendingAlerts} />
 
       {tournament.status === "finalizado" ? (
         <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-1">

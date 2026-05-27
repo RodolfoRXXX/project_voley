@@ -158,23 +158,33 @@ export default function AdminTournamentsPage() {
               </p>
 
               <div className="flex items-center justify-between pt-2 text-sm">
-                <StatusPill
-                  label={tournamentStatusLabel[tournament.status]}
-                  variant="info"
-                />
+
+                <div className="flex items-center gap-3">
+                  <StatusPill
+                    label={tournamentStatusLabel[tournament.status]}
+                    variant="info"
+                  />
+
+                  {pendingActionsCount ? (
+                    <div className="flex items-center gap-1.5 text-xs text-orange-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+
+                      <span>
+                        {pendingActionsCount} pendiente{pendingActionsCount > 1 ? "s" : ""}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
 
                 <span className="text-neutral-600">
-                  Equipos{" "}
+                  <span className="text-xs">
+                    Equipos
+                    </span>{" "}
                   <b>
                     {tournament.acceptedTeamsCount || 0}/{tournament.maxTeams}
                   </b>
                 </span>
               </div>
-              {pendingActionsCount ? (
-                <div className="rounded-lg bg-orange-50 border border-orange-200 px-3 py-2 text-sm text-orange-800">
-                  Tenés {pendingActionsCount} acciones pendientes
-                </div>
-              ) : null}
             </article>
           );
         })}

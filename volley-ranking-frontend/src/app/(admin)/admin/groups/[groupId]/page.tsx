@@ -32,6 +32,9 @@ import { readJsonSafely } from "@/lib/http/readJsonSafely";
 import { getTournamentFormatLabel } from "@/types/tournaments/tournament";
 import ShareOptionsButton from "@/components/ui/share/ShareOptionsButton";
 import { getPublicGroupDetailUrl } from "@/lib/share/publicShareUrls";
+import type { PendingAlert } from "@/types/pendingAlerts";
+import { pendingAlertPriority } from "@/types/pendingAlerts";
+import AdminResourcePendingAlerts from "@/components/admin/AdminResourcePendingAlerts";
 
 type GroupMember = {
   id: string;
@@ -377,6 +380,7 @@ export default function AdminGroupPage() {
     visibility: "private" as "public" | "private",
     joinApproval: true,
   });
+  const [pendingAlerts, setPendingAlerts] = useState<PendingAlert[]>([]);
 
   /* =====================
      Guard
@@ -386,6 +390,45 @@ export default function AdminGroupPage() {
       router.replace("/");
     }
   }, [firebaseUser, userDoc, loading, router]);
+
+  useEffect(() => {
+    if (!firebaseUser?.uid || !groupId) return;
+
+    const loadPendingAlerts = async () => {
+      const alertsSnap = await getDocs(
+        query(
+          collection(db, "users", firebaseUser.uid, "pendingAlerts"),
+          where("actorScope.userId", "==", firebaseUser.uid),
+          where("status", "==", "active"),
+          where("resource.groupId", "==", groupId),
+        ),
+      );
+
+      const nextAlerts = alertsSnap.docs
+        .map((alertDoc) => {
+          const data = alertDoc.data() as Partial<PendingAlert>;
+          const severity =
+            data.severity === "urgent" || data.severity === "warning" || data.severity === "info"
+              ? data.severity
+              : "info";
+
+          return {
+            id: alertDoc.id,
+            kind: (data.kind ?? "group_join_requests_pending") as PendingAlert["kind"],
+            severity,
+            title: data.title || "Acción pendiente",
+            message: data.message || "",
+            status: (data.status ?? "active") as PendingAlert["status"],
+            priority: Number(data.priority ?? pendingAlertPriority[severity]),
+          } as PendingAlert;
+        })
+        .sort((a, b) => a.priority - b.priority);
+
+      setPendingAlerts(nextAlerts);
+    };
+
+    loadPendingAlerts();
+  }, [firebaseUser?.uid, groupId]);
 
   const loadGroupDetails = useCallback(async () => {
   if (!firebaseUser?.uid || !groupId) return;
@@ -815,6 +858,8 @@ export default function AdminGroupPage() {
           { label: group.nombre},
         ]}
       />
+
+      <AdminResourcePendingAlerts alerts={pendingAlerts} />
 
       {/* Estado */}
       <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-3 relative">

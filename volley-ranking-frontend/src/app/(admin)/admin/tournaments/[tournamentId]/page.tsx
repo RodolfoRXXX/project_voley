@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import TournamentAdminPanel from "@/components/tournaments/TournamentAdminPanel";
 import { TournamentDetailsCard, TournamentEditForm, type TournamentFormValues } from "@/components/tournaments/admin/TournamentEditForm";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
@@ -22,6 +23,10 @@ import { Skeleton } from "@/components/ui/skeleton/Skeleton";
 import { Spinner } from "@/components/ui/spinner/spinner";
 import ShareOptionsButton from "@/components/ui/share/ShareOptionsButton";
 import { getPublicTournamentDetailUrl } from "@/lib/share/publicShareUrls";
+import { db } from "@/lib/firebase";
+import type { PendingAlert } from "@/types/pendingAlerts";
+import { pendingAlertPriority } from "@/types/pendingAlerts";
+import AdminResourcePendingAlerts from "@/components/admin/AdminResourcePendingAlerts";
 
 import { addTournamentAdmin, editTournament, removeTournamentAdmin } from "@/services/tournaments/tournamentMutations";
 import { getAdminTournamentRegistrationsView, getTournamentById, getTournamentTeams, getUsersByIds, searchAdminsByName } from "@/services/tournaments/tournamentQueries";
@@ -127,6 +132,7 @@ export default function AdminTournamentDetailPage() {
   const [acceptedTeams, setAcceptedTeams] = useState<TournamentRegistrationItem[]>([]);
   const [loadingRegistrations, setLoadingRegistrations] = useState(false);
   const [registrationsTab, setRegistrationsTab] = useState<"pendientes" | "aceptados" | "rechazados">("pendientes");
+  const [pendingAlerts, setPendingAlerts] = useState<PendingAlert[]>([]);
 
   const tournamentStatus = tournament?.status as string | undefined;
   const canEdit = tournamentStatus === "draft" || tournamentStatus === "inscripciones_abiertas" || tournamentStatus === "inscripciones_cerradas";
@@ -185,6 +191,45 @@ export default function AdminTournamentDetailPage() {
     loadTournament();
     loadRegistrations();
   }, [loadTournament, loadRegistrations]);
+
+  useEffect(() => {
+    if (!firebaseUser?.uid || !tournamentId) return;
+
+    const loadPendingAlerts = async () => {
+      const alertsSnap = await getDocs(
+        query(
+          collection(db, "users", firebaseUser.uid, "pendingAlerts"),
+          where("actorScope.userId", "==", firebaseUser.uid),
+          where("status", "==", "active"),
+          where("resource.tournamentId", "==", tournamentId),
+        ),
+      );
+
+      const nextAlerts = alertsSnap.docs
+        .map((alertDoc) => {
+          const data = alertDoc.data() as Partial<PendingAlert>;
+          const severity =
+            data.severity === "urgent" || data.severity === "warning" || data.severity === "info"
+              ? data.severity
+              : "info";
+
+          return {
+            id: alertDoc.id,
+            kind: (data.kind ?? "tournament_registrations_pending_review") as PendingAlert["kind"],
+            severity,
+            title: data.title || "Acción pendiente",
+            message: data.message || "",
+            status: (data.status ?? "active") as PendingAlert["status"],
+            priority: Number(data.priority ?? pendingAlertPriority[severity]),
+          } as PendingAlert;
+        })
+        .sort((a, b) => a.priority - b.priority);
+
+      setPendingAlerts(nextAlerts);
+    };
+
+    loadPendingAlerts();
+  }, [firebaseUser?.uid, tournamentId]);
 
   const startEdit = () => {
     if (!tournament || !canEdit || isLockedTournament) return;
@@ -384,6 +429,7 @@ export default function AdminTournamentDetailPage() {
           { label: tournament.name },
         ]}
       />
+      <AdminResourcePendingAlerts alerts={pendingAlerts} />
 
       <header className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
         <div className="flex content-start justify-between gap-3">

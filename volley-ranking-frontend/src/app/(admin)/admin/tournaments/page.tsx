@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { collectionGroup, getDocs, query, where } from "firebase/firestore";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminBreadcrumb } from "@/components/ui/crumbs/AdminBreadcrumb";
@@ -8,6 +9,7 @@ import { Tournament, tournamentStatusLabel } from "@/types/tournaments";
 import StatusPill from "@/components/ui/status/StatusPill";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { getAdminTournaments } from "@/services/tournaments/tournamentQueries";
+import { db } from "@/lib/firebase";
 
 function TournamentsSkeleton() {
   return (
@@ -22,7 +24,10 @@ function TournamentsSkeleton() {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col gap-3">
+          <div
+            key={i}
+            className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col gap-3"
+          >
             <div className="flex items-start justify-between gap-3">
               <Skeleton className="h-4 w-1/2" />
               <Skeleton className="h-7 w-20 rounded-lg" />
@@ -43,12 +48,43 @@ export default function AdminTournamentsPage() {
   const { firebaseUser, loading: authLoading } = useAuth();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingByTournamentId, setPendingByTournamentId] = useState<
+    Record<string, number>
+  >({});
 
   useEffect(() => {
     if (authLoading || !firebaseUser) return;
 
     const loadTournaments = async () => {
-      setTournaments(await getAdminTournaments(firebaseUser.uid));
+      const [adminTournaments, pendingAlertsSnap] = await Promise.all([
+        getAdminTournaments(firebaseUser.uid),
+        getDocs(
+          query(
+            collectionGroup(db, "pendingAlerts"),
+            where("actorScope.userId", "==", firebaseUser.uid),
+            where("status", "==", "active"),
+          ),
+        ),
+      ]);
+
+      const nextPendingByTournamentId: Record<string, number> = {};
+      pendingAlertsSnap.docs.forEach((alertDoc) => {
+        const alertData = alertDoc.data() as {
+          severity?: string;
+          resource?: { tournamentId?: string };
+        };
+        const tournamentId = alertData.resource?.tournamentId;
+        const isPendingSeverity =
+          alertData.severity === "warning" || alertData.severity === "urgent";
+
+        if (!tournamentId || !isPendingSeverity) return;
+
+        nextPendingByTournamentId[tournamentId] =
+          (nextPendingByTournamentId[tournamentId] ?? 0) + 1;
+      });
+
+      setTournaments(adminTournaments);
+      setPendingByTournamentId(nextPendingByTournamentId);
       setLoading(false);
     };
 
@@ -61,12 +97,18 @@ export default function AdminTournamentsPage() {
 
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
-      <AdminBreadcrumb items={[{ label: "Mis gestión" }, { label: "Torneos" }]} />
+      <AdminBreadcrumb
+        items={[{ label: "Mis gestión" }, { label: "Torneos" }]}
+      />
 
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold text-neutral-900">Mis torneos</h1>
-          <p className="text-sm text-neutral-500">Torneos donde sos administrador.</p>
+          <h1 className="text-xl font-semibold text-neutral-900">
+            Mis torneos
+          </h1>
+          <p className="text-sm text-neutral-500">
+            Torneos donde sos administrador.
+          </p>
         </div>
 
         <Link
@@ -77,49 +119,65 @@ export default function AdminTournamentsPage() {
         </Link>
       </div>
 
-      {tournaments.length === 0 && <p className="text-sm text-neutral-500">Todavía no tenés torneos creados.</p>}
+      {tournaments.length === 0 && (
+        <p className="text-sm text-neutral-500">
+          Todavía no tenés torneos creados.
+        </p>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {tournaments.map((tournament) => (
-          <article
-            key={tournament.id}
-            className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col gap-3"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <h2 className="text-base font-semibold text-neutral-900">
-                {tournament.name}
-              </h2>
+        {tournaments.map((tournament) => {
+          const pendingActionsCount = pendingByTournamentId[tournament.id] ?? 0;
 
-              <Link
-                href={`/admin/tournaments/${tournament.id}`}
-                className="
+          return (
+            <article
+              key={tournament.id}
+              className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col gap-3"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <h2 className="text-base font-semibold text-neutral-900">
+                  {tournament.name}
+                </h2>
+
+                <Link
+                  href={`/admin/tournaments/${tournament.id}`}
+                  className="
                   shrink-0 whitespace-nowrap
                   px-3 py-1.5 rounded-lg border
                   text-sm text-neutral-700
                   hover:bg-neutral-50
                   text-center
                 "
-              >
-                Ver detalle
-              </Link>
-            </div>
+                >
+                  Ver detalle
+                </Link>
+              </div>
 
-            <p className="text-sm text-neutral-600">
-              {tournament.description || "Sin descripción"}
-            </p>
+              <p className="text-sm text-neutral-600">
+                {tournament.description || "Sin descripción"}
+              </p>
 
-            <div className="flex items-center justify-between pt-2 text-sm">
-              <StatusPill
-                label={tournamentStatusLabel[tournament.status]}
-                variant="info"
-              />
+              <div className="flex items-center justify-between pt-2 text-sm">
+                <StatusPill
+                  label={tournamentStatusLabel[tournament.status]}
+                  variant="info"
+                />
 
-              <span className="text-neutral-600">
-                Equipos <b>{tournament.acceptedTeamsCount || 0}/{tournament.maxTeams}</b>
-              </span>
-            </div>
-          </article>
-        ))}
+                <span className="text-neutral-600">
+                  Equipos{" "}
+                  <b>
+                    {tournament.acceptedTeamsCount || 0}/{tournament.maxTeams}
+                  </b>
+                </span>
+              </div>
+              {pendingActionsCount ? (
+                <div className="rounded-lg bg-orange-50 border border-orange-200 px-3 py-2 text-sm text-orange-800">
+                  Tenés {pendingActionsCount} acciones pendientes
+                </div>
+              ) : null}
+            </article>
+          );
+        })}
       </div>
     </main>
   );

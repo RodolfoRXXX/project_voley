@@ -93,7 +93,6 @@ service cloud.firestore {
         && request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.adminIds
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "playerIds",
-          "playersIds",
           "teamMembersCount",
           "expectedAmount",
           "pendingAmount",
@@ -111,7 +110,6 @@ service cloud.firestore {
         && request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.adminIds
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "playerIds",
-          "playersIds",
           "teamMembersCount",
           "expectedAmount",
           "pendingAmount",

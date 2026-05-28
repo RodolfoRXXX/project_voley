@@ -91,7 +91,6 @@ export function toTournamentRegistration(
     name: typeof data.name === "string" ? data.name : undefined,
     teamMembersCount: Number(data.teamMembersCount || playerIds.length || 0),
     playerIds,
-    playersIds: playerIds,
     status: data.status as TournamentRegistration["status"],
     paymentStatus: data.paymentStatus as TournamentRegistration["paymentStatus"],
     expectedAmount: typeof data.expectedAmount === "number" ? data.expectedAmount : undefined,

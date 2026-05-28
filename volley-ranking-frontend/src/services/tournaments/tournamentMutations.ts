@@ -138,7 +138,6 @@ export async function updateTournamentEntryPlayers(params: {
 
   await updateDoc(doc(db, collectionName, params.entryId), {
     playerIds: params.playerIds,
-    playersIds: params.playerIds,
     ...paymentSummary,
     updatedAt: serverTimestamp(),
   });

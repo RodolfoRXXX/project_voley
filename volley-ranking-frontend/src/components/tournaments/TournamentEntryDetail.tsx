@@ -135,7 +135,6 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
         ...entryData,
         nameTeam: entryData.nameTeam || entryData.name || "",
         playerIds: normalizedPlayers,
-        playersIds: normalizedPlayers,
         status: safeStatus,
       });
 
@@ -253,7 +252,6 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
     setEntry((prev) => (prev ? {
       ...prev,
       playerIds: next,
-      playersIds: next,
       ...paymentSummary,
     } : prev));
     setSaving(null);

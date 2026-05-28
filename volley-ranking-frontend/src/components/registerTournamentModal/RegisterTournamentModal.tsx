@@ -13,7 +13,7 @@ import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import StatusPill, { type StatusVariant } from "@/components/ui/status/StatusPill";
 import { RegisterTournamentModalProps } from "./RegisterTournamentModal.types";
-import { getTournamentById, getTournamentRegistrations, getUserManagedGroups } from "@/services/tournaments/tournamentQueries";
+import { getManagedTournamentEntries, getTournamentById, getUserManagedGroups } from "@/services/tournaments/tournamentQueries";
 
 type GroupOption = {
   id: string;
@@ -24,6 +24,7 @@ type GroupOption = {
 type RegistrationOption = {
   id: string;
   groupId?: string;
+  groupName?: string;
   nameTeam?: string;
   status?: string;
 };
@@ -73,7 +74,7 @@ export default function RegisterTournamentModal({
     if (!open || !firebaseUser || !tournamentId) return;
 
     const loadRegistrations = async () => {
-      const rows = await getTournamentRegistrations(tournamentId);
+      const rows = await getManagedTournamentEntries(tournamentId, firebaseUser.uid);
       setRegistrations(rows);
     };
 
@@ -228,7 +229,7 @@ export default function RegisterTournamentModal({
                         </span>
 
                         <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                        {group?.nombre || "Grupo"}
+                        {reg.groupName || group?.nombre || "Grupo"}
                         </span>
                     </div>
 

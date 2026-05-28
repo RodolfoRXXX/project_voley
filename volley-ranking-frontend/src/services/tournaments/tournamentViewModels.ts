@@ -1,6 +1,6 @@
 import type { Tournament, TournamentRegistration } from "@/types/tournaments";
 
-export type UserTournamentStateStatus = "NOT_READY" | "READY_PENDING_PAYMENT" | "UNDER_REVIEW" | "ACCEPTED";
+export type UserTournamentStateStatus = "NOT_READY" | "READY_PENDING_PAYMENT" | "UNDER_REVIEW" | "ACCEPTED" | "REJECTED";
 
 export type UserTournamentState = {
   status: UserTournamentStateStatus;
@@ -53,10 +53,22 @@ export function getUserTournamentState(params: {
         : "partial";
 
   const registrationStatus = params.registration?.status;
-  const hasAcceptedTeam = Boolean(params.team) || registrationStatus === "aceptado";
+  const teamStatus = params.team?.status;
+  const isRejected = teamStatus === "rechazado" || registrationStatus === "rechazado";
+  const hasAcceptedTeam = teamStatus !== "rechazado" && (Boolean(params.team) || registrationStatus === "aceptado");
   const hasRequiredPlayers = currentPlayers >= requiredPlayers;
   const isPaymentComplete = paymentStatus === "complete";
-  const isRejected = registrationStatus === "rechazado";
+
+  if (isRejected) {
+    return {
+      status: "REJECTED",
+      label: "Rechazado",
+      sublabel: "La inscripción de este equipo fue rechazada para este torneo.",
+      players: { current: currentPlayers, required: requiredPlayers },
+      payment: { paid, expected, status: paymentStatus },
+      nextAction: "Revisar el estado de la inscripción",
+    };
+  }
 
   if (hasAcceptedTeam) {
     return {

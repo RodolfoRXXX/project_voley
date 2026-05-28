@@ -120,6 +120,10 @@ export type AdminTournamentRegistrationsView = {
   acceptedTeams: TournamentRegistration[];
 };
 
+export type ManagedTournamentEntry = TournamentRegistration & {
+  groupName?: string;
+};
+
 function buildTournamentProgressMetrics(params: {
   tournament: Tournament;
   teams: TournamentTeamRow[];
@@ -392,6 +396,48 @@ export async function getAdminTournamentRegistrationsView(tournamentId: string):
     registrations,
     acceptedTeams,
   };
+}
+
+export async function getManagedTournamentEntries(
+  tournamentId: string,
+  userId: string
+): Promise<ManagedTournamentEntry[]> {
+  const [managedGroups, registrations, tournamentTeams] = await Promise.all([
+    getUserManagedGroups(userId),
+    getTournamentRegistrations(tournamentId),
+    getTournamentTeams(tournamentId),
+  ]);
+
+  const groupNameById = new Map(
+    managedGroups.map((group) => [group.id, group.nombre || "Grupo sin nombre"])
+  );
+  const managedGroupIds = new Set(groupNameById.keys());
+  const entriesByGroup = new Map<string, ManagedTournamentEntry>();
+
+  registrations
+    .filter((registration) => registration.groupId && managedGroupIds.has(registration.groupId))
+    .forEach((registration) => {
+      entriesByGroup.set(registration.groupId as string, {
+        ...registration,
+        groupName: groupNameById.get(registration.groupId as string),
+      });
+    });
+
+  tournamentTeams
+    .filter((team) => team.groupId && managedGroupIds.has(team.groupId))
+    .forEach((team) => {
+      const groupId = team.groupId as string;
+      entriesByGroup.set(groupId, {
+        ...team,
+        source: "team",
+        status: (team.status as TournamentRegistrationStatus | undefined) || "aceptado",
+        registrationId: team.registrationId || team.id,
+        nameTeam: team.nameTeam || team.name,
+        groupName: groupNameById.get(groupId),
+      });
+    });
+
+  return Array.from(entriesByGroup.values());
 }
 
 export async function getUserManagedGroups(userId: string): Promise<Array<{ id: string; nombre?: string; memberIds?: string[]; adminIds?: string[] }>> {

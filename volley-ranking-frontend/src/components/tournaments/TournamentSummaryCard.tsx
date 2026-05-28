@@ -34,6 +34,7 @@ const userStateBadgeClass: Record<UserTournamentState["status"], string> = {
   READY_PENDING_PAYMENT: "bg-amber-100 text-amber-700",
   UNDER_REVIEW: "bg-blue-100 text-blue-700",
   ACCEPTED: "bg-green-100 text-green-700",
+  REJECTED: "bg-red-100 text-red-700",
 };
 
 const paymentStatusLabel: Record<UserTournamentState["payment"]["status"], string> = {

@@ -7,6 +7,7 @@ const {
 } = require("firebase-admin/firestore");
 const { emitDomainEvent } = require("../events/domainEventBus");
 const { DOMAIN_EVENTS } = require("../events/domainEvents");
+const { createGroupTournamentRejectionAlert } = require("./pendingAlertsService");
 
 
 async function requestTournamentRegistration({ uid, tournamentId, groupId, nameTeam }) {
@@ -124,6 +125,9 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
   let acceptedGroupId = null;
   let acceptedTournamentId = null;
   let acceptedTournamentName = "Torneo";
+  let rejectedGroupId = null;
+  let rejectedTournamentId = null;
+  let rejectedTournamentName = "Torneo";
 
   await db.runTransaction(async (trx) => {
     const registrationSnap = await trx.get(registrationRef);
@@ -142,6 +146,7 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
 
     const tournament = tournamentSnap.data();
     acceptedTournamentName = tournament?.name || tournament?.nombre || "Torneo";
+    rejectedTournamentName = acceptedTournamentName;
     assertTournamentAdmin(tournament, uid);
 
     const isPendingRegistration = registration.status === "pendiente";
@@ -160,6 +165,9 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
         decidedByUserId: uid,
         updatedAt: FieldValue.serverTimestamp(),
       });
+
+      rejectedGroupId = registration.groupId;
+      rejectedTournamentId = registration.tournamentId;
 
       const acceptedTeamsCount = Number(tournament.acceptedTeamsCount || 0);
       trx.update(tournamentRef, {
@@ -238,6 +246,9 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
         decidedByUserId: uid,
       });
 
+      rejectedGroupId = registration.groupId;
+      rejectedTournamentId = registration.tournamentId;
+
       const acceptedTeamsCount = Number(tournament.acceptedTeamsCount || 0);
       trx.update(tournamentRef, {
         acceptedTeamsCount: Math.max(acceptedTeamsCount - 1, 0),
@@ -274,6 +285,11 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
     };
 
     trx.update(registrationRef, updatePayload);
+
+    if (status === "rechazado") {
+      rejectedGroupId = registration.groupId;
+      rejectedTournamentId = registration.tournamentId;
+    }
   });
 
   if (acceptedGroupId && acceptedTournamentId) {
@@ -281,6 +297,14 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
       groupId: acceptedGroupId,
       tournamentId: acceptedTournamentId,
       tournamentName: acceptedTournamentName,
+    });
+  }
+
+  if (rejectedGroupId && rejectedTournamentId) {
+    await createGroupTournamentRejectionAlert({
+      groupId: rejectedGroupId,
+      tournamentId: rejectedTournamentId,
+      tournamentName: rejectedTournamentName,
     });
   }
 

@@ -319,7 +319,8 @@ export async function getPublicTournamentDetailView(tournamentId: string): Promi
 
   const { currentPhase, teams, matches, standings } = await getTournamentPhaseContext(tournament);
   const teamNames = new Map(teams.map((team) => [team.id, team.nameTeam || team.name || team.id]));
-  const normalizedTeams = teams.map((team) => ({
+  const publishedTeams = teams.filter((team) => team.status !== "rechazado");
+  const normalizedTeams = publishedTeams.map((team) => ({
     id: team.id,
     name: team.nameTeam || team.name || team.id,
     groupLabel: team.groupLabel || null,

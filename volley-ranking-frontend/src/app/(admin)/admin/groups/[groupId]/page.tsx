@@ -547,9 +547,19 @@ export default function AdminGroupPage() {
     getDocs(query(collection(db, "tournamentRegistrations"), where("groupId", "==", groupId))),
     getDocs(query(collection(db, "tournamentTeams"), where("groupId", "==", groupId))),
   ]);
+  const rejectedTeamKeys = new Set(
+    teamsSnap.docs
+      .filter((row) => row.data().status === "rechazado")
+      .map((row) => `${row.data().tournamentId || ""}::${row.data().groupId || ""}`)
+  );
+  const activeRegistrations = registrationsSnap.docs.filter((row) => {
+    const data = row.data();
+    return data.status !== "rechazado" && !rejectedTeamKeys.has(`${data.tournamentId || ""}::${data.groupId || ""}`);
+  });
+  const activeTeams = teamsSnap.docs.filter((row) => row.data().status !== "rechazado");
   const tournamentIds = Array.from(new Set([
-    ...registrationsSnap.docs.map((row) => String(row.data().tournamentId || "")),
-    ...teamsSnap.docs.map((row) => String(row.data().tournamentId || "")),
+    ...activeRegistrations.map((row) => String(row.data().tournamentId || "")),
+    ...activeTeams.map((row) => String(row.data().tournamentId || "")),
   ].filter(Boolean)));
   const tournamentRows = await Promise.all(
     tournamentIds.map(async (tournamentId) => {

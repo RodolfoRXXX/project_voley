@@ -10,6 +10,7 @@ const PENDING_ALERT_PRIORITIES = {
 const TOURNAMENT_PENDING_ALERT_KIND_PREFIX = "tournament_";
 const TOURNAMENT_GROUP_PENDING_ALERT_KINDS = new Set([
   "group_accepted_in_tournament",
+  "group_rejected_from_tournament",
   "group_tournament_team_missing_players",
   "group_tournament_team_payment_pending",
 ]);
@@ -181,10 +182,63 @@ async function createGroupMembershipResultAlert({
   });
 }
 
+function uniqueStringArray(items = []) {
+  return Array.from(new Set((Array.isArray(items) ? items : []).map((item) => String(item || "")).filter(Boolean)));
+}
+
+function getGroupAdminIds(group = {}) {
+  return uniqueStringArray([
+    ...(Array.isArray(group.adminIds) ? group.adminIds : []),
+    ...(Array.isArray(group.admins) ? group.admins.map((admin) => admin?.userId) : []),
+    group.ownerId,
+  ]);
+}
+
+async function createGroupTournamentRejectionAlert({
+  groupId,
+  tournamentId,
+  groupName,
+  tournamentName,
+}) {
+  if (!groupId || !tournamentId) return;
+
+  const groupSnap = await db.collection("groups").doc(String(groupId)).get();
+  const group = groupSnap.exists ? groupSnap.data() || {} : {};
+  const groupAdminIds = getGroupAdminIds(group);
+  if (!groupAdminIds.length) return;
+
+  const resolvedGroupName = groupName || group.nombre || group.name || "Tu grupo";
+  const resolvedTournamentName = tournamentName || "el torneo";
+  const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
+  await Promise.all(groupAdminIds.map((adminId) =>
+    upsertPendingAlert({
+      userId: adminId,
+      alertId: `group_rejected_from_tournament_${tournamentId}_${groupId}`,
+      kind: "group_rejected_from_tournament",
+      severity: "info",
+      title: "Equipo rechazado del torneo",
+      message: `${resolvedGroupName} fue rechazado de ${resolvedTournamentName}.`,
+      link: null,
+      resource: {
+        groupId,
+        tournamentId,
+      },
+      meta: {
+        groupName: resolvedGroupName,
+        tournamentName: resolvedTournamentName,
+        decision: "rejected",
+      },
+      expiresAt,
+    })
+  ));
+}
+
 module.exports = {
   PENDING_ALERT_PRIORITIES,
   TOURNAMENT_GROUP_PENDING_ALERT_KINDS,
   createGroupMembershipResultAlert,
+  createGroupTournamentRejectionAlert,
   isTournamentPendingAlertKind,
   resolvePendingAlert,
   syncCompleteProfilePendingAlert,

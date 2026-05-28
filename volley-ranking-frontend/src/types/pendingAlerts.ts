@@ -4,6 +4,7 @@ export type PendingAlertKind =
   | "complete_profile"
   | "group_membership_result"
   | "group_accepted_in_tournament"
+  | "group_rejected_from_tournament"
   | "group_tournament_team_missing_players"
   | "group_tournament_team_payment_pending"
   | "group_join_requests_pending"
@@ -37,7 +38,7 @@ export type PendingAlert = {
   link?: {
     path: string;
     label: string;
-  };
+  } | null;
   resource?: {
     groupId?: string;
     tournamentId?: string;
@@ -48,7 +49,7 @@ export type PendingAlert = {
   meta?: {
     groupName?: string;
     tournamentName?: string;
-    decision?: "accepted" | "rejected";
+    decision?: "accepted" | "rejected" | "removed";
     pendingCount?: number;
     minPlayers?: number;
     selectedPlayersCount?: number;

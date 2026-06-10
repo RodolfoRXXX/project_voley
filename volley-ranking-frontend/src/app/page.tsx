@@ -18,28 +18,33 @@ const CURRENT_TOURNAMENT_STATUSES = ["inscripciones_abiertas", "inscripciones_ce
 
 function HomeSkeleton() {
   return (
-    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 space-y-6 pb-12">
-      <section className="rounded-md border border-neutral-200 bg-white p-6 sm:p-8 space-y-5">
-        <Skeleton className="h-6 w-44 rounded-full" />
-        <Skeleton className="h-12 w-full max-w-2xl" />
-        <SkeletonSoft className="h-4 w-full max-w-xl" />
-        <Skeleton className="h-11 w-40 rounded-xl" />
-        <div className="grid gap-4 md:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="rounded-md border border-neutral-100 p-4 space-y-3">
-              <Skeleton className="h-10 w-10 rounded-2xl" />
-              <Skeleton className="h-5 w-2/3" />
-              <SkeletonSoft className="h-4 w-full" />
-            </div>
-          ))}
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 space-y-8 pb-12">
+      <section className="rounded-md border border-neutral-200 bg-white p-6 sm:p-8 shadow-sm">
+        <div className="relative space-y-8">
+          <header className="space-y-5">
+            <Skeleton className="h-6 w-44 rounded-full" />
+            <Skeleton className="h-24 w-full max-w-3xl sm:h-32 lg:h-36" />
+            <SkeletonSoft className="h-4 w-full max-w-xl" />
+            <Skeleton className="h-11 w-40 rounded-xl" />
+          </header>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="rounded-md border border-neutral-100 p-4 space-y-3">
+                <Skeleton className="h-11 w-11 rounded-md" />
+                <Skeleton className="h-5 w-2/3" />
+                <SkeletonSoft className="h-4 w-full" />
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       <section className="space-y-3">
         <Skeleton className="h-7 w-52" />
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {[1, 2].map((idx) => (
-            <Skeleton key={idx} className="h-56 rounded-2xl" />
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, idx) => (
+            <Skeleton key={idx} className="h-56 rounded-md" />
           ))}
         </div>
       </section>

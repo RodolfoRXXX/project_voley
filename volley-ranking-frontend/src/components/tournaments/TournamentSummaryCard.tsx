@@ -99,7 +99,7 @@ export function TournamentSummaryCard({
             ? "border-amber-300 ring-1 ring-amber-200"
             : isFinalized
             ? "border-emerald-200"
-            : "border-white/60 dark:border-white/10"
+            : "border-neutral-200 dark:border-white/10"
         }
       `}
     >

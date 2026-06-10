@@ -701,7 +701,7 @@ export default function DashboardPage() {
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 
-              <article className="rounded-md border border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">
+              <article className="rounded-md border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">
                 <p className="text-xs text-neutral-500">Perfil</p>
                 <p className="text-lg font-semibold">
                   {userDoc?.nombre || firebaseUser.displayName || "Usuario"}
@@ -713,7 +713,7 @@ export default function DashboardPage() {
                 </p>
               </article>
 
-              <article className="rounded-md border border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">
+              <article className="rounded-md border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">
                 <p className="text-xs text-neutral-500">Posiciones</p>
                 <p className="text-2xl font-bold">
                   {hasPreferredPositions ? preferredPositions.length : 0}
@@ -723,7 +723,7 @@ export default function DashboardPage() {
                 </p>
               </article>
 
-              <article className="rounded-md border border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">
+              <article className="rounded-md border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">
                 <p className="text-xs text-neutral-500">Grupos</p>
                 <p className="text-2xl font-bold">
                   {userStatsLoading ? "..." : userStats.groupsCount}
@@ -735,7 +735,7 @@ export default function DashboardPage() {
                 )}
               </article>
 
-              <article className="rounded-md border border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">
+              <article className="rounded-md border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">
                 <p className="text-xs text-neutral-500">Próximos partidos</p>
                 <p className="text-2xl font-bold">
                   {userStatsLoading ? "..." : userStats.myUpcomingMatchesCount}

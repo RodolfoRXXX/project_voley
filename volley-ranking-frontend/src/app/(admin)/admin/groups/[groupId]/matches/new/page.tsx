@@ -129,7 +129,7 @@ export default function NewMatchPage() {
         </Link>
       </div>
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4">
+      <section className="rounded-md border border-neutral-200 bg-white p-4 space-y-4">
         
         {/* Formación */}
         <FormField

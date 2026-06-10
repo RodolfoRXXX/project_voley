@@ -26,14 +26,14 @@ export default function PendingAlertsSection({ loading, alerts }: PendingAlertsS
       {loading && <p className="text-sm text-neutral-500">Cargando pendientes...</p>}
 
       {!loading && alerts.length === 0 && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-900">
+        <div className="rounded-md border border-emerald-200 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-900">
           No tenés pendientes por ahora.
         </div>
       )}
 
       <div className="space-y-3">
         {alerts.map((alert) => (
-          <article key={alert.id} className={`rounded-2xl border px-4 py-3 ${stylesBySeverity[alert.severity]}`}>
+          <article key={alert.id} className={`rounded-md border px-4 py-3 ${stylesBySeverity[alert.severity]}`}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase tracking-wide opacity-80">

@@ -90,7 +90,7 @@ export function MatchResultModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-950">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-md border border-neutral-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-950">
         <div className="flex items-start justify-between gap-4 border-b border-neutral-200 px-6 py-4 dark:border-neutral-800">
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500 dark:text-neutral-400">
@@ -113,17 +113,17 @@ export function MatchResultModal({
 
         <div className="space-y-5 px-6 py-5">
           <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="rounded-md border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
               <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Equipo A · Local</p>
               <p className="mt-1 text-base font-semibold text-neutral-900 dark:text-neutral-100">{homeTeamName}</p>
             </div>
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="rounded-md border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
               <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Equipo B · Visitante</p>
               <p className="mt-1 text-base font-semibold text-neutral-900 dark:text-neutral-100">{awayTeamName}</p>
             </div>
           </div>
 
-          <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+          <div className="rounded-md border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
             <p className="font-semibold">Cómo completar el resultado</p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
               <li>Cargá los sets ganados por cada equipo.</li>
@@ -197,7 +197,7 @@ export function MatchResultModal({
               </select>
             </label>
 
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950/30">
+            <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950/30">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Preview del ganador</p>
               <p className="mt-2 text-base font-semibold text-emerald-950 dark:text-emerald-100">{winnerPreview}</p>
               <p className="mt-2 text-xs text-emerald-800 dark:text-emerald-300">
@@ -207,12 +207,12 @@ export function MatchResultModal({
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
-            <div className={`rounded-lg border p-3 text-sm ${pointsCountMatches ? "border-green-200 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950/20 dark:text-green-100" : "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"}`}>
+            <div className={`rounded-md border p-3 text-sm ${pointsCountMatches ? "border-green-200 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950/20 dark:text-green-100" : "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"}`}>
               {pointsCountMatches
                 ? "La cantidad de puntos por set coincide entre local y visitante."
                 : "Los puntos por set deben tener la misma cantidad para ambos equipos."}
             </div>
-            <div className={`rounded-lg border p-3 text-sm ${withinConfiguredSets ? "border-green-200 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950/20 dark:text-green-100" : "border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/20 dark:text-red-100"}`}>
+            <div className={`rounded-md border p-3 text-sm ${withinConfiguredSets ? "border-green-200 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950/20 dark:text-green-100" : "border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/20 dark:text-red-100"}`}>
               {withinConfiguredSets
                 ? "La suma de sets respeta la configuración del torneo."
                 : "La suma de sets supera el máximo configurado para el partido."}

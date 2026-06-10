@@ -20,7 +20,7 @@ function ProtectedLayoutSkeleton() {
     <div className="flex flex-1 min-h-0 h-full bg-[var(--background)] transition-colors">
 
       {/* Sidebar placeholder */}
-      <div className="hidden md:block w-64 border-r border-[var(--border)] bg-[var(--surface)] transition-colors">
+      <div className="hidden md:block w-64 border-r border-[var(--border)] bg-[var(--background)] transition-colors">
         <div className="p-4 space-y-3">
           {[...Array(5)].map((_, i) => (
             <Skeleton

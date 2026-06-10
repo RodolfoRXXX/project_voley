@@ -131,7 +131,7 @@ function GroupDetailSkeleton() {
       <SkeletonSoft className="h-4 w-64" />
 
       {/* Estado */}
-      <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-4">
+      <section className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-4">
         <div className="flex items-center justify-between">
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-8 w-8 rounded-full" />
@@ -154,7 +154,7 @@ function GroupDetailSkeleton() {
           {[1, 2].map((i) => (
             <div
               key={i}
-              className="rounded-xl border border-neutral-200 bg-white p-4 flex justify-between items-center"
+              className="rounded-md border border-neutral-200 bg-white p-4 flex justify-between items-center"
             >
               <div className="space-y-2">
                 <Skeleton className="h-4 w-32" />
@@ -201,7 +201,7 @@ function MembersTabs({
   requestsCount: number;
 }) {
   return (
-    <div className="inline-flex rounded-xl border border-white/60 p-1">
+    <div className="inline-flex rounded-md border border-white/60 p-1">
       <button
         type="button"
         onClick={() => onChange("members")}
@@ -276,7 +276,7 @@ function MemberRow({
 
   return (
     <li
-      className={`relative rounded-xl border border-white/60 p-3 transition ${
+      className={`relative rounded-md border border-white/60 p-3 transition ${
         member.isAdmin ? "ring-1 ring-orange-400/50" : ""
       }`}
     >
@@ -316,7 +316,7 @@ function MemberRow({
               ⋯
             </button>
             {isMenuOpen && (
-              <div className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-white/70 bg-white p-1 shadow-lg">
+              <div className="absolute right-0 z-20 mt-1 w-44 rounded-md border border-white/70 bg-white p-1 shadow-lg">
               <button
                 type="button"
                 className="w-full rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100"
@@ -873,7 +873,7 @@ export default function AdminGroupPage() {
       />
 
       {/* Estado */}
-      <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-3 relative">
+      <section className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-3 relative">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
@@ -966,7 +966,7 @@ export default function AdminGroupPage() {
 
       {/* Edit */}
       {editMode && (
-        <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-4">
+        <section className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 space-y-4">
           <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
             Editar grupo
           </h2>
@@ -1053,7 +1053,7 @@ export default function AdminGroupPage() {
 
       {/* ================= MEMBERS ================= */}
 
-      <section className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-5 space-y-4">
+      <section className="rounded-md border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-5 space-y-4">
 
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
@@ -1115,7 +1115,7 @@ export default function AdminGroupPage() {
                   {pendingAdminRequests.map((member) => (
                     <li
                       key={`admin-pending-${member.id}`}
-                      className="rounded-xl border border-white/60 bg-white/70 p-3 transition hover:bg-white"
+                      className="rounded-md border border-white/60 bg-white/70 p-3 transition hover:bg-white"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <MemberIdentity member={member} subtitle="Postulación pendiente" />
@@ -1143,7 +1143,7 @@ export default function AdminGroupPage() {
                   {pendingRequests.map((member) => (
                     <li
                       key={`pending-${member.id}`}
-                      className="rounded-xl border border-white/60 bg-white/70 dark:bg-slate-900/60 p-3 transition"
+                      className="rounded-md border border-white/60 bg-white/70 dark:bg-slate-900/60 p-3 transition"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <MemberIdentity member={member} subtitle="Solicitud pendiente" />
@@ -1179,7 +1179,7 @@ export default function AdminGroupPage() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 mb-6">
             {groupTournaments.map((tournament) => (
-              <article key={tournament.id} className="rounded-xl border border-neutral-200 bg-white p-4 flex justify-between items-center">
+              <article key={tournament.id} className="rounded-md border border-neutral-200 bg-white p-4 flex justify-between items-center">
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-neutral-900">{tournament.name}</p>
                   <p className="text-xs text-neutral-600">Tipo: <b>{getTournamentFormatLabel(tournament.format)}</b></p>
@@ -1231,7 +1231,7 @@ export default function AdminGroupPage() {
             {matches.map((m) => (
               <div
                 key={m.id}
-                className="rounded-xl border border-neutral-200 bg-white p-4 flex justify-between items-center"
+                className="rounded-md border border-neutral-200 bg-white p-4 flex justify-between items-center"
               >
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-neutral-900">

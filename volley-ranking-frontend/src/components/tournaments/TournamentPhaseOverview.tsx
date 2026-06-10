@@ -12,7 +12,7 @@ type TournamentPhaseOverviewProps = {
 
 function OverviewStat({ label, value, helper }: { label: string; value: string; helper?: string }) {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+    <div className="rounded-md border border-neutral-200 bg-neutral-50 p-4">
       <p className="text-xs uppercase tracking-wide text-neutral-500">{label}</p>
       <p className="mt-1 text-2xl font-semibold text-neutral-900">{value}</p>
       {helper ? <p className="mt-1 text-xs text-neutral-500">{helper}</p> : null}
@@ -35,7 +35,7 @@ export function TournamentPhaseOverview({ metrics, phaseSnapshot, tournamentStat
     : `Cupos: ${metrics.acceptedTeamsCount}/${metrics.maxTeams || metrics.acceptedTeamsCount || 0}`;
 
   return (
-    <section className={`rounded-xl border bg-white p-5 space-y-4 ${isFinalized ? "border-emerald-200" : "border-neutral-200"}`}>
+    <section className={`rounded-md border bg-white p-5 space-y-4 ${isFinalized ? "border-emerald-200" : "border-neutral-200"}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className={`text-sm font-medium ${isFinalized ? "text-emerald-700" : "text-orange-600"}`}>

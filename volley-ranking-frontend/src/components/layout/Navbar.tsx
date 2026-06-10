@@ -102,7 +102,7 @@ export default function Navbar() {
   }, [userMenuOpen]);
 
   return (
-    <nav className="sticky top-0 z-50 bg-[var(--nav-bg)] border-b border-[var(--border)] shadow-sm transition-colors">
+    <nav className="sticky top-0 z-50 bg-[var(--nav-bg)] border-b border-[var(--border)] transition-colors">
       <div className="relative max-w-7xl mx-auto px-4 py-3 flex items-center">
         <div className="hidden md:block w-64" />
 
@@ -146,7 +146,7 @@ export default function Navbar() {
               </button>
 
               {pathname === "/" && (
-                <div className={`absolute right-0 top-full z-50 mt-2 w-44 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg transition-all ${userMenuOpen ? "pointer-events-auto visible opacity-100" : "pointer-events-none invisible opacity-0"}`}>
+                <div className={`absolute right-0 top-full z-50 mt-2 w-44 rounded-md border border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg transition-all ${userMenuOpen ? "pointer-events-auto visible opacity-100" : "pointer-events-none invisible opacity-0"}`}>
                   <Link
                     href="/dashboard"
                     onClick={() => setUserMenuOpen(false)}
@@ -182,9 +182,9 @@ export default function Navbar() {
 
       {/* MOBILE DRAWER */}
       {open && (
-        <div className="md:hidden border-t border-[var(--border)] bg-[var(--surface)] transition-colors">
+        <div className="md:hidden border-t border-[var(--border)] bg-[var(--nav-bg)] transition-colors">
           <div className="px-4 pt-3">
-            <div className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2">
+            <div className="flex items-center justify-between rounded-md border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2">
               <span className="text-sm font-medium text-[var(--foreground)]">{themeLabel}</span>
               <ThemeSwitch theme={theme} onToggle={toggleTheme} />
             </div>

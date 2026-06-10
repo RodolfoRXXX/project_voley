@@ -52,7 +52,7 @@ export default function MatchHistoryCard({
       className={`
         border border-neutral-200
         bg-white
-        rounded-lg
+        rounded-md
         p-4
         transition
         ${!isCancelado ? "hover:shadow-sm" : ""}

@@ -143,7 +143,7 @@ export default function PreferredPositionsEditor({
   }
 
   return (
-    <section className="bg-white rounded-lg border border-neutral-200 p-4 space-y-4 dark:bg-[var(--surface)] dark:border-[var(--border)]">
+    <section className="bg-white rounded-md border border-neutral-200 p-4 space-y-4 dark:bg-[var(--surface)] dark:border-[var(--border)]">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-neutral-800 dark:text-[var(--foreground)]">

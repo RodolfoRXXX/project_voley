@@ -55,7 +55,7 @@ export default function ProfileTournamentsPage() {
           <SkeletonSoft className="h-4 w-full max-w-lg" />
         </div>
 
-        <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
+        <div className="rounded-md border border-neutral-200 bg-white p-4 space-y-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <SkeletonSoft className="h-4 w-28" />
@@ -70,7 +70,7 @@ export default function ProfileTournamentsPage() {
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {[...Array(4)].map((_, idx) => (
-            <article key={idx} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4">
+            <article key={idx} className="rounded-md border border-neutral-200 bg-white p-4 space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-2 flex-1">
                   <Skeleton className="h-5 w-2/3" />
@@ -106,7 +106,7 @@ export default function ProfileTournamentsPage() {
         <p className="text-sm text-neutral-500">Seguimiento rápido de tus inscripciones, equipos y del estado competitivo de cada torneo.</p>
       </div>
 
-      <div className="rounded-xl border border-neutral-200 bg-white p-4">
+      <div className="rounded-md border border-neutral-200 bg-white p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="space-y-1 text-sm text-neutral-700">
             <span className="font-medium">Tipo de torneo</span>

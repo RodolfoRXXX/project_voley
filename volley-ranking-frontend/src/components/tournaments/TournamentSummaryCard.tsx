@@ -45,7 +45,7 @@ const paymentStatusLabel: Record<UserTournamentState["payment"]["status"], strin
 
 function MetricPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
+    <div className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2">
       <p className="text-[11px] uppercase tracking-wide text-neutral-500">{label}</p>
       <p className="text-sm font-semibold text-neutral-900">{value}</p>
     </div>
@@ -134,7 +134,7 @@ export function TournamentSummaryCard({
 
       {/* FINALIZADO */}
       {isFinalized ? (
-        <section className="rounded-xl border border-emerald-200/80 bg-emerald-50/80 dark:bg-emerald-500/10 p-4">
+        <section className="rounded-md border border-emerald-200/80 bg-emerald-50/80 dark:bg-emerald-500/10 p-4">
           <p className="text-[11px] uppercase tracking-wide text-emerald-700 font-semibold">
             Torneo finalizado
           </p>
@@ -150,7 +150,7 @@ export function TournamentSummaryCard({
 
       {/* ESTADO DEL USUARIO */}
       {variant === "profile" && userState ? (
-        <section className="rounded-xl border border-white/50 dark:border-white/10 bg-neutral-50/80 dark:bg-slate-800/40 p-4 space-y-3">
+        <section className="rounded-md border border-white/50 dark:border-white/10 bg-neutral-50/80 dark:bg-slate-800/40 p-4 space-y-3">
 
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">

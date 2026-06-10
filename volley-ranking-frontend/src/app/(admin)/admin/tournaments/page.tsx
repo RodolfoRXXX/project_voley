@@ -26,7 +26,7 @@ function TournamentsSkeleton() {
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col gap-3"
+            className="rounded-md border border-neutral-200 bg-white p-4 flex flex-col gap-3"
           >
             <div className="flex items-start justify-between gap-3">
               <Skeleton className="h-4 w-1/2" />
@@ -137,7 +137,7 @@ export default function AdminTournamentsPage() {
           return (
             <article
               key={tournament.id}
-              className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col gap-3"
+              className="rounded-md border border-neutral-200 bg-white p-4 flex flex-col gap-3"
             >
               <div className="flex items-start justify-between gap-4">
                 <h2 className="text-base font-semibold text-neutral-900">

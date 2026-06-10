@@ -53,7 +53,7 @@ export default function PagoModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-      <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-5 shadow-xl">
+      <div className="bg-white rounded-md w-full max-w-md p-6 space-y-5 shadow-xl">
 
         <div className="space-y-1">
           <h3 className="text-lg font-semibold text-neutral-900">
@@ -65,7 +65,7 @@ export default function PagoModal({
         </div>
 
         {/* Jugador */}
-        <div className="flex items-center gap-3 rounded-lg border border-neutral-200 p-3">
+        <div className="flex items-center gap-3 rounded-md border border-neutral-200 p-3">
           <UserAvatar
             nombre={user?.nombre}
             photoURL={user?.photoURL}
@@ -84,14 +84,14 @@ export default function PagoModal({
 
         {/* Info */}
         <div className="grid grid-cols-2 gap-3 text-sm">
-          <div className="rounded-lg bg-neutral-50 p-3 text-center">
+          <div className="rounded-md bg-neutral-50 p-3 text-center">
             <p className="text-xs text-neutral-500">Ranking</p>
             <p className="font-semibold">
               {participation.rankingTitular ?? "—"}
             </p>
           </div>
 
-          <div className="rounded-lg bg-neutral-50 p-3 text-center">
+          <div className="rounded-md bg-neutral-50 p-3 text-center">
             <p className="text-xs text-neutral-500">Puntaje</p>
             <p className="font-semibold">
               {participation.puntaje ?? "—"}

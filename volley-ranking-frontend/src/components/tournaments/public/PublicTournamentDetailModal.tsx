@@ -51,7 +51,7 @@ export default function PublicTournamentDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4 py-6">
-      <section className="w-full max-w-3xl max-h-[90vh] rounded-2xl border border-neutral-200 bg-white dark:bg-slate-800 shadow-2xl flex flex-col overflow-hidden">
+      <section className="w-full max-w-3xl max-h-[90vh] rounded-md border border-neutral-200 bg-white dark:bg-slate-800 shadow-2xl flex flex-col overflow-hidden">
         <div className="p-6 pb-4 border-b border-neutral-100 dark:border-slate-600">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
@@ -73,7 +73,7 @@ export default function PublicTournamentDetailModal({
 
         <div className="flex-1 overflow-y-auto p-6 pt-4 space-y-6">
           <div className="grid gap-4 sm:grid-cols-2">
-            <article className="rounded-xl border border-neutral-200 dark:border-slate-500 p-4 bg-neutral-50/60 dark:bg-slate-700/70 space-y-2">
+            <article className="rounded-md border border-neutral-200 dark:border-slate-500 p-4 bg-neutral-50/60 dark:bg-slate-700/70 space-y-2">
               <p className="text-sm">
                 <span className="text-neutral-500">Tipo:</span>{" "}
                 <b className="text-neutral-900">{tournamentCard.format}</b>
@@ -88,7 +88,7 @@ export default function PublicTournamentDetailModal({
               </p>
             </article>
 
-            <article className="rounded-lg border border-neutral-200 dark:border-slate-500 bg-neutral-50/50 dark:bg-slate-700/70 p-2">
+            <article className="rounded-md border border-neutral-200 dark:border-slate-500 bg-neutral-50/50 dark:bg-slate-700/70 p-2">
               <p className="text-sm font-semibold text-neutral-900">Información importante</p>
               <ul className="mt-2 space-y-1 text-sm text-neutral-600">
                 {tournamentCard.importantInfo.map((item) => (
@@ -107,7 +107,7 @@ export default function PublicTournamentDetailModal({
             {tournamentCard.standings.length === 0 ? (
               <p className="text-xs text-neutral-500">Todavía no hay posiciones cargadas.</p>
             ) : (
-              <div className="rounded-lg border border-neutral-200 dark:border-slate-500 bg-neutral-50/50 dark:bg-slate-700/70 p-2">
+              <div className="rounded-md border border-neutral-200 dark:border-slate-500 bg-neutral-50/50 dark:bg-slate-700/70 p-2">
                 <ul className="text-xs text-neutral-700">
                   {[...tournamentCard.standings]
                     .sort((a, b) => b.points - a.points || a.position - b.position || a.teamName.localeCompare(b.teamName, "es"))
@@ -139,7 +139,7 @@ export default function PublicTournamentDetailModal({
             ) : (
               <ul className="space-y-2">
                 {tournamentCard.upcomingMatches.map((match) => (
-                  <li key={match.id} className="rounded-lg border border-neutral-200 dark:border-slate-500 bg-white dark:bg-slate-800 px-3 py-2 text-sm hover:bg-neutral-50 dark:hover:bg-slate-700 transition">
+                  <li key={match.id} className="rounded-md border border-neutral-200 dark:border-slate-500 bg-white dark:bg-slate-800 px-3 py-2 text-sm hover:bg-neutral-50 dark:hover:bg-slate-700 transition">
                     <div className="flex items-center justify-between gap-2">
                       <p>
                         <b>{match.homeTeamName}</b> <span className="text-neutral-400 mx-1">vs</span> <b>{match.awayTeamName}</b>

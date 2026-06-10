@@ -35,24 +35,24 @@ function AdminTournamentDetailSkeleton() {
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
       <Skeleton className="h-5 w-56" />
-      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+      <section className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <Skeleton className="h-6 w-64" />
         <Skeleton className="h-4 w-full max-w-2xl" />
       </section>
-      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
+      <section className="rounded-md border border-neutral-200 bg-white p-5 space-y-4">
         <Skeleton className="h-5 w-48" />
         <div className="grid gap-3 sm:grid-cols-2">
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
         </div>
       </section>
-      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+      <section className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <Skeleton className="h-5 w-40" />
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-12 w-full" />
       </section>
-      <section className="rounded-xl border border-neutral-200 bg-neutral-50 p-5 space-y-3">
+      <section className="rounded-md border border-neutral-200 bg-neutral-50 p-5 space-y-3">
         <Skeleton className="h-5 w-52" />
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-12 w-full" />
@@ -434,7 +434,7 @@ export default function AdminTournamentDetailPage() {
         ]}
       />
 
-      <header className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
+      <header className="rounded-md border border-neutral-200 bg-white p-5 space-y-2">
         <div className="flex content-start justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold text-neutral-900">
@@ -461,7 +461,7 @@ export default function AdminTournamentDetailPage() {
       <AdminResourcePendingAlerts alerts={pendingAlerts} showLinks={false} />
 
       {tournament.status === "finalizado" ? (
-        <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-1">
+        <section className="rounded-md border border-emerald-200 bg-emerald-50 p-4 space-y-1">
           <p className="text-xs uppercase tracking-wide font-semibold text-emerald-700">Estado definitivo</p>
           <p className="text-sm text-emerald-900">
             El torneo ya finalizó. Este panel muestra resultados cerrados, podio y trazabilidad histórica.
@@ -492,7 +492,7 @@ export default function AdminTournamentDetailPage() {
         onEdit={startEdit}
       />
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-6">
+      <section className="rounded-md border border-neutral-200 bg-white p-5 space-y-6">
         <h2 className="text-base font-semibold text-neutral-900">
           Equipos inscriptos
         </h2>
@@ -509,7 +509,7 @@ export default function AdminTournamentDetailPage() {
 
         {!loadingRegistrations && totalRegistrationEntries > 0 && (
           <>
-            <div className="inline-flex rounded-xl border border-neutral-200 p-1">
+            <div className="inline-flex rounded-md border border-neutral-200 p-1">
               <button
                 type="button"
                 onClick={() => setRegistrationsTab("pendientes")}
@@ -553,7 +553,7 @@ export default function AdminTournamentDetailPage() {
               {registrationsTab === "pendientes" && pendingRegistrations.map((r) => (
                 <div
                   key={r.id}
-                  className="flex justify-between items-center border rounded-lg px-3 py-2 text-sm"
+                  className="flex justify-between items-center border rounded-md px-3 py-2 text-sm"
                 >
                   <span>
                     Equipo: {r.nameTeam || "Sin nombre"} {isRegistrationReady(r) ? "✅" : "🕒"}
@@ -576,7 +576,7 @@ export default function AdminTournamentDetailPage() {
               {registrationsTab === "aceptados" && acceptedRegistrations.map((r) => (
                 <div
                   key={r.id}
-                  className="flex justify-between items-center border rounded-lg px-3 py-2 text-sm"
+                  className="flex justify-between items-center border rounded-md px-3 py-2 text-sm"
                 >
                   <span>Equipo: {r.nameTeam || "Sin nombre"}</span>
 
@@ -597,7 +597,7 @@ export default function AdminTournamentDetailPage() {
               {registrationsTab === "rechazados" && rejectedRegistrations.map((r) => (
                 <div
                   key={r.id}
-                  className="flex justify-between items-center border rounded-lg px-3 py-2 text-sm"
+                  className="flex justify-between items-center border rounded-md px-3 py-2 text-sm"
                 >
                   <span>Equipo: {r.nameTeam || "Sin nombre"}</span>
 
@@ -630,7 +630,7 @@ export default function AdminTournamentDetailPage() {
 
       {showAdminSearchModal ? (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4">
-          <div className="w-full max-w-xl rounded-2xl bg-white p-6 space-y-4">
+          <div className="w-full max-w-xl rounded-md bg-white p-6 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-neutral-900">Agregar admin</h3>
@@ -665,7 +665,7 @@ export default function AdminTournamentDetailPage() {
             ) : (
               <ul className="max-h-80 overflow-y-auto space-y-2">
                 {adminSearchResults.map((admin) => (
-                  <li key={admin.id} className="rounded-lg border border-neutral-200 p-3 flex items-center justify-between gap-3">
+                  <li key={admin.id} className="rounded-md border border-neutral-200 p-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <UserAvatar nombre={admin.name} photoURL={admin.photoURL} size={36} />
                       <div>

@@ -27,7 +27,7 @@ export function TournamentAdminsCard({
   if (admins.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-neutral-200 bg-neutral-50 p-5 space-y-4">
+    <section className="rounded-md border border-neutral-200 bg-neutral-50 p-5 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-neutral-900">Administradores del torneo</h2>
@@ -48,7 +48,7 @@ export function TournamentAdminsCard({
 
       <ul className={isAdminView ? "space-y-2" : "flex flex-wrap items-start gap-4"}>
         {admins.map((admin) => (
-          <li key={admin.id} className={`rounded-lg border border-neutral-200 bg-white ${isAdminView ? "px-3 py-2 flex items-center justify-between gap-3" : "px-4 py-3 w-full sm:w-[220px]"}`}>
+          <li key={admin.id} className={`rounded-md border border-neutral-200 bg-white ${isAdminView ? "px-3 py-2 flex items-center justify-between gap-3" : "px-4 py-3 w-full sm:w-[220px]"}`}>
             <div className={isAdminView ? "flex items-center gap-3" : "flex flex-col items-center text-center gap-2"}>
               <UserAvatar nombre={admin.name} photoURL={admin.photoURL} size={isAdminView ? 36 : 48} />
               <div>

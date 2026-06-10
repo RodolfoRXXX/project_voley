@@ -107,7 +107,7 @@ export default function ShareOptionsButton({
       {open ? (
         <div
           role="menu"
-          className={`absolute top-11 z-20 w-44 rounded-xl border border-neutral-200 bg-white p-2 shadow-lg shadow-black/10 dark:border-neutral-700 dark:bg-neutral-900 ${
+          className={`absolute top-11 z-20 w-44 rounded-md border border-neutral-200 bg-white p-2 shadow-lg shadow-black/10 dark:border-neutral-700 dark:bg-neutral-900 ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >

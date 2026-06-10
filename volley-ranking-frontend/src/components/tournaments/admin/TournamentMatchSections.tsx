@@ -101,7 +101,7 @@ function KnockoutMatchCard({
         : "El ganador avanza automáticamente al siguiente cruce.";
 
   return (
-    <div className="space-y-3 rounded-xl border border-neutral-200 bg-white p-3 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/40">
+    <div className="space-y-3 rounded-md border border-neutral-200 bg-white p-3 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/40">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
           Partido {tournamentMatch.bracketIndex || tournamentMatch.sequence || 1}
@@ -112,10 +112,10 @@ function KnockoutMatchCard({
       </div>
 
       <div className="space-y-2">
-        <div className={`rounded-lg border px-3 py-2 text-sm ${homeIsWinner ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-100" : "border-neutral-200 text-neutral-700 dark:border-neutral-700 dark:text-neutral-200"}`}>
+        <div className={`rounded-md border px-3 py-2 text-sm ${homeIsWinner ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-100" : "border-neutral-200 text-neutral-700 dark:border-neutral-700 dark:text-neutral-200"}`}>
           {getTeamLabel(tournamentMatch.homeTeamId, teamNames)}
         </div>
-        <div className={`rounded-lg border px-3 py-2 text-sm ${awayIsWinner ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-100" : "border-neutral-200 text-neutral-700 dark:border-neutral-700 dark:text-neutral-200"}`}>
+        <div className={`rounded-md border px-3 py-2 text-sm ${awayIsWinner ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-100" : "border-neutral-200 text-neutral-700 dark:border-neutral-700 dark:text-neutral-200"}`}>
           {getTeamLabel(tournamentMatch.awayTeamId, teamNames)}
         </div>
       </div>
@@ -211,7 +211,7 @@ function KnockoutBracket({
         {rounds.map(([roundLabel, tournamentMatches]) => (
           <div
             key={`knockout-${roundLabel}`}
-            className="space-y-3 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-950/20"
+            className="space-y-3 overflow-hidden rounded-md border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-950/20"
           >
             <div>
               <p className="break-words text-sm font-semibold text-neutral-900 dark:text-neutral-300">{getKnockoutRoundLabel(roundLabel)}</p>

@@ -20,7 +20,7 @@ export default function TeamColumn({
   participations,
 }: Props) {
   return (
-    <div className="rounded-xl border border-neutral-200 p-4 bg-neutral-50">
+    <div className="rounded-md border border-neutral-200 p-4 bg-neutral-50">
       <div className="mb-3 pb-2 border-b border-neutral-200">
         <h3 className="font-semibold text-sm">
           {nombre}
@@ -35,7 +35,7 @@ export default function TeamColumn({
           return (
             <li
               key={userId}
-              className="flex items-center gap-2 text-sm bg-white rounded-lg px-2 py-1.5 border"
+              className="flex items-center gap-2 text-sm bg-white rounded-md px-2 py-1.5 border"
             >
               <UserAvatar
                 nombre={user?.nombre || "user"}

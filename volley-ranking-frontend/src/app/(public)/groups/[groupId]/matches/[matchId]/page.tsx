@@ -68,7 +68,7 @@ function PublicMatchSkeleton() {
   return (
     <main className="max-w-4xl mx-auto mt-6 sm:mt-10 px-4 pb-12 space-y-8">
       <SkeletonSoft className="h-4 w-32" />
-      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+      <section className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <Skeleton className="h-8 w-48" />
         <SkeletonSoft className="h-4 w-full max-w-lg" />
       </section>
@@ -291,7 +291,7 @@ export default function PublicMatchDetailPage() {
         <Link href={`/groups/${groupId}`} className="text-sm text-neutral-600 hover:underline">
           ← Volver al grupo
         </Link>
-        <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
+        <section className="rounded-md border border-neutral-200 bg-white p-5 space-y-2">
           <h1 className="text-xl font-semibold text-neutral-900">No se pudo mostrar el partido</h1>
           <p className="text-sm text-neutral-600">{error || "El partido no está disponible."}</p>
         </section>
@@ -320,7 +320,7 @@ export default function PublicMatchDetailPage() {
       />
 
       {match.visibility !== "public" ? (
-        <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <section className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           Este partido está marcado como solo grupo. Si necesitás sumarte o gestionarlo,
           ingresá con tu cuenta desde el detalle privado.
         </section>
@@ -411,7 +411,7 @@ export default function PublicMatchDetailPage() {
         )}
       />
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-4 text-sm text-neutral-600">
+      <section className="rounded-md border border-neutral-200 bg-white p-4 text-sm text-neutral-600">
         Para anotarte, modificar tu participación o gestionar pagos, ingresá desde tu cuenta.
       </section>
     </main>

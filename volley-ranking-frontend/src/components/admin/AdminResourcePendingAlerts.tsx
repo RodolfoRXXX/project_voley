@@ -32,7 +32,7 @@ export default function AdminResourcePendingAlerts({ alerts, showLinks = true }:
       {grouped.map(({ severity, alerts: alertsBySeverity }) => (
         <article
           key={severity}
-          className={`rounded-2xl border px-4 py-3 ${severityStyles[severity]}`}
+          className={`rounded-md border px-4 py-3 ${severityStyles[severity]}`}
         >
           <p className="text-sm font-semibold">
             {pendingAlertSeverityLabel[severity]}: tenés acciones pendientes

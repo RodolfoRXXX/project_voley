@@ -32,14 +32,14 @@ export function TournamentStandingsTable({
 }) {
   if (standings.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-neutral-200 p-4 text-sm text-neutral-500 dark:border-neutral-700 dark:text-neutral-400">
+      <div className="rounded-md border border-dashed border-neutral-200 p-4 text-sm text-neutral-500 dark:border-neutral-700 dark:text-neutral-400">
         Esta fase todavía no tiene standings publicados.
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+    <div className="overflow-x-auto rounded-md border border-neutral-200 dark:border-neutral-800">
       <table className="min-w-full divide-y divide-neutral-200 text-sm dark:divide-neutral-800">
         <thead className="bg-neutral-50 dark:bg-neutral-900/60">
           <tr className="text-left text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">

@@ -16,7 +16,7 @@ type MatchHeaderProps = {
 export default function MatchHeader({ group, shareAction }: MatchHeaderProps) {
 
   return (
-    <header className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
+    <header className="rounded-md border border-neutral-200 bg-white p-5 space-y-2">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">

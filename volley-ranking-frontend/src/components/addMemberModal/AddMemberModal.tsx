@@ -62,7 +62,7 @@ export default function AddMemberModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl w-full max-w-xl p-6 space-y-5 shadow-xl">
+      <div className="bg-white rounded-md w-full max-w-xl p-6 space-y-5 shadow-xl">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-neutral-900">Agregar integrante</h2>
@@ -94,7 +94,7 @@ export default function AddMemberModal({
             {results.map((member) => (
               <li
                 key={member.id}
-                className="rounded-xl border border-neutral-200 p-3 text-sm flex items-center justify-between gap-3"
+                className="rounded-md border border-neutral-200 p-3 text-sm flex items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-3">
                   <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />

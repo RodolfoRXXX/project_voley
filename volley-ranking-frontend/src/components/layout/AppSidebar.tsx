@@ -91,7 +91,7 @@ export default function AppSidebar() {
   return (
     <aside className="
       hidden md:flex w-64 flex-col h-full min-h-full
-      bg-[var(--surface)] text-[var(--foreground)]
+      bg-[var(--background)] text-[var(--foreground)]
       border-r border-[var(--border)]
     ">
 
@@ -190,7 +190,7 @@ export default function AppSidebar() {
       </nav>
 
       <div className="px-4 pb-3">
-        <div className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2">
+        <div className="flex items-center justify-between rounded-md border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2">
           <span className="text-sm font-medium text-[var(--foreground)]">{themeLabel}</span>
           <ThemeSwitch theme={theme} onToggle={toggleTheme} />
         </div>

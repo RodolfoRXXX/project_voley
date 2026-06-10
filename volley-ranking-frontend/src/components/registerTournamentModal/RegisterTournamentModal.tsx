@@ -182,7 +182,7 @@ export default function RegisterTournamentModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
 
-        <div className="w-full max-w-lg space-y-5 rounded-2xl bg-white p-6 shadow-xl dark:bg-neutral-900">
+        <div className="w-full max-w-lg space-y-5 rounded-md bg-white p-6 shadow-xl dark:bg-neutral-900">
 
         {/* HEADER */}
 
@@ -208,7 +208,7 @@ export default function RegisterTournamentModal({
         {/* INSCRIPCIONES EXISTENTES */}
 
         {registrations.length > 0 && (
-            <div className="space-y-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/60">
+            <div className="space-y-3 rounded-md border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/60">
 
             <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
                 Tus inscripciones
@@ -221,7 +221,7 @@ export default function RegisterTournamentModal({
                 return (
                     <div
                     key={reg.id}
-                    className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                    className="flex items-center justify-between rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
                     >
                     <div className="flex flex-col">
                         <span className="font-medium text-neutral-900 dark:text-neutral-100">

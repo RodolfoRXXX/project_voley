@@ -189,7 +189,7 @@ export default function ProfileGroupDetailPage() {
   return (
     <section className="space-y-5">
       <Link href="/profile/groups" className="text-sm text-neutral-600 hover:underline">← Volver a mis grupos</Link>
-      <header className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
+      <header className="rounded-md border border-neutral-200 bg-white p-5 space-y-2">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-2">
             <h1 className="text-2xl font-bold text-neutral-900">{group.nombre || group.name || "Grupo"}</h1>
@@ -204,14 +204,14 @@ export default function ProfileGroupDetailPage() {
         </div>
       </header>
 
-      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+      <article className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <h2 className="text-base font-semibold text-neutral-900">Integrantes del grupo</h2>
         {members.length === 0 ? (
           <p className="text-sm text-neutral-500">No hay integrantes registrados.</p>
         ) : (
           <ul className="space-y-2">
             {members.map((member) => (
-              <li key={member.id} className="rounded-lg border border-neutral-200 p-3 flex items-center gap-3">
+              <li key={member.id} className="rounded-md border border-neutral-200 p-3 flex items-center gap-3">
                 <UserAvatar
                   nombre={member.nombre}
                   photoURL={member.photoURL}
@@ -229,14 +229,14 @@ export default function ProfileGroupDetailPage() {
         )}
       </article>
 
-      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+      <article className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <h2 className="text-base font-semibold text-neutral-900">Torneos en los que participó el grupo</h2>
         {tournaments.length === 0 ? (
           <p className="text-sm text-neutral-500">Este grupo no tiene torneos asociados aún.</p>
         ) : (
           <ul className="grid gap-3 text-sm text-neutral-700 sm:grid-cols-2 xl:grid-cols-3">
             {tournaments.map((tournament) => (
-              <li key={tournament.id} className="rounded-lg border border-neutral-200 p-3 space-y-1 bg-neutral-50">
+              <li key={tournament.id} className="rounded-md border border-neutral-200 p-3 space-y-1 bg-neutral-50">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-semibold text-neutral-900">{tournament.name}</p>
                   {tournament.podiumPlace ? (

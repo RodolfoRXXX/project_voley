@@ -67,7 +67,7 @@ function PreviewCard({
     : "bg-green-200 text-green-900 dark:bg-green-700/70 dark:text-green-300";
 
   return (
-    <div className={`space-y-3 overflow-hidden rounded-lg border p-3 ${styles}`}>
+    <div className={`space-y-3 overflow-hidden rounded-md border p-3 ${styles}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-300">{title}</h4>
         <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${badgeStyles}`}>
@@ -520,15 +520,15 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-700">
+          <div className="rounded-md border border-neutral-200 px-3 py-2 dark:border-neutral-700">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Sets</p>
             <p className="mt-1 text-sm font-medium text-neutral-900 dark:text-neutral-100">{homeSets} - {awaySets}</p>
           </div>
-          <div className="rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-700">
+          <div className="rounded-md border border-neutral-200 px-3 py-2 dark:border-neutral-700">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Ganador</p>
             <p className="mt-1 text-sm font-medium text-neutral-900 dark:text-neutral-100">{winnerLabel}</p>
           </div>
-          <div className="rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-700">
+          <div className="rounded-md border border-neutral-200 px-3 py-2 dark:border-neutral-700">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Puntos por set</p>
             <p className="mt-1 text-sm font-medium text-neutral-900 dark:text-neutral-100">
               {draft.homePointsText || draft.awayPointsText ? `${draft.homePointsText || "-"} / ${draft.awayPointsText || "-"}` : "Sin detalle"}
@@ -609,19 +609,19 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
       {isLeaguePhase && (
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900/40">
+          <div className="rounded-md border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900/40">
             <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Líder actual</p>
             <p className="mt-2 text-sm font-medium text-neutral-900 dark:text-neutral-100">
               {leagueLeader ? `#${leagueLeader.position} ${teamNames[leagueLeader.teamId] || leagueLeader.teamId}` : "Sin datos"}
             </p>
           </div>
-          <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900/40">
+          <div className="rounded-md border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900/40">
             <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Partidos</p>
             <p className="mt-2 text-sm font-medium text-neutral-900 dark:text-neutral-100">
               {leagueProgress.completedMatches} jugados / {leagueProgress.pendingMatches} pendientes
             </p>
           </div>
-          <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900/40">
+          <div className="rounded-md border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900/40">
             <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Jornadas</p>
             <p className="mt-2 text-sm font-medium text-neutral-900 dark:text-neutral-100">
               {leagueProgress.completedMatchdays} de {leagueProgress.totalMatchdays} completas
@@ -766,7 +766,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
 
       {isMixedTournament && groupStagePhase && (
         <div className="grid gap-6 xl:grid-cols-2">
-          <section className="min-w-0 space-y-4 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-700 dark:bg-neutral-900/30">
+          <section className="min-w-0 space-y-4 rounded-md border border-neutral-200 bg-white p-5 dark:border-neutral-700 dark:bg-neutral-900/30">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">1. Fase de grupos</h3>
               <span className="text-xs text-neutral-500 dark:text-neutral-400">
@@ -791,7 +791,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
               {publishedQualifiedTeams.length > 0 ? (
                 <ul className="space-y-2 text-sm text-neutral-700 dark:text-neutral-200">
                   {publishedQualifiedTeams.map((team) => (
-                    <li key={`${team.teamId}-${team.seed || team.position || 0}`} className="rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-700">
+                    <li key={`${team.teamId}-${team.seed || team.position || 0}`} className="rounded-md border border-neutral-200 px-3 py-2 dark:border-neutral-700">
                       <div className="flex items-center justify-between gap-3">
                         <span className="font-medium text-neutral-900 dark:text-neutral-100">
                           #{team.seed || team.position || "-"} {teamNames[team.teamId] || team.teamId}
@@ -815,7 +815,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
             )}
           </section>
 
-          <section className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-700 dark:bg-neutral-900/30">
+          <section className="space-y-4 rounded-md border border-neutral-200 bg-white p-5 dark:border-neutral-700 dark:bg-neutral-900/30">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">2. Playoffs</h3>
               <span className="text-xs text-neutral-500 dark:text-neutral-400">
@@ -826,7 +826,7 @@ export default function TournamentAdminPanel({ tournament, onTournamentRefresh }
             {Array.isArray(knockoutPhase?.config?.qualifiedTeams) && knockoutPhase.config.qualifiedTeams.length > 0 ? (
               <ul className="grid gap-2 sm:grid-cols-2 text-sm text-neutral-700 dark:text-neutral-200">
                 {knockoutPhase.config.qualifiedTeams.map((team) => (
-                  <li key={`${team.teamId}-${team.seed || 0}`} className="rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-700">
+                  <li key={`${team.teamId}-${team.seed || 0}`} className="rounded-md border border-neutral-200 px-3 py-2 dark:border-neutral-700">
                     <b>Seed {team.seed || "-"}</b>: {teamNames[team.teamId] || team.teamId}
                     <div className="text-xs text-neutral-500 dark:text-neutral-400">
                       {team.groupLabel ? `${team.groupLabel} · ` : ""}pos. {team.position || "-"} · {team.qualificationType || "clasificado"}

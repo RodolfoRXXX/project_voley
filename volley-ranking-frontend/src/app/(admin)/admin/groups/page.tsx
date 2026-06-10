@@ -51,7 +51,7 @@ function GroupsSkeleton() {
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col h-full"
+            className="rounded-md border border-neutral-200 bg-white p-4 flex flex-col h-full"
           >
             <div className="space-y-2 w-full">
               <Skeleton className="h-4 w-1/3" />
@@ -168,7 +168,7 @@ export default function AdminGroupsPage() {
         {groups.map((group) => (
           <div
             key={group.id}
-            className="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col h-full"
+            className="rounded-md border border-neutral-200 bg-white p-4 flex flex-col h-full"
           >
             {/* Contenido superior */}
             <div className="space-y-1">

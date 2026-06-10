@@ -19,14 +19,14 @@ const CURRENT_TOURNAMENT_STATUSES = ["inscripciones_abiertas", "inscripciones_ce
 function HomeSkeleton() {
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 space-y-6 pb-12">
-      <section className="rounded-3xl border border-neutral-200 bg-white p-6 sm:p-8 space-y-5">
+      <section className="rounded-md border border-neutral-200 bg-white p-6 sm:p-8 space-y-5">
         <Skeleton className="h-6 w-44 rounded-full" />
         <Skeleton className="h-12 w-full max-w-2xl" />
         <SkeletonSoft className="h-4 w-full max-w-xl" />
         <Skeleton className="h-11 w-40 rounded-xl" />
         <div className="grid gap-4 md:grid-cols-3">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="rounded-2xl border border-neutral-100 p-4 space-y-3">
+            <div key={i} className="rounded-md border border-neutral-100 p-4 space-y-3">
               <Skeleton className="h-10 w-10 rounded-2xl" />
               <Skeleton className="h-5 w-2/3" />
               <SkeletonSoft className="h-4 w-full" />
@@ -161,7 +161,7 @@ export default function HomePage() {
 
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-8">
-      <section className="relative overflow-hidden rounded-3xl border border-orange-200/70 dark:border-[var(--border)] bg-gradient-to-br from-orange-100 via-orange-50 to-amber-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-6 sm:p-8 shadow-sm">
+      <section className="relative overflow-hidden rounded-md border border-orange-200/70 dark:border-[var(--border)] bg-gradient-to-br from-orange-100 via-orange-50 to-amber-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-6 sm:p-8 shadow-sm">
         <div className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-orange-300/20 dark:bg-orange-500/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-amber-300/20 dark:bg-amber-500/10 blur-3xl" />
 
@@ -199,9 +199,9 @@ export default function HomePage() {
             {featureCards.map((feature) => (
               <article
                 key={feature.title}
-                className="group rounded-2xl border border-white/80 bg-white/80 dark:bg-slate-900/70 px-4 py-5 backdrop-blur hover:-translate-y-1 hover:shadow-xl transition"
+                className="group rounded-md border border-white/80 bg-white/80 dark:bg-slate-900/70 px-4 py-5 backdrop-blur hover:-translate-y-1 hover:shadow-xl transition"
               >
-                <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 text-xl group-hover:scale-110 transition">
+                <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-md bg-gradient-to-br from-orange-100 to-amber-100 text-xl group-hover:scale-110 transition">
                   {feature.emoji}
                 </div>
                 <h3 className="font-semibold">{feature.title}</h3>

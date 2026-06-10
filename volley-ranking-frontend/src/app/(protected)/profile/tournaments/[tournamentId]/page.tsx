@@ -55,7 +55,7 @@ export default function ProfileTournamentDetailPage() {
     <section className="space-y-5">
       <Link href="/profile/tournaments" className="text-sm text-neutral-600 hover:underline">← Volver a mis torneos</Link>
 
-      <header className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
+      <header className="rounded-md border border-neutral-200 bg-white p-5 space-y-2">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-2">
             <h1 className="text-2xl font-bold text-neutral-900">{tournament.name}</h1>
@@ -75,14 +75,14 @@ export default function ProfileTournamentDetailPage() {
       <TournamentPodiumCard winnerTeamNames={winnerTeamNames} status={tournament.status} />
       <TournamentAdminsCard admins={adminUsers} />
 
-      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+      <article className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <h2 className="text-base font-semibold text-neutral-900">Mis equipos en el torneo</h2>
         {teams.length === 0 ? (
           <p className="text-sm text-neutral-500">Sin datos en tournamentTeams para tus grupos.</p>
         ) : (
           <ul className="space-y-2 text-sm text-neutral-700">
             {teams.map((team) => (
-              <li key={team.id} className="rounded-lg border border-neutral-200 p-3">
+              <li key={team.id} className="rounded-md border border-neutral-200 p-3">
                 <p><b>Equipo:</b> {team.nameTeam || team.id}</p>
                 <p><b>Grupo:</b> {team.groupId || "-"}</p>
                 <p><b>Puntos:</b> {team.stats?.points ?? team.points ?? 0}</p>
@@ -92,14 +92,14 @@ export default function ProfileTournamentDetailPage() {
         )}
       </article>
 
-      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+      <article className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <h2 className="text-base font-semibold text-neutral-900">Partidos de mis equipos</h2>
         {view.matches.length === 0 ? (
           <p className="text-sm text-neutral-500">Aún no hay partidos asignados para tus equipos.</p>
         ) : (
           <ul className="space-y-2 text-sm text-neutral-700">
             {view.matches.map((match) => (
-              <li key={match.id} className="rounded-lg border border-neutral-200 p-3">
+              <li key={match.id} className="rounded-md border border-neutral-200 p-3">
                 <p><b>Partido:</b> {match.homeTeamName} vs {match.awayTeamName}</p>
                 <p><b>Fase:</b> {match.phaseType}</p>
                 <p><b>Estado:</b> {match.status === "completed" ? "Finalizado" : "Programado"}</p>
@@ -115,7 +115,7 @@ export default function ProfileTournamentDetailPage() {
         )}
       </article>
 
-      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+      <article className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <h2 className="text-base font-semibold text-neutral-900">Tabla de posiciones</h2>
         {view.standings.length === 0 ? (
           <p className="text-sm text-neutral-500">No hay posiciones disponibles todavía.</p>
@@ -149,14 +149,14 @@ export default function ProfileTournamentDetailPage() {
         )}
       </article>
 
-      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+      <article className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <h2 className="text-base font-semibold text-neutral-900">Inscripciones relacionadas</h2>
         {registrations.length === 0 ? (
           <p className="text-sm text-neutral-500">No hay inscripciones de tus grupos en este torneo.</p>
         ) : (
           <ul className="space-y-2 text-sm text-neutral-700">
             {registrations.map((registration) => (
-              <li key={registration.id} className="rounded-lg border border-neutral-200 p-3">
+              <li key={registration.id} className="rounded-md border border-neutral-200 p-3">
                 <p><b>Equipo:</b> {registration.nameTeam || registration.id}</p>
                 <p><b>Grupo:</b> {registration.groupId}</p>
                 <p><b>Estado:</b> {registration.status || "-"}</p>

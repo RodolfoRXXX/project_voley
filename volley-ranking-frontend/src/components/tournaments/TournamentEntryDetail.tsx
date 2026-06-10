@@ -76,20 +76,20 @@ function TournamentEntryDetailSkeleton() {
     <section className="space-y-5" aria-busy>
       <SkeletonSoft className="h-4 w-44" />
 
-      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+      <article className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <Skeleton className="h-6 w-2/3" />
         <SkeletonSoft className="h-4 w-full" />
         <SkeletonSoft className="h-4 w-1/2" />
       </article>
 
-      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+      <article className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <Skeleton className="h-5 w-48" />
         {Array.from({ length: 5 }).map((_, idx) => (
           <SkeletonSoft key={`entry-info-${idx}`} className="h-4 w-full" />
         ))}
       </article>
 
-      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+      <article className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <Skeleton className="h-5 w-44" />
           <SkeletonSoft className="h-4 w-28" />
@@ -281,7 +281,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
     <section className="space-y-5">
       <Link href="/profile/tournaments" className="text-sm text-neutral-600 hover:underline">← Volver a mis torneos</Link>
 
-      <header className="relative rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
+      <header className="relative rounded-md border border-neutral-200 bg-white p-5 space-y-2">
         <span className={`absolute right-4 top-4 text-xs rounded-full px-2 py-1 ${registrationStatusClass[registrationStatus]}`}>
           {registrationStatusLabel[registrationStatus]}
         </span>
@@ -292,7 +292,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
 
       <AdminResourcePendingAlerts alerts={pendingAlerts} showLinks={false} />
 
-      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2 text-sm">
+      <article className="rounded-md border border-neutral-200 bg-white p-5 space-y-2 text-sm">
         <h2 className="text-base font-semibold text-neutral-900">Información del torneo y equipo</h2>
         <p><b>Tipo de registro:</b> {source === "registration" ? "Inscripción" : "Equipo"}</p>
         <p><b>Nombre del equipo:</b> {entry.nameTeam || entry.name || group.nombre || "Sin nombre"}</p>
@@ -301,7 +301,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
         {source === "team" && entry.registrationId && <p><b>Registration ID:</b> {entry.registrationId}</p>}
       </article>
 
-      <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
+      <article className="rounded-md border border-neutral-200 bg-white p-5 space-y-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-base font-semibold text-neutral-900">Integrantes del equipo</h2>
           <div className="text-sm text-neutral-700 flex items-center gap-2">
@@ -318,7 +318,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
               const inTeam = entry.playerIds?.includes(member.id);
 
               return (
-                <li key={member.id} className="rounded-lg border border-neutral-200 p-3 flex items-center justify-between gap-3">
+                <li key={member.id} className="rounded-md border border-neutral-200 p-3 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <UserAvatar nombre={member.nombre} photoURL={member.photoURL || null} size={36} />
                     <div className="min-w-0">
@@ -355,7 +355,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
       </article>
 
       {isGroupAdmin && (source === "registration" || source === "team") && (
-        <article className="relative rounded-xl border border-neutral-200 bg-white p-5 space-y-2 text-sm">
+        <article className="relative rounded-md border border-neutral-200 bg-white p-5 space-y-2 text-sm">
 
           <span
             className={`absolute top-4 right-4 text-xs rounded-full px-2 py-1 ${paymentStatusClass[paymentStatus]}`}
@@ -392,7 +392,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
       )}
 
       {source === "team" && developmentView && (
-        <article className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
+        <article className="rounded-md border border-neutral-200 bg-white p-5 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-base font-semibold text-neutral-900">Desarrollo del torneo para este equipo</h2>
             <Link href={`/tournaments/${tournament.id}`} className="text-sm font-medium text-orange-600 hover:text-orange-700">
@@ -423,7 +423,7 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
                   return (
                     <li
                       key={standing.id}
-                      className={`rounded-lg border p-3 text-sm ${
+                      className={`rounded-md border p-3 text-sm ${
                         isCurrentTeam
                           ? "border-orange-300 bg-orange-50 text-orange-950 dark:border-orange-700 dark:bg-orange-500/20 dark:text-orange-100"
                           : "border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900/40"

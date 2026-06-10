@@ -199,7 +199,7 @@ export default function TournamentRegistrationStatusModal({
 
   return (
   <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4 py-3">
-    <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg shadow-xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 rounded-md w-full max-w-lg shadow-xl max-h-[90vh] flex flex-col overflow-hidden">
 
       {/* HEADER */}
       <div className="flex items-start justify-between gap-4 p-5 border-b border-neutral-200 dark:border-white/10">
@@ -240,7 +240,7 @@ export default function TournamentRegistrationStatusModal({
 
         {/* ALERTA CONDICIONES */}
         {!isTeamSource && !canApprove && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
             <p className="font-medium">No podés aceptar todavía:</p>
             <ul className="list-disc pl-4 mt-1 text-xs space-y-0.5">
               {missingConditions.map((condition) => (
@@ -251,7 +251,7 @@ export default function TournamentRegistrationStatusModal({
         )}
 
         {/* PAGO */}
-        <div className="rounded-xl border border-neutral-200 dark:border-white/10 p-4 space-y-3">
+        <div className="rounded-md border border-neutral-200 dark:border-white/10 p-4 space-y-3">
 
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-neutral-900 dark:text-white">

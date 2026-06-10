@@ -120,7 +120,7 @@ export function TournamentEditForm({
   };
 
   return (
-    <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4">
+    <section className="rounded-md border border-neutral-200 bg-white p-5 space-y-4">
       <h2 className="text-base font-semibold">Editar torneo</h2>
       {isLocked && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
@@ -356,7 +356,7 @@ export function TournamentEditForm({
         )}
 
         {(isKnockout || isMixed) && (
-          <div className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+          <div className="space-y-3 rounded-md border border-neutral-200 bg-neutral-50 p-4">
             {isMixed && (
               <div className="flex items-center gap-3">
                 <span className="text-sm text-neutral-700">Modo simple</span>
@@ -604,7 +604,7 @@ export function TournamentDetailsCard({
   }) : null;
 
   return (
-    <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
+    <section className="rounded-md border border-neutral-200 bg-white p-5 space-y-2">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold text-neutral-900">Información del torneo</h2>
         {!editing && (

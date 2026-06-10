@@ -30,7 +30,7 @@ export default function CreateMatchQuickActionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl space-y-4 dark:bg-neutral-900 dark:border dark:border-neutral-700">
+      <div className="w-full max-w-md rounded-md bg-white p-5 shadow-2xl space-y-4 dark:bg-neutral-900 dark:border dark:border-neutral-700">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold dark:text-neutral-100">Crear partido</h3>
           <button

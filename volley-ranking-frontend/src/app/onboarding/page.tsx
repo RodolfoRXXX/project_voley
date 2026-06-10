@@ -18,7 +18,7 @@ import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 function OnboardingSkeleton() {
   return (
     <main className="min-h-[calc(100vh-64px)] flex items-start sm:items-center justify-center px-4 py-4">
-      <div className="w-full max-w-xl bg-white rounded-lg border border-neutral-200">
+      <div className="w-full max-w-xl bg-white rounded-md border border-neutral-200">
         {/* Header */}
         <div className="px-6 sm:px-8 pt-6 pb-4 border-b border-neutral-100 space-y-2">
           <Skeleton className="h-5 w-48" />
@@ -68,7 +68,7 @@ export default function OnboardingPage() {
         className="
           w-full max-w-xl
           bg-white
-          rounded-lg
+          rounded-md
           border border-neutral-200
           shadow-[0_1px_2px_rgba(0,0,0,0.05)]
         "

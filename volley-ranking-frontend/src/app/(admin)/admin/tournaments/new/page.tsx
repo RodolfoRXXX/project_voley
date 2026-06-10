@@ -321,7 +321,7 @@ export default function NewTournamentPage() {
 
       <form
         onSubmit={onSubmit}
-        className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4 dark:border-neutral-700 dark:bg-neutral-900"
+        className="rounded-md border border-neutral-200 bg-white p-5 space-y-4 dark:border-neutral-700 dark:bg-neutral-900"
       >
 
         {/* nombre */}
@@ -645,7 +645,7 @@ export default function NewTournamentPage() {
           )}
 
           {(isKnockout || isMixed) && (
-            <div className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+            <div className="space-y-3 rounded-md border border-neutral-200 bg-neutral-50 p-4">
               <div>
                 <label className="text-sm font-medium">
                   Inicio de eliminación
@@ -816,7 +816,7 @@ export default function NewTournamentPage() {
             Vista previa
           </h2>
 
-          <div className="mt-2 rounded-lg bg-neutral-50 border p-4 text-sm space-y-1">
+          <div className="mt-2 rounded-md bg-neutral-50 border p-4 text-sm space-y-1">
 
             <p>
               <b>Formato:</b> {form.format}

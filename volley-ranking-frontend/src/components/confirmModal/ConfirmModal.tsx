@@ -30,7 +30,7 @@ export default function ConfirmModal({
 }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-sm bg-white rounded-xl border border-neutral-200 shadow-lg p-6 space-y-4">
+      <div className="w-full max-w-sm bg-white rounded-md border border-neutral-200 shadow-lg p-6 space-y-4">
         <h2
           className={`text-lg font-semibold ${
             headerVariants[variant]

@@ -22,24 +22,24 @@ function PublicTournamentDetailSkeleton() {
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
       <Skeleton className="h-5 w-40" />
-      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+      <section className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <Skeleton className="h-7 w-64" />
         <Skeleton className="h-4 w-full max-w-2xl" />
       </section>
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+        <div className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
           <Skeleton className="h-5 w-36" />
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
         </div>
-        <div className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+        <div className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
           <Skeleton className="h-5 w-40" />
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
         </div>
       </section>
-      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+      <section className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <Skeleton className="h-5 w-56" />
         <Skeleton className="h-14 w-full" />
         <Skeleton className="h-14 w-full" />
@@ -111,7 +111,7 @@ export default function PublicTournamentDetailPage() {
         }
       />
       {isFinalized ? (
-        <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 space-y-2">
+        <section className="rounded-md border border-emerald-200 bg-emerald-50 p-5 space-y-2">
           <p className="text-xs uppercase tracking-wide font-semibold text-emerald-700">Resultado definitivo</p>
           <h2 className="text-xl font-semibold text-emerald-900">Torneo finalizado</h2>
           <p className="text-sm text-emerald-800">
@@ -121,7 +121,7 @@ export default function PublicTournamentDetailPage() {
       ) : null}
       <TournamentPodiumCard winnerTeamNames={winnerTeamNames} status={tournament.status} />
       {isFinalized && finalMatch ? (
-        <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-2">
+        <section className="rounded-md border border-neutral-200 bg-white p-5 space-y-2">
           <p className="text-xs uppercase tracking-wide text-neutral-500 font-semibold">Partido de cierre</p>
           <h3 className="text-base font-semibold text-neutral-900">{finalMatchHome} vs {finalMatchAway}</h3>
           <p className="text-sm text-neutral-700">Marcador final (sets): <b>{finalSets}</b></p>
@@ -132,7 +132,7 @@ export default function PublicTournamentDetailPage() {
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         {!isKnockoutPhase && (
-          <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+          <section className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-base font-semibold text-neutral-900">{isLeaguePhase ? "Tabla principal" : "Tabla actual"}</h2>
               <span className="text-xs text-neutral-500">{standings.length} filas</span>
@@ -140,13 +140,13 @@ export default function PublicTournamentDetailPage() {
 
             {isLeaguePhase && (
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-neutral-200 p-3">
+                <div className="rounded-md border border-neutral-200 p-3">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Partidos</p>
                   <p className="mt-1 text-sm font-medium text-neutral-900">
                     {leagueProgress.completedMatches} jugados / {leagueProgress.pendingMatches} pendientes
                   </p>
                 </div>
-                <div className="rounded-lg border border-neutral-200 p-3">
+                <div className="rounded-md border border-neutral-200 p-3">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Jornadas</p>
                   <p className="mt-1 text-sm font-medium text-neutral-900">
                     {leagueProgress.completedMatchdays} de {leagueProgress.totalMatchdays} completas
@@ -160,7 +160,7 @@ export default function PublicTournamentDetailPage() {
             ) : (
               <ul className="space-y-2 text-sm text-neutral-700">
                 {standings.map((standing) => (
-                  <li key={standing.id} className="rounded-lg border border-neutral-200 p-3 space-y-1">
+                  <li key={standing.id} className="rounded-md border border-neutral-200 p-3 space-y-1">
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-medium text-neutral-900">#{standing.position} {standing.teamName}</p>
                       <span className={`text-xs rounded-full px-2 py-1 ${standing.qualified ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-600"}`}>
@@ -181,7 +181,7 @@ export default function PublicTournamentDetailPage() {
           </section>
         )}
 
-        <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+        <section className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-base font-semibold text-neutral-900">Equipos del torneo</h2>
             <span className="text-xs text-neutral-500">{teams.length} publicados</span>
@@ -191,7 +191,7 @@ export default function PublicTournamentDetailPage() {
           ) : (
             <ul className="space-y-2 text-sm text-neutral-700">
               {teams.map((team) => (
-                <li key={team.id} className="rounded-lg border border-neutral-200 p-3">
+                <li key={team.id} className="rounded-md border border-neutral-200 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <p><b>Equipo:</b> {team.name}</p>
                     {!isLeaguePhase && !isKnockoutPhase && (
@@ -207,7 +207,7 @@ export default function PublicTournamentDetailPage() {
         </section>
       </section>
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-5 space-y-3">
+      <section className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-neutral-900">
             {isLeaguePhase ? "Fixture por jornadas" : isKnockoutPhase ? "Llaves de la fase actual" : "Fixture de la fase actual"}

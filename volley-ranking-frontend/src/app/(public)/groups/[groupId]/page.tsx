@@ -84,7 +84,7 @@ function GroupDetailSkeleton() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1,2,3].map(i => (
-            <div key={i} className="rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 space-y-2">
+            <div key={i} className="rounded-md border border-neutral-200 dark:border-neutral-700 p-4 space-y-2">
               <Skeleton className="h-4 w-3/4" />
               <SkeletonSoft className="h-3 w-1/2" />
               <SkeletonSoft className="h-3 w-2/3" />
@@ -103,7 +103,7 @@ function GroupDetailSkeleton() {
         </div>
 
         {[1,2,3,4].map(i => (
-          <div key={i} className="rounded-xl border border-neutral-200 dark:border-neutral-700 p-3 flex items-center gap-3">
+          <div key={i} className="rounded-md border border-neutral-200 dark:border-neutral-700 p-3 flex items-center gap-3">
             <Skeleton className="h-9 w-9 rounded-full" />
             <div className="space-y-2 flex-1">
               <Skeleton className="h-3 w-40" />
@@ -344,7 +344,7 @@ export default function GrupoPublicDetailPage() {
   };
 
   const renderMember = (member: GroupMember, isPending = false) => (
-    <li key={`${isPending ? "pending" : "member"}-${member.id}`} className="rounded-xl border border-neutral-200 p-3 text-sm flex items-center justify-between gap-3">
+    <li key={`${isPending ? "pending" : "member"}-${member.id}`} className="rounded-md border border-neutral-200 p-3 text-sm flex items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
         <div>
@@ -488,7 +488,7 @@ export default function GrupoPublicDetailPage() {
                   <div
                     key={match.id}
                     className="
-                      rounded-xl
+                      rounded-md
                       border border-neutral-200
                       p-4
                       text-sm
@@ -555,7 +555,7 @@ export default function GrupoPublicDetailPage() {
                 <p className="text-sm font-medium text-amber-700">Solicitud de administrador</p>
                 <ul className="space-y-2">
                   {group.pendingAdminRequests.map((member) => (
-                    <li key={`admin-pending-${member.id}`} className="rounded-xl border border-neutral-200 p-3 text-sm flex items-center justify-between gap-3">
+                    <li key={`admin-pending-${member.id}`} className="rounded-md border border-neutral-200 p-3 text-sm flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
                         <div>
@@ -606,7 +606,7 @@ export default function GrupoPublicDetailPage() {
                     <p className="text-sm font-medium text-neutral-700">Admins</p>
                     <ul className="space-y-2">
                       {adminMembers.map((member) => (
-                        <li key={`admin-${member.id}`} className="rounded-xl border border-neutral-200 p-3 text-sm flex items-center justify-between gap-3">
+                        <li key={`admin-${member.id}`} className="rounded-md border border-neutral-200 p-3 text-sm flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
                             <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
                             <div>

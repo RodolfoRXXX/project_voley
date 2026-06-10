@@ -2,12 +2,12 @@
 @custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
 
 :root {
-  --background: #ffffff;
+  --background: #fffbfb;
   --foreground: #171717;
   --surface: #ffffff;
   --surface-muted: #f8fafc;
   --border: #e5e7eb;
-  --nav-bg: #f8fafc;
+  --nav-bg: #fffbfb;
   --text-muted: #6b7280;
   --logo-text: #0b1120;
 }
@@ -18,7 +18,7 @@ html[data-theme="dark"] {
   --surface: #111827;
   --surface-muted: #1f2937;
   --border: #334155;
-  --nav-bg: #0f172a;
+  --nav-bg: #0b1120;
   --text-muted: #cbd5e1;
   --logo-text: #ffffff;
 }
@@ -70,6 +70,10 @@ html[data-theme="dark"] :where(.shadow-sm, .shadow, .shadow-lg, .shadow-xl) {
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+html {
+  background: var(--background);
 }
 
 

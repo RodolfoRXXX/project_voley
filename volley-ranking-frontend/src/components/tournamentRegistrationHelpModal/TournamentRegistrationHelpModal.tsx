@@ -179,7 +179,7 @@ export default function TournamentRegistrationHelpModal({
       role="presentation"
     >
       <div
-        className="w-full max-w-lg space-y-5 rounded-2xl bg-white p-6 shadow-xl dark:bg-neutral-900"
+        className="w-full max-w-lg space-y-5 rounded-md bg-white p-6 shadow-xl dark:bg-neutral-900"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -204,7 +204,7 @@ export default function TournamentRegistrationHelpModal({
           </button>
         </div>
 
-        <div className="space-y-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/60">
+        <div className="space-y-3 rounded-md border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/60">
           {authLoading && visibleChecks.length === 0 ? (
             <div className="flex items-center justify-between gap-3 text-sm text-neutral-600 dark:text-neutral-300">
               <span>Preparando verificación de tu usuario...</span>
@@ -221,7 +221,7 @@ export default function TournamentRegistrationHelpModal({
 
           <ul className="space-y-3">
             {visibleChecks.map((check, index) => (
-              <li key={check.title} className="flex items-start justify-between gap-3 rounded-lg border border-white bg-white px-3 py-3 shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+              <li key={check.title} className="flex items-start justify-between gap-3 rounded-md border border-white bg-white px-3 py-3 shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
                 <div className="min-w-0 space-y-1">
                   <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
                     {check.title}
@@ -238,7 +238,7 @@ export default function TournamentRegistrationHelpModal({
         </div>
 
         {resultMessage ? (
-          <div className={`rounded-xl border p-4 text-sm ${resultType === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-700"}`}>
+          <div className={`rounded-md border p-4 text-sm ${resultType === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-700"}`}>
             {resultMessage}
           </div>
         ) : null}

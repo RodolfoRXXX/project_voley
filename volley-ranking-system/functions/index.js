@@ -73,5 +73,6 @@ exports.removeTournamentAdmin = require("./callables/removeTournamentAdmin");
 exports.editTournament = require("./callables/editTournament");
 exports.recordMatchResult = require("./callables/recordMatchResult");
 exports.advancePhase = require("./callables/advancePhase");
+exports.dismissPendingAlert = require("./callables/dismissPendingAlert");
 
 exports.api = require("./src/httpApi");

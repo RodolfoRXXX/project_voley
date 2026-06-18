@@ -138,6 +138,10 @@ async function syncCompleteProfilePendingAlert(userId, user = {}) {
   });
 }
 
+async function dismissPendingAlert(userId, alertId) {
+  return resolvePendingAlert(userId, alertId);
+}
+
 async function createGroupMembershipResultAlert({
   userId,
   groupId,
@@ -241,6 +245,7 @@ module.exports = {
   createGroupTournamentRejectionAlert,
   isTournamentPendingAlertKind,
   resolvePendingAlert,
+  dismissPendingAlert,
   syncCompleteProfilePendingAlert,
   upsertPendingAlert,
 };

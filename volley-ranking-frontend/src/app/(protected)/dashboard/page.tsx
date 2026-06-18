@@ -5,10 +5,11 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { collection, getDocs, limit, onSnapshot, orderBy, query, where, Timestamp } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
+import { auth, db, functions } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import MatchCard from "@/components/matchCard/MatchCard";
 import { Skeleton } from "@/components/ui/skeleton/Skeleton";
@@ -107,9 +108,75 @@ export default function DashboardPage() {
   });
   const [userStatsLoading, setUserStatsLoading] = useState(false);
   const [showCreateMatchModal, setShowCreateMatchModal] = useState(false);
+  const [showQuickActionsMenu, setShowQuickActionsMenu] = useState(false);
   const [adminGroups, setAdminGroups] = useState<Array<{ id: string; nombre: string }>>([]);
   const [pendingAlerts, setPendingAlerts] = useState<PendingAlert[]>([]);
   const [pendingAlertsLoading, setPendingAlertsLoading] = useState(false);
+
+  const quickActionsMenuRef = useRef<HTMLDivElement | null>(null);
+  const quickActionsButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  const dismissPendingAlert = async (alertId: string) => {
+    if (!firebaseUser?.uid || !alertId) return;
+
+    try {
+      const dismissPendingAlertFn = httpsCallable<{ alertId: string }, { ok: true }>(functions, "dismissPendingAlert");
+      await dismissPendingAlertFn({ alertId });
+      setPendingAlerts((current) => current.filter((alert) => alert.id !== alertId));
+    } catch (error) {
+      console.error("Error dismissing pending alert:", error);
+      showToast?.({
+        title: "No se pudo cerrar la alerta",
+        description: "Intentá de nuevo más tarde.",
+        variant: "error",
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!showQuickActionsMenu) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        quickActionsMenuRef.current
+        && !quickActionsMenuRef.current.contains(event.target as Node)
+        && quickActionsButtonRef.current
+        && !quickActionsButtonRef.current.contains(event.target as Node)
+      ) {
+        setShowQuickActionsMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showQuickActionsMenu]);
+
+  const quickActions = [
+    {
+      title: "Crear partido",
+      desc: "Organizá uno nuevo",
+      icon: "➕",
+      onClick: () => setShowCreateMatchModal(true),
+    },
+    {
+      title: "Crear torneo",
+      desc: "Configurá uno nuevo",
+      icon: "🏆",
+      onClick: () => router.push("/admin/tournaments/new"),
+    },
+    {
+      title: "Crear grupo",
+      desc: "Sumá jugadores",
+      icon: "👥",
+      onClick: () => router.push("/admin/groups/new"),
+    },
+    {
+      title: "Editar perfil",
+      desc: "Mejorá tu info",
+      icon: "👤",
+      onClick: () => router.push("/profile/info?editGameProfile=1"),
+    },
+  ];
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
@@ -642,38 +709,13 @@ export default function DashboardPage() {
       {firebaseUser && (
         <>
           {userDoc?.roles === "admin" && (
-            <section className="space-y-3">
+            <section className="space-y-3 hidden sm:block">
               <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
                 Acciones rápidas
               </h3>
 
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {[
-                  {
-                    title: "Crear partido",
-                    desc: "Organizá uno nuevo",
-                    icon: "➕",
-                    onClick: () => setShowCreateMatchModal(true),
-                  },
-                  {
-                    title: "Crear torneo",
-                    desc: "Configurá uno nuevo",
-                    icon: "🏆",
-                    onClick: () => router.push("/admin/tournaments/new"),
-                  },
-                  {
-                    title: "Crear grupo",
-                    desc: "Sumá jugadores",
-                    icon: "👥",
-                    onClick: () => router.push("/admin/groups/new"),
-                  },
-                  {
-                    title: "Editar perfil",
-                    desc: "Mejorá tu info",
-                    icon: "👤",
-                    onClick: () => router.push("/profile/info?editGameProfile=1"),
-                  },
-                ].map((action) => (
+                {quickActions.map((action) => (
                   <button
                     key={action.title}
                     onClick={action.onClick}
@@ -694,9 +736,50 @@ export default function DashboardPage() {
 
           {/* Panel */}
           <section className="space-y-4">
-            <header>
-              <h2 className="text-2xl font-bold">Tu panel</h2>
-              <p className="text-sm text-neutral-600">Todo lo importante en un solo lugar.</p>
+            <header className="relative">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold">Tu panel</h2>
+                  <p className="text-sm text-neutral-600">Todo lo importante en un solo lugar.</p>
+                </div>
+
+                {userDoc?.roles === "admin" && (
+                  <div className="relative sm:hidden">
+                    <button
+                      ref={quickActionsButtonRef}
+                      type="button"
+                      onClick={() => setShowQuickActionsMenu((prev) => !prev)}
+                      aria-expanded={showQuickActionsMenu}
+                      className="flex h-10 w-10 text-xl cursor-pointer items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100"
+                      aria-label={showQuickActionsMenu ? "Cerrar menú de acciones" : "Abrir menú de acciones"}
+                    >
+                      +
+                    </button>
+
+                    {showQuickActionsMenu && (
+                      <div
+                        ref={quickActionsMenuRef}
+                        className="absolute right-0 z-20 mt-2 w-64 rounded-md border border-white/70 bg-white p-2 shadow-lg"
+                      >
+                        {quickActions.map((action) => (
+                          <button
+                            key={action.title}
+                            type="button"
+                            onClick={() => {
+                              setShowQuickActionsMenu(false);
+                              action.onClick();
+                            }}
+                            className="w-full rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100"
+                          >
+                            <div className="font-semibold">{action.title}</div>
+                            <p className="text-xs text-neutral-500">{action.desc}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </header>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -751,6 +834,7 @@ export default function DashboardPage() {
           <PendingAlertsSection
             loading={pendingAlertsLoading}
             alerts={pendingAlerts}
+            onDismissAlert={dismissPendingAlert}
           />
         </>
       )}

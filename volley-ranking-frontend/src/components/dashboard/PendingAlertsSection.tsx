@@ -7,6 +7,7 @@ import { pendingAlertSeverityLabel } from "@/types/pendingAlerts";
 type PendingAlertsSectionProps = {
   loading: boolean;
   alerts: PendingAlert[];
+  onDismissAlert?: (alertId: string) => void;
 };
 
 const stylesBySeverity: Record<PendingAlert["severity"], string> = {
@@ -15,13 +16,13 @@ const stylesBySeverity: Record<PendingAlert["severity"], string> = {
   info: "border-sky-300 bg-sky-50/80 text-sky-900",
 };
 
-export default function PendingAlertsSection({ loading, alerts }: PendingAlertsSectionProps) {
+export default function PendingAlertsSection({ loading, alerts, onDismissAlert }: PendingAlertsSectionProps) {
   return (
     <section className="space-y-3">
-      <header>
+      {/*<header>
         <h2 className="text-2xl font-bold">Pendientes</h2>
         <p className="text-sm text-neutral-600">Acciones sugeridas para mantener tus grupos y torneos al día.</p>
-      </header>
+      </header>*/}
 
       {loading && <p className="text-sm text-neutral-500">Cargando pendientes...</p>}
 
@@ -33,25 +34,43 @@ export default function PendingAlertsSection({ loading, alerts }: PendingAlertsS
 
       <div className="space-y-3">
         {alerts.map((alert) => (
-          <article key={alert.id} className={`rounded-md border px-4 py-3 ${stylesBySeverity[alert.severity]}`}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-wide opacity-80">
-                  {pendingAlertSeverityLabel[alert.severity]}
-                </p>
-                <p className="text-sm font-semibold">{alert.title}</p>
-                <p className="text-xs opacity-90">{alert.message}</p>
-              </div>
+          <article key={alert.id} className={`relative rounded-md border px-4 py-3 ${stylesBySeverity[alert.severity]}`}>
+            {alert.kind !== "complete_profile" && onDismissAlert && (
+              <button
+                type="button"
+                onClick={() => onDismissAlert(alert.id)}
+                className="absolute right-3 top-3 text-sm font-semibold text-neutral-600 hover:text-neutral-900"
+                aria-label={`Cerrar alerta ${alert.title}`}
+              >
+                ×
+              </button>
+            )}
 
-              {alert.link?.path && (
+            <div className="space-y-1 pr-10">
+              <p className="text-xs font-semibold uppercase tracking-wide opacity-80">
+                {pendingAlertSeverityLabel[alert.severity]}
+              </p>
+              <p className="text-sm font-semibold">{alert.title}</p>
+              <p className="text-xs opacity-90">{alert.message}</p>
+            </div>
+
+            {alert.link?.path && (
+              <div className="mt-2 flex justify-end">
                 <Link
                   href={alert.link.path}
-                  className="shrink-0 inline-flex items-center justify-center rounded-lg bg-black/80 px-3 py-1.5 text-xs font-semibold text-white hover:bg-black"
+                  className={`inline-flex items-center gap-1 rounded-none border-0 bg-transparent px-0 py-0 text-xs font-semibold no-underline transition ${
+                    alert.severity === "urgent"
+                      ? "text-red-800"
+                      : alert.severity === "warning"
+                      ? "text-amber-800"
+                      : "text-sky-800"
+                  } hover:opacity-80`}
                 >
                   {alert.link.label || "Ver"}
+                  <span aria-hidden="true">→</span>
                 </Link>
-              )}
-            </div>
+              </div>
+            )}
           </article>
         ))}
       </div>

@@ -3,11 +3,13 @@
 import Link from "next/link";
 import type { PendingAlert } from "@/types/pendingAlerts";
 import { pendingAlertSeverityLabel } from "@/types/pendingAlerts";
+import { Spinner } from "@/components/ui/spinner/spinner";
 
 type PendingAlertsSectionProps = {
   loading: boolean;
   alerts: PendingAlert[];
   onDismissAlert?: (alertId: string) => void;
+  dismissLoadingAlertId?: string | null;
 };
 
 const stylesBySeverity: Record<PendingAlert["severity"], string> = {
@@ -16,7 +18,7 @@ const stylesBySeverity: Record<PendingAlert["severity"], string> = {
   info: "border-sky-300 bg-sky-50/80 text-sky-900",
 };
 
-export default function PendingAlertsSection({ loading, alerts, onDismissAlert }: PendingAlertsSectionProps) {
+export default function PendingAlertsSection({ loading, alerts, onDismissAlert, dismissLoadingAlertId }: PendingAlertsSectionProps) {
   return (
     <section className="space-y-3">
       {/*<header>
@@ -39,10 +41,15 @@ export default function PendingAlertsSection({ loading, alerts, onDismissAlert }
               <button
                 type="button"
                 onClick={() => onDismissAlert(alert.id)}
-                className="absolute right-3 top-3 text-sm font-semibold text-neutral-600 hover:text-neutral-900"
+                className="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold text-neutral-600 hover:text-neutral-900 disabled:cursor-not-allowed"
                 aria-label={`Cerrar alerta ${alert.title}`}
+                disabled={dismissLoadingAlertId === alert.id}
               >
-                ×
+                {dismissLoadingAlertId === alert.id ? (
+                  <Spinner size="sm" className="text-neutral-600" />
+                ) : (
+                  "×"
+                )}
               </button>
             )}
 

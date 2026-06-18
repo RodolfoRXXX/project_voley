@@ -112,6 +112,7 @@ export default function DashboardPage() {
   const [adminGroups, setAdminGroups] = useState<Array<{ id: string; nombre: string }>>([]);
   const [pendingAlerts, setPendingAlerts] = useState<PendingAlert[]>([]);
   const [pendingAlertsLoading, setPendingAlertsLoading] = useState(false);
+  const [dismissPendingAlertLoadingId, setDismissPendingAlertLoadingId] = useState<string | null>(null);
 
   const quickActionsMenuRef = useRef<HTMLDivElement | null>(null);
   const quickActionsButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -119,6 +120,7 @@ export default function DashboardPage() {
   const dismissPendingAlert = async (alertId: string) => {
     if (!firebaseUser?.uid || !alertId) return;
 
+    setDismissPendingAlertLoadingId(alertId);
     try {
       const dismissPendingAlertFn = httpsCallable<{ alertId: string }, { ok: true }>(functions, "dismissPendingAlert");
       await dismissPendingAlertFn({ alertId });
@@ -129,6 +131,8 @@ export default function DashboardPage() {
         type: "error",
         message: "No se pudo cerrar la alerta. Intentá de nuevo más tarde.",
       });
+    } finally {
+      setDismissPendingAlertLoadingId(null);
     }
   };
 
@@ -834,6 +838,7 @@ export default function DashboardPage() {
             loading={pendingAlertsLoading}
             alerts={pendingAlerts}
             onDismissAlert={dismissPendingAlert}
+            dismissLoadingAlertId={dismissPendingAlertLoadingId}
           />
         </>
       )}

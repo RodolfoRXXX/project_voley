@@ -126,9 +126,8 @@ export default function DashboardPage() {
     } catch (error) {
       console.error("Error dismissing pending alert:", error);
       showToast?.({
-        title: "No se pudo cerrar la alerta",
-        description: "Intentá de nuevo más tarde.",
-        variant: "error",
+        type: "error",
+        message: "No se pudo cerrar la alerta. Intentá de nuevo más tarde.",
       });
     }
   };

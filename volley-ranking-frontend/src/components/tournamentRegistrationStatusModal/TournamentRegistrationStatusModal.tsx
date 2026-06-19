@@ -74,11 +74,11 @@ export default function TournamentRegistrationStatusModal({
   const updateTournamentRegistrationPaymentFn = httpsCallable(functions, "updateTournamentRegistrationPayment");
   const reviewTournamentRegistrationFn = httpsCallable(functions, "reviewTournamentRegistration");
 
-  const [paidAmountInput, setPaidAmountInput] = useState(0);
+  const [paidAmountInput, setPaidAmountInput] = useState("");
   const [savingPayment, setSavingPayment] = useState(false);
   const [reviewing, setReviewing] = useState<"aceptado" | "rechazado" | "equipo_rechazado" | null>(null);
   useEffect(() => {
-    setPaidAmountInput(0);
+    setPaidAmountInput("");
   }, [registration]);
 
   const teamMembersCount = Array.isArray(registration?.playerIds)
@@ -292,14 +292,23 @@ export default function TournamentRegistrationStatusModal({
                 type="number"
                 min={0}
                 value={paidAmountInput}
-                onChange={(e) => setPaidAmountInput(Number(e.target.value || 0))}
-                className="flex-1 h-9 rounded-lg border border-neutral-300 px-3 text-sm dark:bg-slate-800 dark:border-white/10"
+                onChange={(e) => setPaidAmountInput(e.target.value.replace(/^0+(?=\d)/, ""))}
+                className="min-w-0 flex-1 h-9 rounded-lg border border-neutral-300 px-3 text-sm dark:bg-slate-800 dark:border-white/10"
               />
 
               <button
                 onClick={onConfirmPayment}
                 disabled={savingPayment || Number(paidAmountInput || 0) <= 0}
-                className="h-9 px-3 rounded-lg bg-neutral-900 text-white text-sm hover:bg-neutral-800 disabled:opacity-50 dark:bg-white dark:text-black"
+                className="
+                  h-9 min-w-[128px]
+                  shrink-0 whitespace-nowrap
+                  px-4 rounded-lg
+                  bg-neutral-900 text-white text-sm
+                  hover:bg-neutral-800
+                  disabled:opacity-50
+                  dark:bg-white dark:text-black
+                  inline-flex items-center justify-center
+                "
               >
                 {savingPayment ? <Spinner /> : "Confirmar pago"}
               </button>

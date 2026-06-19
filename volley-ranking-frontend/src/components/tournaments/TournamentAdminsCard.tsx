@@ -39,9 +39,10 @@ export function TournamentAdminsCard({
           <button
             onClick={onAddAdminClick}
             disabled={isTournamentFinalized}
-            className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-neutral-50"
+            className="shrink-0 whitespace-nowrap rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-neutral-50"
           >
-            Agregar admin
+            <span className="sm:hidden">+ admin</span>
+            <span className="hidden sm:inline">Agregar admin</span>
           </button>
         ) : null}
       </div>

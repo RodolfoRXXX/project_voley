@@ -298,7 +298,6 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
         <p><b>Nombre del equipo:</b> {entry.nameTeam || entry.name || group.nombre || "Sin nombre"}</p>
         <p><b>Grupo:</b> {group.nombre || entry.groupLabel || entry.groupId}</p>
         <p><b>Jugadores permitidos:</b> min {tournament.minPlayers} / max {tournament.maxPlayers}</p>
-        {source === "team" && entry.registrationId && <p><b>Registration ID:</b> {entry.registrationId}</p>}
       </article>
 
       <article className="rounded-md border border-neutral-200 bg-white p-5 space-y-4">

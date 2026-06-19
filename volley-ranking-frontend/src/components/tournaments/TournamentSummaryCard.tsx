@@ -104,8 +104,11 @@ export function TournamentSummaryCard({
       `}
     >
       {/* HEADER */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1 min-w-0">
+      <div className="flex items-start justify-between gap-4">
+
+        {/* Información principal */}
+        <div className="min-w-0 flex-1">
+
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-lg font-semibold tracking-tight text-neutral-900 dark:text-white">
               {tournament.name}
@@ -114,22 +117,31 @@ export function TournamentSummaryCard({
             {titleSuffix}
           </div>
 
-          <p className="text-sm text-neutral-500 line-clamp-2">
+          <div className="mt-2">
+            <span
+              className={`
+                inline-flex items-center
+                text-[11px] font-medium rounded-full px-2.5 py-1
+                ${statusBadgeClass}
+              `}
+            >
+              {tournamentStatusLabel[tournament.status]}
+            </span>
+          </div>
+
+          <p className="mt-2 text-sm text-neutral-500 line-clamp-2">
             {description || tournament.description || "Sin descripción"}
           </p>
+
         </div>
 
-        <div className="flex items-center gap-2">
-          <span
-            className={`
-              text-[11px] font-medium rounded-full px-2.5 py-1 whitespace-nowrap
-              ${statusBadgeClass}
-            `}
-          >
-            {tournamentStatusLabel[tournament.status]}
-          </span>
-          {shareAction}
-        </div>
+        {/* Compartir */}
+        {shareAction && (
+          <div className="shrink-0">
+            {shareAction}
+          </div>
+        )}
+
       </div>
 
       {/* FINALIZADO */}

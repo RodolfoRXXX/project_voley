@@ -434,20 +434,29 @@ export default function AdminTournamentDetailPage() {
         ]}
       />
 
-      <header className="rounded-md border border-neutral-200 bg-white p-5 space-y-2">
-        <div className="flex content-start justify-between gap-3">
-          <div>
+      <header className="rounded-xl border border-neutral-200 bg-white p-5">
+        <div className="flex items-start justify-between gap-4">
+          
+          {/* Información principal */}
+          <div className="min-w-0 flex-1">
             <h1 className="text-xl font-semibold text-neutral-900">
               {tournament.name}
             </h1>
-            <p className="text-sm text-neutral-600">{tournament.description || "Sin descripción"}</p>
+
+            <div className="mt-2 flex flex-start">
+              <StatusPill
+                label={tournamentStatusLabel[tournament.status]}
+                variant={statusVariant(tournament.status)}
+              />
+            </div>
+
+            <p className="mt-2 text-sm text-neutral-600">
+              {tournament.description || "Sin descripción"}
+            </p>
           </div>
 
-          <div className="flex items-start gap-2">
-            <StatusPill
-              label={tournamentStatusLabel[tournament.status]}
-              variant={statusVariant(tournament.status)}
-            />
+          {/* Compartir */}
+          <div className="shrink-0">
             <ShareOptionsButton
               buttonLabel="Compartir torneo"
               copySuccessMessage="Se copió el link del torneo."
@@ -455,6 +464,7 @@ export default function AdminTournamentDetailPage() {
               whatsappMessage={(url) => `Mirá este torneo: ${url}`}
             />
           </div>
+
         </div>
       </header>
 

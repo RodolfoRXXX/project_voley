@@ -20,6 +20,25 @@ const registrationStatusClass = {
   rechazado: "bg-red-100 text-red-700",
 } as const;
 
+const registrationStatusIcon = {
+  pendiente: "⏳",
+  aceptado: "✅",
+  rechazado: "❌",
+} as const;
+
+type RegistrationStatus = keyof typeof registrationStatusLabel;
+
+function RegistrationStatusBadge({ status }: { status: RegistrationStatus }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-xs font-semibold rounded-full px-2 py-1 ${registrationStatusClass[status]}`}
+    >
+      <span aria-hidden="true">{registrationStatusIcon[status]}</span>
+      {registrationStatusLabel[status]}
+    </span>
+  );
+}
+
 const tournamentStatusClass: Record<TournamentStatus, string> = {
   draft: "bg-neutral-100 text-neutral-700",
   inscripciones_abiertas: "bg-blue-100 text-blue-700",
@@ -95,7 +114,7 @@ function CompactTournamentCard({
   const detailHref = getTournamentDetailHref(row);
 
   return (
-    <article className="flex min-h-full flex-col rounded-md border border-neutral-200 bg-white p-5 shadow-xs transition">
+    <article className="flex flex-col rounded-md border border-neutral-200 bg-white p-5 shadow-xs transition">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -103,11 +122,9 @@ function CompactTournamentCard({
               {row.tournament.name}
             </h2>
 
-            <span className={`text-xs rounded-full px-2 py-1 ${registrationStatusClass[row.registrationStatus]}`}>
-              {registrationStatusLabel[row.registrationStatus]}
-            </span>
+            <RegistrationStatusBadge status={row.registrationStatus} />
 
-            <span className={`text-xs rounded-full px-2 py-1 ${tournamentStatusClass[row.tournament.status]}`}>
+            <span className={`inline-flex items-center gap-1 text-xs font-semibold rounded-full px-2 py-1 ${tournamentStatusClass[row.tournament.status]}`}>
               {tournamentStatusLabel[row.tournament.status]}
             </span>
           </div>
@@ -270,7 +287,7 @@ export default function ProfileTournamentsPage() {
       {filteredRows.length === 0 ? (
         <p className="text-sm text-neutral-500">No hay torneos que coincidan con los filtros seleccionados.</p>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
           {filteredRows.map((row) => {
             const expanded = Boolean(expandedRows[row.id]);
 
@@ -282,11 +299,9 @@ export default function ProfileTournamentsPage() {
                 phaseSnapshot={row.phaseSnapshot}
                 winnerTeamNames={row.winnerTeamNames}
                 highlightAsWinner={row.isWinnerTeam}
-                description={`Tu equipo: ${row.nameTeam}`}
+                description={`Equipo: ${row.nameTeam}`}
                 titleSuffix={(
-                  <span className={`text-xs rounded-full px-2 py-1 ${registrationStatusClass[row.registrationStatus]}`}>
-                    {registrationStatusLabel[row.registrationStatus]}
-                  </span>
+                  <RegistrationStatusBadge status={row.registrationStatus} />
                 )}
                 variant="profile"
                 userState={row.userState}

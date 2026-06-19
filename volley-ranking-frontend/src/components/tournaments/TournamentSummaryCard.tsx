@@ -43,6 +43,15 @@ const paymentStatusLabel: Record<UserTournamentState["payment"]["status"], strin
   complete: "Completo",
 };
 
+const tournamentStatusBadgeClass: Record<Tournament["status"], string> = {
+  draft: "bg-neutral-100 text-neutral-700",
+  inscripciones_abiertas: "bg-blue-100 text-blue-700",
+  inscripciones_cerradas: "bg-neutral-100 text-neutral-700",
+  activo: "bg-orange-100 text-orange-700",
+  finalizado: "bg-emerald-100 text-emerald-700",
+  cancelado: "bg-red-100 text-red-700",
+};
+
 function MetricPill({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2">
@@ -74,13 +83,8 @@ export function TournamentSummaryCard({
   const occupancyLabel = `${metrics.acceptedTeamsCount}/${metrics.maxTeams || metrics.acceptedTeamsCount || 0}`;
   const phaseLabel = phaseSnapshot ? tournamentPhaseTypeLabel[phaseSnapshot.type] : "Sin fase activa";
   const isFinalized = tournament.status === "finalizado";
-  const isActive = tournament.status === "activo";
   const podiumLabels = ["1° puesto", "2° puesto", "3° puesto"];
-  const statusBadgeClass = isFinalized
-    ? "bg-emerald-100 text-emerald-700"
-    : isActive
-      ? "bg-orange-100 text-orange-700"
-      : "bg-neutral-100 text-neutral-700";
+  const statusBadgeClass = tournamentStatusBadgeClass[tournament.status];
   const linkLabel = isFinalized ? "Ver resultados finales →" : "Seguir torneo →";
   const canShowRegistrationHelp = showRegistrationHelp && tournament.status === "inscripciones_abiertas";
 
@@ -292,7 +296,7 @@ export function TournamentSummaryCard({
           ) : null}
 
           {/* ACCIONES */}
-          <div className="flex items-center gap-3">
+          <div className="ml-auto flex items-center justify-end gap-3">
             {footer}
 
             {href ? (

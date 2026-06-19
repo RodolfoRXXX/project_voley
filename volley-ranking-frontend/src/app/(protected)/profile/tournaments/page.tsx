@@ -6,7 +6,7 @@ import { TournamentSummaryCard } from "@/components/tournaments/TournamentSummar
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { getProfileTournamentListView, type ProfileTournamentListRow } from "@/services/tournaments/tournamentQueries";
-import type { TournamentStatus } from "@/types/tournaments";
+import { tournamentStatusLabel, type TournamentStatus } from "@/types/tournaments";
 
 const registrationStatusLabel = {
   pendiente: "Pendiente",
@@ -20,8 +20,126 @@ const registrationStatusClass = {
   rechazado: "bg-red-100 text-red-700",
 } as const;
 
+const tournamentStatusClass: Record<TournamentStatus, string> = {
+  draft: "bg-neutral-100 text-neutral-700",
+  inscripciones_abiertas: "bg-blue-100 text-blue-700",
+  inscripciones_cerradas: "bg-neutral-100 text-neutral-700",
+  activo: "bg-orange-100 text-orange-700",
+  finalizado: "bg-emerald-100 text-emerald-700",
+  cancelado: "bg-red-100 text-red-700",
+};
+
 type TournamentTypeFilter = "all" | "liga" | "eliminacion" | "mixto";
 type TournamentStatusFilter = "all" | TournamentStatus;
+
+function getTournamentDetailHref(row: ProfileTournamentListRow) {
+  return row.source === "registration"
+    ? `/profile/tournaments/registrations/${row.entryId}`
+    : `/profile/tournaments/teams/${row.entryId}`;
+}
+
+function getPendingReviewCount(row: ProfileTournamentListRow) {
+  const pendingChecks = [
+    row.userState.players.current < row.userState.players.required,
+    row.userState.payment.status !== "complete",
+    row.registrationStatus === "pendiente",
+  ];
+
+  return pendingChecks.filter(Boolean).length;
+}
+
+function TournamentChevronButton({
+  expanded,
+  onClick,
+}: {
+  expanded: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={expanded ? "Contraer torneo" : "Expandir torneo"}
+      aria-expanded={expanded}
+      className="
+        inline-flex h-9 w-9 shrink-0 items-center justify-center
+        rounded-lg text-neutral-400
+        hover:bg-neutral-100 hover:text-neutral-700
+        transition-colors
+      "
+    >
+      <span
+        aria-hidden="true"
+        className={`
+          inline-flex h-4 w-4 items-center justify-center
+          transition-transform duration-200
+          ${expanded ? "rotate-90" : ""}
+        `}
+      >
+        ›
+      </span>
+    </button>
+  );
+}
+
+function CompactTournamentCard({
+  row,
+  expanded,
+  onToggle,
+}: {
+  row: ProfileTournamentListRow;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const pendingCount = getPendingReviewCount(row);
+  const detailHref = getTournamentDetailHref(row);
+
+  return (
+    <article className="flex min-h-full flex-col rounded-md border border-neutral-200 bg-white p-5 shadow-xs transition">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="min-w-0 text-lg font-semibold tracking-tight text-neutral-900">
+              {row.tournament.name}
+            </h2>
+
+            <span className={`text-xs rounded-full px-2 py-1 ${registrationStatusClass[row.registrationStatus]}`}>
+              {registrationStatusLabel[row.registrationStatus]}
+            </span>
+
+            <span className={`text-xs rounded-full px-2 py-1 ${tournamentStatusClass[row.tournament.status]}`}>
+              {tournamentStatusLabel[row.tournament.status]}
+            </span>
+          </div>
+
+          <p className="text-sm text-neutral-600">
+            <span className="font-medium text-neutral-700">Equipo:</span>{" "}
+            {row.nameTeam}
+          </p>
+
+          {pendingCount > 0 ? (
+            <div className="text-xs">
+              <p className="font-medium text-amber-700">
+                • {pendingCount} pendiente{pendingCount > 1 ? "s" : ""}
+              </p>
+            </div>
+          ) : null}
+        </div>
+
+        <TournamentChevronButton expanded={expanded} onClick={onToggle} />
+      </div>
+
+      <div className="mt-auto flex justify-end pt-4">
+        <Link
+          href={detailHref}
+          className="inline-block text-sm font-medium text-orange-600 hover:text-orange-700"
+        >
+          Ver detalle
+        </Link>
+      </div>
+    </article>
+  );
+}
 
 export default function ProfileTournamentsPage() {
   const { firebaseUser, userDoc } = useAuth();
@@ -29,6 +147,7 @@ export default function ProfileTournamentsPage() {
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<TournamentTypeFilter>("all");
   const [statusFilter, setStatusFilter] = useState<TournamentStatusFilter>("all");
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const load = async () => {
@@ -46,6 +165,13 @@ export default function ProfileTournamentsPage() {
     const matchesStatus = statusFilter === "all" || row.tournament.status === statusFilter;
     return matchesType && matchesStatus;
   }), [rows, statusFilter, typeFilter]);
+
+  const toggleRow = (rowId: string) => {
+    setExpandedRows((prev) => ({
+      ...prev,
+      [rowId]: !prev[rowId],
+    }));
+  };
 
   if (loading) {
     return (
@@ -145,40 +271,49 @@ export default function ProfileTournamentsPage() {
         <p className="text-sm text-neutral-500">No hay torneos que coincidan con los filtros seleccionados.</p>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {filteredRows.map((row) => (
-            <TournamentSummaryCard
-              key={row.id}
-              tournament={row.tournament}
-              metrics={row.metrics}
-              phaseSnapshot={row.phaseSnapshot}
-              winnerTeamNames={row.winnerTeamNames}
-              highlightAsWinner={row.isWinnerTeam}
-              description={`Tu equipo: ${row.nameTeam}`}
-              titleSuffix={(
-                <span className={`text-xs rounded-full px-2 py-1 ${registrationStatusClass[row.registrationStatus]}`}>
-                  {registrationStatusLabel[row.registrationStatus]}
-                </span>
-              )}
-              variant="profile"
-              userState={row.userState}
-              footer={row.registrationStatus === "rechazado" ? (
-                <span className="inline-block text-sm font-medium text-neutral-400 cursor-not-allowed">
-                  Ver detalle
-                </span>
-              ) : (
-                <Link
-                  href={
-                    row.source === "registration"
-                      ? `/profile/tournaments/registrations/${row.entryId}`
-                      : `/profile/tournaments/teams/${row.entryId}`
-                  }
-                  className="inline-block text-sm font-medium text-orange-600 hover:text-orange-700"
-                >
-                  Ver detalle
-                </Link>
-              )}
-            />
-          ))}
+          {filteredRows.map((row) => {
+            const expanded = Boolean(expandedRows[row.id]);
+
+            return expanded ? (
+              <TournamentSummaryCard
+                key={row.id}
+                tournament={row.tournament}
+                metrics={row.metrics}
+                phaseSnapshot={row.phaseSnapshot}
+                winnerTeamNames={row.winnerTeamNames}
+                highlightAsWinner={row.isWinnerTeam}
+                description={`Tu equipo: ${row.nameTeam}`}
+                titleSuffix={(
+                  <span className={`text-xs rounded-full px-2 py-1 ${registrationStatusClass[row.registrationStatus]}`}>
+                    {registrationStatusLabel[row.registrationStatus]}
+                  </span>
+                )}
+                variant="profile"
+                userState={row.userState}
+                shareAction={(
+                  <TournamentChevronButton
+                    expanded={expanded}
+                    onClick={() => toggleRow(row.id)}
+                  />
+                )}
+                footer={(
+                  <Link
+                    href={getTournamentDetailHref(row)}
+                    className="inline-block text-sm font-medium text-orange-600 hover:text-orange-700"
+                  >
+                    Ver detalle
+                  </Link>
+                )}
+              />
+            ) : (
+              <CompactTournamentCard
+                key={row.id}
+                row={row}
+                expanded={expanded}
+                onToggle={() => toggleRow(row.id)}
+              />
+            );
+          })}
         </div>
       )}
     </section>

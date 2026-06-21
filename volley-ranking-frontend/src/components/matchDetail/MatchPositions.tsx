@@ -16,6 +16,7 @@ export default function MatchPositions({
       className="
         bg-white
         border border-neutral-200
+        rounded-md
         px-4 py-4
         space-y-4
         dark:bg-[var(--surface)] dark:border-[var(--border)]
@@ -35,6 +36,7 @@ export default function MatchPositions({
               className="
                 flex items-center justify-between
                 border border-neutral-200
+                rounded-md
                 px-3 py-2
                 text-sm
                 text-neutral-700 dark:text-neutral-300

@@ -84,69 +84,80 @@ export default function MatchActions({
     </>
   );
 
-  /* -----------------------
-   * ACCIONES ADMIN
-   * --------------------- */
-  const renderAdminActions = () => {
-    if (!isAdmin) return null;
+  return (
+  <section className="border-t border-neutral-200 pt-5 space-y-4">
 
-    return (
-      <>
-        {/* Cancelar (peligrosa, sobria) */}
-        <ActionButton
-          onClick={onCancel}
-          variant="danger_outline"
-          loading={loading?.cancel}
-          disabled={
-            match.estado === "cancelado" ||
-            match.estado === "jugado"
-          }
-        >
-          Cancelar
-        </ActionButton>
+    {/* PARTICIPACIÓN */}
+    <div className="flex flex-wrap items-center gap-2">
+      {renderJugadorAction()}
+    </div>
 
-        {/* Abierto → cerrar */}
-        {match.estado === "abierto" && (
-          <ActionButton
-            onClick={onClose}
-            variant="primary"
-            loading={loading?.close}
-          >
-            Cerrar partido
-          </ActionButton>
-        )}
+    {/* ADMINISTRACIÓN */}
+    {isAdmin && (
+      <div className="border-t border-neutral-200 pt-3 space-y-3">
 
-        {/* Verificando → confirmar / reabrir */}
-        {match.estado === "verificando" && (
-          <>
+        <div>
+          <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium text-neutral-700">
+            🛡️ Acciones de administrador
+          </span>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+
+          {/* Abierto → cerrar */}
+          {match.estado === "abierto" && (
             <ActionButton
               onClick={onClose}
-              disabled={hayPagosPendientes}
-              variant="success"
-              loading={loading?.close}
-            >
-              Confirmar cierre
-            </ActionButton>
-
-            <ActionButton
-              onClick={onReopen}
-              loading={loading?.reopen}
               variant="secondary"
+              loading={loading?.close}
+              compact
             >
-              Reabrir
+              Cerrar partido
             </ActionButton>
-          </>
-        )}
-      </>
-    );
-  };
+          )}
 
-  return (
-    <section className="border-t border-neutral-200 pt-5 space-y-3">
-      <div className="flex flex-wrap gap-2">
-        {renderJugadorAction()}
-        {renderAdminActions()}
+          {/* Verificando → confirmar */}
+          {match.estado === "verificando" && (
+            <>
+              <ActionButton
+                onClick={onClose}
+                disabled={hayPagosPendientes}
+                variant="success"
+                loading={loading?.close}
+                compact
+              >
+                Confirmar cierre
+              </ActionButton>
+
+              <ActionButton
+                onClick={onReopen}
+                loading={loading?.reopen}
+                variant="secondary"
+                compact
+              >
+                Reabrir
+              </ActionButton>
+            </>
+          )}
+
+          {/* Acción destructiva al final */}
+          <ActionButton
+            onClick={onCancel}
+            variant="danger_outline"
+            loading={loading?.cancel}
+            disabled={
+              match.estado === "cancelado" ||
+              match.estado === "jugado"
+            }
+            compact
+          >
+            Cancelar partido
+          </ActionButton>
+
+        </div>
       </div>
-    </section>
-  );
+    )}
+
+  </section>
+);
 }

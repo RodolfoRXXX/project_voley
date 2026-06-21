@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation";
 import PublicTournamentDetailModal from "@/components/tournaments/public/PublicTournamentDetailModal";
 import CreateMatchQuickActionModal from "@/components/dashboard/CreateMatchQuickActionModal";
 import PendingAlertsSection from "@/components/dashboard/PendingAlertsSection";
+import UpcomingActivitiesSection from "@/components/dashboard/UpcomingActivitiesSection";
 import type { PendingAlert } from "@/types/pendingAlerts";
 import { pendingAlertPriority } from "@/types/pendingAlerts";
 
@@ -843,118 +844,13 @@ export default function DashboardPage() {
         </>
       )}
 
-      {/* Matches */}
-      <section className="space-y-3">
-        <h2 className="text-2xl font-bold">Próximos partidos</h2>
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {matches.map((match) => (
-            <MatchCard
-              key={match.id}
-              match={match}
-              userId={firebaseUser?.uid}
-              groupNombre={groupsMap[match.groupId]}
-            />
-          ))}
-        </div>
-        {matches.length === 0 && (
-          <p className="text-sm text-neutral-500">No hay partidos</p>
-        )}
-      </section>
-
-      {/* Torneos */}
-      {activeTournamentCards.length > 0 && (
-        <section className="space-y-3">
-          <h3 className="text-xl font-semibold">Torneos activos</h3>
-
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {activeTournamentCards.map((tournamentCard) => (
-              /*
-              <article
-                key={tournamentCard.id}
-                className="min-w-[300px] rounded-md border p-4 space-y-4 hover:shadow-md transition"
-              >
-
-                <div>
-                  <p className="font-semibold">{tournamentCard.name}</p>
-                  <div className="text-xs text-neutral-500 flex gap-2">
-                    <span>{tournamentCard.format}</span>
-                    <span>•</span>
-                    <span>{tournamentPhaseTypeLabel[tournamentCard.phaseType]}</span>
-                  </div>
-                </div>
-
-                <div className="bg-neutral-100 rounded-md p-2 text-sm">
-                  {tournamentCard.nextMatch
-                    ? `${tournamentCard.nextMatch.homeTeamName} vs ${tournamentCard.nextMatch.awayTeamName}`
-                    : "Sin partidos"}
-                </div>
-
-                {/* Top 3 *//*}
-                <div>
-                  <p className="text-xs text-neutral-500">Top actual</p>
-                  <ul className="text-sm">
-                    {tournamentCard.standings.slice(0, 3).map((team, i) => (
-                      <li key={team.id}>
-                        {i + 1}. {team.teamName}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <button
-                  onClick={() => setSelectedTournamentCard(tournamentCard)}
-                  className="text-sm text-orange-600"
-                >
-                  Ver detalle →
-                </button>
-
-              </article>*/
-
-              <article
-                key={tournamentCard.id}
-                className="min-w-[300px] rounded-md border border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4 space-y-4 shadow-sm hover:shadow-lg hover:-translate-y-[2px] transition"
-              >
-
-                <div>
-                  <p className="font-semibold">{tournamentCard.name}</p>
-                  <div className="text-xs text-neutral-500 flex gap-2">
-                    <span>{tournamentCard.format}</span>
-                    <span>•</span>
-                    <span>{tournamentPhaseTypeLabel[tournamentCard.phaseType]}</span>
-                  </div>
-                </div>
-
-                <div className="bg-neutral-100/70 dark:bg-slate-800/60 rounded-md p-2 text-sm">
-                  {tournamentCard.nextMatch
-                    ? `${tournamentCard.nextMatch.homeTeamName} vs ${tournamentCard.nextMatch.awayTeamName}`
-                    : "Sin partidos"}
-                </div>
-
-                <div>
-                  <p className="text-xs text-neutral-500 mb-1">Top actual</p>
-                  <ul className="text-sm space-y-0.5">
-                    {tournamentCard.standings.slice(0, 3).map((team, i) => (
-                      <li key={team.id}>
-                        <span className="text-neutral-400 mr-1">{i + 1}.</span>
-                        {team.teamName}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <button
-                  onClick={() => setSelectedTournamentCard(tournamentCard)}
-                  className="text-sm font-medium text-orange-600 hover:underline"
-                >
-                  Ver detalle →
-                </button>
-
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
+      <UpcomingActivitiesSection
+        matches={matches}
+        tournaments={activeTournamentCards}
+        groupsMap={groupsMap}
+        userId={firebaseUser?.uid}
+        onSelectTournament={setSelectedTournamentCard}
+      />
 
       <PublicTournamentDetailModal
         open={selectedTournamentCard !== null}

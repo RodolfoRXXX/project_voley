@@ -706,6 +706,7 @@ ${url}`}
             className="
               bg-white
               border border-neutral-200
+              rounded-md
               px-4 py-4
               space-y-4
             "

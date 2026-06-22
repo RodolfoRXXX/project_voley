@@ -309,17 +309,7 @@ export default function GrupoPublicDetailPage() {
     }
   };
 
-  const requestAdminRole = async () => {
-    try {
-      setActingKey("request-admin-role");
-      await postWithAuth(`/api/groups/${groupId}/admin-request`);
-      await loadGroup();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "No se pudo enviar la postulación");
-    } finally {
-      setActingKey(null);
-    }
-  };
+
 
   const removeAdmin = async (userId: string) => {
     try {
@@ -393,8 +383,6 @@ export default function GrupoPublicDetailPage() {
 
   const adminMembers = group?.members.filter((member) => member.isAdmin) || [];
   const playerMembers = group?.members.filter((member) => !member.isAdmin) || [];
-  const isAdminRequestPending =
-    !!firebaseUser?.uid && !!group?.pendingAdminRequestIds?.includes(firebaseUser.uid);
 
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
@@ -428,20 +416,6 @@ export default function GrupoPublicDetailPage() {
                 <p className="text-neutral-600 max-w-2xl">
                   {group.description || "Sin descripción"}
                 </p>
-
-                {group.canRequestAdminRole && (
-                  <div className="pt-2">
-                    <ActionButton
-                      onClick={requestAdminRole}
-                      loading={actingKey === "request-admin-role"}
-                      variant={isAdminRequestPending ? "secondary" : "warning"}
-                    >
-                      {isAdminRequestPending
-                        ? "Solicitud pendiente (clic para cancelar)"
-                        : "Postularme como administrador"}
-                    </ActionButton>
-                  </div>
-                )}
               </div>
 
               {/* BADGES DERECHA */}

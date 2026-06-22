@@ -296,7 +296,15 @@ export function TournamentSummaryCard({
           ) : null}
 
           {/* ACCIONES */}
-          <div className="ml-auto flex items-center justify-end gap-3">
+          <div
+            className="
+              flex items-center justify-between
+              sm:justify-end
+              gap-4
+              w-full sm:w-auto
+              sm:ml-auto
+            "
+          >
             {footer}
 
             {href ? (
@@ -308,6 +316,7 @@ export function TournamentSummaryCard({
               </Link>
             ) : null}
           </div>
+
         </div>
       ) : null}
 

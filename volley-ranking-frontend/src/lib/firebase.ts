@@ -30,7 +30,8 @@ const functions = getFunctions(app);
 //r de localhost, y asegurarse de que el celular esté conectado a la misma red Wi-Fi. Además, es posible que
 //  necesites configurar reglas de firewall para permitir conexiones entrantes a los puertos utilizados por los emuladores (9099 para Auth, 8080 para Firestore, 5001 para Functions).
 
-const EMULATOR_HOST = "192.168.100.5"; // tu IP local de home
+//const EMULATOR_HOST = "192.168.100.5"; // tu IP local de home
+const EMULATOR_HOST = "localhost"; // tu IP local de home
 
 
 const useEmulator = process.env.NEXT_PUBLIC_USE_EMULATOR === "true";

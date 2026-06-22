@@ -54,52 +54,55 @@ export default function PendingAlertsSection({
           const isDismissing = dismissLoadingAlertId === alert.id;
 
           return (
-            <article key={alert.id} className={`relative rounded-md border px-4 py-3 ${stylesBySeverity[alert.severity]}`}>
-              {alert.kind !== "complete_profile" && onDismissAlert && (
-                isConfirmingDismiss ? (
-                  <div className="absolute right-3 top-3 flex shrink-0 items-center gap-2 whitespace-nowrap text-xs">
-                    <span className="text-neutral-700 dark:text-neutral-700">&iquest;Eliminar?</span>
-                    <button
-                      type="button"
-                      onClick={() => handleConfirmDismiss(alert.id)}
-                      disabled={isDismissing}
-                      className="font-medium text-green-700 hover:text-green-800 disabled:cursor-not-allowed disabled:text-green-500 dark:text-green-700 dark:hover:text-green-800"
-                    >
-                      S&iacute;
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDismissAlertId(null)}
-                      disabled={isDismissing}
-                      className="font-medium text-neutral-700 hover:text-neutral-900 disabled:cursor-not-allowed disabled:text-neutral-500 dark:text-neutral-700 dark:hover:text-neutral-900"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDismissAlertId(alert.id)}
-                    className="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold text-neutral-700 hover:text-neutral-900 disabled:cursor-not-allowed dark:text-neutral-700 dark:hover:text-neutral-900"
-                    aria-label={`Cerrar alerta ${alert.title}`}
-                    disabled={isDismissing}
-                  >
-                    {isDismissing ? (
-                      <Spinner size="sm" className="text-neutral-700 dark:text-neutral-700" />
-                    ) : (
-                      <span aria-hidden="true">&times;</span>
-                    )}
-                  </button>
-                )
-              )}
+            <article key={alert.id} className={`rounded-md border px-4 py-3 ${stylesBySeverity[alert.severity]}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide opacity-80">
+                    {pendingAlertSeverityLabel[alert.severity]}
+                  </p>
+                  <p className="text-sm font-semibold">{alert.title}</p>
+                </div>
 
-              <div className={`space-y-1 ${isConfirmingDismiss ? "pr-44 sm:pr-52" : "pr-10"}`}>
-                <p className="text-xs font-semibold uppercase tracking-wide opacity-80">
-                  {pendingAlertSeverityLabel[alert.severity]}
-                </p>
-                <p className="text-sm font-semibold">{alert.title}</p>
-                <p className="text-xs opacity-90">{alert.message}</p>
+                {alert.kind !== "complete_profile" && onDismissAlert && (
+                  isConfirmingDismiss ? (
+                    <div className="flex shrink-0 items-center gap-2 whitespace-nowrap text-xs">
+                      <span className="text-neutral-700 dark:text-neutral-700">&iquest;Eliminar?</span>
+                      <button
+                        type="button"
+                        onClick={() => handleConfirmDismiss(alert.id)}
+                        disabled={isDismissing}
+                        className="font-medium text-green-700 hover:text-green-800 disabled:cursor-not-allowed disabled:text-green-500 dark:text-green-700 dark:hover:text-green-800"
+                      >
+                        S&iacute;
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDismissAlertId(null)}
+                        disabled={isDismissing}
+                        className="font-medium text-neutral-700 hover:text-neutral-900 disabled:cursor-not-allowed disabled:text-neutral-500 dark:text-neutral-700 dark:hover:text-neutral-900"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDismissAlertId(alert.id)}
+                      className="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold text-neutral-700 hover:text-neutral-900 disabled:cursor-not-allowed dark:text-neutral-700 dark:hover:text-neutral-900"
+                      aria-label={`Cerrar alerta ${alert.title}`}
+                      disabled={isDismissing}
+                    >
+                      {isDismissing ? (
+                        <Spinner size="sm" className="text-neutral-700 dark:text-neutral-700" />
+                      ) : (
+                        <span aria-hidden="true">&times;</span>
+                      )}
+                    </button>
+                  )
+                )}
               </div>
+
+              <p className="mt-2 text-xs opacity-90">{alert.message}</p>
 
               {alert.link?.path && (
                 <div className="mt-2 flex justify-end">

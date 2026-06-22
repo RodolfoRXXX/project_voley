@@ -169,7 +169,7 @@ export default function OnboardingForm() {
             variant={roles === "admin" ? "primary" : "secondary"}
             disabled={loading}
           >
-            🧑‍💼 Administrador
+            💼 Administrador
           </ActionButton>
         </div>
       </div>

@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { getProfileTournamentListView, type ProfileTournamentListRow } from "@/services/tournaments/tournamentQueries";
 import { tournamentStatusLabel, type TournamentStatus } from "@/types/tournaments";
+import { TournamentFiltersDropdown, type TournamentTypeFilter, type TournamentStatusFilter } from "@/components/tournaments/TournamentFiltersDropdown";
 
 const registrationStatusLabel = {
   pendiente: "Pendiente",
@@ -47,9 +48,6 @@ const tournamentStatusClass: Record<TournamentStatus, string> = {
   finalizado: "bg-emerald-100 text-emerald-700",
   cancelado: "bg-red-100 text-red-700",
 };
-
-type TournamentTypeFilter = "all" | "liga" | "eliminacion" | "mixto";
-type TournamentStatusFilter = "all" | TournamentStatus;
 
 function getTournamentDetailHref(row: ProfileTournamentListRow) {
   return row.source === "registration"
@@ -245,43 +243,16 @@ export default function ProfileTournamentsPage() {
   return (
     <section className="space-y-4">
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-neutral-900">Mis torneos</h1>
-        <p className="text-sm text-neutral-500">Seguimiento rápido de tus inscripciones, equipos y del estado competitivo de cada torneo.</p>
-      </div>
-
-      <div className="rounded-md border border-neutral-200 bg-white p-4">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="space-y-1 text-sm text-neutral-700">
-            <span className="font-medium">Tipo de torneo</span>
-            <select
-              value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value as TournamentTypeFilter)}
-              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900"
-            >
-              <option value="all">Todos</option>
-              <option value="liga">Liga</option>
-              <option value="eliminacion">Eliminación</option>
-              <option value="mixto">Grupos y eliminatorias</option>
-            </select>
-          </label>
-
-          <label className="space-y-1 text-sm text-neutral-700">
-            <span className="font-medium">Estado del torneo</span>
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as TournamentStatusFilter)}
-              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900"
-            >
-              <option value="activo">Activos</option>
-              <option value="all">Todos</option>
-              <option value="draft">Borrador</option>
-              <option value="inscripciones_abiertas">Inscripciones abiertas</option>
-              <option value="inscripciones_cerradas">Inscripciones cerradas</option>
-              <option value="finalizado">Finalizados</option>
-              <option value="cancelado">Cancelados</option>
-            </select>
-          </label>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-neutral-900">Mis torneos</h1>
+          <TournamentFiltersDropdown
+            typeFilter={typeFilter}
+            statusFilter={statusFilter}
+            onTypeFilterChange={setTypeFilter}
+            onStatusFilterChange={setStatusFilter}
+          />
         </div>
+        <p className="text-sm text-neutral-500">Seguimiento rápido de tus inscripciones, equipos y del estado competitivo de cada torneo.</p>
       </div>
 
       {filteredRows.length === 0 ? (

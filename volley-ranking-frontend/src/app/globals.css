@@ -99,13 +99,17 @@ html[data-theme="dark"] input[type="datetime-local"] {
 }
 
 .logo-x {
+  display: inline-flex;
+  align-items: center;
   font-family: var(--font-arizonia)!important;
   font-size: 1.8em;
-  line-height: 0.7;
+  line-height: 1;
   color: #ff6a00;
   font-weight: bold;
   margin-inline: 0.02em;
-  margin: 0 0 0 3px;
+  margin: 0 0 0 -5px;
+  position: relative;
+  top: 0.1em;
   transition: transform 0.2s ease, text-shadow 0.2s ease;
 }
 

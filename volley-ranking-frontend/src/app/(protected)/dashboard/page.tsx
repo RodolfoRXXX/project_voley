@@ -574,25 +574,6 @@ export default function DashboardPage() {
   }, [firebaseUser?.uid, isOnboarded]);
 
   const loading = matchesLoading || tournamentLoading;
-  const showGuestHero = !authLoading && !firebaseUser;
-
-  const featureCards = [
-    {
-      emoji: "🏐",
-      title: "Partidos sociales en minutos",
-      description: "Creá o encontrá partidos abiertos, unite rápido y coordiná con tu grupo desde un solo lugar.",
-    },
-    {
-      emoji: "🏆",
-      title: "Torneos organizados",
-      description: "Seguí fases, cruces y equipos con una vista clara para vivir cada torneo como profesional.",
-    },
-    {
-      emoji: "📈",
-      title: "Ranking y progreso",
-      description: "Tu actividad suma. Medí tu avance y mantené el ritmo para escalar posiciones.",
-    },
-  ];
 
   /* =====================
      SKELETON
@@ -600,7 +581,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 space-y-6 pb-12">
+      <main className="max-w-5xl mx-auto mt-6 sm:mt-10 md:px-0 space-y-6 pb-12">
         <div className="space-y-2">
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-10 w-72" />
@@ -650,65 +631,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-8">
-
-      {showGuestHero && (
-        <section className="relative overflow-hidden rounded-md border border-orange-200/70 dark:border-[var(--border)] bg-gradient-to-br from-orange-100 via-orange-50 to-amber-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-6 sm:p-8 shadow-sm">
-          <div className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-orange-300/20 dark:bg-orange-500/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-amber-300/20 dark:bg-amber-500/10 blur-3xl" />
-
-          <div className="relative space-y-8">
-            <header className="space-y-5">
-
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <p className="inline-flex w-fit items-center rounded-full border border-orange-200/80 dark:border-orange-400/30 bg-white/80 dark:bg-slate-900/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-orange-600 dark:text-orange-300 backdrop-blur">
-                  Tu plataforma para deportes
-                </p>
-              </div>
-
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 dark:text-[var(--foreground)] leading-tight">
-                Organizá tu torneo con{" "}
-                <span className="inline-block">
-                  <span>Sporte</span>
-                  <span className="logo-x text-5xl sm:text-6xl lg:text-7xl align-middle mx-1 animate-pulse">
-                    X
-                  </span>
-                  <span>a</span>
-                </span>
-              </h1>
-
-              <p className="max-w-2xl text-sm sm:text-base text-slate-600 dark:text-[var(--text-muted)]">
-                Organizá partidos, descubrí torneos y seguí tu evolución en una experiencia moderna y clara.
-              </p>
-
-              <button
-                type="button"
-                onClick={login}
-                className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white hover:bg-orange-600 hover:scale-[1.02] transition shadow-lg shadow-orange-500/20"
-              >
-                Empezar ahora
-              </button>
-
-            </header>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              {featureCards.map((feature) => (
-                <article
-                  key={feature.title}
-                  className="group rounded-md border border-white/80 bg-white/80 dark:bg-slate-900/70 px-4 py-5 backdrop-blur hover:-translate-y-1 hover:shadow-xl transition"
-                >
-                  <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-md bg-gradient-to-br from-orange-100 to-amber-100 text-xl group-hover:scale-110 transition">
-                    {feature.emoji}
-                  </div>
-                  <h3 className="font-semibold">{feature.title}</h3>
-                  <p className="text-sm text-neutral-600">{feature.description}</p>
-                </article>
-              ))}
-            </div>
-
-          </div>
-        </section>
-      )}
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-6 md:px-0 pb-12 space-y-8">
 
       {firebaseUser && (
         <>

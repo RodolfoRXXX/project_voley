@@ -33,7 +33,7 @@ import { getAdminTournamentRegistrationsView, getTournamentById, getTournamentTe
 
 function AdminTournamentDetailSkeleton() {
   return (
-    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 md:px-0 pb-12 space-y-6">
       <Skeleton className="h-5 w-56" />
       <section className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <Skeleton className="h-6 w-64" />
@@ -425,7 +425,7 @@ export default function AdminTournamentDetailPage() {
 
 
   return (
-    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 md:px-0 pb-12 space-y-6">
       <AdminBreadcrumb
         items={[
           { label: "Mis torneos" },

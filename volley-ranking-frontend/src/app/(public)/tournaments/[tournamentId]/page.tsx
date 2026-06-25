@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 function PublicTournamentDetailSkeleton() {
   return (
-    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 md:px-0 pb-12 space-y-6">
       <Skeleton className="h-5 w-40" />
       <section className="rounded-md border border-neutral-200 bg-white p-5 space-y-3">
         <Skeleton className="h-7 w-64" />
@@ -90,7 +90,7 @@ export default function PublicTournamentDetailPage() {
     : "Sin marcador";
 
   return (
-    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 md:px-0 pb-12 space-y-6">
       <Link href={firebaseUser ? "/tournaments" : "/"} className="text-sm text-neutral-600 hover:underline">← Volver a torneos</Link>
 
       <TournamentSummaryCard

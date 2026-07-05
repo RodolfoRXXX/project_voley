@@ -22,6 +22,7 @@ import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import { useAuth } from "@/hooks/useAuth";
 import StatusPill from "../ui/status/StatusPill";
+import InformationPill from "../ui/status/InformationPill";
 import { matchStatusMap } from "@/components/ui/status/matchStatusMap";
 
 /* =====================
@@ -212,7 +213,7 @@ const puedeUnirse =
 
         <div className="flex flex-col items-end gap-2">
           {match.visibility && (
-            <StatusPill
+            <InformationPill
               label={
                 match.visibility === "public"
                   ? "Público"

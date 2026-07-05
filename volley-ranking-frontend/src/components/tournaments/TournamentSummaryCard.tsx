@@ -10,6 +10,7 @@ import {
 import type { TournamentPhaseSnapshot, TournamentProgressMetrics } from "@/services/tournaments/tournamentQueries";
 import type { UserTournamentState } from "@/services/tournaments/tournamentViewModels";
 import TournamentRegistrationHelpModal from "@/components/tournamentRegistrationHelpModal/TournamentRegistrationHelpModal";
+import StatusPill from "@/components/ui/status/StatusPill";
 
 type TournamentSummaryCardProps = {
   tournament: Tournament;
@@ -43,14 +44,24 @@ const paymentStatusLabel: Record<UserTournamentState["payment"]["status"], strin
   complete: "Completo",
 };
 
-const tournamentStatusBadgeClass: Record<Tournament["status"], string> = {
-  draft: "bg-neutral-100 text-neutral-700",
-  inscripciones_abiertas: "bg-blue-100 text-blue-700",
-  inscripciones_cerradas: "bg-neutral-100 text-neutral-700",
-  activo: "bg-orange-100 text-orange-700",
-  finalizado: "bg-emerald-100 text-emerald-700",
-  cancelado: "bg-red-100 text-red-700",
-};
+function getTournamentStatusVariant(status: Tournament["status"]) {
+  switch (status) {
+    case "draft":
+      return "neutral";
+    case "inscripciones_abiertas":
+      return "info";
+    case "inscripciones_cerradas":
+      return "warning";
+    case "activo":
+      return "success";
+    case "finalizado":
+      return "success";
+    case "cancelado":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
 
 function MetricPill({ label, value }: { label: string; value: string }) {
   return (
@@ -84,7 +95,6 @@ export function TournamentSummaryCard({
   const phaseLabel = phaseSnapshot ? tournamentPhaseTypeLabel[phaseSnapshot.type] : "Sin fase activa";
   const isFinalized = tournament.status === "finalizado";
   const podiumLabels = ["1° puesto", "2° puesto", "3° puesto"];
-  const statusBadgeClass = tournamentStatusBadgeClass[tournament.status];
   const linkLabel = isFinalized ? "Ver resultados finales →" : "Seguir torneo →";
   const canShowRegistrationHelp = showRegistrationHelp && tournament.status === "inscripciones_abiertas";
 
@@ -122,15 +132,11 @@ export function TournamentSummaryCard({
           </div>
 
           <div className="mt-2">
-            <span
-              className={`
-                inline-flex items-center
-                text-[11px] font-medium rounded-full px-2.5 py-1
-                ${statusBadgeClass}
-              `}
-            >
-              {tournamentStatusLabel[tournament.status]}
-            </span>
+            <StatusPill
+              label={tournamentStatusLabel[tournament.status]}
+              variant={getTournamentStatusVariant(tournament.status)}
+              inline
+            />
           </div>
 
           <p className="mt-2 text-sm text-neutral-500 line-clamp-2">

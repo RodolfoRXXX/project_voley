@@ -69,6 +69,7 @@ export default function HomePage() {
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [tournaments, setTournaments] = useState<PublicTournamentListItem[]>([]);
   const [tournamentsLoading, setTournamentsLoading] = useState(true);
+  const [activeFeatureIndex, setActiveFeatureIndex] = useState(0);
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
@@ -158,9 +159,17 @@ export default function HomePage() {
     {
       emoji: "📈",
       title: "Ranking y progreso",
-      description: "Tu actividad suma. Medí tu avance y mantené el ritmo para escalar posiciones.",
+      description: "Tu actividad suma. Seguí tu avance en los partidos y mantené el ritmo para escalar posiciones.",
     },
   ];
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setActiveFeatureIndex((currentIndex) => (currentIndex + 1) % featureCards.length);
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [featureCards.length]);
 
   if (loading) return <HomeSkeleton />;
 
@@ -200,7 +209,30 @@ export default function HomePage() {
             ) : null}
           </header>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="md:hidden">
+            <article className="group rounded-md border border-white/80 bg-white/80 dark:bg-slate-900/70 px-4 py-5 backdrop-blur transition">
+              <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-md bg-gradient-to-br from-orange-100 to-amber-100 text-xl transition">
+                {featureCards[activeFeatureIndex].emoji}
+              </div>
+              <h3 className="font-semibold">{featureCards[activeFeatureIndex].title}</h3>
+              <p className="text-sm text-neutral-600 dark:text-neutral-300">{featureCards[activeFeatureIndex].description}</p>
+            </article>
+
+            <div className="mt-4 flex items-center justify-center gap-2">
+              {featureCards.map((feature, index) => (
+                <button
+                  key={feature.title}
+                  type="button"
+                  aria-label={`Mostrar ${feature.title}`}
+                  aria-pressed={index === activeFeatureIndex}
+                  onClick={() => setActiveFeatureIndex(index)}
+                  className={`h-2.5 w-2.5 rounded-full transition ${index === activeFeatureIndex ? "bg-orange-500" : "bg-orange-200 dark:bg-orange-400/50"}`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="hidden gap-4 md:grid md:grid-cols-3">
             {featureCards.map((feature) => (
               <article
                 key={feature.title}

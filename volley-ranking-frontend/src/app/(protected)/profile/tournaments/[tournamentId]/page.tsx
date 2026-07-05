@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { tournamentStatusLabel } from "@/types/tournaments";
+import StatusPill from "@/components/ui/status/StatusPill";
 import { TournamentPodiumCard } from "@/components/tournaments/TournamentPodiumCard";
 import { TournamentAdminsCard } from "@/components/tournaments/TournamentAdminsCard";
 import ShareOptionsButton from "@/components/ui/share/ShareOptionsButton";
@@ -60,9 +61,19 @@ export default function ProfileTournamentDetailPage() {
           <div className="min-w-0 space-y-2">
             <h1 className="text-2xl font-bold text-neutral-900">{tournament.name}</h1>
             <p className="text-sm text-neutral-600">{tournament.description || "Sin descripción"}</p>
-            <span className="inline-block text-xs rounded-full px-2 py-1 bg-orange-100 text-orange-700">
-              {tournamentStatusLabel[tournament.status]}
-            </span>
+            <StatusPill
+              label={tournamentStatusLabel[tournament.status]}
+              variant={tournament.status === "draft"
+                ? "neutral"
+                : tournament.status === "inscripciones_abiertas"
+                ? "info"
+                : tournament.status === "inscripciones_cerradas"
+                ? "warning"
+                : tournament.status === "activo" || tournament.status === "finalizado"
+                ? "success"
+                : "danger"}
+              inline
+            />
           </div>
           <ShareOptionsButton
             buttonLabel="Compartir torneo"

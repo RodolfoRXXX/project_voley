@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { TournamentSummaryCard } from "@/components/tournaments/TournamentSummaryCard";
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
+import StatusPill from "@/components/ui/status/StatusPill";
 import { getProfileTournamentListView, type ProfileTournamentListRow } from "@/services/tournaments/tournamentQueries";
 import { tournamentStatusLabel, type TournamentStatus } from "@/types/tournaments";
 import { TournamentFiltersDropdown, type TournamentTypeFilter, type TournamentStatusFilter } from "@/components/tournaments/TournamentFiltersDropdown";
@@ -40,14 +41,24 @@ function RegistrationStatusBadge({ status }: { status: RegistrationStatus }) {
   );
 }
 
-const tournamentStatusClass: Record<TournamentStatus, string> = {
-  draft: "bg-neutral-100 text-neutral-700",
-  inscripciones_abiertas: "bg-blue-100 text-blue-700",
-  inscripciones_cerradas: "bg-neutral-100 text-neutral-700",
-  activo: "bg-orange-100 text-orange-700",
-  finalizado: "bg-emerald-100 text-emerald-700",
-  cancelado: "bg-red-100 text-red-700",
-};
+function getTournamentStatusVariant(status: TournamentStatus) {
+  switch (status) {
+    case "draft":
+      return "neutral";
+    case "inscripciones_abiertas":
+      return "info";
+    case "inscripciones_cerradas":
+      return "warning";
+    case "activo":
+      return "success";
+    case "finalizado":
+      return "success";
+    case "cancelado":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
 
 function getTournamentDetailHref(row: ProfileTournamentListRow) {
   return row.source === "registration"
@@ -122,9 +133,11 @@ function CompactTournamentCard({
 
             <RegistrationStatusBadge status={row.registrationStatus} />
 
-            <span className={`inline-flex items-center gap-1 text-xs font-semibold rounded-full px-2 py-1 ${tournamentStatusClass[row.tournament.status]}`}>
-              {tournamentStatusLabel[row.tournament.status]}
-            </span>
+            <StatusPill
+              label={tournamentStatusLabel[row.tournament.status]}
+              variant={getTournamentStatusVariant(row.tournament.status)}
+              inline
+            />
           </div>
 
           <p className="text-sm text-neutral-600">

@@ -6,7 +6,7 @@ import { app } from "@/lib/firebase";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import useToast from "@/components/ui/toast/useToast";
-import StatusPill from "../ui/status/StatusPill";
+import InformationPill from "../ui/status/InformationPill";
 
 type Role = "player" | "admin";
 
@@ -163,7 +163,7 @@ export default function PreferredPositionsEditor({
           const disabled = !selected && positions.length >= 3;
 
           return (
-            <StatusPill
+            <InformationPill
               key={p}
               label={
                 selected ? `${index + 1}. ${p}` : p
@@ -187,13 +187,13 @@ export default function PreferredPositionsEditor({
         </p>
 
         <div className="flex flex-wrap gap-2">
-          <StatusPill
+          <InformationPill
             label={roleLabel.player}
             variant={role === "player" ? "success" : "neutral"}
             onClick={() => setRole("player")}
             size={role === "player" ? "md" : "sm"}
           />
-          <StatusPill
+          <InformationPill
             label={roleLabel.admin}
             variant={role === "admin" ? "warning" : "neutral"}
             onClick={() => setRole("admin")}

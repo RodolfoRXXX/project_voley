@@ -1,6 +1,6 @@
 
 // -------------------
-// Badge Pill
+// Status Pill
 // -------------------
 
 "use client";
@@ -24,29 +24,31 @@ type Props = {
   responsive?: boolean;
 };
 
-const variants: Record<
-  StatusVariant,
-  { desktop: string; mobile: string }
-> = {
+const variants: Record<StatusVariant, { desktop: string; mobile: string; dot: string }> = {
   warning: {
-    desktop: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
-    mobile: "bg-yellow-100 text-yellow-700",
+    desktop: "border border-slate-200/80 bg-slate-100/90 text-slate-700 hover:bg-slate-200",
+    mobile: "border border-slate-200/80 bg-slate-100/90 text-slate-700",
+    dot: "bg-amber-500",
   },
   success: {
-    desktop: "bg-green-100 text-green-800 hover:bg-green-200",
-    mobile: "bg-green-100 text-green-700",
+    desktop: "border border-slate-200/80 bg-slate-100/90 text-slate-700 hover:bg-slate-200",
+    mobile: "border border-slate-200/80 bg-slate-100/90 text-slate-700",
+    dot: "bg-emerald-500",
   },
   info: {
-    desktop: "bg-blue-100 text-blue-800 hover:bg-blue-200",
-    mobile: "bg-blue-100 text-blue-700",
+    desktop: "border border-slate-200/80 bg-slate-100/90 text-slate-700 hover:bg-slate-200",
+    mobile: "border border-slate-200/80 bg-slate-100/90 text-slate-700",
+    dot: "bg-sky-500",
   },
   danger: {
-    desktop: "bg-red-100 text-red-800 hover:bg-red-200",
-    mobile: "bg-red-100 text-red-700",
+    desktop: "border border-slate-200/80 bg-slate-100/90 text-slate-700 hover:bg-slate-200",
+    mobile: "border border-slate-200/80 bg-slate-100/90 text-slate-700",
+    dot: "bg-rose-500",
   },
   neutral: {
-    desktop: "bg-neutral-100 text-neutral-700 hover:bg-neutral-200",
-    mobile: "bg-neutral-100 text-neutral-600",
+    desktop: "border border-slate-200/80 bg-slate-100/90 text-slate-700 hover:bg-slate-200",
+    mobile: "border border-slate-200/80 bg-slate-100/90 text-slate-700",
+    dot: "bg-slate-500",
   },
 };
 
@@ -67,7 +69,7 @@ export default function StatusPill({
   const cfg = variants[variant];
 
   const base =
-    "items-center justify-center rounded-full font-medium transition whitespace-nowrap";
+    "inline-flex items-center justify-center rounded-full font-medium transition whitespace-nowrap shadow-[0_1px_2px_rgba(15,23,42,0.04)]";
 
   const Wrapper = inline ? "span" : "div";
 
@@ -83,7 +85,12 @@ export default function StatusPill({
           ${cfg.desktop}
         `}
       >
-        {label}
+        <span className="mr-1.5 inline-flex items-center" aria-hidden="true">
+          <span
+            className={`h-2.5 w-2.5 rounded-full ${cfg.dot} motion-safe:animate-pulse motion-reduce:animate-none`}
+          />
+        </span>
+        <span>{label}</span>
       </button>
 
       {/* Mobile icon-only */}

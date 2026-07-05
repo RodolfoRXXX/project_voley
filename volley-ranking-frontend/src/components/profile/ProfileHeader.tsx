@@ -1,7 +1,7 @@
 "use client";
 
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
-import StatusPill, { type StatusVariant } from "@/components/ui/status/StatusPill";
+import InformationPill, { type InformationVariant } from "@/components/ui/status/InformationPill";
 import { UserDoc } from "@/types/User";
 
 type Props = {
@@ -10,7 +10,7 @@ type Props = {
   isEditing?: boolean;
 };
 
-function getCommitmentPill(value: number): { label: string; variant: StatusVariant } {
+function getCommitmentPill(value: number): { label: string; variant: InformationVariant } {
   if (value >= 3) {
     return { label: "🤝 Compromiso alto", variant: "success" };
   }
@@ -24,7 +24,7 @@ function getCommitmentPill(value: number): { label: string; variant: StatusVaria
 
 export default function ProfileHeader({ user, onToggleEdit, isEditing = false }: Props) {
   const roleLabel = user.roles === "admin" ? "Administrador" : "Jugador";
-  const roleVariant: StatusVariant =
+  const roleVariant: InformationVariant =
     user.roles === "admin" ? "warning" : "success";
   const commitment = getCommitmentPill(user.estadoCompromiso ?? 0);
 
@@ -70,8 +70,8 @@ export default function ProfileHeader({ user, onToggleEdit, isEditing = false }:
         </p>
 
         <div className="flex flex-wrap justify-center sm:justify-start items-center gap-2 mt-3">
-          <StatusPill label={roleLabel} variant={roleVariant} />
-          <StatusPill label={commitment.label} variant={commitment.variant} />
+          <InformationPill label={roleLabel} variant={roleVariant} />
+          <InformationPill label={commitment.label} variant={commitment.variant} />
         </div>
 
         <div className="mt-3 flex flex-wrap justify-center sm:justify-start items-center gap-2">

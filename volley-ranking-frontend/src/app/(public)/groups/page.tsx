@@ -13,7 +13,7 @@ import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { db } from "@/lib/firebase";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
-import StatusPill from "@/components/ui/status/StatusPill";
+import InformationPill from "@/components/ui/status/InformationPill";
 import { useAction } from "@/components/ui/action/useAction";
 
 /* =====================
@@ -371,13 +371,13 @@ export default function GruposPage() {
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
-                      <StatusPill
+                      <InformationPill
                         label={group.visibility === "public" ? "Público" : "Privado"}
                         variant={group.visibility === "public" ? "info" : "neutral"}
                         inline
                       />
                       {group.joinApproval && (
-                        <StatusPill
+                        <InformationPill
                           label="Requiere aprobación"
                           variant="warning"
                           inline

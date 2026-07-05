@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { formatDateTime } from "@/lib/date";
-import StatusPill from "../ui/status/StatusPill";
+import InformationPill from "../ui/status/InformationPill";
 import { matchStatusMap } from "@/components/ui/status/matchStatusMap";
 import { playerStatusMap } from "@/components/ui/status/playerStatusMap";
 
@@ -72,7 +72,7 @@ export default function MatchHistoryCard({
           )}
         </div>
 
-        <StatusPill
+        <InformationPill
           label={cfg.label}
           variant={cfg.variant}
           icon={cfg.icon}
@@ -93,7 +93,7 @@ export default function MatchHistoryCard({
 
         <div className="flex items-center gap-2">
           <span className="font-medium">Rol:</span>
-          <StatusPill
+          <InformationPill
             label={cfgP.label}
             variant={cfgP.variant}
             size="sm"

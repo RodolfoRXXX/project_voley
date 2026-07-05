@@ -10,7 +10,7 @@ import { ActionButton } from "@/components/ui/action/ActionButton";
 import { readJsonSafely } from "@/lib/http/readJsonSafely";
 import useToast from "@/components/ui/toast/useToast";
 import { db } from "@/lib/firebase";
-import StatusPill from "@/components/ui/status/StatusPill";
+import InformationPill from "@/components/ui/status/InformationPill";
 import AddMemberModal from "@/components/addMemberModal/AddMemberModal";
 import { SearchableMember } from "@/components/addMemberModal/AddMemberModal.types";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
@@ -420,14 +420,14 @@ export default function GrupoPublicDetailPage() {
 
               {/* BADGES DERECHA */}
               <div className="flex flex-col items-end gap-2">
-                <StatusPill
+                <InformationPill
                   label={group.visibility === "public" ? "Público" : "Privado"}
                   variant={group.visibility === "public" ? "info" : "neutral"}
                   inline
                 />
 
                 {group.joinApproval && (
-                  <StatusPill
+                  <InformationPill
                     label="Requiere aprobación"
                     variant="warning"
                     inline

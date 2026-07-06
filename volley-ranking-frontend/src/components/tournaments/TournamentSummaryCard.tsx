@@ -21,6 +21,7 @@ type TournamentSummaryCardProps = {
   footer?: ReactNode;
   href?: string;
   variant?: "default" | "profile";
+  compact?: boolean;
   userState?: UserTournamentState;
   winnerTeamNames?: string[];
   highlightAsWinner?: boolean;
@@ -81,6 +82,7 @@ export function TournamentSummaryCard({
   footer,
   href,
   variant = "default",
+  compact = false,
   userState,
   winnerTeamNames: winnerTeamNamesProp,
   highlightAsWinner = false,
@@ -97,6 +99,55 @@ export function TournamentSummaryCard({
   const podiumLabels = ["1° puesto", "2° puesto", "3° puesto"];
   const linkLabel = isFinalized ? "Ver resultados finales →" : "Seguir torneo →";
   const canShowRegistrationHelp = showRegistrationHelp && tournament.status === "inscripciones_abiertas";
+
+  if (compact) {
+    return (
+      <article
+        className={`
+          rounded-md
+          bg-white
+          border border-neutral-200
+          p-4
+          shadow-xs
+          transition
+          ${
+            highlightAsWinner
+              ? "border-amber-300 ring-1 ring-amber-200"
+              : isFinalized
+              ? "border-emerald-200"
+              : "border-neutral-200 dark:border-white/10"
+          }
+        `}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base font-semibold tracking-tight text-neutral-900 dark:text-white line-clamp-2 sm:line-clamp-none">
+                {tournament.name}
+              </h2>
+            </div>
+
+            <div className="mt-2">
+              <StatusPill
+                label={tournamentStatusLabel[tournament.status]}
+                variant={getTournamentStatusVariant(tournament.status)}
+                inline
+              />
+            </div>
+          </div>
+
+          {href ? (
+            <Link
+              href={href}
+              className="ml-auto shrink-0 inline-flex items-center gap-1 text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors"
+            >
+              {linkLabel}
+            </Link>
+          ) : null}
+        </div>
+      </article>
+    );
+  }
 
   return (
     <article

@@ -264,6 +264,7 @@ export default function HomePage() {
                 phaseSnapshot={phaseSnapshot}
                 winnerTeamNames={winnerTeamNames}
                 href={`/tournaments/${tournament.id}`}
+                compact
               />
             ))}
           </div>

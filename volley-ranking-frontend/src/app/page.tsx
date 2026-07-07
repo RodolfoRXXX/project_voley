@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { collection, getDocs, onSnapshot, query, Timestamp, where } from "firebase/firestore";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
@@ -14,7 +15,12 @@ import type { Match } from "@/types/match";
 import { getPublicTournamentListView, type PublicTournamentListItem } from "@/services/tournaments/tournamentQueries";
 
 const SOCIAL_MATCH_STATUSES = ["abierto", "verificando", "cerrado", "cancelado"] as const;
-const CURRENT_TOURNAMENT_STATUSES = ["inscripciones_abiertas", "inscripciones_cerradas", "activo"] as const;
+const HOME_TOURNAMENT_STATUSES = ["inscripciones_abiertas", "activo"] as const;
+
+function getTournamentSortDate(tournament: PublicTournamentListItem["tournament"]) {
+  const candidates = [tournament.startDate?.seconds, tournament.endDate?.seconds, tournament.updatedAt?.seconds];
+  return candidates.find((value): value is number => typeof value === "number") ?? Number.POSITIVE_INFINITY;
+}
 
 function HomeSkeleton() {
   return (
@@ -70,6 +76,8 @@ export default function HomePage() {
   const [tournaments, setTournaments] = useState<PublicTournamentListItem[]>([]);
   const [tournamentsLoading, setTournamentsLoading] = useState(true);
   const [activeFeatureIndex, setActiveFeatureIndex] = useState(0);
+  const [matchCarouselIndex, setMatchCarouselIndex] = useState(0);
+  const [matchCarouselVisibleItems, setMatchCarouselVisibleItems] = useState(1);
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
@@ -131,7 +139,13 @@ export default function HomePage() {
       try {
         const rows = await getPublicTournamentListView();
         if (!active) return;
-        setTournaments(rows.filter((row) => CURRENT_TOURNAMENT_STATUSES.includes(row.tournament.status as (typeof CURRENT_TOURNAMENT_STATUSES)[number])));
+
+        const featuredRows = rows
+          .filter((row) => HOME_TOURNAMENT_STATUSES.includes(row.tournament.status as (typeof HOME_TOURNAMENT_STATUSES)[number]))
+          .sort((a, b) => getTournamentSortDate(a.tournament) - getTournamentSortDate(b.tournament))
+          .slice(0, 5);
+
+        setTournaments(featuredRows);
       } finally {
         if (active) setTournamentsLoading(false);
       }
@@ -171,10 +185,43 @@ export default function HomePage() {
     return () => window.clearInterval(intervalId);
   }, [featureCards.length]);
 
+  const displayedMatches = matches.slice(0, 5);
+  const maxMatchCarouselIndex = Math.max(0, displayedMatches.length - matchCarouselVisibleItems);
+  const canNavigatePreviousMatch = matchCarouselIndex > 0;
+  const canNavigateNextMatch = matchCarouselIndex < maxMatchCarouselIndex;
+
+  useEffect(() => {
+    const updateVisibleItems = () => {
+      const width = window.innerWidth;
+
+      if (width >= 1024) {
+        setMatchCarouselVisibleItems(3);
+      } else if (width >= 640) {
+        setMatchCarouselVisibleItems(2);
+      } else {
+        setMatchCarouselVisibleItems(1);
+      }
+    };
+
+    updateVisibleItems();
+
+    window.addEventListener("resize", updateVisibleItems);
+
+    return () =>
+      window.removeEventListener("resize", updateVisibleItems);
+  }, []);
+
+  useEffect(() => {
+    setMatchCarouselIndex((currentIndex) => Math.min(currentIndex, maxMatchCarouselIndex));
+  }, [maxMatchCarouselIndex]);
+
+  const handlePrevMatch = () => setMatchCarouselIndex((index) => Math.max(index - 1, 0));
+  const handleNextMatch = () => setMatchCarouselIndex((index) => Math.min(index + 1, maxMatchCarouselIndex));
+
   if (loading) return <HomeSkeleton />;
 
   return (
-    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-8">
+    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-8 overflow-x-hidden">
       <section className="relative overflow-hidden rounded-md border border-orange-200/70 dark:border-[var(--border)] bg-gradient-to-br from-orange-100 via-orange-50 to-amber-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-6 sm:p-8 shadow-sm">
         <div className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-orange-300/20 dark:bg-orange-500/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-amber-300/20 dark:bg-amber-500/10 blur-3xl" />
@@ -250,8 +297,11 @@ export default function HomePage() {
       </section>
 
       <section className="space-y-3">
-        <div>
+        <div className="flex items-center justify-between gap-3">
           <h2 className="text-2xl font-bold">Torneos vigentes</h2>
+          <Link href="/tournaments" className="text-sm font-semibold text-orange-600 hover:text-orange-700 transition-colors">
+            Ver todos
+          </Link>
         </div>
 
         {tournaments.length > 0 ? (
@@ -276,17 +326,105 @@ export default function HomePage() {
       <section className="space-y-3">
         <h2 className="text-2xl font-bold">Próximos partidos</h2>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {matches.map((match) => (
-            <MatchCard
-              key={match.id}
-              match={match}
-              userId={firebaseUser?.uid}
-              groupNombre={groupsMap[match.groupId]}
-            />
-          ))}
+        <div className="relative overflow-hidden">
+
+          {/* Slider */}
+          <div
+            className="flex transition-transform duration-300 ease-out"
+            style={{
+              transform: `translateX(-${(matchCarouselIndex * 100) / matchCarouselVisibleItems}%)`,
+            }}
+          >
+            {displayedMatches.map((match) => (
+              <div
+                key={match.id}
+                className="
+                  flex-none
+                  w-full
+                  sm:w-1/2
+                  lg:w-1/3
+                  px-2
+                  box-border
+                "
+              >
+                <MatchCard
+                  match={match}
+                  userId={firebaseUser?.uid}
+                  groupNombre={groupsMap[match.groupId]}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Flecha izquierda */}
+          {displayedMatches.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={handlePrevMatch}
+                disabled={!canNavigatePreviousMatch}
+                aria-label="Anterior partido"
+                className="
+                  absolute left-2 top-1/2 -translate-y-1/2 z-10
+                  inline-flex h-10 w-10 items-center justify-center
+                  rounded-full
+                  border border-neutral-200
+                  bg-white/90
+                  text-neutral-700
+                  shadow-sm
+                  hover:bg-white
+                  disabled:opacity-40
+                "
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+              </button>
+
+              {/* Flecha derecha */}
+              <button
+                type="button"
+                onClick={handleNextMatch}
+                disabled={!canNavigateNextMatch}
+                aria-label="Siguiente partido"
+                className="
+                  absolute right-2 top-1/2 -translate-y-1/2 z-10
+                  inline-flex h-10 w-10 items-center justify-center
+                  rounded-full
+                  border border-neutral-200
+                  bg-white/90
+                  text-neutral-700
+                  shadow-sm
+                  hover:bg-white
+                  disabled:opacity-40
+                "
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M9 6l6 6-6 6" />
+                </svg>
+              </button>
+            </>
+          )}
+
         </div>
-        {matches.length === 0 && (
+
+        {displayedMatches.length === 0 && (
           <p className="text-sm text-neutral-500">No hay nuevos partidos</p>
         )}
       </section>

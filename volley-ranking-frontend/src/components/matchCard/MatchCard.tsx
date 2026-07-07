@@ -192,6 +192,8 @@ const puedeUnirse =
     <div
       className="
         flex flex-col
+        w-full
+        min-w-0
         bg-white
         border border-neutral-200
         rounded-md
@@ -201,9 +203,9 @@ const puedeUnirse =
       "
     >
       {/* HEADER */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <p className="text-m font-medium text-neutral-900 dark:text-[var(--foreground)] leading-tight">
+      <div className="flex items-start justify-between gap-3 min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
+          <p className="text-base font-medium text-neutral-900 dark:text-[var(--foreground)] leading-tight break-words">
             {groupNombre ?? "—"}
           </p>
           <p className="text-sm text-neutral-500 dark:text-[var(--text-muted)]">
@@ -258,7 +260,7 @@ const puedeUnirse =
       </div>
 
       {/* FOOTER */}
-      <div className="mt-auto pt-4 flex items-center gap-4">
+      <div className="mt-auto pt-4 flex items-center justify-between gap-3 min-w-0">
         {!isLogged ? (
           <p className="text-sm text-neutral-400 italic">
             Iniciá sesión para unirte
@@ -285,7 +287,7 @@ const puedeUnirse =
                 if (!requireOnboarding()) return;
                 router.push(`profile/groups/${match.groupId}/matches/${match.id}`);
               }}
-              className="text-sm text-neutral-500 dark:text-[var(--text-muted)] hover:text-neutral-800 dark:hover:text-[var(--foreground)]"
+              className="text-sm text-neutral-500 shrink-0 whitespace-nowrap dark:text-[var(--text-muted)] hover:text-neutral-800 dark:hover:text-[var(--foreground)]"
             >
               Ver detalle →
             </button>

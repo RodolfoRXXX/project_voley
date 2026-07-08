@@ -189,7 +189,7 @@ export default function HomePage() {
   if (loading) return <HomeSkeleton />;
 
   return (
-    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-8">
+    <main className="max-w-5xl w-full mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-8">
       <section className="relative overflow-hidden rounded-md border border-orange-200/70 dark:border-[var(--border)] bg-gradient-to-br from-orange-100 via-orange-50 to-amber-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-6 sm:p-8 shadow-sm">
         <div className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-orange-300/20 dark:bg-orange-500/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-amber-300/20 dark:bg-amber-500/10 blur-3xl" />

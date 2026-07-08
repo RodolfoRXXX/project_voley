@@ -4,6 +4,7 @@ import type { Match } from "@/types/match";
 import type { TournamentPhaseType } from "@/types/tournaments/tournamentPhase";
 import { tournamentPhaseTypeLabel } from "@/types/tournaments/tournamentPhase";
 import MatchCard from "@/components/matchCard/MatchCard";
+import CardCarousel from "@/components/ui/carousel/CardCarousel";
 
 type TournamentDashboardMatch = {
   id: string;
@@ -67,11 +68,12 @@ export default function UpcomingActivitiesSection({
       {hasTournaments && (
         <div className="space-y-3">
           <h3 className="text-lg font-semibold">Próximos torneos</h3>
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {tournaments.map((tournament) => (
+          <CardCarousel
+            items={tournaments}
+            getKey={(tournament) => tournament.id}
+            renderItem={(tournament) => (
               <article
-                key={tournament.id}
-                className="min-w-[280px] sm:min-w-[320px] rounded-md border border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4 space-y-4 shadow-sm hover:shadow-lg hover:-translate-y-[2px] transition cursor-pointer"
+                className="h-full rounded-md border border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4 space-y-4 shadow-sm hover:shadow-lg hover:-translate-y-[2px] transition cursor-pointer"
                 onClick={() => onSelectTournament?.(tournament)}
               >
                 <div>
@@ -112,8 +114,8 @@ export default function UpcomingActivitiesSection({
                   Ver detalle →
                 </button>
               </article>
-            ))}
-          </div>
+            )}
+          />
         </div>
       )}
 
@@ -121,16 +123,19 @@ export default function UpcomingActivitiesSection({
       {hasMatches && (
         <div className="space-y-3">
           <h3 className="text-lg font-semibold">Próximos partidos</h3>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {matches.map((match) => (
-              <MatchCard
-                key={match.id}
-                match={match}
-                userId={userId}
-                groupNombre={groupsMap[match.groupId]}
-              />
-            ))}
-          </div>
+          <CardCarousel
+            items={matches}
+            getKey={(match) => match.id}
+            renderItem={(match) => (
+              <div className="h-full">
+                <MatchCard
+                  match={match}
+                  userId={userId}
+                  groupNombre={groupsMap[match.groupId]}
+                />
+              </div>
+            )}
+          />
         </div>
       )}
     </section>

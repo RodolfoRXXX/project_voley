@@ -7,6 +7,7 @@ import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import MatchCard from "@/components/matchCard/MatchCard";
+import CardCarousel from "@/components/ui/carousel/CardCarousel";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { TournamentSummaryCard } from "@/components/tournaments/TournamentSummaryCard";
 import useToast from "@/components/ui/toast/useToast";
@@ -272,10 +273,11 @@ export default function HomePage() {
         </div>
 
         {tournaments.length > 0 ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {tournaments.map(({ tournament, metrics, phaseSnapshot, winnerTeamNames }) => (
+          <CardCarousel
+            items={tournaments}
+            getKey={({ tournament }) => tournament.id}
+            renderItem={({ tournament, metrics, phaseSnapshot, winnerTeamNames }) => (
               <TournamentSummaryCard
-                key={tournament.id}
                 tournament={tournament}
                 metrics={metrics}
                 phaseSnapshot={phaseSnapshot}
@@ -283,8 +285,8 @@ export default function HomePage() {
                 href={`/tournaments/${tournament.id}`}
                 compact
               />
-            ))}
-          </div>
+            )}
+          />
         ) : (
           <p className="text-sm text-neutral-500">No hay torneos vigentes por el momento.</p>
         )}
@@ -293,17 +295,17 @@ export default function HomePage() {
       <section className="space-y-3">
         <h2 className="text-2xl font-bold">Próximos partidos</h2>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {displayedMatches.map((match) => (
-            <div key={match.id} className="w-full">
-              <MatchCard
-                match={match}
-                userId={firebaseUser?.uid}
-                groupNombre={groupsMap[match.groupId]}
-              />
-            </div>
-          ))}
-        </div>
+        <CardCarousel
+          items={displayedMatches}
+          getKey={(match) => match.id}
+          renderItem={(match) => (
+            <MatchCard
+              match={match}
+              userId={firebaseUser?.uid}
+              groupNombre={groupsMap[match.groupId]}
+            />
+          )}
+        />
 
         {displayedMatches.length === 0 && (
           <p className="text-sm text-neutral-500">No hay nuevos partidos</p>

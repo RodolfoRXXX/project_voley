@@ -21,7 +21,7 @@ import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
 import { useRouter } from "next/navigation";
 import PublicTournamentDetailModal from "@/components/tournaments/public/PublicTournamentDetailModal";
 import CreateMatchQuickActionModal from "@/components/dashboard/CreateMatchQuickActionModal";
-import PendingAlertsSection from "@/components/dashboard/PendingAlertsSection";
+import AlertsPanel from "@/components/dashboard/AlertsPanel";
 import UpcomingActivitiesSection from "@/components/dashboard/UpcomingActivitiesSection";
 import type { PendingAlert } from "@/types/pendingAlerts";
 import { pendingAlertPriority } from "@/types/pendingAlerts";
@@ -758,7 +758,7 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          <PendingAlertsSection
+          <AlertsPanel
             loading={pendingAlertsLoading}
             alerts={pendingAlerts}
             onDismissAlert={dismissPendingAlert}

@@ -66,7 +66,7 @@ export default function PendingAlertsSection({
                 {alert.kind !== "complete_profile" && onDismissAlert && (
                   isConfirmingDismiss ? (
                     <div className="flex shrink-0 items-center gap-2 whitespace-nowrap text-xs">
-                      <span className="text-neutral-700 dark:text-neutral-700">&iquest;Eliminar?</span>
+                      <span className="text-slate-950">¿Eliminar?</span>
                       <button
                         type="button"
                         onClick={() => handleConfirmDismiss(alert.id)}
@@ -79,7 +79,7 @@ export default function PendingAlertsSection({
                         type="button"
                         onClick={() => setConfirmDismissAlertId(null)}
                         disabled={isDismissing}
-                        className="font-medium text-neutral-700 hover:text-neutral-900 disabled:cursor-not-allowed disabled:text-neutral-500 dark:text-neutral-700 dark:hover:text-neutral-900"
+                        className="font-medium text-slate-950 hover:text-slate-900 disabled:cursor-not-allowed disabled:text-slate-500"
                       >
                         Cancelar
                       </button>
@@ -88,12 +88,12 @@ export default function PendingAlertsSection({
                     <button
                       type="button"
                       onClick={() => setConfirmDismissAlertId(alert.id)}
-                      className="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold text-neutral-700 hover:text-neutral-900 disabled:cursor-not-allowed dark:text-neutral-700 dark:hover:text-neutral-900"
+                      className="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold text-slate-950 hover:text-slate-900 disabled:cursor-not-allowed"
                       aria-label={`Cerrar alerta ${alert.title}`}
                       disabled={isDismissing}
                     >
                       {isDismissing ? (
-                        <Spinner size="sm" className="text-neutral-700 dark:text-neutral-700" />
+                        <Spinner size="sm" className="text-slate-950" />
                       ) : (
                         <span aria-hidden="true">&times;</span>
                       )}

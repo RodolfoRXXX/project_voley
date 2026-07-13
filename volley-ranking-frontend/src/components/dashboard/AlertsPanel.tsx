@@ -96,7 +96,7 @@ function AlertsFilterBar({
               ${
                 active
                   ? `${style.text} font-medium`
-                  : "text-neutral-500 hover:text-neutral-700"
+                  : "text-slate-700 hover:text-slate-900"
               }
             `}
           >
@@ -158,7 +158,7 @@ function AlertCard({
         <div className="min-w-0 space-y-1.5">
           <div className="flex items-center gap-2">
             <span className={`inline-flex h-2.5 w-2.5 rounded-full ${severityStyle.dot}`} />
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-600">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">
               {pendingAlertSeverityLabel[alert.severity]}
             </p>
           </div>
@@ -168,7 +168,7 @@ function AlertCard({
         {alert.kind !== "complete_profile" && onDismissAlert && (
           isConfirmingDismiss ? (
             <div className="flex shrink-0 items-center gap-2 whitespace-nowrap text-xs">
-              <span className="text-neutral-600">¿Eliminar?</span>
+              <span className="text-slate-950">¿Eliminar?</span>
               <button
                 type="button"
                 onClick={() => handleConfirmDismiss(alert.id)}
@@ -181,7 +181,7 @@ function AlertCard({
                 type="button"
                 onClick={() => setConfirmDismissAlertId(null)}
                 disabled={isDismissing}
-                className="font-semibold text-neutral-600 transition hover:text-neutral-800 disabled:cursor-not-allowed disabled:text-neutral-400"
+                className="font-semibold text-slate-950 transition hover:text-slate-950 disabled:cursor-not-allowed disabled:text-slate-500"
               >
                 Cancelar
               </button>
@@ -190,12 +190,12 @@ function AlertCard({
             <button
               type="button"
               onClick={() => setConfirmDismissAlertId(alert.id)}
-              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-neutral-600 transition hover:bg-white/70 hover:text-neutral-900 disabled:cursor-not-allowed"
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-slate-950 transition hover:bg-white/70 hover:text-slate-950 disabled:cursor-not-allowed"
               aria-label={`Cerrar alerta ${alert.title}`}
               disabled={isDismissing}
             >
               {isDismissing ? (
-                <Spinner size="sm" className="text-neutral-700" />
+                <Spinner size="sm" className="text-slate-950" />
               ) : (
                 <span aria-hidden="true">×</span>
               )}
@@ -204,7 +204,7 @@ function AlertCard({
         )}
       </div>
 
-      {alert.message ? <p className="mt-2 text-sm text-neutral-700">{alert.message}</p> : null}
+      {alert.message ? <p className="mt-2 text-sm text-slate-950">{alert.message}</p> : null}
 
       {alert.link?.path ? (
         <div className="mt-3 flex justify-end">

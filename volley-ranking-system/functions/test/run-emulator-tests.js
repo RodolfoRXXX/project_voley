@@ -50,6 +50,18 @@ fs.symlinkSync(
 if (fs.existsSync(path.join(isolatedFunctionsSource, ".secret.local"))) {
   throw new Error("The isolated Functions source contains .secret.local");
 }
+fs.writeFileSync(
+  path.join(isolatedFunctionsSource, ".secret.local"),
+  [
+    "GMAIL_USER=e0-04@example.invalid",
+    "GMAIL_PASS=e0-04-synthetic-password",
+    "WEB_APP_URL=http://127.0.0.1:3000",
+    `PUSH_VAPID_PUBLIC_KEY=${ephemeralVapidKeys.publicKey}`,
+    `PUSH_VAPID_PRIVATE_KEY=${ephemeralVapidKeys.privateKey}`,
+    "PUSH_VAPID_SUBJECT=mailto:e0-02@example.invalid",
+    "",
+  ].join("\n")
+);
 
 const inheritedNames = [
   "HOME",
@@ -105,7 +117,14 @@ const autopromotionTestPath = path.join(
   "emulator",
   "autopromotionSecurity.test.js"
 );
-const command = `node --test "${emulatorTestPath}" "${autopromotionTestPath}"`;
+const minimumReadPolicyTestPath = path.join(
+  systemRoot,
+  "functions",
+  "test",
+  "emulator",
+  "minimumReadPolicy.test.js"
+);
+const command = `node --test "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}"`;
 const args = [
   "emulators:exec",
   "--project",

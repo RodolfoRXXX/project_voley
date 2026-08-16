@@ -92,30 +92,6 @@ async function getAuthContext(req) {
   }
 }
 
-function ownerIdFromGroup(group = {}) {
-  if (Array.isArray(group.admins) && group.admins.length > 0) {
-    const owner = [...group.admins].sort((a, b) => (a.order ?? 999) - (b.order ?? 999))[0];
-    if (owner?.userId) return String(owner.userId);
-  }
-
-  return group.ownerId || null;
-}
-
-async function mapUser(userId) {
-  if (!userId) return null;
-  const userSnap = await db.collection("users").doc(userId).get();
-  if (!userSnap.exists) return null;
-
-  const user = userSnap.data();
-  return {
-    id: userId,
-    name: user?.nombre || "Sin nombre",
-    email: user?.email || null,
-    photoURL: user?.photoURL || null,
-    positions: Array.isArray(user?.posicionesPreferidas) ? user.posicionesPreferidas : [],
-  };
-}
-
 async function mapUsersByIds(userIds = []) {
   const normalizedIds = cleanStringArray(userIds);
   if (normalizedIds.length === 0) return new Map();
@@ -168,16 +144,27 @@ function canManageGroupAsOwner(group = {}, authContext) {
   return normalizeGroupAdmins(group).ownerId === String(authContext.uid);
 }
 
-async function buildGroupPayload(groupDoc) {
+async function buildGroupPayload(groupDoc, authContext) {
   const group = groupDoc.data();
-  const ownerId = ownerIdFromGroup(group);
-  const owner = await mapUser(ownerId);
+  const memberIds = cleanStringArray(group?.memberIds);
+  const adminIds = getGroupAdminIds(group);
+  const pendingRequestIds = cleanStringArray(group?.pendingRequestIds);
+  const uid = authContext?.uid ? String(authContext.uid) : null;
+  const membershipStatus = !uid
+    ? "none"
+    : memberIds.includes(uid) || adminIds.includes(uid)
+      ? "member"
+      : pendingRequestIds.includes(uid)
+        ? "pending"
+        : "none";
 
-  const matchesCountSnap = await db
+  const matchesSnap = await db
     .collection("matches")
     .where("groupId", "==", groupDoc.id)
-    .count()
     .get();
+  const publicMatchesCount = matchesSnap.docs.filter(
+    (matchDoc) => matchDoc.data()?.visibility === "public"
+  ).length;
 
   return {
     id: groupDoc.id,
@@ -186,11 +173,9 @@ async function buildGroupPayload(groupDoc) {
     visibility: group?.visibility === "public" ? "public" : "private",
     joinApproval: group?.joinApproval ?? true,
     active: group?.activo !== false,
-    totalMatches: matchesCountSnap.data().count || 0,
-    owner,
-    memberIds: cleanStringArray(group?.memberIds),
-    adminIds: getGroupAdminIds(group),
-    pendingRequestIds: cleanStringArray(group?.pendingRequestIds),
+    totalMatches: publicMatchesCount,
+    membersCount: memberIds.length,
+    membershipStatus,
   };
 }
 
@@ -214,11 +199,15 @@ async function getGroupVisibleToAuthContext(groupId, authContext) {
 
 async function handleListPublicGroups(req, res, authContext) {
   const groupsRef = db.collection("groups");
-  const snap = authContext.isSystemAdmin
-    ? await groupsRef.where("activo", "==", true).get()
-    : await groupsRef.where("visibility", "==", "public").where("activo", "==", true).get();
+  const snap = await groupsRef
+    .where("visibility", "==", "public")
+    .get();
 
-  const groups = await Promise.all(snap.docs.map(buildGroupPayload));
+  const groups = await Promise.all(
+    snap.docs
+      .filter((groupDoc) => groupDoc.data()?.activo === true)
+      .map((groupDoc) => buildGroupPayload(groupDoc, authContext))
+  );
   res.status(200).json({ groups });
 }
 

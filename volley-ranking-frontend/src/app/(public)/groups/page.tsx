@@ -6,12 +6,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import UserAvatar from "@/components/ui/avatar/UserAvatar";
 import { ActionButton } from "@/components/ui/action/ActionButton";
-import { db } from "@/lib/firebase";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
 import InformationPill from "@/components/ui/status/InformationPill";
 import { useAction } from "@/components/ui/action/useAction";
@@ -27,13 +24,8 @@ type PublicGroup = {
   visibility: "public" | "private";
   joinApproval: boolean;
   totalMatches: number;
-  owner: {
-    name: string;
-    photoURL?: string | null;
-  } | null;
-  memberIds?: string[];
-  adminIds?: string[];
-  pendingRequestIds?: string[];
+  membersCount: number;
+  membershipStatus: JoinState;
 };
 
 type JoinState = "none" | "member" | "pending";
@@ -148,46 +140,10 @@ export default function GruposPage() {
     load();
   }, [firebaseUser]);
 
-  useEffect(() => {
-    if (groups.length === 0) return;
-
-    const q = query(
-      collection(db, "groups"),
-      where("visibility", "==", "public"),
-      where("activo", "==", true)
-    );
-
-    const unsub = onSnapshot(q, (snap) => {
-      const liveMap = new Map(snap.docs.map((doc) => [doc.id, doc.data()]));
-
-      setGroups((prev) =>
-        prev.map((group) => {
-          const live = liveMap.get(group.id);
-          if (!live) return group;
-
-          return {
-            ...group,
-            memberIds: Array.isArray(live.memberIds) ? live.memberIds : [],
-            adminIds: Array.isArray(live.adminIds) ? live.adminIds : [],
-            pendingRequestIds: Array.isArray(live.pendingRequestIds)
-              ? live.pendingRequestIds
-              : [],
-          };
-        })
-      );
-    });
-
-    return () => unsub();
-  }, [groups.length]);
-
   const availableGroups = groups.filter((group) => {
     if (group.visibility !== "public") return false;
     if (!firebaseUser?.uid) return true;
-
-    return (
-      !group.memberIds?.includes(firebaseUser.uid) &&
-      !group.adminIds?.includes(firebaseUser.uid)
-    );
+    return group.membershipStatus !== "member";
   });
 
   const searchTerm = (searchParams.get("q") ?? "").trim();
@@ -209,14 +165,7 @@ export default function GruposPage() {
 
   const getJoinState = (group: PublicGroup): JoinState => {
     if (!firebaseUser?.uid) return "none";
-    if (
-      group.memberIds?.includes(firebaseUser.uid) ||
-      group.adminIds?.includes(firebaseUser.uid)
-    ) {
-      return "member";
-    }
-    if (group.pendingRequestIds?.includes(firebaseUser.uid)) return "pending";
-    return "none";
+    return group.membershipStatus;
   };
 
   const joinGroup = async (group: PublicGroup) => {
@@ -244,9 +193,7 @@ export default function GruposPage() {
           g.id === group.id
             ? {
                 ...g,
-                memberIds: payload.memberIds || g.memberIds || [],
-                pendingRequestIds:
-                  payload.pendingRequestIds || g.pendingRequestIds || [],
+                membershipStatus: payload.membershipStatus || "none",
               }
             : g
         )
@@ -394,24 +341,8 @@ export default function GruposPage() {
                         Partidos: <b>{group.totalMatches}</b>
                       </span>
                       <span>
-                        Integrantes: <b>{group.memberIds?.length || 0}</b>
+                        Integrantes: <b>{group.membersCount}</b>
                       </span>
-                    </div>
-
-                    <div className="flex items-center gap-3 pt-3 border-t">
-                      <UserAvatar
-                        nombre={group.owner?.name}
-                        photoURL={group.owner?.photoURL}
-                        size={36}
-                      />
-                      <div>
-                        <p className="text-sm font-medium text-neutral-900">
-                          {group.owner?.name || "No disponible"}
-                        </p>
-                        <p className="text-xs text-neutral-500">
-                          Admin principal
-                        </p>
-                      </div>
                     </div>
 
                     <div className="pt-2">

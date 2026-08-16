@@ -283,12 +283,8 @@ export async function getTournamentTeams(tournamentId: string): Promise<Tourname
 }
 
 export async function getPublicActiveTournaments(): Promise<Tournament[]> {
-  const q = query(
-    collection(db, "tournaments"),
-    where("status", "in", ["inscripciones_abiertas", "activo", "finalizado"])
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map((tournamentDoc) => toTournament(tournamentDoc.id, tournamentDoc.data() as Omit<Tournament, "id">));
+  // No existe aún una proyección pública de torneo separada de pagos y administración.
+  return [];
 }
 
 export async function getPublicTournamentListView(): Promise<PublicTournamentListItem[]> {
@@ -318,54 +314,9 @@ export async function getPublicTournamentListView(): Promise<PublicTournamentLis
 }
 
 export async function getPublicTournamentDetailView(tournamentId: string): Promise<PublicTournamentDetailView | null> {
-  const tournament = await getTournamentById(tournamentId);
-  if (!tournament) return null;
-
-  const { currentPhase, teams, matches, standings } = await getTournamentPhaseContext(tournament);
-  const teamNames = new Map(teams.map((team) => [team.id, team.nameTeam || team.name || team.id]));
-  const publishedTeams = teams.filter((team) => team.status !== "rechazado");
-  const normalizedTeams = publishedTeams.map((team) => ({
-    id: team.id,
-    name: team.nameTeam || team.name || team.id,
-    groupLabel: team.groupLabel || null,
-  }));
-  const normalizedStandings = standings
-    .filter((standing) => Number(standing.position || 0) > 0)
-    .sort((a, b) => a.position - b.position)
-    .map((standing) => ({
-      ...standing,
-      teamName: teamNames.get(standing.teamId) || standing.teamId,
-    }));
-
-  const adminUsers = await getUsersByIds(tournament.adminIds || []);
-
-  return {
-    tournament,
-    currentPhase,
-    teams: normalizedTeams,
-    matches: matches
-      .sort((a, b) =>
-        Number(a.roundCycle || 1) - Number(b.roundCycle || 1)
-        || Number(a.matchdayNumber || a.round || 0) - Number(b.matchdayNumber || b.round || 0)
-        || Number(a.sequence || 0) - Number(b.sequence || 0)
-      ),
-    matchesCount: matches.length,
-    standings: normalizedStandings,
-    metrics: buildTournamentProgressMetrics({
-      tournament,
-      teams,
-      matches,
-      standings,
-    }),
-    phaseSnapshot: toPhaseSnapshot(currentPhase),
-    topStanding: normalizedStandings[0] || null,
-    winnerTeamNames: getWinnerTeamNames({ tournament, teams, standings }),
-    adminUsers: adminUsers.map((user) => ({
-      id: user.id,
-      name: user.nombre || "Administrador",
-      photoURL: user.photoURL || null,
-    })),
-  };
+  void tournamentId;
+  // El documento vigente mezcla configuración pública, pagos e IDs administrativos.
+  return null;
 }
 
 export async function getAdminTournaments(adminUserId: string): Promise<Tournament[]> {

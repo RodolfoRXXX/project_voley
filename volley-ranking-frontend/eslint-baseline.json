@@ -1,0 +1,284 @@
+{
+  "version": 1,
+  "normalization": "ruta relativa + severidad + regla + primer párrafo del mensaje + multiplicidad",
+  "updateReason": "Baseline inicial clasificado de E0-06; 54 hallazgos heredados de E0-01 a E0-05",
+  "classifications": {
+    "@next/next/no-img-element": {
+      "category": "tooling/configuración",
+      "accepted": true,
+      "tracking": null
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "category": "tipado",
+      "accepted": true,
+      "tracking": null
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "category": "código obsoleto",
+      "accepted": true,
+      "tracking": null
+    },
+    "react-hooks/exhaustive-deps": {
+      "category": "funcional o potencialmente funcional",
+      "accepted": false,
+      "tracking": "E0-06-FUNC-HOOK-DEPS"
+    },
+    "react-hooks/rules-of-hooks": {
+      "category": "funcional o potencialmente funcional",
+      "accepted": false,
+      "tracking": "E0-06-FUNC-HOOK-ORDER"
+    },
+    "react-hooks/set-state-in-effect": {
+      "category": "funcional o potencialmente funcional",
+      "accepted": false,
+      "tracking": "E0-06-FUNC-HOOK-STATE"
+    }
+  },
+  "findings": [
+    {
+      "file": "public/sw.js",
+      "severity": "warning",
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "message": "'_error' is defined but never used.",
+      "count": 1
+    },
+    {
+      "file": "src/app/(admin)/admin/groups/[groupId]/matches/new/page.tsx",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 2
+    },
+    {
+      "file": "src/app/(protected)/dashboard/page.tsx",
+      "severity": "warning",
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "message": "'authLoading' is assigned a value but never used.",
+      "count": 1
+    },
+    {
+      "file": "src/app/(protected)/dashboard/page.tsx",
+      "severity": "warning",
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "message": "'MatchCard' is defined but never used.",
+      "count": 1
+    },
+    {
+      "file": "src/app/(protected)/dashboard/page.tsx",
+      "severity": "warning",
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "message": "'tournamentPhaseTypeLabel' is defined but never used.",
+      "count": 1
+    },
+    {
+      "file": "src/app/(protected)/profile/groups/[groupId]/matches/[matchId]/page.tsx",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 4
+    },
+    {
+      "file": "src/app/(protected)/profile/groups/[groupId]/matches/[matchId]/page.tsx",
+      "severity": "error",
+      "ruleId": "react-hooks/set-state-in-effect",
+      "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "count": 1
+    },
+    {
+      "file": "src/components/dashboard/AlertsPanel.tsx",
+      "severity": "warning",
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "message": "'FilterValue' is defined but never used.",
+      "count": 1
+    },
+    {
+      "file": "src/components/layout/AppSidebar.tsx",
+      "severity": "error",
+      "ruleId": "react-hooks/set-state-in-effect",
+      "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "count": 1
+    },
+    {
+      "file": "src/components/matchCard/MatchCard.tsx",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 5
+    },
+    {
+      "file": "src/components/matchDetail/MatchEditForm.tsx",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 1
+    },
+    {
+      "file": "src/components/matchDetail/MatchInfoCard.tsx",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 1
+    },
+    {
+      "file": "src/components/matchDetail/PlayersTable.tsx",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 1
+    },
+    {
+      "file": "src/components/onboarding/onboardingForm.tsx",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 1
+    },
+    {
+      "file": "src/components/onboarding/onboardingForm.tsx",
+      "severity": "warning",
+      "ruleId": "react-hooks/exhaustive-deps",
+      "message": "React Hook useEffect has missing dependencies: 'getPosicionesFn' and 'showToast'. Either include them or remove the dependency array.",
+      "count": 1
+    },
+    {
+      "file": "src/components/pagoModal/pagoModal.tsx",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 3
+    },
+    {
+      "file": "src/components/pagoModal/pagoModal.tsx",
+      "severity": "error",
+      "ruleId": "react-hooks/rules-of-hooks",
+      "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?",
+      "count": 1
+    },
+    {
+      "file": "src/components/profile/ProfileHeader.tsx",
+      "severity": "warning",
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "message": "'isEditing' is assigned a value but never used.",
+      "count": 1
+    },
+    {
+      "file": "src/components/profile/ProfileMatches.tsx",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 8
+    },
+    {
+      "file": "src/components/profile/ProfileMatches.tsx",
+      "severity": "error",
+      "ruleId": "react-hooks/set-state-in-effect",
+      "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "count": 2
+    },
+    {
+      "file": "src/components/providers/AuthProvider.tsx",
+      "severity": "warning",
+      "ruleId": "react-hooks/exhaustive-deps",
+      "message": "React Hook useEffect has a missing dependency: 'firebaseUser?.uid'. Either include it or remove the dependency array.",
+      "count": 1
+    },
+    {
+      "file": "src/components/teamsModal/TeamColumn.tsx",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 1
+    },
+    {
+      "file": "src/components/teamsModal/TeamsModal.types.ts",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 2
+    },
+    {
+      "file": "src/components/tournamentRegistrationStatusModal/TournamentRegistrationStatusModal.tsx",
+      "severity": "warning",
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "message": "'formatTimestamp' is defined but never used.",
+      "count": 1
+    },
+    {
+      "file": "src/components/tournamentRegistrationStatusModal/TournamentRegistrationStatusModal.tsx",
+      "severity": "warning",
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "message": "'registrationDate' is assigned a value but never used.",
+      "count": 1
+    },
+    {
+      "file": "src/components/tournaments/TournamentFiltersDropdown.tsx",
+      "severity": "warning",
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "message": "'useEffect' is defined but never used.",
+      "count": 1
+    },
+    {
+      "file": "src/components/ui/action/useAction.ts",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 1
+    },
+    {
+      "file": "src/components/ui/avatar/UserAvatar.tsx",
+      "severity": "warning",
+      "ruleId": "@next/next/no-img-element",
+      "message": "Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element",
+      "count": 1
+    },
+    {
+      "file": "src/components/ui/carousel/CardCarousel.tsx",
+      "severity": "error",
+      "ruleId": "react-hooks/set-state-in-effect",
+      "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "count": 1
+    },
+    {
+      "file": "src/components/ui/FilterMenu.tsx",
+      "severity": "warning",
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "message": "'useState' is defined but never used.",
+      "count": 1
+    },
+    {
+      "file": "src/components/ui/toast/ToastContainer.tsx",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 1
+    },
+    {
+      "file": "src/components/utils/shareTeams.ts",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 1
+    },
+    {
+      "file": "src/lib/errors/handleFirebaseError.ts",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 1
+    },
+    {
+      "file": "src/types/match.ts",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 1
+    },
+    {
+      "file": "src/types/UserDoc.ts",
+      "severity": "error",
+      "ruleId": "@typescript-eslint/no-explicit-any",
+      "message": "Unexpected any. Specify a different type.",
+      "count": 1
+    }
+  ]
+}

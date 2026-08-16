@@ -6,7 +6,10 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "lint:baseline": "node ../scripts/quality/lint-baseline.js check",
+    "lint:baseline:update": "node ../scripts/quality/lint-baseline.js update",
+    "typecheck": "tsc --noEmit --incremental false"
   },
   "dependencies": {
     "firebase": "^12.8.0",

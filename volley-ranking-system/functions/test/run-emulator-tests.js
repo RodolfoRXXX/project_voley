@@ -124,7 +124,14 @@ const minimumReadPolicyTestPath = path.join(
   "emulator",
   "minimumReadPolicy.test.js"
 );
-const command = `node --test "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}"`;
+const priorityAssetCharacterizationTestPath = path.join(
+  systemRoot,
+  "functions",
+  "test",
+  "emulator",
+  "priorityAssetCharacterization.test.js"
+);
+const command = `node --test --test-concurrency=1 "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
 const args = [
   "emulators:exec",
   "--project",

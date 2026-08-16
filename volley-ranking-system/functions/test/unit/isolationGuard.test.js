@@ -12,6 +12,7 @@ function safeEnvironment(overrides = {}) {
     TEST_FIREBASE_PROJECT_ID: "demo-sportexa-e0-02",
     FIRESTORE_EMULATOR_HOST: "127.0.0.1:18080",
     FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:19099",
+    FUNCTIONS_EMULATOR_HOST: "127.0.0.1:15001",
     TEST_SECRET_SOURCE: "synthetic-inline",
     ...SYNTHETIC_SECRETS,
     ...overrides,
@@ -89,12 +90,12 @@ test("falla cerrado ante un target remoto dentro de FIREBASE_CONFIG", () => {
   );
 });
 
-test("falla cerrado si un valor VAPID no es el sintético aprobado", () => {
+test("falla cerrado si un valor VAPID sintético no tiene formato válido", () => {
   assert.throws(
     () =>
       assertSafeFirebaseTestEnvironment(
         safeEnvironment({ PUSH_VAPID_PRIVATE_KEY: "non-synthetic-value" })
       ),
-    /PUSH_VAPID_PRIVATE_KEY is not the approved synthetic value/
+    /PUSH_VAPID_PRIVATE_KEY is not a valid synthetic VAPID key/
   );
 });

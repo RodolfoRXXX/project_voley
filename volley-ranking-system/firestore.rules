@@ -31,12 +31,31 @@ service cloud.firestore {
         && request.auth.uid in resource.data.adminIds;
     }
 
+    function doesNotSetGlobalPrivileges() {
+      return !request.resource.data.keys().hasAny([
+        "roles",
+        "role",
+        "isAdmin",
+        "customClaims",
+        "claims",
+        "permissions",
+        "privileges",
+      ]);
+    }
+
     match /users/{userId} {
       allow read: if true;
-      allow create: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && doesNotSetGlobalPrivileges();
       allow update: if isOwner(userId)
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           "roles",
+          "role",
+          "isAdmin",
+          "customClaims",
+          "claims",
+          "permissions",
+          "privileges",
           "createdAt",
           "updatedAt",
         ]);

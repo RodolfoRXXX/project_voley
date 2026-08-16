@@ -27,6 +27,30 @@ for (const name of [
   fs.copyFileSync(path.join(systemRoot, name), path.join(isolatedWorkspace, name));
 }
 
+const functionsSource = path.join(systemRoot, "functions");
+const isolatedFunctionsSource = path.join(isolatedWorkspace, "functions");
+const webPush = require(path.join(functionsSource, "node_modules", "web-push"));
+const ephemeralVapidKeys = webPush.generateVAPIDKeys();
+fs.cpSync(functionsSource, isolatedFunctionsSource, {
+  recursive: true,
+  filter(source) {
+    const relative = path.relative(functionsSource, source);
+    const topLevel = relative.split(path.sep)[0];
+    if (["node_modules", "test", ".secret.local"].includes(topLevel)) {
+      return false;
+    }
+    return !source.endsWith(".log");
+  },
+});
+fs.symlinkSync(
+  path.join(functionsSource, "node_modules"),
+  path.join(isolatedFunctionsSource, "node_modules"),
+  "dir"
+);
+if (fs.existsSync(path.join(isolatedFunctionsSource, ".secret.local"))) {
+  throw new Error("The isolated Functions source contains .secret.local");
+}
+
 const inheritedNames = [
   "HOME",
   "JAVA_HOME",
@@ -48,6 +72,7 @@ Object.assign(environment, {
   FIREBASE_CLI_DISABLE_UPDATE_CHECK: "true",
   TEST_FIREBASE_PROJECT_ID: SYNTHETIC_DATA.projectId,
   TEST_SECRET_SOURCE: "synthetic-inline",
+  FUNCTIONS_EMULATOR_HOST: "127.0.0.1:15001",
   XDG_CONFIG_HOME: isolatedConfigHome,
   HTTP_PROXY: blockedProxy,
   HTTPS_PROXY: blockedProxy,
@@ -59,6 +84,8 @@ Object.assign(environment, {
   no_proxy: "127.0.0.1,localhost,0.0.0.0,::1",
   npm_config_update_notifier: "false",
   ...SYNTHETIC_SECRETS,
+  PUSH_VAPID_PUBLIC_KEY: ephemeralVapidKeys.publicKey,
+  PUSH_VAPID_PRIVATE_KEY: ephemeralVapidKeys.privateKey,
 });
 
 assertSafeFirebaseTestEnvironment(environment, { requireEmulators: false });
@@ -71,7 +98,14 @@ const emulatorTestPath = path.join(
   "emulator",
   "emulatorSmoke.test.js"
 );
-const command = `node --test "${emulatorTestPath}"`;
+const autopromotionTestPath = path.join(
+  systemRoot,
+  "functions",
+  "test",
+  "emulator",
+  "autopromotionSecurity.test.js"
+);
+const command = `node --test "${emulatorTestPath}" "${autopromotionTestPath}"`;
 const args = [
   "emulators:exec",
   "--project",
@@ -79,7 +113,7 @@ const args = [
   "--config",
   "firebase.test.json",
   "--only",
-  "auth,firestore",
+  "auth,firestore,functions",
   command,
 ];
 

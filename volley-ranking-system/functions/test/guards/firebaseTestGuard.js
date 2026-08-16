@@ -4,6 +4,7 @@ const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 const REQUIRED_EMULATOR_HOSTS = [
   "FIRESTORE_EMULATOR_HOST",
   "FIREBASE_AUTH_EMULATOR_HOST",
+  "FUNCTIONS_EMULATOR_HOST",
 ];
 const CREDENTIAL_VARIABLES = [
   "GOOGLE_APPLICATION_CREDENTIALS",
@@ -20,8 +21,8 @@ const REMOTE_MARKERS = [
   "cloudfunctions.net",
 ];
 const SYNTHETIC_SECRETS = {
-  PUSH_VAPID_PUBLIC_KEY: "e0-02-synthetic-public-key",
-  PUSH_VAPID_PRIVATE_KEY: "e0-02-synthetic-private-key",
+  PUSH_VAPID_PUBLIC_KEY: `B${"A".repeat(86)}`,
+  PUSH_VAPID_PRIVATE_KEY: "A".repeat(43),
   PUSH_VAPID_SUBJECT: "mailto:e0-02@example.invalid",
 };
 
@@ -144,10 +145,18 @@ function requireSyntheticSecrets(environment) {
   if (environment.TEST_SECRET_SOURCE !== "synthetic-inline") {
     fail("synthetic secret source is required");
   }
-  for (const [name, expected] of Object.entries(SYNTHETIC_SECRETS)) {
-    if (environment[name] !== expected) {
-      fail(`${name} is not the approved synthetic value`);
-    }
+
+  if (environment.PUSH_VAPID_SUBJECT !== SYNTHETIC_SECRETS.PUSH_VAPID_SUBJECT) {
+    fail("PUSH_VAPID_SUBJECT is not the approved synthetic value");
+  }
+
+  const publicKey = String(environment.PUSH_VAPID_PUBLIC_KEY || "");
+  const privateKey = String(environment.PUSH_VAPID_PRIVATE_KEY || "");
+  if (!/^B[A-Za-z0-9_-]{86}$/.test(publicKey)) {
+    fail("PUSH_VAPID_PUBLIC_KEY is not a valid synthetic VAPID key");
+  }
+  if (!/^[A-Za-z0-9_-]{43}$/.test(privateKey)) {
+    fail("PUSH_VAPID_PRIVATE_KEY is not a valid synthetic VAPID key");
   }
 }
 

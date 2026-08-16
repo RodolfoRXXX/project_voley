@@ -8,28 +8,17 @@ import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import useToast from "@/components/ui/toast/useToast";
 import InformationPill from "../ui/status/InformationPill";
 
-type Role = "player" | "admin";
-
 type Props = {
   initial: string[];
-  initialRole: Role;
   onClose: () => void;
-};
-
-const roleLabel: Record<Role, string> = {
-  admin: "Administrador",
-  player: "Jugador",
 };
 
 export default function PreferredPositionsEditor({
   initial,
-  initialRole,
   onClose,
 }: Props) {
   const [savedPositions, setSavedPositions] = useState<string[]>(initial);
   const [positions, setPositions] = useState<string[]>(initial);
-  const [savedRole, setSavedRole] = useState<Role>(initialRole);
-  const [role, setRole] = useState<Role>(initialRole);
   const [allPositions, setAllPositions] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
@@ -42,21 +31,10 @@ export default function PreferredPositionsEditor({
     { ok: true }
   >(functions, "updatePreferredPositions");
 
-  const updateRoleFn = httpsCallable<
-    { role: Role },
-    { ok: true }
-  >(functions, "updateUserRole");
-
-
   useEffect(() => {
     setPositions(initial);
     setSavedPositions(initial);
   }, [initial]);
-
-  useEffect(() => {
-    setRole(initialRole);
-    setSavedRole(initialRole);
-  }, [initialRole]);
 
   useEffect(() => {
     const load = async () => {
@@ -102,9 +80,7 @@ export default function PreferredPositionsEditor({
     if (positions.length < 1) return;
 
     const changedPositions = !samePositions(positions, savedPositions);
-    const changedRole = role !== savedRole;
-
-    if (!changedPositions && !changedRole) {
+    if (!changedPositions) {
       onClose();
       return;
     }
@@ -115,11 +91,6 @@ export default function PreferredPositionsEditor({
       if (changedPositions) {
         await updatePositionsFn({ posiciones: positions });
         setSavedPositions(positions);
-      }
-
-      if (changedRole) {
-        await updateRoleFn({ role });
-        setSavedRole(role);
       }
 
       onClose();
@@ -178,30 +149,6 @@ export default function PreferredPositionsEditor({
         })}
       </div>
 
-      <div className="border-t border-neutral-200 pt-4 space-y-2 dark:border-[var(--border)]">
-        <h4 className="text-sm font-semibold text-neutral-800 dark:text-[var(--foreground)]">
-          Rol del perfil
-        </h4>
-        <p className="text-xs text-neutral-500 dark:text-[var(--text-muted)]">
-          Esta configuración es independiente de tus posiciones preferidas.
-        </p>
-
-        <div className="flex flex-wrap gap-2">
-          <InformationPill
-            label={roleLabel.player}
-            variant={role === "player" ? "success" : "neutral"}
-            onClick={() => setRole("player")}
-            size={role === "player" ? "md" : "sm"}
-          />
-          <InformationPill
-            label={roleLabel.admin}
-            variant={role === "admin" ? "warning" : "neutral"}
-            onClick={() => setRole("admin")}
-            size={role === "admin" ? "md" : "sm"}
-          />
-        </div>
-      </div>
-
       <div className="flex gap-2 pt-3">
         <ActionButton
           variant="success"
@@ -217,7 +164,6 @@ export default function PreferredPositionsEditor({
           compact
           onClick={() => {
             setPositions(savedPositions);
-            setRole(savedRole);
             onClose();
           }}
           disabled={saving}

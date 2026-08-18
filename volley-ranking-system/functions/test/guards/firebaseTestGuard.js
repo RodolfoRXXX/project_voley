@@ -166,7 +166,9 @@ function assertSafeFirebaseTestEnvironment(environment, options = {}) {
   rejectRemoteConfiguration(environment, projectId);
 
   if (options.requireEmulators !== false) {
-    for (const name of REQUIRED_EMULATOR_HOSTS) {
+    const requiredEmulatorHosts =
+      options.requiredEmulatorHosts || REQUIRED_EMULATOR_HOSTS;
+    for (const name of requiredEmulatorHosts) {
       requireLoopbackHost(name, environment[name]);
     }
   }

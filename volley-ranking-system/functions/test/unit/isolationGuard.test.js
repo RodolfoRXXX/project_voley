@@ -55,6 +55,26 @@ test("falla cerrado cuando falta un host de emulador", () => {
   );
 });
 
+test("permite exigir sólo los emuladores declarados por una suite aislada", () => {
+  const environment = safeEnvironment();
+  delete environment.FUNCTIONS_EMULATOR_HOST;
+
+  const options = {
+    requiredEmulatorHosts: [
+      "FIRESTORE_EMULATOR_HOST",
+      "FIREBASE_AUTH_EMULATOR_HOST",
+    ],
+  };
+  const result = assertSafeFirebaseTestEnvironment(environment, options);
+  assert.equal(result.projectId, "demo-sportexa-e0-02");
+
+  delete environment.FIREBASE_AUTH_EMULATOR_HOST;
+  assert.throws(
+    () => assertSafeFirebaseTestEnvironment(environment, options),
+    /missing FIREBASE_AUTH_EMULATOR_HOST/
+  );
+});
+
 test("falla cerrado ante un host no local", () => {
   assert.throws(
     () =>

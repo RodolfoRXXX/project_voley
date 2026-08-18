@@ -7,6 +7,7 @@
     "test:infra": "npm run test:infra:unit && npm run test:infra:emulators",
     "test:infra:unit": "node --test test/unit/*.test.js",
     "test:infra:emulators": "node test/run-emulator-tests.js",
+    "test:maintenance": "node test/run-maintenance-tests.js",
     "migrate:group-admins": "node src/scripts/migrateGroupAdmins.js",
     "migrate:group-admins:write": "node src/scripts/migrateGroupAdmins.js --write",
     "seed:dev": "node src/scripts/seedDevelopmentData.js",

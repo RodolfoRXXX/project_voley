@@ -18,14 +18,6 @@ function OnboardingFormSkeleton() {
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <Skeleton className="h-5 w-40" />
-        <div className="grid grid-cols-2 gap-3">
-          <SkeletonSoft className="h-10 w-full rounded-lg" />
-          <SkeletonSoft className="h-10 w-full rounded-lg" />
-        </div>
-      </div>
-
-      <div className="space-y-3">
         <Skeleton className="h-5 w-44" />
         <SkeletonSoft className="h-4 w-56" />
 
@@ -50,7 +42,6 @@ export default function OnboardingForm() {
   const router = useRouter();
   const functions = getFunctions(app);
 
-  const [roles, setRol] = useState<"player" | "admin">();
   const [posiciones, setPosiciones] = useState<string[]>([]);
   const [allPositions, setAllPositions] = useState<string[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
@@ -101,11 +92,6 @@ export default function OnboardingForm() {
   const submit = async () => {
     setError(null);
 
-    if (!roles) {
-      setError("Elegí un rol");
-      return;
-    }
-
     if (posiciones.length === 0) {
       setError("Elegí al menos 1 posición");
       return;
@@ -114,13 +100,15 @@ export default function OnboardingForm() {
     setLoading(true);
 
     try {
-      const completeOnboarding = httpsCallable(
+      const completeOnboarding = httpsCallable<
+        { posicionesPreferidas: string[] },
+        { ok: true }
+      >(
         functions,
         "completeOnboarding"
       );
 
       await completeOnboarding({
-        roles,
         posicionesPreferidas: posiciones,
       });
 
@@ -149,31 +137,6 @@ export default function OnboardingForm() {
 
   return (
     <div className="space-y-6">
-      {/* Rol */}
-      <div>
-        <label className="block font-semibold mb-2">
-          ¿Qué rol vas a tener?
-        </label>
-
-        <div className="grid grid-cols-2 gap-3">
-          <ActionButton
-            onClick={() => setRol("player")}
-            variant={roles === "player" ? "primary" : "secondary"}
-            disabled={loading}
-          >
-            ⚽ Jugador
-          </ActionButton>
-
-          <ActionButton
-            onClick={() => setRol("admin")}
-            variant={roles === "admin" ? "primary" : "secondary"}
-            disabled={loading}
-          >
-            💼 Administrador
-          </ActionButton>
-        </div>
-      </div>
-
       {/* Posiciones */}
       <div>
         <label className="block font-semibold mb-1">
@@ -232,7 +195,7 @@ export default function OnboardingForm() {
       <ActionButton
         onClick={submit}
         loading={loading}
-        disabled={!roles || posiciones.length === 0}
+        disabled={posiciones.length === 0}
         variant="success"
         className="w-full mt-2"
       >

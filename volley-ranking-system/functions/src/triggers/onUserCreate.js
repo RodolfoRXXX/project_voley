@@ -14,6 +14,7 @@ module.exports = functions.auth.user().onCreate(async (user) => {
     nombre: user.displayName || "",
     photoURL: user.photoURL || "",
 
+    // La creación de identidad no concede privilegios globales.
     roles: null,
     posicionesPreferidas: [],
     estadoCompromiso: 0,
@@ -24,4 +25,3 @@ module.exports = functions.auth.user().onCreate(async (user) => {
 
   console.log(`👤 Usuario creado: ${user.uid}`);
 });
-

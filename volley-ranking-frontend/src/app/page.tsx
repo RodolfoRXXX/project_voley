@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { collection, getDocs, onSnapshot, query, Timestamp, where } from "firebase/firestore";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import MatchCard from "@/components/matchCard/MatchCard";
 import CardCarousel from "@/components/ui/carousel/CardCarousel";
@@ -13,15 +12,7 @@ import { TournamentSummaryCard } from "@/components/tournaments/TournamentSummar
 import useToast from "@/components/ui/toast/useToast";
 import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
 import type { Match } from "@/types/match";
-import { getPublicTournamentListView, type PublicTournamentListItem } from "@/services/tournaments/tournamentQueries";
-
-const SOCIAL_MATCH_STATUSES = ["abierto", "verificando", "cerrado", "cancelado"] as const;
-const HOME_TOURNAMENT_STATUSES = ["inscripciones_abiertas", "activo"] as const;
-
-function getTournamentSortDate(tournament: PublicTournamentListItem["tournament"]) {
-  const candidates = [tournament.startDate?.seconds, tournament.endDate?.seconds, tournament.updatedAt?.seconds];
-  return candidates.find((value): value is number => typeof value === "number") ?? Number.POSITIVE_INFINITY;
-}
+import type { PublicTournamentListItem } from "@/services/tournaments/tournamentQueries";
 
 function HomeSkeleton() {
   return (
@@ -71,11 +62,11 @@ function HomeSkeleton() {
 export default function HomePage() {
   const { firebaseUser } = useAuth();
   const { showToast } = useToast();
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [groupsMap, setGroupsMap] = useState<Record<string, string>>({});
-  const [matchesLoading, setMatchesLoading] = useState(true);
-  const [tournaments, setTournaments] = useState<PublicTournamentListItem[]>([]);
-  const [tournamentsLoading, setTournamentsLoading] = useState(true);
+  const matches: Match[] = [];
+  const groupsMap: Record<string, string> = {};
+  const matchesLoading = false;
+  const tournaments: PublicTournamentListItem[] = [];
+  const tournamentsLoading = false;
   const [activeFeatureIndex, setActiveFeatureIndex] = useState(0);
 
   const login = async () => {
@@ -86,76 +77,6 @@ export default function HomePage() {
       handleAuthPopupError(err, showToast);
     }
   };
-
-  useEffect(() => {
-    const q = query(
-      collection(db, "matches"),
-      where("estado", "in", [...SOCIAL_MATCH_STATUSES])
-    );
-
-    const unsub = onSnapshot(q, async (snap) => {
-      const ahora = Timestamp.now();
-      const loadedMatches: Match[] = snap.docs
-        .map((docSnap) => ({
-          id: docSnap.id,
-          ...(docSnap.data() as Omit<Match, "id">),
-        }))
-        .filter((match) => match.visibility === "public")
-        .filter((match) => match.horaInicio.toMillis() > ahora.toMillis())
-        .sort((a, b) => a.horaInicio.toMillis() - b.horaInicio.toMillis());
-
-      const groupIds = Array.from(new Set(loadedMatches.map((match) => match.groupId))).slice(0, 10);
-
-      if (groupIds.length === 0) {
-        setGroupsMap({});
-        setMatches(loadedMatches);
-        setMatchesLoading(false);
-        return;
-      }
-
-      const snapGroups = await getDocs(query(collection(db, "groups"), where("__name__", "in", groupIds)));
-      const map: Record<string, string> = {};
-      snapGroups.docs.forEach((docSnap) => {
-        map[docSnap.id] = String((docSnap.data() as { nombre?: string }).nombre || "Grupo");
-      });
-
-      setGroupsMap(map);
-      setMatches(loadedMatches);
-      setMatchesLoading(false);
-    }, () => {
-      setMatches([]);
-      setGroupsMap({});
-      setMatchesLoading(false);
-    });
-
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-
-    const loadTournaments = async () => {
-      try {
-        const rows = await getPublicTournamentListView();
-        if (!active) return;
-
-        const featuredRows = rows
-          .filter((row) => HOME_TOURNAMENT_STATUSES.includes(row.tournament.status as (typeof HOME_TOURNAMENT_STATUSES)[number]))
-          .sort((a, b) => getTournamentSortDate(a.tournament) - getTournamentSortDate(b.tournament))
-          .slice(0, 5);
-
-        setTournaments(featuredRows);
-      } finally {
-        if (active) setTournamentsLoading(false);
-      }
-    };
-
-    loadTournaments();
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const loading = matchesLoading || tournamentsLoading;
   const featureCards = [

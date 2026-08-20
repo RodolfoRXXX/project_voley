@@ -1,4 +1,13 @@
 {
+  "scripts": {
+    "quality:lint": "npm --prefix volley-ranking-frontend run lint:baseline",
+    "quality:typecheck": "npm --prefix volley-ranking-frontend run typecheck",
+    "quality:functions:syntax": "node scripts/quality/check-functions-syntax.js",
+    "quality:test": "npm --prefix volley-ranking-system/functions test",
+    "quality:build": "npm --prefix volley-ranking-frontend run build",
+    "quality:diff": "git diff --check",
+    "quality:stage0": "npm run quality:lint && npm run quality:typecheck && npm run quality:functions:syntax && npm run quality:test && npm run quality:build && npm run quality:diff"
+  },
   "dependencies": {
     "lucide-react": "^1.14.0"
   }

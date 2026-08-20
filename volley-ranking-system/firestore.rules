@@ -16,7 +16,66 @@ service cloud.firestore {
 
     function isAppAdmin() {
       return signedIn()
-        && currentUserDoc().data.roles == "admin";
+        && currentUserDoc().data.get("roles", null) == "admin";
+    }
+
+    function hasId(values, userId) {
+      return values is list && userId in values;
+    }
+
+    function isGroupMemberByData(group) {
+      return signedIn()
+        && (hasId(group.get("memberIds", []), request.auth.uid)
+          || hasId(group.get("adminIds", []), request.auth.uid)
+          || group.get("ownerId", null) == request.auth.uid);
+    }
+
+    function isGroupAdminByData(group) {
+      return signedIn()
+        && (hasId(group.get("adminIds", []), request.auth.uid)
+          || group.get("ownerId", null) == request.auth.uid);
+    }
+
+    function isGroupMemberById(groupId) {
+      return signedIn()
+        && groupId is string
+        && exists(/databases/$(database)/documents/groups/$(groupId))
+        && isGroupMemberByData(
+          get(/databases/$(database)/documents/groups/$(groupId)).data
+        );
+    }
+
+    function isGroupAdminById(groupId) {
+      return signedIn()
+        && groupId is string
+        && exists(/databases/$(database)/documents/groups/$(groupId))
+        && isGroupAdminByData(
+          get(/databases/$(database)/documents/groups/$(groupId)).data
+        );
+    }
+
+    function isTournamentAdminByData(tournament) {
+      return signedIn()
+        && (hasId(tournament.get("adminIds", []), request.auth.uid)
+          || tournament.get("ownerAdminId", null) == request.auth.uid);
+    }
+
+    function isTournamentAdminById(tournamentId) {
+      return signedIn()
+        && tournamentId is string
+        && exists(/databases/$(database)/documents/tournaments/$(tournamentId))
+        && isTournamentAdminByData(
+          get(/databases/$(database)/documents/tournaments/$(tournamentId)).data
+        );
+    }
+
+    function isMatchGroupAdmin(matchId) {
+      return signedIn()
+        && matchId is string
+        && exists(/databases/$(database)/documents/matches/$(matchId))
+        && isGroupAdminById(
+          get(/databases/$(database)/documents/matches/$(matchId)).data.groupId
+        );
     }
 
     function isGroupAdmin() {
@@ -31,12 +90,31 @@ service cloud.firestore {
         && request.auth.uid in resource.data.adminIds;
     }
 
+    function doesNotSetGlobalPrivileges() {
+      return !request.resource.data.keys().hasAny([
+        "roles",
+        "role",
+        "isAdmin",
+        "customClaims",
+        "claims",
+        "permissions",
+        "privileges",
+      ]);
+    }
+
     match /users/{userId} {
-      allow read: if true;
-      allow create: if isOwner(userId);
+      allow read: if isOwner(userId) || isAppAdmin();
+      allow create: if isOwner(userId)
+        && doesNotSetGlobalPrivileges();
       allow update: if isOwner(userId)
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           "roles",
+          "role",
+          "isAdmin",
+          "customClaims",
+          "claims",
+          "permissions",
+          "privileges",
           "createdAt",
           "updatedAt",
         ]);
@@ -49,44 +127,59 @@ service cloud.firestore {
     }
 
     match /groups/{groupId} {
-      allow read: if true;
+      allow get: if isAppAdmin() || isGroupMemberByData(resource.data);
+      allow list: if isAppAdmin();
+      allow list: if signedIn() && request.auth.uid in resource.data.memberIds;
+      allow list: if signedIn() && request.auth.uid in resource.data.adminIds;
+      allow list: if signedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isAppAdmin() && isGroupAdmin();
       allow update: if isAppAdmin() && isExistingGroupAdmin();
       allow delete: if false;
     }
 
     match /matches/{matchId} {
-      allow read: if true;
+      allow read: if isAppAdmin()
+        || isGroupMemberById(resource.data.groupId);
       allow write: if false;
     }
 
     match /participations/{participationId} {
-      allow read: if true;
+      allow read: if isAppAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid)
+        || isMatchGroupAdmin(resource.data.matchId);
       allow write: if false;
     }
 
     match /teams/{teamId} {
-      allow read: if true;
+      allow read: if isAppAdmin()
+        || isGroupMemberById(resource.data.groupId);
       allow write: if false;
     }
 
     match /groupStats/{statId} {
-      allow read: if true;
+      allow read: if isAppAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid)
+        || isGroupAdminById(resource.data.groupId);
       allow write: if false;
     }
 
     match /tournaments/{tournamentId} {
-      allow read: if true;
+      allow read: if isAppAdmin()
+        || isTournamentAdminByData(resource.data);
       allow write: if false;
     }
 
     match /tournamentPhases/{phaseId} {
-      allow read: if true;
+      allow read: if isAppAdmin()
+        || isTournamentAdminById(resource.data.tournamentId);
       allow write: if false;
     }
 
     match /tournamentRegistrations/{registrationId} {
-      allow read: if true;
+      allow read: if isAppAdmin()
+        || isTournamentAdminById(resource.data.tournamentId)
+        || isGroupAdminById(resource.data.groupId)
+        || (signedIn() && hasId(resource.data.playerIds, request.auth.uid));
       allow update: if signedIn()
         && resource.data.groupId is string
         && exists(/databases/$(database)/documents/groups/$(resource.data.groupId))
@@ -103,7 +196,10 @@ service cloud.firestore {
     }
 
     match /tournamentTeams/{teamId} {
-      allow read: if true;
+      allow read: if isAppAdmin()
+        || isTournamentAdminById(resource.data.tournamentId)
+        || isGroupAdminById(resource.data.groupId)
+        || (signedIn() && hasId(resource.data.playerIds, request.auth.uid));
       allow update: if signedIn()
         && resource.data.groupId is string
         && exists(/databases/$(database)/documents/groups/$(resource.data.groupId))
@@ -120,17 +216,20 @@ service cloud.firestore {
     }
 
     match /tournamentMatches/{matchId} {
-      allow read: if true;
+      allow read: if isAppAdmin()
+        || isTournamentAdminById(resource.data.tournamentId);
       allow write: if false;
     }
 
     match /tournamentStandings/{standingId} {
-      allow read: if true;
+      allow read: if isAppAdmin()
+        || isTournamentAdminById(resource.data.tournamentId);
       allow write: if false;
     }
 
     match /tournamentAdvancementRules/{ruleId} {
-      allow read: if true;
+      allow read: if isAppAdmin()
+        || isTournamentAdminById(resource.data.tournamentId);
       allow write: if false;
     }
 

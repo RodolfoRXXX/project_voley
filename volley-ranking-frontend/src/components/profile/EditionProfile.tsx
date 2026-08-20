@@ -4,11 +4,10 @@ import PreferredPositionsEditor from "./PreferredPositionsEditor";
 
 type Props = {
   posicionesPreferidas: string[];
-  role: "player" | "admin";
   onClose: () => void;
 };
 
-export default function EditionProfile({ posicionesPreferidas, role, onClose }: Props) {
+export default function EditionProfile({ posicionesPreferidas, onClose }: Props) {
   return (
     <section
       id="edicion-perfil-usuario"
@@ -27,7 +26,6 @@ export default function EditionProfile({ posicionesPreferidas, role, onClose }: 
 
       <PreferredPositionsEditor
         initial={posicionesPreferidas || []}
-        initialRole={role}
         onClose={onClose}
       />
     </section>

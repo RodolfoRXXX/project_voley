@@ -86,7 +86,6 @@ export default function ProfilePage() {
       {editingProfile && (
         <EditionProfile
           posicionesPreferidas={userDoc.posicionesPreferidas || []}
-          role={userDoc.roles}
           onClose={() => setEditingProfile(false)}
         />
       )}

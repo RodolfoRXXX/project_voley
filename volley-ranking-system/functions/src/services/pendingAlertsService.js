@@ -116,28 +116,6 @@ async function resolvePendingAlert(userId, alertId) {
   });
 }
 
-async function syncCompleteProfilePendingAlert(userId, user = {}) {
-  const alertId = "complete_profile";
-
-  if (user?.onboarded === true) {
-    await resolvePendingAlert(userId, alertId);
-    return;
-  }
-
-  await upsertPendingAlert({
-    userId,
-    alertId,
-    kind: "complete_profile",
-    severity: "urgent",
-    title: "Completá tu perfil",
-    message: "Necesario para unirte a grupos y participar en partidos.",
-    link: {
-      path: "/profile/info",
-      label: "Ir a Mi info",
-    },
-  });
-}
-
 async function dismissPendingAlert(userId, alertId) {
   return resolvePendingAlert(userId, alertId);
 }
@@ -246,6 +224,5 @@ module.exports = {
   isTournamentPendingAlertKind,
   resolvePendingAlert,
   dismissPendingAlert,
-  syncCompleteProfilePendingAlert,
   upsertPendingAlert,
 };

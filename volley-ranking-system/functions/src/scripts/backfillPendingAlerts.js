@@ -1,8 +1,5 @@
 const { db } = require("../firebase");
-const {
-  syncCompleteProfilePendingAlert,
-  upsertPendingAlert,
-} = require("../services/pendingAlertsService");
+const { upsertPendingAlert } = require("../services/pendingAlertsService");
 const { syncTournamentPendingAlerts } = require("../services/tournamentPendingAlertsService");
 
 const shouldWrite = process.argv.includes("--write");
@@ -54,23 +51,6 @@ async function maybeWrite(description, operation) {
 
   await operation();
   console.log(`[write] ${description}`);
-}
-
-async function backfillCompleteProfileAlerts() {
-  const usersSnap = await db.collection("users").get();
-  let processed = 0;
-
-  for (const userDoc of usersSnap.docs) {
-    const user = userDoc.data();
-    if (user?.onboarded === true) continue;
-
-    processed += 1;
-    await maybeWrite(`complete_profile -> ${userDoc.id}`, () =>
-      syncCompleteProfilePendingAlert(userDoc.id, user)
-    );
-  }
-
-  return processed;
 }
 
 async function backfillGroupAlerts() {
@@ -161,13 +141,11 @@ async function backfillTournamentAlerts() {
 async function main() {
   console.log(`Backfill de pendingAlerts iniciado en modo ${shouldWrite ? "write" : "dry-run"}.`);
 
-  const completeProfileCount = await backfillCompleteProfileAlerts();
   const groupAlertsCount = await backfillGroupAlerts();
   const tournamentAlertsCount = await backfillTournamentAlerts();
 
   console.log("Backfill de pendingAlerts finalizado.", {
     mode: shouldWrite ? "write" : "dry-run",
-    completeProfileCount,
     groupAlertsCount,
     tournamentAlertsCount,
   });

@@ -1,16 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import MatchCard from "@/components/matchCard/MatchCard";
 import CardCarousel from "@/components/ui/carousel/CardCarousel";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { TournamentSummaryCard } from "@/components/tournaments/TournamentSummaryCard";
-import useToast from "@/components/ui/toast/useToast";
-import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
 import type { Match } from "@/types/match";
 import type { PublicTournamentListItem } from "@/services/tournaments/tournamentQueries";
 
@@ -60,8 +57,14 @@ function HomeSkeleton() {
 }
 
 export default function HomePage() {
-  const { firebaseUser } = useAuth();
-  const { showToast } = useToast();
+  const {
+    firebaseUser,
+    accountStatus,
+    authError,
+    authenticating,
+    login,
+  } = useAuth();
+  const router = useRouter();
   const matches: Match[] = [];
   const groupsMap: Record<string, string> = {};
   const matchesLoading = false;
@@ -69,12 +72,12 @@ export default function HomePage() {
   const tournamentsLoading = false;
   const [activeFeatureIndex, setActiveFeatureIndex] = useState(0);
 
-  const login = async () => {
-    const provider = new GoogleAuthProvider();
+  const handleLogin = async () => {
     try {
-      await signInWithPopup(auth, provider);
-    } catch (err) {
-      handleAuthPopupError(err, showToast);
+      await login();
+      router.replace("/dashboard");
+    } catch {
+      // AuthProvider expone el error recuperable en la interfaz.
     }
   };
 
@@ -137,11 +140,20 @@ export default function HomePage() {
             {!firebaseUser ? (
               <button
                 type="button"
-                onClick={login}
+                onClick={handleLogin}
+                disabled={authenticating}
                 className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white hover:bg-orange-600 hover:scale-[1.02] transition shadow-lg shadow-orange-500/20"
               >
-                Empezar ahora
+                {authenticating ? "Autenticando…" : "Empezar ahora"}
               </button>
+            ) : null}
+            {authError ? (
+              <p role="alert" className="text-sm font-medium text-red-700">
+                {authError}
+              </p>
+            ) : null}
+            {firebaseUser && accountStatus === "initializingAccount" ? (
+              <p className="text-sm font-medium text-orange-700">Inicializando tu cuenta…</p>
             ) : null}
           </header>
 

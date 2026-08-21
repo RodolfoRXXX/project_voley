@@ -6,6 +6,7 @@
 "use client";
 
 import AppSidebar from "@/components/layout/AppSidebar";
+import AccountInitializationError from "@/components/account/AccountInitializationError";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
@@ -49,39 +50,58 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { firebaseUser, userDoc, loading } = useAuth();
+  const {
+    firebaseUser,
+    account,
+    accountError,
+    accountStatus,
+    legacyUserLoading,
+    retryAccount,
+    userDoc,
+  } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (loading) return;
+    if (
+      accountStatus === "checkingSession"
+      || accountStatus === "initializingAccount"
+      || accountStatus === "accountError"
+      || legacyUserLoading
+    ) return;
 
     if (!firebaseUser) {
       router.replace("/");
       return;
     }
 
-    if (userDoc && !userDoc.onboarded) {
-      router.replace("/onboarding");
-      return;
-    }
-
-    if (!userDoc || userDoc.roles !== "admin") {
+    if (!account || userDoc?.roles !== "admin") {
       router.replace("/dashboard");
       return;
     }
-  }, [firebaseUser, userDoc, loading, router]);
+  }, [account, accountStatus, firebaseUser, legacyUserLoading, router, userDoc]);
 
-  if (loading || !firebaseUser || !userDoc) {
+  if (accountStatus === "accountError") {
+    return (
+      <AccountInitializationError
+        message={accountError}
+        onRetry={retryAccount}
+      />
+    );
+  }
+
+  if (
+    accountStatus !== "ready"
+    || legacyUserLoading
+    || !firebaseUser
+    || !account
+    || userDoc?.roles !== "admin"
+  ) {
     return <AdminLayoutSkeleton />;
   }
 
-  const isAdmin = !!firebaseUser && userDoc?.roles === "admin";
-
   return (
       <div className="flex flex-1 min-h-0 h-full bg-[var(--background)] transition-colors">
-        {isAdmin && (
-          <AppSidebar />
-        )}
+        <AppSidebar />
   
         <main className="flex-1 min-h-0 overflow-y-auto">
           {/* Content */}

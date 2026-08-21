@@ -4,9 +4,7 @@
 
 "use client";
 
-import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { auth } from "@/lib/firebase";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,16 +13,18 @@ import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 import ThemeSwitch from "@/components/layout/ThemeSwitch";
 import { useThemeMode } from "@/hooks/useThemeMode";
 import { useEffect, useState } from "react";
+import useToast from "@/components/ui/toast/useToast";
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const { userDoc } = useAuth();
+  const { account, legacyUserLoading, logout: endSession, userDoc } = useAuth();
   const router = useRouter();
   const { confirm } = useConfirm();
+  const { showToast } = useToast();
   const { theme, themeLabel, toggleTheme } = useThemeMode();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
-  const isAdmin = userDoc?.roles === "admin";
+  const isAdmin = !legacyUserLoading && userDoc?.roles === "admin";
 
   const navItems = [
     {
@@ -42,7 +42,6 @@ export default function AppSidebar() {
     {
       label: "Mi perfil",
       children: [
-        { label: "Mi info", href: "/profile/info" },
         { label: "Mis grupos", href: "/profile/groups" },
         { label: "Mis torneos", href: "/profile/tournaments" },
       ],
@@ -77,8 +76,15 @@ export default function AppSidebar() {
 
     if (!ok) return;
 
-    await signOut(auth);
-    router.replace("/dashboard");
+    try {
+      await endSession();
+      router.replace("/");
+    } catch {
+      showToast({
+        type: "error",
+        message: "No pudimos cerrar la sesión. Intentá nuevamente.",
+      });
+    }
   };
 
   const toggleMenu = (label: string) => {
@@ -200,10 +206,10 @@ export default function AppSidebar() {
       <div className="border-t border-[var(--border)] p-4">
 
         <div className="flex items-center mb-3 px-3 gap-3 text-sm text-[var(--text-muted)]">
-            {userDoc?.photoURL ? (
+            {account?.accountPhotoUrl ? (
             <UserAvatar
-                nombre={userDoc?.nombre}
-                photoURL={userDoc?.photoURL}
+                nombre={account.displayName || "Cuenta"}
+                photoURL={account.accountPhotoUrl}
                 size={34}
                 className="w-10 h-10 rounded-full object-cover"
             />
@@ -215,10 +221,10 @@ export default function AppSidebar() {
 
             <div className="text-sm">
             <p className="font-medium">
-                {userDoc?.nombre || "Admin"}
+                {account?.displayName || "Cuenta"}
             </p>
             <p className="text-[var(--text-muted)] text-xs">
-                {userDoc?.roles || "Player"}
+                {isAdmin ? "Administrador" : "Cuenta"}
             </p>
             </div>
         </div>

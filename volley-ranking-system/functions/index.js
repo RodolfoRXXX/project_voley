@@ -14,7 +14,6 @@ const ENABLE_ON_MATCH_START = envFlag("ENABLE_ON_MATCH_START", true);
 const ENABLE_ON_PENDING_ALERTS_MAINTENANCE = envFlag("ENABLE_ON_PENDING_ALERTS_MAINTENANCE", true);
 
 // Exportar triggers directamente
-exports.onUserCreate = require("./src/triggers/onUserCreate");
 exports.onParticipationCreate = require("./src/triggers/onParticipationCreate");
 exports.onParticipationUpdate = require("./src/triggers/onParticipationUpdate");
 if (ENABLE_ON_MATCH_DEADLINE) {
@@ -24,7 +23,6 @@ if (ENABLE_ON_MATCH_START) {
   exports.onMatchStart = require("./src/triggers/onMatchStart");
 }
 exports.onMatchClose = require("./src/triggers/onMatchClose");
-exports.onUserPendingAlertsSync = require("./src/triggers/onUserPendingAlertsSync");
 exports.onGroupPendingAlertsSync = require("./src/triggers/onGroupPendingAlertsSync");
 exports.onTournamentPendingAlertsSync = require("./src/triggers/onTournamentPendingAlertsSync");
 exports.onTournamentRegistrationPendingAlertsSync = require("./src/triggers/onTournamentRegistrationPendingAlertsSync");
@@ -33,7 +31,8 @@ exports.onTournamentTeamPendingAlertsSync = require("./src/triggers/onTournament
 if (ENABLE_ON_PENDING_ALERTS_MAINTENANCE) {
   exports.onPendingAlertsMaintenance = require("./src/triggers/onPendingAlertsMaintenance");
 }
-exports.completeOnboarding = require("./callables/completeOnboarding");
+exports.ensureMyAccount = require("./callables/ensureMyAccount");
+exports.getMyAccount = require("./callables/getMyAccount");
 exports.getFormaciones = require("./callables/getFormaciones");
 exports.createMatch = require("./callables/createMatch");
 exports.editMatch = require("./callables/editMatch");

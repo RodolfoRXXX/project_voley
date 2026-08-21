@@ -6,6 +6,7 @@
 "use client";
 
 import AppSidebar from "@/components/layout/AppSidebar";
+import AccountInitializationError from "@/components/account/AccountInitializationError";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
@@ -52,23 +53,36 @@ export default function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { firebaseUser, userDoc, loading } = useAuth();
+  const {
+    firebaseUser,
+    account,
+    accountError,
+    accountStatus,
+    retryAccount,
+  } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (loading) return;
+    if (accountStatus === "checkingSession" || accountStatus === "initializingAccount") return;
 
     if (!firebaseUser) {
       router.replace("/");
-      return;
     }
+  }, [accountStatus, firebaseUser, router]);
 
-  }, [firebaseUser, userDoc, loading, router]);
+  const isLoggedIn = accountStatus === "ready" && !!firebaseUser && !!account;
 
-  const isLoggedIn = !!firebaseUser && !!userDoc;
-
-  if (loading) {
+  if (accountStatus === "checkingSession" || accountStatus === "initializingAccount") {
     return <ProtectedLayoutSkeleton />;
+  }
+
+  if (accountStatus === "accountError") {
+    return (
+      <AccountInitializationError
+        message={accountError}
+        onRetry={retryAccount}
+      />
+    );
   }
 
   if (!isLoggedIn) {
@@ -77,9 +91,7 @@ export default function ProtectedLayout({
 
   return (
     <div className="flex flex-1 min-h-0 h-full bg-[var(--background)] transition-colors">
-      {isLoggedIn && (
-        <AppSidebar />
-      )}
+      <AppSidebar />
 
       <main
         id="protected-scroll-container"

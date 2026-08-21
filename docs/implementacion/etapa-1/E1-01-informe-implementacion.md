@@ -273,3 +273,32 @@ Se agregaron seis pruebas de arquitectura/comportamiento para cubrir ambos halla
 ## 19. Veredicto
 
 `E1-01 IMPLEMENTADO — CORRECCIONES C01/C02 APLICADAS — UAT PENDIENTE`
+
+## 20. Cierre posterior a UAT
+
+La secuencia histórica se conserva: la implementación inicial fue sometida a verificación independiente, que detectó E1-01-C01 y E1-01-C02; ambas correcciones fueron implementadas en `61452bd`, verificadas por el gate posterior y finalmente ejercitadas en UAT manual.
+
+### Verificación independiente y correcciones
+
+- La arquitectura, contratos, persistencia, idempotencia, reglas locales y regresión E0 fueron aprobados.
+- E1-01-C01 corrigió el skeleton administrativo indefinido mediante un error accesible, contenido privado oculto y `Reintentar` conectado al provider.
+- E1-01-C02 agregó feedback móvil y single-flight compartido para impedir popups concurrentes, liberando la guarda tras éxito, cancelación o error.
+- El gate posterior aprobó lint sin regresiones, typecheck, 108/108 archivos de sintaxis, 47/47 pruebas unitarias/tooling/arquitectura, 32/32 pruebas de emuladores, 7/7 de mantenimiento y build 18/18.
+
+### UAT manual aprobada
+
+Rodolfo confirmó el 2026-08-21 los 17 puntos previstos: inicio desktop, popup emulado, estados visuales, dashboard, documento mínimo exacto, recarga idempotente, redirecciones, dashboard sin campos deportivos, logout por ambos accesos, viewport móvil, popup único ante doble activación, cancelación y reintento, error administrativo recuperable, ocultamiento de contenido, recuperación mediante `Reintentar` y denegación administrativa sin rol. No se detectaron defectos adicionales.
+
+### Limitaciones y deuda diferida
+
+No existe una suite automatizada de navegador; la UAT manual constituye la evidencia funcional final. Permanecen como deuda inventariada los roles globales legados, consumidores deportivos no migrados, `legacyUserService`, compatibilidad lectora de `complete_profile`, baseline lint, `caniuse-lite`, Persona y la autorización contextual completa. Ninguna de estas deudas concede autoridad ante ausencia ni constituye un incumplimiento de E1-01.
+
+### Resultado formal
+
+- Rama: `feat/e1-01-cuenta-usuario`.
+- HEAD final: `61452bdaa879688589914df3f6b3d3624656eb33`.
+- Remoto Firebase: sin cambios y preservado bajo `deny-all`.
+- Entorno local: frontend y emuladores detenidos; sin listeners o procesos asociados.
+- Evidencia consolidada: `docs/implementacion/etapa-1/E1-01-cierre.md`.
+
+`E1-01 CERRADO — E1-02 HABILITADO`

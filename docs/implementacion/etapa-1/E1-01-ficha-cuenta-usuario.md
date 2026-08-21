@@ -2,9 +2,10 @@
 
 ## Estado de la ficha
 
-- **Estado:** Implementado
-- **Responsable:** Rodolfo / Codex, sujeto a aprobación de la ficha
+- **Estado:** Cerrado
+- **Responsable:** Rodolfo
 - **Fecha:** 2026-08-21
+- **Fecha de cierre:** 2026-08-21
 - **Rama o checkpoint de partida:** `feat/e1-01-cuenta-usuario` en `a2eeda5b43fadf4ff868d878be5c3253d866e58f`, posterior a la integración y verificación de Etapa 0
 - **Rama prevista:** `feat/e1-01-cuenta-usuario`
 - **Etapa del roadmap:** Etapa 1 - Usuario, Persona y autorización contextual
@@ -649,10 +650,12 @@ No habrá doble escritura ni sincronización entre esquema nuevo y campos legado
 ## 21. Checkpoint y rollback
 
 - **HEAD inicial de implementación:** `a34e8832d9a1b8bc25522c7960536dfdbc3b3647`.
+- **HEAD final verificado:** `61452bdaa879688589914df3f6b3d3624656eb33`.
+- **Commits incluidos:** implementación `1cfade5e7d27301ee5e5acf088b11c4487cf0b01` y correcciones `61452bdaa879688589914df3f6b3d3624656eb33`.
 - **Rama:** `feat/e1-01-cuenta-usuario`.
-- **Estado de pruebas inicial:** pendiente de ejecutar y adjuntar.
+- **Estado de pruebas final:** gate `quality:stage0` aprobado; 47/47 unitarias/tooling/arquitectura, 32/32 emuladores, 7/7 mantenimiento y build 18/18.
 - **Checkpoint intermedio recomendado:** dominio/Aplicación/Repositorio y contratos aprobando antes de modificar onboarding y navegación.
-- **Rollback de código:** revertir commits de E1-01 o cerrar la rama; no modificar `dev` hasta verificación.
+- **Rollback de código:** revertir primero `61452bd` y luego `1cfade5`, o abandonar la rama antes de integrarla; reinicializar emuladores y repetir la suite E0. No usar doble escritura ni restaurar el onboarding inseguro.
 - **Tratamiento de datos de prueba:** reinicializar Auth y Firestore Emulator según procedimiento; nunca tocar remoto.
 - **Condición para interrumpir:** contradicción normativa real, acceso al remoto, reintroducción de autopromoción, doble autoridad de Usuario, imposibilidad de garantizar idempotencia, regresión de seguridad o necesidad no aprobada de Persona/Comercial.
 - **Condición para reanudar:** conflicto resuelto y documentado, ambiente nuevamente verificado, rollback aplicado si corresponde y baseline aprobado.
@@ -693,15 +696,18 @@ E1-01 deberá adjuntar en `docs/implementacion/etapa-1/` o referenciar inequívo
 
 ### Declaración final
 
-- **Estado final:** `Implementado`; correcciones E1-01-C01/E1-01-C02 aplicadas y UAT manual pendiente. No está `Verificado` ni `Cerrado`.
-- **Criterios incumplidos:** los hallazgos E1-01-C01 y E1-01-C02 de la verificación independiente fueron corregidos y cuentan con cobertura automatizada; la prueba visual/manual queda como evidencia reproducible pendiente de ejecución humana.
+- **Estado final:** `Cerrado`.
+- **Criterios incumplidos:** `Ninguno`.
 - **Deuda aceptada:** consumidores deportivos de rol, posiciones, compromiso, ranking y `onboarded`; gate administrativo global; lectura propia directa aislada para compatibilidad. Todos fallan cerrado ante ausencia.
 - **Responsable de aprobación:** Rodolfo.
-- **Fecha de implementación:** 2026-08-21.
+- **Fecha de cierre:** 2026-08-21.
+- **Proyecto remoto:** sin cambios y preservado bajo `deny-all`; no fue consultado, escrito, restaurado ni desplegado durante E1-01.
 
 ### Evidencia de implementación
 
 - **HEAD inicial:** `a34e8832d9a1b8bc25522c7960536dfdbc3b3647`.
+- **HEAD final:** `61452bdaa879688589914df3f6b3d3624656eb33`.
+- **Commits:** implementación `1cfade5` y correcciones `61452bd`, ambos incluidos y alineados con upstream al iniciar el cierre.
 - **Contratos finales:** callables v1 `ensureMyAccount` y `getMyAccount`, payload vacío, actor derivado de `context.auth` y DTO exacto de cuatro campos.
 - **Persistencia final:** `users/{firebaseUid}` con `nombre`, `email`, `photoURL` y `createdAt`; creación atómica con `DocumentReference.create()` y recuperación ante `ALREADY_EXISTS`.
 - **Reglas locales:** create/update/delete cliente denegados; lectura propia y administrativa legada transitoria; `pendingAlerts` preservado.
@@ -709,8 +715,9 @@ E1-01 deberá adjuntar en `docs/implementacion/etapa-1/` o referenciar inequívo
 - **Pruebas:** 47/47 unitarias/tooling/arquitectura, 32/32 con Auth/Firestore/Functions Emulator, 7/7 mantenimiento, build 18/18 páginas y gate `quality:stage0` aprobado.
 - **Lint:** sin regresiones; 39 errores y 10 warnings históricos, cinco hallazgos menos que el baseline inicial.
 - **Ambiente:** sólo `demo-sportexa-e0-02`, hosts loopback y datos sintéticos; guardas fail-closed ante proyecto, host, configuración o credenciales remotas.
-- **Rollback:** descartar exclusivamente el diff local desde el HEAD inicial, reiniciar emuladores y repetir E0; no hubo cambios remotos que revertir.
+- **Rollback:** revertir `61452bd` y `1cfade5` en ese orden, reiniciar emuladores y repetir E0; no hay cambios remotos que revertir.
 - **Informe detallado:** `docs/implementacion/etapa-1/E1-01-informe-implementacion.md`.
+- **Informe de cierre:** `docs/implementacion/etapa-1/E1-01-cierre.md`.
 
 ### Evidencia de corrección posterior a verificación independiente
 
@@ -718,7 +725,17 @@ E1-01 deberá adjuntar en `docs/implementacion/etapa-1/` o referenciar inequívo
 - **E1-01-C02:** Navbar móvil queda deshabilitado y muestra `Autenticando…` durante el login. `authService` aplica single-flight a todos sus consumidores, comparte una sola operación de popup concurrente y libera la guarda tras éxito, cancelación o error.
 - **Pruebas agregadas:** seis casos verifican C01, equivalencia móvil/desktop, deduplicación concurrente, liberación tras los tres resultados y preservación del logout.
 - **Límites preservados:** no se modificaron backend de Usuario, persistencia, DTO, reglas, autorización administrativa legada, dependencias ni lockfiles; no hubo acceso a Firebase remoto.
-- **Estado:** permanece `Implementado`; no está `Verificado` ni `Cerrado`. UAT visual/manual pendiente.
+- **Estado:** correcciones verificadas automáticamente y aprobadas durante la UAT manual.
+
+### Evidencia de UAT manual
+
+- **Responsable:** Rodolfo.
+- **Fecha:** 2026-08-21.
+- **Entorno:** Firebase Emulator Suite, proyecto `demo-sportexa-e0-02`, datos sintéticos y hosts loopback.
+- **Resultado:** 17/17 puntos aprobados, sin defectos adicionales.
+- **Cobertura:** inicio desktop; popup emulado; estados de autenticación/bootstrap; dashboard; documento mínimo exacto; recarga idempotente; redirecciones; ausencia de dependencias deportivas; logout por Navbar y Sidebar; viewport móvil; popup único ante doble activación; cancelación y reintento; error administrativo recuperable; contenido administrativo oculto; reintento exitoso; administración denegada sin rol.
+- **Criterios de aceptación:** 12/12 cumplidos mediante gate automatizado, revisión independiente y UAT.
+- **Limitación preservada:** no existe suite automatizada de navegador; la evidencia funcional de navegador es la UAT manual aprobada.
 
 ---
 

@@ -89,7 +89,14 @@ const priorityAssetCharacterizationTestPath = path.join(
   "emulator",
   "priorityAssetCharacterization.test.js"
 );
-const command = `node --test --test-concurrency=1 "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
+const accountTestPath = path.join(
+  systemRoot,
+  "functions",
+  "test",
+  "emulator",
+  "accountE1.test.js"
+);
+const command = `node --test --test-concurrency=1 "${accountTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
 const args = [
   "emulators:exec",
   "--project",

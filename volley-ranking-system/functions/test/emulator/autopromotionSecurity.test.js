@@ -7,8 +7,6 @@ const {
 } = require("../guards/firebaseTestGuard");
 const { SYNTHETIC_DATA } = require("../fixtures/syntheticData");
 
-const VALID_POSITIONS = ["central", "punta"];
-
 async function readJson(response) {
   const text = await response.text();
   if (!text) return null;
@@ -71,16 +69,6 @@ async function patchUser({ firestoreHost, projectId, userId, idToken, fields, ma
   return { status: response.status, body: await readJson(response) };
 }
 
-async function waitForUserDocument(db, uid) {
-  const ref = db.collection("users").doc(uid);
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    const snapshot = await ref.get();
-    if (snapshot.exists) return snapshot;
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  throw new Error(`Synthetic user document was not created: ${uid}`);
-}
-
 test("contiene todos los caminos de autopromoción sin depender del frontend", async (t) => {
   const { projectId } = assertSafeFirebaseTestEnvironment(process.env);
   assert.equal(projectId, SYNTHETIC_DATA.projectId);
@@ -96,47 +84,49 @@ test("contiene todos los caminos de autopromoción sin depender del frontend", a
   const other = await signUpSyntheticUser(authHost, "e0-03-other@example.invalid");
 
   try {
-    await Promise.all([
-      waitForUserDocument(db, self.uid),
-      waitForUserDocument(db, other.uid),
+    const initializations = await Promise.all([
+      callFunction(functionsHost, projectId, "ensureMyAccount", {}, self.idToken),
+      callFunction(functionsHost, projectId, "ensureMyAccount", {}, other.idToken),
     ]);
+    for (const initialization of initializations) {
+      assert.equal(initialization.status, 200, JSON.stringify(initialization.body));
+    }
 
-    await t.test("rechaza onboarding no autenticado", async () => {
+    await t.test("rechaza bootstrap no autenticado", async () => {
       const result = await callFunction(
         functionsHost,
         projectId,
-        "completeOnboarding",
-        { posicionesPreferidas: VALID_POSITIONS }
+        "ensureMyAccount",
+        {}
       );
       assert.notEqual(result.status, 200);
       assert.equal(result.body?.error?.status, "UNAUTHENTICATED");
     });
 
-    await t.test("updateUserRole ya no existe para clientes autenticados o anónimos", async () => {
-      const anonymous = await callFunction(
+    await t.test("autoridades legadas ya no existen", async () => {
+      const updateRole = await callFunction(
         functionsHost,
         projectId,
         "updateUserRole",
         { role: "admin" }
       );
-      const authenticated = await callFunction(
+      const onboarding = await callFunction(
         functionsHost,
         projectId,
-        "updateUserRole",
-        { role: "admin", userId: other.uid },
+        "completeOnboarding",
+        { posicionesPreferidas: ["central"] },
         self.idToken
       );
-      assert.equal(anonymous.status, 404);
-      assert.equal(authenticated.status, 404);
+      assert.equal(updateRole.status, 404);
+      assert.equal(onboarding.status, 404);
     });
 
     await t.test("rechaza campos de rol manipulados sin elevar a nadie", async () => {
       const result = await callFunction(
         functionsHost,
         projectId,
-        "completeOnboarding",
+        "ensureMyAccount",
         {
-          posicionesPreferidas: VALID_POSITIONS,
           roles: "admin",
           userId: other.uid,
         },
@@ -148,24 +138,26 @@ test("contiene todos los caminos de autopromoción sin depender del frontend", a
         db.collection("users").doc(self.uid).get(),
         db.collection("users").doc(other.uid).get(),
       ]);
-      assert.equal(selfDoc.data().roles, null);
-      assert.equal(otherDoc.data().roles, null);
+      assert.equal(selfDoc.data().roles, undefined);
+      assert.equal(otherDoc.data().roles, undefined);
     });
 
-    await t.test("onboarding válido funciona y no concede privilegios", async () => {
+    await t.test("bootstrap repetido no concede privilegios ni campos deportivos", async () => {
       const result = await callFunction(
         functionsHost,
         projectId,
-        "completeOnboarding",
-        { posicionesPreferidas: VALID_POSITIONS },
+        "ensureMyAccount",
+        {},
         self.idToken
       );
       assert.equal(result.status, 200, JSON.stringify(result.body));
-      assert.equal(result.body?.result?.ok, true);
       const userDoc = await db.collection("users").doc(self.uid).get();
-      assert.equal(userDoc.data().roles, null);
-      assert.equal(userDoc.data().onboarded, true);
-      assert.deepEqual(userDoc.data().posicionesPreferidas, VALID_POSITIONS);
+      assert.deepEqual(Object.keys(userDoc.data()).sort(), [
+        "createdAt",
+        "email",
+        "nombre",
+        "photoURL",
+      ]);
     });
 
     await t.test("reglas rechazan promoción propia y de otro usuario", async () => {
@@ -212,7 +204,7 @@ test("contiene todos los caminos de autopromoción sin depender del frontend", a
       }
     });
 
-    await t.test("reglas permiten actualizar identidad propia sin tocar privilegios", async () => {
+    await t.test("reglas rechazan actualizar identidad propia", async () => {
       const result = await patchUser({
         firestoreHost,
         projectId,
@@ -221,10 +213,10 @@ test("contiene todos los caminos de autopromoción sin depender del frontend", a
         fields: { nombre: { stringValue: "E0-03 Synthetic Name" } },
         masks: ["nombre"],
       });
-      assert.equal(result.status, 200, JSON.stringify(result.body));
+      assert.equal(result.status, 403, JSON.stringify(result.body));
       const userDoc = await db.collection("users").doc(self.uid).get();
-      assert.equal(userDoc.data().nombre, "E0-03 Synthetic Name");
-      assert.equal(userDoc.data().roles, null);
+      assert.notEqual(userDoc.data().nombre, "E0-03 Synthetic Name");
+      assert.equal(userDoc.data().roles, undefined);
     });
 
     await t.test("reglas rechazan crear el propio usuario con privilegios", async () => {

@@ -2,13 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import UserAvatar from "../ui/avatar/UserAvatar";
 import { usePathname, useRouter } from "next/navigation";
 import useToast from "@/components/ui/toast/useToast";
-import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
+import { getAuthErrorMessage } from "@/services/authService";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 import ThemeSwitch from "@/components/layout/ThemeSwitch";
 import { useThemeMode } from "@/hooks/useThemeMode";
@@ -16,7 +14,16 @@ import SportexaLogo from "./SportexaLogo";
 
 
 export default function Navbar() {
-  const { firebaseUser, userDoc, loading } = useAuth();
+  const {
+    firebaseUser,
+    account,
+    authenticating,
+    legacyUserLoading,
+    loading,
+    login: authenticate,
+    logout: endSession,
+    userDoc,
+  } = useAuth();
   const router = useRouter();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
@@ -29,13 +36,12 @@ export default function Navbar() {
   const pathname = usePathname();
 
   const login = async () => {
-    const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      await authenticate();
       setOpen(false);
       router.replace("/dashboard");
-    } catch (err) {
-      handleAuthPopupError(err, showToast);
+    } catch (error) {
+      showToast({ type: "error", message: getAuthErrorMessage(error) });
     }
   };
 
@@ -49,9 +55,16 @@ export default function Navbar() {
 
     if (!ok) return;
 
-    await signOut(auth);
-    setOpen(false);
-    router.replace("/");
+    try {
+      await endSession();
+      setOpen(false);
+      router.replace("/");
+    } catch {
+      showToast({
+        type: "error",
+        message: "No pudimos cerrar la sesión. Intentá nuevamente.",
+      });
+    }
   };
 
   const navItems = [
@@ -62,14 +75,13 @@ export default function Navbar() {
     {
       label: "Mi perfil",
       children: [
-        { label: "Mi info", href: "/profile/info" },
         { label: "Mis grupos", href: "/profile/groups" },
         { label: "Mis torneos", href: "/profile/tournaments" },
       ],
     },
   ];
 
-  if (userDoc?.roles === "admin") {
+  if (!legacyUserLoading && userDoc?.roles === "admin") {
     navItems.push({
       label: "Mi gestión",
       children: [
@@ -113,9 +125,10 @@ export default function Navbar() {
           {!loading && !firebaseUser && (
             <button
               onClick={login}
+              disabled={authenticating}
               className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium"
             >
-              Ingresar con Google
+              {authenticating ? "Autenticando…" : "Ingresar con Google"}
             </button>
           )}
 
@@ -142,7 +155,7 @@ export default function Navbar() {
                 aria-expanded={userMenuOpen}
                 aria-haspopup="menu"
               >
-                {firebaseUser.displayName}
+                {account?.displayName || firebaseUser.displayName || "Cuenta"}
               </button>
 
               {pathname === "/" && (
@@ -199,10 +212,10 @@ export default function Navbar() {
               />
               <div className="text-sm">
                 <p className="font-medium text-[var(--foreground)]">
-                  {firebaseUser.displayName}
+                  {account?.displayName || firebaseUser.displayName || "Cuenta"}
                 </p>
                 <p className="text-xs text-[var(--text-muted)]">
-                  {userDoc?.roles || "Player"}
+                  {userDoc?.roles === "admin" ? "Administrador" : "Cuenta"}
                 </p>
               </div>
             </div>

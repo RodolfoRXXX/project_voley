@@ -8,8 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { collection, getDocs, limit, onSnapshot, orderBy, query, where, Timestamp } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { auth, db, functions } from "@/lib/firebase";
+import { db, functions } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import MatchCard from "@/components/matchCard/MatchCard";
 import { Skeleton } from "@/components/ui/skeleton/Skeleton";
@@ -17,7 +16,7 @@ import type { Match } from "@/types/match";
 import { tournamentPhaseTypeLabel, type TournamentPhaseType } from "@/types/tournaments/tournamentPhase";
 import { getTournamentFormatLabel, tournamentStatusLabel } from "@/types/tournaments/tournament";
 import useToast from "@/components/ui/toast/useToast";
-import { handleAuthPopupError } from "@/lib/auth/handleAuthPopupError";
+import { getAuthErrorMessage } from "@/services/authService";
 import { useRouter } from "next/navigation";
 import PublicTournamentDetailModal from "@/components/tournaments/public/PublicTournamentDetailModal";
 import CreateMatchQuickActionModal from "@/components/dashboard/CreateMatchQuickActionModal";
@@ -90,11 +89,8 @@ const chunkArray = <T,>(items: T[], size: number): T[][] => {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { firebaseUser, userDoc, loading: authLoading } = useAuth();
+  const { account, firebaseUser, login: authenticate, userDoc } = useAuth();
   const { showToast } = useToast();
-  const preferredPositions = userDoc?.posicionesPreferidas || [];
-  const hasPreferredPositions = preferredPositions.length > 0;
-  const isOnboarded = userDoc?.onboarded === true;
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [activeTournamentCards, setActiveTournamentCards] = useState<TournamentDashboardCard[]>([]);
@@ -174,21 +170,14 @@ export default function DashboardPage() {
       icon: "👥",
       onClick: () => router.push("/admin/groups/new"),
     },
-    {
-      title: "Editar perfil",
-      desc: "Mejorá tu info",
-      icon: "👤",
-      onClick: () => router.push("/profile/info?editGameProfile=1"),
-    },
   ];
 
   const login = async () => {
-    const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      await authenticate();
       return true;
-    } catch (err) {
-      handleAuthPopupError(err, showToast);
+    } catch (error) {
+      showToast({ type: "error", message: getAuthErrorMessage(error) });
       return false;
     }
   };
@@ -543,23 +532,7 @@ export default function DashboardPage() {
         } satisfies PendingAlert;
       });
 
-      const loadedWithoutProfileFallback = loaded.filter((alert) => alert.kind !== "complete_profile");
-      const normalized = !isOnboarded
-        ? [
-          {
-            id: "complete-profile-fallback",
-            kind: "complete_profile",
-            severity: "urgent",
-            title: "Completá tu perfil",
-            message: "Necesario para unirte a grupos y participar en partidos.",
-            status: "active",
-            priority: pendingAlertPriority.urgent,
-            link: { path: "/profile/info", label: "Ir a Mi info" },
-            updatedAt: Date.now(),
-          } satisfies PendingAlert,
-          ...loadedWithoutProfileFallback,
-        ]
-        : loadedWithoutProfileFallback;
+      const normalized = loaded.filter((alert) => alert.kind !== "complete_profile");
 
       const sorted = normalized.sort((a, b) => a.priority - b.priority || (b.updatedAt || 0) - (a.updatedAt || 0));
       setPendingAlerts(sorted);
@@ -571,7 +544,7 @@ export default function DashboardPage() {
     });
 
     return () => unsub();
-  }, [firebaseUser?.uid, isOnboarded]);
+  }, [firebaseUser?.uid]);
 
   const loading = matchesLoading || tournamentLoading;
 
@@ -714,22 +687,18 @@ export default function DashboardPage() {
               <article className="rounded-md border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">
                 <p className="text-xs text-neutral-500">Perfil</p>
                 <p className="text-lg font-semibold">
-                  {userDoc?.nombre || firebaseUser.displayName || "Usuario"}
+                  {account?.displayName || firebaseUser.displayName || "Cuenta"}
                 </p>
                 <p className="text-sm">
-                  {!isOnboarded
-                    ? <span className="text-orange-600 font-medium">Completar perfil</span>
-                    : (userDoc?.roles === "admin" ? "Administrador" : "Jugador")}
+                  {userDoc?.roles === "admin" ? "Administrador" : "Cuenta autenticada"}
                 </p>
               </article>
 
               <article className="rounded-md border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">
-                <p className="text-xs text-neutral-500">Posiciones</p>
-                <p className="text-2xl font-bold">
-                  {hasPreferredPositions ? preferredPositions.length : 0}
-                </p>
+                <p className="text-xs text-neutral-500">Ficha deportiva</p>
+                <p className="text-lg font-semibold">No disponible</p>
                 <p className="text-sm text-neutral-500">
-                  {hasPreferredPositions ? preferredPositions.join(" · ") : "Sin definir"}
+                  Se habilitará en un incremento posterior.
                 </p>
               </article>
 

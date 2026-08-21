@@ -181,7 +181,7 @@ export default function ProfileTournamentsPage() {
     const load = async () => {
       if (!firebaseUser) return;
 
-      setRows(await getProfileTournamentListView(firebaseUser.uid, userDoc?.roles));
+      setRows(await getProfileTournamentListView(firebaseUser.uid, userDoc?.roles || undefined));
       setLoading(false);
     };
 

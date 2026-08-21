@@ -2,7 +2,7 @@
 
 ## Estado de la ficha
 
-- **Estado:** Listo para implementar
+- **Estado:** Implementado
 - **Responsable:** Rodolfo / Codex, sujeto a aprobación de la ficha
 - **Fecha:** 2026-08-21
 - **Rama o checkpoint de partida:** `feat/e1-01-cuenta-usuario` en `a2eeda5b43fadf4ff868d878be5c3253d866e58f`, posterior a la integración y verificación de Etapa 0
@@ -250,7 +250,7 @@ Los códigos definitivos deberán adecuarse al mecanismo de transporte elegido s
 3. **Dado** dos intentos concurrentes de bootstrap para el mismo actor, **cuando** ambos finalizan, **entonces** existe un único Usuario válido.
 4. **Dado** un actor no autenticado, **cuando** invoca bootstrap o consulta propia, **entonces** la operación se deniega y no modifica Firestore.
 5. **Dado** un Usuario A autenticado, **cuando** intenta indicar el identificador de Usuario B, **entonces** el contrato rechaza el dato o no ofrece ese campo y B permanece inaccesible.
-6. **Dado** un cliente autenticado, **cuando** intenta leer o escribir directamente la persistencia de Usuario, **entonces** las reglas lo deniegan.
+6. **Dado** un cliente autenticado, **cuando** intenta escribir directamente la persistencia de Usuario, **entonces** las reglas lo deniegan; la lectura propia continúa sólo como compatibilidad transitoria para consumidores legados.
 7. **Dado** el nuevo flujo de alta, **cuando** se inspecciona el Usuario persistido, **entonces** no contiene rol global, posición, permisos deportivos, Persona, membresías, estadísticas, rendimiento, Plan ni Suscripción.
 8. **Dado** un fallo de persistencia no confirmado, **cuando** el actor reintenta, **entonces** la operación converge en una única cuenta.
 9. **Dado** un Usuario autenticado, **cuando** cierra sesión, **entonces** se elimina el estado privado del frontend y Usuario persistido no cambia.
@@ -268,7 +268,7 @@ Los códigos definitivos deberán adecuarse al mecanismo de transporte elegido s
 - Onboarding actual: sustituido en su responsabilidad; deja de solicitar rol y posiciones.
 - Layout o navegación protegida: consume el DTO de cuenta propia y maneja estado de inicialización.
 - Pantalla pública de acceso: conserva registro/inicio según el proveedor habilitado.
-- Rutas exactas: a completar luego de inspeccionar el `dev` integrado.
+- Rutas intervenidas: `/`, `/dashboard`, `/onboarding`, `/profile/info`, layouts protegido, de perfil y administrativo, Navbar y Sidebar.
 
 ### Acciones
 
@@ -348,7 +348,7 @@ CU-003 utiliza el adaptador cliente de Authentication y no requiere modificar Us
 
 | Proveedor | Consumidor | Capacidad pública | Información mínima | Errores |
 |---|---|---|---|---|
-| Infraestructura de identidad | Aplicación Usuarios | Obtener actor autenticado confiable | sujeto, proveedor, identificador del proveedor, correo de acceso, fotografía de cuenta cuando exista | no autenticado, token inválido, identidad incompleta |
+| Infraestructura de identidad | Aplicación Usuarios | Obtener actor autenticado confiable | UID, correo, display name y fotografía desde `context.auth` | no autenticado, token inválido, identidad incompleta |
 | Módulo Usuarios | Frontend | `ensureMyAccount` | cuenta propia mínima | no autenticado, identidad incompleta, persistencia fallida |
 | Módulo Usuarios | Frontend | `getMyAccount` | cuenta propia mínima | no autenticado, cuenta no inicializada, dependencia no disponible |
 | Firebase Authentication cliente | Frontend | cerrar sesión | resultado técnico de cierre | fallo técnico recuperable |
@@ -385,25 +385,23 @@ Sin payload funcional; utiliza exclusivamente el contexto autenticado.
 | Campo | Tipo | Semántica | Consumidor |
 |---|---|---|---|
 | `userId` | string | Identificador interno estable de Usuario | Frontend |
+| `displayName` | string | Display name de la cuenta digital; puede estar vacío | Frontend |
 | `accessEmail` | string | Correo de acceso asociado a la identidad digital | Frontend |
-| `authProvider` | string | Proveedor técnico utilizado en el alcance actual | Frontend/diagnóstico controlado |
 | `accountPhotoUrl` | string o null | Fotografía de la cuenta cuando el proveedor la suministra | Frontend |
-| `createdAt` | fecha serializable | Momento confirmado de creación de Usuario | Frontend si la UI lo necesita; retirar del DTO si no hay consumidor |
 
-`createdAt` queda condicionado a que exista un consumidor real. No se agregará al contrato sólo porque exista en persistencia.
+El DTO es exacto: no incluye `createdAt`, documentos o tipos Firestore, proveedor, sujeto, roles, datos deportivos, Persona ni Comercial.
 
 ### Errores contractuales
 
 | Código o categoría | Significado | Respuesta del frontend |
 |---|---|---|
-| `UNAUTHENTICATED` | No existe identidad válida | Volver al ingreso |
+| `unauthenticated` | No existe identidad válida | Volver al ingreso |
 | `AUTH_CANCELLED` | El actor canceló el proveedor | Mantener pantalla y permitir reintento |
 | `AUTH_UNAVAILABLE` | Proveedor no disponible | Informar indisponibilidad y reintento |
-| `IDENTITY_DATA_INCOMPLETE` | Falta información confiable requerida | Renovar sesión o reintentar autenticación |
-| `ACCOUNT_NOT_INITIALIZED` | La consulta ocurrió antes de bootstrap confirmado | Ofrecer bootstrap idempotente |
-| `ACCOUNT_BOOTSTRAP_FAILED` | No se confirmó la creación o recuperación | Mostrar reintento seguro |
-| `INVALID_ARGUMENT` | Se enviaron campos no admitidos | Rechazar sin modificar datos |
-| `INTERNAL` | Fallo no clasificable sin exponer infraestructura | Mensaje genérico y registro técnico |
+| `failed-precondition` | Falta información confiable requerida | Renovar sesión o reintentar autenticación |
+| `not-found` | La consulta ocurrió antes de bootstrap confirmado | Ofrecer bootstrap idempotente |
+| `invalid-argument` | Se enviaron campos no admitidos | Rechazar sin modificar datos |
+| `internal` | No se confirmó la creación/recuperación o hubo un fallo no clasificable | Mensaje genérico, reintento seguro y registro técnico |
 
 ---
 
@@ -415,21 +413,19 @@ Sin payload funcional; utiliza exclusivamente el contexto autenticado.
 |---|---|---|---|---|
 | `users/{userId}` | Persistir el Agregado Usuario mínimo | Autoridad de cuenta Usuario | Repositorio de Usuario ejecutado desde backend/emulador | Repositorio/modelo de consulta del Módulo Usuarios |
 
-Se propone conservar el nombre físico `users` porque es compatible con el concepto Usuario y evita una renombrada sin beneficio demostrado. Su esquema y autoridad cambian. La decisión deberá confirmarse contra los consumidores reales antes de implementar.
+Se conserva el nombre físico `users`; la decisión fue confirmada contra los consumidores reales antes de implementar.
 
 El frontend no será lector ni escritor directo de esta ruta en el flujo migrado.
 
-### 13.2 Campos mínimos propuestos
+### 13.2 Campos mínimos finales
 
 | Campo | Tipo | Obligatorio | Propietario conceptual | Original/derivado | Regla |
 |---|---|---|---|---|---|
-| ID del documento `userId` | string | Sí | Usuario | Original | Derivado de la identidad autenticada; no enviado por cliente |
-| `authProvider` | string | Sí | Usuario | Original | Obtenido del contexto autenticado |
-| `providerSubject` | string | Sí | Usuario | Original | Identificador externo del proveedor; no editable por cliente |
-| `accessEmail` | string | Sí en el proveedor actual | Usuario | Original | Normalizado para almacenamiento sin utilizarlo como ID |
-| `accountPhotoUrl` | string o null | No | Usuario | Original | URL suministrada por identidad confiable; validar formato y política |
+| ID del documento `firebaseUid` | string | Sí | Usuario | Derivado | Derivado de `context.auth.uid`; no se duplica como campo |
+| `nombre` | string | Sí | Usuario | Original | Display name normalizado; se permite vacío |
+| `email` | string | Sí | Usuario | Original | Correo del contexto autenticado, normalizado y no usado como ID |
+| `photoURL` | string | Sí | Usuario | Original | URL normalizada; cadena vacía cuando no existe fotografía |
 | `createdAt` | timestamp | Sí | Usuario | Original técnico | Fijado una sola vez por servidor |
-| `updatedAt` | timestamp | Sí | Usuario | Original técnico | En E1-01 coincide con creación salvo reparación explícita aprobada |
 
 ### Campos expresamente ausentes
 
@@ -444,14 +440,13 @@ El frontend no será lector ni escritor directo de esta ruta en el flujo migrado
 
 ### 13.3 Referencias
 
-E1-01 no persiste referencias a otros Agregados. `providerSubject` es una referencia de identidad técnica propia de Usuario, no una referencia a un Agregado de dominio.
+E1-01 no persiste referencias a otros Agregados, proveedor ni provider subject.
 
 ### 13.4 Datos originales
 
 | Dato | Propietario | Escritor autorizado | Momento de confirmación | Consistencia |
 |---|---|---|---|---|
 | Identidad de acceso | Usuario | Repositorio mediante Servicio de Aplicación | Bootstrap confirmado | Conjunta dentro de Usuario |
-| Proveedor y sujeto | Usuario | Backend desde token verificado | Creación | Inmutables en E1-01 |
 | Correo de acceso | Usuario | Backend desde identidad confiable | Creación | No editable en E1-01 |
 | Fotografía de cuenta | Usuario | Backend desde identidad confiable | Creación | No editable en E1-01 |
 
@@ -476,7 +471,7 @@ No se diseñan búsquedas por correo ni listados de Usuarios.
 | Iniciar proveedor de Authentication | Permitido | Permitido si necesita renovar | No aplica | No aplica | No aplica | Soporte técnico |
 | `ensureMyAccount` | Denegado | Permitido sólo para sí mismo | Sin privilegio adicional | Sin privilegio adicional | Sin privilegio adicional | Permitido como coordinación confiable |
 | `getMyAccount` | Denegado | Permitido sólo para sí mismo | Sin privilegio adicional | Sin privilegio adicional | Sin privilegio adicional | Permitido como coordinación confiable |
-| Lectura directa de `users/{id}` | Denegada | Denegada en el flujo objetivo | Denegada | Denegada | Denegada | Backend confiable fuera de reglas cliente |
+| Lectura directa de `users/{id}` | Denegada | Sólo documento propio como compatibilidad transitoria | Permitida sobre sí mismo | Permitida por gate global legado | Sin privilegio adicional | Backend confiable fuera de reglas cliente |
 | Escritura directa de `users/{id}` | Denegada | Denegada | Denegada | Denegada | Denegada | Sólo Repositorio autorizado |
 | Cerrar sesión propia | No aplica/idempotente | Permitido | Sin privilegio adicional | Sin privilegio adicional | Sin privilegio adicional | No aplica |
 
@@ -510,7 +505,7 @@ No se diseñan búsquedas por correo ni listados de Usuarios.
 
 - Usuario es privado por defecto;
 - no existe listado público;
-- correo, proveedor y sujeto no se publican;
+- correo y fotografía no se publican; proveedor y sujeto no se persisten;
 - la fotografía de cuenta no se convierte en recurso público por almacenarse en Usuario.
 
 ### Pruebas negativas obligatorias
@@ -519,7 +514,7 @@ No se diseñan búsquedas por correo ni listados de Usuarios.
 - token inválido;
 - intento de indicar otro `userId`;
 - intento de inyectar rol, posición, permisos o Persona;
-- lectura y escritura directa desde SDK cliente;
+- lectura visitante/ajena y toda escritura directa desde SDK cliente;
 - bootstrap repetido y concurrente;
 - uso accidental de proyecto remoto detectado y bloqueado.
 
@@ -551,7 +546,7 @@ Reglas:
 
 - **Aggregate Root modificado:** Usuario.
 - **Límite transaccional:** un único Usuario identificado por el actor autenticado.
-- **Datos confirmados conjuntamente:** proveedor, sujeto, correo de acceso, fotografía opcional y timestamps aprobados.
+- **Datos confirmados conjuntamente:** nombre de cuenta, correo de acceso, fotografía opcional y `createdAt`.
 - **Validaciones externas previas:** token válido y datos mínimos confiables.
 - **Concurrencia:** dos bootstrap simultáneos deben converger en el mismo documento y resultado funcional.
 - **Idempotencia:** repetir `ensureMyAccount` devuelve el Usuario existente sin duplicar ni resetear datos.
@@ -559,7 +554,7 @@ Reglas:
 
 No intervienen varios Agregados. No se requiere transacción global, Saga, Process Manager, Event Sourcing ni doble escritura.
 
-La implementación física podrá utilizar creación condicional o transacción Firestore si resulta necesaria para garantizar convergencia. Debe elegirse el mecanismo más simple que satisfaga la prueba concurrente.
+La implementación física utiliza `DocumentReference.create()`. `ALREADY_EXISTS` se traduce a recuperación por ID; no utiliza `set(..., {merge:true})` ni transacción.
 
 ---
 
@@ -623,14 +618,7 @@ Toda ejecución debe utilizar emuladores explícitos. Las pruebas deberán falla
 
 ### Decisión sobre `onUserCreate`
 
-La opción preferida es que el bootstrap explícito sea el camino funcional principal porque ofrece respuesta y reintento controlado al frontend. El trigger legado no deberá conservar una segunda lógica de creación.
-
-Durante la inspección se elegirá una de estas alternativas:
-
-1. retirarlo si queda completamente sustituido; o
-2. mantenerlo sólo si delega exactamente en la misma coordinación idempotente y existe una necesidad demostrada.
-
-No se aceptan dos esquemas, dos conjuntos de defaults ni dos autoridades para Usuario.
+`onUserCreate` fue retirado junto con su export. El bootstrap explícito `ensureMyAccount` es el único camino de materialización de Usuario; no quedan dos esquemas, defaults ni autoridades.
 
 ---
 
@@ -660,7 +648,7 @@ No habrá doble escritura ni sincronización entre esquema nuevo y campos legado
 
 ## 21. Checkpoint y rollback
 
-- **Commit inicial:** pendiente de registrar después del merge en `dev`.
+- **HEAD inicial de implementación:** `a34e8832d9a1b8bc25522c7960536dfdbc3b3647`.
 - **Rama:** `feat/e1-01-cuenta-usuario`.
 - **Estado de pruebas inicial:** pendiente de ejecutar y adjuntar.
 - **Checkpoint intermedio recomendado:** dominio/Aplicación/Repositorio y contratos aprobando antes de modificar onboarding y navegación.
@@ -705,11 +693,24 @@ E1-01 deberá adjuntar en `docs/implementacion/etapa-1/` o referenciar inequívo
 
 ### Declaración final
 
-- **Estado final:** Pendiente; sólo podrá ser `Verificado` y luego `Cerrado`.
-- **Criterios incumplidos:** Pendiente de ejecución.
-- **Deuda aceptada:** Pendiente de inventario; no podrá incluir fallos de seguridad, autoridad duplicada ni ausencia de pruebas obligatorias.
+- **Estado final:** `Implementado`; pendiente de verificación independiente. No está `Verificado` ni `Cerrado`.
+- **Criterios incumplidos:** no se detectaron incumplimientos automatizados; la prueba visual/manual queda como evidencia reproducible pendiente de ejecución humana.
+- **Deuda aceptada:** consumidores deportivos de rol, posiciones, compromiso, ranking y `onboarded`; gate administrativo global; lectura propia directa aislada para compatibilidad. Todos fallan cerrado ante ausencia.
 - **Responsable de aprobación:** Rodolfo.
-- **Fecha de cierre:** Pendiente.
+- **Fecha de implementación:** 2026-08-21.
+
+### Evidencia de implementación
+
+- **HEAD inicial:** `a34e8832d9a1b8bc25522c7960536dfdbc3b3647`.
+- **Contratos finales:** callables v1 `ensureMyAccount` y `getMyAccount`, payload vacío, actor derivado de `context.auth` y DTO exacto de cuatro campos.
+- **Persistencia final:** `users/{firebaseUid}` con `nombre`, `email`, `photoURL` y `createdAt`; creación atómica con `DocumentReference.create()` y recuperación ante `ALREADY_EXISTS`.
+- **Reglas locales:** create/update/delete cliente denegados; lectura propia y administrativa legada transitoria; `pendingAlerts` preservado.
+- **Estructuras retiradas:** `onUserCreate`, `completeOnboarding`, `onUserPendingAlertsSync`, formulario deportivo y generación/backfill `complete_profile`.
+- **Pruebas:** 41/41 unitarias/tooling/arquitectura, 32/32 con Auth/Firestore/Functions Emulator, 7/7 mantenimiento, build 18/18 páginas y gate `quality:stage0` aprobado.
+- **Lint:** sin regresiones; 39 errores y 10 warnings históricos, cinco hallazgos menos que el baseline inicial.
+- **Ambiente:** sólo `demo-sportexa-e0-02`, hosts loopback y datos sintéticos; guardas fail-closed ante proyecto, host, configuración o credenciales remotas.
+- **Rollback:** descartar exclusivamente el diff local desde el HEAD inicial, reiniciar emuladores y repetir E0; no hubo cambios remotos que revertir.
+- **Informe detallado:** `docs/implementacion/etapa-1/E1-01-informe-implementacion.md`.
 
 ---
 

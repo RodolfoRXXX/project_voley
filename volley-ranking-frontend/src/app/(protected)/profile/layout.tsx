@@ -6,7 +6,7 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function ProfileLayout({
@@ -14,23 +14,24 @@ export default function ProfileLayout({
 }: {
   children: ReactNode;
 }) {
-  const { firebaseUser, userDoc, loading } = useAuth();
+  const { firebaseUser, account, accountStatus } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (loading) return;
+    if (accountStatus === "checkingSession" || accountStatus === "initializingAccount") return;
 
     if (!firebaseUser) {
       router.replace("/");
       return;
     }
 
-    if (!userDoc?.onboarded) {
-      router.replace("/onboarding");
+    if (pathname === "/profile/info") {
+      router.replace("/dashboard");
     }
-  }, [firebaseUser, userDoc, loading, router]);
+  }, [accountStatus, firebaseUser, pathname, router]);
 
-  if (loading || !firebaseUser || !userDoc?.onboarded) {
+  if (accountStatus !== "ready" || !firebaseUser || !account || pathname === "/profile/info") {
     return null;
   }
 

@@ -52,23 +52,45 @@ export default function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { firebaseUser, userDoc, loading } = useAuth();
+  const {
+    firebaseUser,
+    account,
+    accountError,
+    accountStatus,
+    retryAccount,
+  } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (loading) return;
+    if (accountStatus === "checkingSession" || accountStatus === "initializingAccount") return;
 
     if (!firebaseUser) {
       router.replace("/");
-      return;
     }
+  }, [accountStatus, firebaseUser, router]);
 
-  }, [firebaseUser, userDoc, loading, router]);
+  const isLoggedIn = accountStatus === "ready" && !!firebaseUser && !!account;
 
-  const isLoggedIn = !!firebaseUser && !!userDoc;
-
-  if (loading) {
+  if (accountStatus === "checkingSession" || accountStatus === "initializingAccount") {
     return <ProtectedLayoutSkeleton />;
+  }
+
+  if (accountStatus === "accountError") {
+    return (
+      <main className="mx-auto flex min-h-[50vh] max-w-lg items-center px-6">
+        <section className="w-full rounded-xl border border-red-200 bg-red-50 p-6 text-red-900">
+          <h1 className="text-lg font-semibold">No pudimos inicializar tu cuenta</h1>
+          <p className="mt-2 text-sm">{accountError}</p>
+          <button
+            type="button"
+            onClick={retryAccount}
+            className="mt-4 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+          >
+            Reintentar
+          </button>
+        </section>
+      </main>
+    );
   }
 
   if (!isLoggedIn) {
@@ -77,9 +99,7 @@ export default function ProtectedLayout({
 
   return (
     <div className="flex flex-1 min-h-0 h-full bg-[var(--background)] transition-colors">
-      {isLoggedIn && (
-        <AppSidebar />
-      )}
+      <AppSidebar />
 
       <main
         id="protected-scroll-container"

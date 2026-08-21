@@ -100,14 +100,19 @@ async function callPublicGroupsApi({ functionsHost, projectId, idToken }) {
   return { status: response.status, body: await readJson(response) };
 }
 
-async function waitForUser(db, uid) {
-  const ref = db.collection("users").doc(uid);
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    const snapshot = await ref.get();
-    if (snapshot.exists) return;
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  throw new Error(`Synthetic user document was not created: ${uid}`);
+async function callFunction(functionsHost, projectId, name, data, idToken) {
+  const response = await fetch(
+    `http://${functionsHost}/${projectId}/us-central1/${name}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+      },
+      body: JSON.stringify({ data }),
+    }
+  );
+  return { status: response.status, body: await readJson(response) };
 }
 
 test("aplica privado por defecto y acceso contextual mínimo", async (t) => {
@@ -149,12 +154,14 @@ test("aplica privado por defecto y acceso contextual mínimo", async (t) => {
   const refs = [];
 
   try {
-    await Promise.all([
-      waitForUser(db, owner.uid),
-      waitForUser(db, member.uid),
-      waitForUser(db, outsider.uid),
-      waitForUser(db, appAdmin.uid),
-    ]);
+    const initializations = await Promise.all(
+      [owner, member, outsider, appAdmin].map((actor) =>
+        callFunction(functionsHost, projectId, "ensureMyAccount", {}, actor.idToken)
+      )
+    );
+    for (const initialization of initializations) {
+      assert.equal(initialization.status, 200, JSON.stringify(initialization.body));
+    }
     await db.collection("users").doc(appAdmin.uid).update({ roles: "admin" });
 
     const add = (collectionId, documentId, data) => {

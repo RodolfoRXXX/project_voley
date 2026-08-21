@@ -135,16 +135,6 @@ async function updateRegistrationPlayers({
   return { status: response.status, body: await readJson(response) };
 }
 
-async function waitForUser(db, uid) {
-  const ref = db.collection("users").doc(uid);
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    const snapshot = await ref.get();
-    if (snapshot.exists) return snapshot;
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  throw new Error(`Synthetic user document was not created: ${uid}`);
-}
-
 async function deleteWhere(db, collectionId, predicate) {
   const snapshot = await db.collection(collectionId).get();
   await Promise.all(
@@ -178,25 +168,34 @@ test("caracteriza activos prioritarios sin convertir legados en contratos", asyn
   let tournamentMatchId = null;
 
   try {
-    await Promise.all(actors.map((actor) => waitForUser(db, actor.uid)));
-
-    await t.test("[A/B] autenticación y onboarding completan el alta sin conceder privilegios", async () => {
+    await t.test("[A/B] autenticación y bootstrap completan el alta sin conceder privilegios", async () => {
       for (const actor of actors) {
         const result = await callFunction(
           functionsHost,
           projectId,
-          "completeOnboarding",
-          { posicionesPreferidas: ["central"] },
+          "ensureMyAccount",
+          {},
           actor.idToken
         );
         assert.equal(result.status, 200, JSON.stringify(result.body));
-        assert.equal(result.body?.result?.ok, true);
+        assert.equal(result.body?.result?.userId, actor.uid);
       }
 
       const playerDoc = (await db.collection("users").doc(playerA.uid).get()).data();
-      assert.equal(playerDoc.onboarded, true);
-      assert.equal(playerDoc.roles, null);
+      assert.equal(playerDoc.onboarded, undefined);
+      assert.equal(playerDoc.roles, undefined);
+      assert.equal(playerDoc.posicionesPreferidas, undefined);
     });
+
+    // Los siguientes casos caracterizan flujos deportivos legados. Sus fixtures
+    // incorporan explícitamente los campos antiguos sin convertirlos en defaults
+    // de las cuentas nuevas de E1-01.
+    await Promise.all(
+      actors.map((actor) => db.collection("users").doc(actor.uid).update({
+        onboarded: true,
+        posicionesPreferidas: ["central"],
+      }))
+    );
 
     await db.collection("users").doc(adminActor.uid).update({ roles: "admin" });
 

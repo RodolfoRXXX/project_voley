@@ -133,10 +133,10 @@ test("admin account error is recoverable and keeps private content hidden", () =
     "volley-ranking-frontend/src/components/account/AccountInitializationError.tsx"
   );
   const errorStart = layout.indexOf('if (accountStatus === "accountError")');
-  const nextGuard = layout.indexOf("if (\n    accountStatus !== \"ready\"", errorStart);
-  const errorBranch = layout.slice(errorStart, nextGuard);
+  const readyGuard = layout.indexOf('accountStatus !== "ready"', errorStart);
+  const errorBranch = layout.slice(errorStart, readyGuard);
 
-  assert.ok(errorStart >= 0 && nextGuard > errorStart);
+  assert.ok(errorStart >= 0 && readyGuard > errorStart);
   assert.match(errorBranch, /<AccountInitializationError/);
   assert.match(errorBranch, /message=\{accountError\}/);
   assert.match(errorBranch, /onRetry=\{retryAccount\}/);

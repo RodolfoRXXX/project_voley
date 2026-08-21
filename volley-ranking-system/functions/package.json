@@ -5,7 +5,7 @@
   "scripts": {
     "test": "npm run test:infra",
     "test:infra": "npm run test:infra:unit && npm run test:infra:emulators",
-    "test:infra:unit": "node --test test/unit/*.test.js",
+    "test:infra:unit": "node test/run-unit-tests.js",
     "test:infra:emulators": "node test/run-emulator-tests.js",
     "test:maintenance": "node test/run-maintenance-tests.js",
     "migrate:group-admins": "node src/scripts/migrateGroupAdmins.js",

@@ -3,27 +3,18 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { spawnSync } = require("child_process");
 const {
   assertSafeFirebaseTestEnvironment,
 } = require("./guards/firebaseTestGuard");
 const { SYNTHETIC_DATA } = require("./fixtures/syntheticData");
+const {
+  exitCodeForSpawnResult,
+  removeTemporaryDirectory,
+  spawnFirebaseCli,
+} = require("./helpers/runnerTools");
 
 const systemRoot = path.resolve(__dirname, "../..");
-const isolatedConfigHome = fs.mkdtempSync(
-  path.join(os.tmpdir(), "sportexa-e0-09b-firebase-config-")
-);
-const isolatedWorkspace = fs.mkdtempSync(
-  path.join(os.tmpdir(), "sportexa-e0-09b-emulators-")
-);
 const blockedProxy = "http://127.0.0.1:9";
-
-for (const name of [
-  "firebase.maintenance.test.json",
-  "firestore.maintenance.rules",
-]) {
-  fs.copyFileSync(path.join(systemRoot, name), path.join(isolatedWorkspace, name));
-}
 
 const inheritedNames = [
   "HOME",
@@ -47,7 +38,6 @@ Object.assign(environment, {
   TEST_FIREBASE_PROJECT_ID: SYNTHETIC_DATA.projectId,
   FIRESTORE_EMULATOR_HOST: "127.0.0.1:28080",
   FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:29099",
-  XDG_CONFIG_HOME: isolatedConfigHome,
   HTTP_PROXY: blockedProxy,
   HTTPS_PROXY: blockedProxy,
   ALL_PROXY: blockedProxy,
@@ -67,7 +57,6 @@ assertSafeFirebaseTestEnvironment(environment, {
   requireSyntheticSecrets: false,
 });
 
-const firebaseExecutable = process.platform === "win32" ? "firebase.cmd" : "firebase";
 const maintenanceTestPath = path.join(
   systemRoot,
   "functions",
@@ -88,20 +77,44 @@ const args = [
 ];
 
 let result;
+let isolatedConfigHome;
+let isolatedWorkspace;
 try {
-  result = spawnSync(firebaseExecutable, args, {
+  isolatedConfigHome = fs.mkdtempSync(
+    path.join(os.tmpdir(), "sportexa-e0-09b-firebase-config-")
+  );
+  isolatedWorkspace = fs.mkdtempSync(
+    path.join(os.tmpdir(), "sportexa-e0-09b-emulators-")
+  );
+
+  for (const name of [
+    "firebase.maintenance.test.json",
+    "firestore.maintenance.rules",
+  ]) {
+    fs.copyFileSync(path.join(systemRoot, name), path.join(isolatedWorkspace, name));
+  }
+
+  environment.XDG_CONFIG_HOME = isolatedConfigHome;
+  assertSafeFirebaseTestEnvironment(environment, {
+    requiredEmulatorHosts: [
+      "FIRESTORE_EMULATOR_HOST",
+      "FIREBASE_AUTH_EMULATOR_HOST",
+    ],
+    requireSyntheticSecrets: false,
+  });
+
+  result = spawnFirebaseCli(args, {
     cwd: isolatedWorkspace,
     env: environment,
     stdio: "inherit",
   });
 } finally {
-  fs.rmSync(isolatedConfigHome, { recursive: true, force: true });
-  fs.rmSync(isolatedWorkspace, { recursive: true, force: true });
+  if (isolatedConfigHome) {
+    removeTemporaryDirectory(isolatedConfigHome);
+  }
+  if (isolatedWorkspace) {
+    removeTemporaryDirectory(isolatedWorkspace);
+  }
 }
 
-if (result.error) {
-  throw result.error;
-}
-if (result.status !== 0) {
-  process.exit(result.status || 1);
-}
+process.exit(exitCodeForSpawnResult(result));

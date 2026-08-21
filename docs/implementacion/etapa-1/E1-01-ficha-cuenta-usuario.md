@@ -2,10 +2,10 @@
 
 ## Estado de la ficha
 
-- **Estado:** En definición
+- **Estado:** Listo para implementar
 - **Responsable:** Rodolfo / Codex, sujeto a aprobación de la ficha
-- **Fecha:** 2026-08-20
-- **Rama o checkpoint de partida:** `dev`, luego de integrar y verificar `chore/etapa-0-estabilizacion`
+- **Fecha:** 2026-08-21
+- **Rama o checkpoint de partida:** `feat/e1-01-cuenta-usuario` en `a2eeda5b43fadf4ff868d878be5c3253d866e58f`, posterior a la integración y verificación de Etapa 0
 - **Rama prevista:** `feat/e1-01-cuenta-usuario`
 - **Etapa del roadmap:** Etapa 1 - Usuario, Persona y autorización contextual
 - **Ambiente autorizado:** Firebase Emulator Suite y datos sintéticos
@@ -119,18 +119,51 @@ CU-001, CU-002 y la consulta de cuenta propia se agrupan porque forman una únic
 - Suite de Etapa 0 aprobada antes de modificar el flujo.
 - Proyecto remoto identificado y preservado bajo `deny-all`.
 
-### Gate técnico aún pendiente
+### Gate técnico completado
 
-Antes de marcar la ficha como `Listo para implementar` se deberá inspeccionar el repositorio integrado y completar:
+- **Rama y HEAD verificados:** `feat/e1-01-cuenta-usuario` en `a2eeda5b43fadf4ff868d878be5c3253d866e58f`.
+- **Estado Git inicial:** limpio.
+- **Runtime efectivo:** Windows `AMD64`, Node.js `20.20.0` mediante `fnm`, npm `10.8.2` y Firebase CLI `15.18.0`.
+- **Decisiones físicas cerradas:** `users/{firebaseUid}`, Firebase UID como identidad interna, callables v1 `ensureMyAccount` y `getMyAccount`, `DocumentReference.create()` con recuperación de `ALREADY_EXISTS`, bootstrap explícito como único creador, backend como único escritor, lecturas legadas temporales y retiro de `onUserCreate` durante la implementación.
+- **Onboarding objetivo:** bootstrap sin rol, posiciones ni `onboarded` como estado de cuenta, seguido por navegación a `/dashboard`.
+- **Ambiente:** únicamente proyecto `demo-sportexa-e0-02`, Auth/Firestore/Functions Emulator, hosts loopback, secretos sintéticos y egress bloqueado. No hubo consulta, escritura ni despliegue remoto.
 
-- commit exacto de partida;
-- rutas, componentes, servicios, triggers y reglas realmente afectados;
-- lectores y escritores actuales de los campos legados de Usuario;
-- proveedor y configuración efectiva de Authentication;
-- resultado del preflight técnico;
-- baseline exacto de pruebas, typecheck, lint y sintaxis.
+#### Correcciones portables del runner
 
-No existen decisiones funcionales pendientes que bloqueen E1-01.
+| Fallo | Causa raíz | Corrección de tooling |
+|---|---|---|
+| Unitarios en Windows | El shell no expandía `test/unit/*.test.js` y Node recibía el glob literal | Runner Node enumera `*.test.js`, ordena, falla si no encuentra archivos y ejecuta Node Test Runner con argumentos explícitos |
+| Workspace de emuladores | La copia recursiva materializaba `node_modules` antes de crear el enlace | Copia explícita del código excluyendo `node_modules`, `test`, secretos y logs; luego junction/symlink validado hacia las dependencias instaladas |
+| Mantenimiento en Windows | `spawnSync firebase.cmd` sin shell devolvía `EINVAL` | Resolución explícita del entrypoint efectivo de Firebase CLI y ejecución con `process.execPath`, argumentos separados y `shell: false` |
+
+El runner de Functions usa un margen de descubrimiento de 30 segundos para el handshake local de Firebase CLI en Windows. La carga medida del stack fue de 54 endpoints en aproximadamente 317 ms; no se detectó una regresión funcional. La limpieza conserva `finally` y reintenta de forma acotada los bloqueos `EBUSY`/`ENOTEMPTY`/`EPERM` que Windows libera después del apagado de los emuladores.
+
+#### Evidencia canónica del 2026-08-21
+
+| Comando | Directorio | Resultado | Evidencia | Duración aproximada |
+|---|---|---|---|---:|
+| `npm run quality:lint` | raíz | Aprobado | baseline histórico: 41 errores y 13 warnings; 0 regresiones | 13.7 s |
+| `npm run quality:typecheck` | raíz | Aprobado | TypeScript sin errores | 9.5 s |
+| `npm run quality:functions:syntax` | raíz | Aprobado | 97/97 archivos JavaScript | 4.3 s |
+| `npm run quality:build` | raíz | Aprobado | Next.js compiló y generó 18/18 páginas | 22.0 s |
+| `npm run quality:test` | raíz | Aprobado | 18/18 unitarios y 26/26 de emuladores | ~78 s |
+| `npm run test:infra:emulators` | `volley-ranking-system/functions` | Aprobado | 26/26; Auth `19099`, Firestore `18080`, Functions `15001`, websocket `18150` | ~75 s; TAP 33.7 s |
+| `npm run test:maintenance` | `volley-ranking-system/functions` | Aprobado | 7/7; Auth `29099`, Firestore `28080`, websocket `28150` | 13.7 s; TAP 1.7 s |
+| `npm run quality:stage0` | raíz | Aprobado | lint, typecheck, sintaxis 97/97, tests 44/44, build y diff | ~110 s |
+| `git diff --check` | raíz | Aprobado | sin errores de whitespace; sólo avisos informativos LF/CRLF | 2.7 s |
+
+Se ejecutaron 51 pruebas únicas del gate: 18 unitarias/de guardas y tooling, 26 de regresión con Auth/Firestore/Functions Emulator y 7 de reglas de mantenimiento. Las suites obligatorias también se repitieron dentro de los comandos agregados sin omisiones.
+
+#### Archivos de tooling del gate
+
+- `volley-ranking-system/functions/package.json`;
+- `volley-ranking-system/functions/test/run-unit-tests.js`;
+- `volley-ranking-system/functions/test/helpers/runnerTools.js`;
+- `volley-ranking-system/functions/test/run-emulator-tests.js`;
+- `volley-ranking-system/functions/test/run-maintenance-tests.js`;
+- `volley-ranking-system/functions/test/unit/runnerTools.test.js`.
+
+No se modificaron código funcional, frontend, reglas de producto, dependencias, lockfiles ni configuración de Firebase. Los tests agregados cubren enumeración determinista y fallo cerrado, exclusiones de copia, creación segura del enlace, limpieza, resolución/fallo del entrypoint y propagación de errores/exit codes.
 
 ---
 
@@ -682,22 +715,24 @@ E1-01 deberá adjuntar en `docs/implementacion/etapa-1/` o referenciar inequívo
 
 ## Gate para pasar a “Listo para implementar”
 
-La ficha podrá cambiar de `En definición` a `Listo para implementar` únicamente cuando se complete esta lista:
+La ficha cambia de `En definición` a `Listo para implementar` al quedar completada esta lista:
 
-- [ ] Etapa 0 integrada y verificada en `dev`.
-- [ ] Commit de partida registrado.
-- [ ] Rama E1-01 creada desde el `dev` correcto.
-- [ ] Preflight de Node/npm/Firebase ejecutado.
-- [ ] Emuladores y suite E0 aprobados.
-- [ ] Proveedor actual de Authentication confirmado.
-- [ ] Rutas y componentes frontend afectados inventariados.
-- [ ] Trigger, callables, servicios y reglas afectados inventariados.
-- [ ] Lectores y escritores de `users` y campos legados inventariados.
-- [ ] Diseño físico mínimo confirmado contra consultas y consumidores reales.
-- [ ] Alternativa final para `onUserCreate` aprobada.
-- [ ] Contratos, DTO, errores, reglas y pruebas de esta ficha revisados.
-- [ ] Ausencia de escrituras o despliegues remotos confirmada.
+- [x] Etapa 0 integrada y verificada en `dev`.
+- [x] Commit de partida registrado.
+- [x] Rama E1-01 creada desde el `dev` correcto.
+- [x] Preflight de Node/npm/Firebase ejecutado.
+- [x] Emuladores y suite E0 aprobados.
+- [x] Proveedor actual de Authentication confirmado.
+- [x] Rutas y componentes frontend afectados inventariados.
+- [x] Trigger, callables, servicios y reglas afectados inventariados.
+- [x] Lectores y escritores de `users` y campos legados inventariados.
+- [x] Diseño físico mínimo confirmado contra consultas y consumidores reales.
+- [x] Alternativa final para `onUserCreate` aprobada.
+- [x] Contratos, DTO, errores, reglas y pruebas de esta ficha revisados.
+- [x] Ausencia de escrituras o despliegues remotos confirmada.
 
 ## Veredicto de preparación
 
-**E1-01 está funcionalmente definido, pero permanece EN DEFINICIÓN hasta completar el inventario técnico y el preflight sobre el repositorio integrado. No se autoriza todavía programar.**
+**E1-01 LISTO PARA IMPLEMENTAR**
+
+Este veredicto habilita la implementación posterior del incremento; no declara E1-01 implementado, verificado ni cerrado.

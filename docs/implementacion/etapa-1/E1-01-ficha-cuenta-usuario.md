@@ -693,8 +693,8 @@ E1-01 deberá adjuntar en `docs/implementacion/etapa-1/` o referenciar inequívo
 
 ### Declaración final
 
-- **Estado final:** `Implementado`; pendiente de verificación independiente. No está `Verificado` ni `Cerrado`.
-- **Criterios incumplidos:** no se detectaron incumplimientos automatizados; la prueba visual/manual queda como evidencia reproducible pendiente de ejecución humana.
+- **Estado final:** `Implementado`; correcciones E1-01-C01/E1-01-C02 aplicadas y UAT manual pendiente. No está `Verificado` ni `Cerrado`.
+- **Criterios incumplidos:** los hallazgos E1-01-C01 y E1-01-C02 de la verificación independiente fueron corregidos y cuentan con cobertura automatizada; la prueba visual/manual queda como evidencia reproducible pendiente de ejecución humana.
 - **Deuda aceptada:** consumidores deportivos de rol, posiciones, compromiso, ranking y `onboarded`; gate administrativo global; lectura propia directa aislada para compatibilidad. Todos fallan cerrado ante ausencia.
 - **Responsable de aprobación:** Rodolfo.
 - **Fecha de implementación:** 2026-08-21.
@@ -706,11 +706,19 @@ E1-01 deberá adjuntar en `docs/implementacion/etapa-1/` o referenciar inequívo
 - **Persistencia final:** `users/{firebaseUid}` con `nombre`, `email`, `photoURL` y `createdAt`; creación atómica con `DocumentReference.create()` y recuperación ante `ALREADY_EXISTS`.
 - **Reglas locales:** create/update/delete cliente denegados; lectura propia y administrativa legada transitoria; `pendingAlerts` preservado.
 - **Estructuras retiradas:** `onUserCreate`, `completeOnboarding`, `onUserPendingAlertsSync`, formulario deportivo y generación/backfill `complete_profile`.
-- **Pruebas:** 41/41 unitarias/tooling/arquitectura, 32/32 con Auth/Firestore/Functions Emulator, 7/7 mantenimiento, build 18/18 páginas y gate `quality:stage0` aprobado.
+- **Pruebas:** 47/47 unitarias/tooling/arquitectura, 32/32 con Auth/Firestore/Functions Emulator, 7/7 mantenimiento, build 18/18 páginas y gate `quality:stage0` aprobado.
 - **Lint:** sin regresiones; 39 errores y 10 warnings históricos, cinco hallazgos menos que el baseline inicial.
 - **Ambiente:** sólo `demo-sportexa-e0-02`, hosts loopback y datos sintéticos; guardas fail-closed ante proyecto, host, configuración o credenciales remotas.
 - **Rollback:** descartar exclusivamente el diff local desde el HEAD inicial, reiniciar emuladores y repetir E0; no hubo cambios remotos que revertir.
 - **Informe detallado:** `docs/implementacion/etapa-1/E1-01-informe-implementacion.md`.
+
+### Evidencia de corrección posterior a verificación independiente
+
+- **E1-01-C01:** el estado `accountError` administrativo ya no cae en skeleton indefinido. Renderiza el componente recuperable compartido, con `role="alert"`, mensaje sanitizado y `Reintentar` conectado a `retryAccount`; el contenido administrativo permanece oculto.
+- **E1-01-C02:** Navbar móvil queda deshabilitado y muestra `Autenticando…` durante el login. `authService` aplica single-flight a todos sus consumidores, comparte una sola operación de popup concurrente y libera la guarda tras éxito, cancelación o error.
+- **Pruebas agregadas:** seis casos verifican C01, equivalencia móvil/desktop, deduplicación concurrente, liberación tras los tres resultados y preservación del logout.
+- **Límites preservados:** no se modificaron backend de Usuario, persistencia, DTO, reglas, autorización administrativa legada, dependencias ni lockfiles; no hubo acceso a Firebase remoto.
+- **Estado:** permanece `Implementado`; no está `Verificado` ni `Cerrado`. UAT visual/manual pendiente.
 
 ---
 

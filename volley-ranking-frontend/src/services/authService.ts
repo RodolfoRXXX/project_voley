@@ -6,6 +6,7 @@ import {
 import { auth } from "@/lib/firebase";
 
 const provider = new GoogleAuthProvider();
+let loginInFlight: ReturnType<typeof signInWithPopup> | null = null;
 
 export type AuthFlowErrorCode =
   | "popup-cancelled"
@@ -37,12 +38,26 @@ function translateAuthError(error: unknown): AuthFlowError {
   return new AuthFlowError("unknown", { cause: error });
 }
 
-export async function loginWithGoogle() {
-  try {
-    return await signInWithPopup(auth, provider);
-  } catch (error) {
-    throw translateAuthError(error);
-  }
+export function loginWithGoogle() {
+  if (loginInFlight) return loginInFlight;
+
+  const operation = Promise.resolve()
+    .then(() => signInWithPopup(auth, provider))
+    .catch((error) => {
+      throw translateAuthError(error);
+    });
+
+  loginInFlight = operation;
+  void operation.then(
+    () => {
+      if (loginInFlight === operation) loginInFlight = null;
+    },
+    () => {
+      if (loginInFlight === operation) loginInFlight = null;
+    }
+  );
+
+  return operation;
 }
 
 export async function logout() {

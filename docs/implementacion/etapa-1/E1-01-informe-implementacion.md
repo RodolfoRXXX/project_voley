@@ -150,7 +150,7 @@ Todos los comandos usaron Node.js 20.20.0.
 | `npm run quality:typecheck` | Aprobado | TypeScript sin errores |
 | `npm run quality:functions:syntax` | Aprobado | 108/108 JavaScript |
 | `npm run quality:build` | Aprobado | Next.js compiló y generó 18/18 páginas |
-| `npm run quality:test` | Aprobado | 41/41 unitarios/tooling/arquitectura + 32/32 emuladores |
+| `npm run quality:test` | Aprobado | 47/47 unitarios/tooling/arquitectura + 32/32 emuladores |
 | `npm run test:infra:emulators` desde Functions | Aprobado | 32/32; incluye 5 E1-01 y 27 regresiones E0/reglas |
 | `npm run test:maintenance` desde Functions | Aprobado | 7/7 |
 | `npm run quality:stage0` | Aprobado | lint, typecheck, sintaxis, tests, build y diff completos |
@@ -187,11 +187,11 @@ El build sólo informó la advertencia no bloqueante de datos `caniuse-lite` ant
 
 1. Configurar el frontend para Auth, Firestore y Functions Emulator del proyecto `demo-sportexa-e0-02` y arrancar los tres emuladores.
 2. Abrir `/` en viewport móvil y escritorio; confirmar botón `Ingresar con Google`/`Empezar ahora`.
-3. Iniciar el popup: verificar texto `Autenticando…`; cancelar y confirmar mensaje recuperable.
+3. Iniciar el popup: verificar texto `Autenticando…` y botón deshabilitado tanto en escritorio como en móvil; intentar una segunda activación y confirmar que sólo se abre un popup; cancelar y confirmar mensaje recuperable.
 4. Completar login con una identidad sintética del Auth Emulator: confirmar estado `Inicializando tu cuenta…` o skeleton y posterior acceso a `/dashboard`.
 5. En Firestore Emulator, inspeccionar `users/{uid}` y confirmar exactamente `nombre`, `email`, `photoURL`, `createdAt`.
 6. Recargar y volver a ingresar: confirmar el mismo documento y ausencia de actualización automática.
-7. Simular Functions no disponible, recargar `/dashboard`, confirmar error de inicialización y botón `Reintentar`; restaurar Functions y reintentar.
+7. Simular Functions no disponible, recargar `/dashboard` y una ruta `/admin/*`, confirmar error de inicialización accesible, contenido privado oculto y botón `Reintentar`; restaurar Functions y reintentar.
 8. Abrir `/onboarding` y `/profile/info`; ambas deben terminar en `/dashboard` sin formulario deportivo.
 9. Confirmar que Dashboard no exige rol/posición y muestra la ficha deportiva como no disponible.
 10. Cerrar sesión desde Navbar y Sidebar: confirmar navegación a `/`, limpieza del contenido privado y documento persistido intacto.
@@ -203,6 +203,7 @@ El build sólo informó la advertencia no bloqueante de datos `caniuse-lite` ant
 
 - `volley-ranking-frontend/src/services/accountService.ts`
 - `volley-ranking-frontend/src/services/legacyUserService.ts`
+- `volley-ranking-frontend/src/components/account/AccountInitializationError.tsx`
 - `volley-ranking-frontend/src/types/MyAccount.ts`
 - `volley-ranking-system/functions/callables/ensureMyAccount.js`
 - `volley-ranking-system/functions/callables/getMyAccount.js`
@@ -258,8 +259,17 @@ Como no hay commits ni datos remotos, el rollback consiste en descartar únicame
 
 ## 17. Diff resumido
 
-El cambio incorpora el módulo de cuenta y sus contratos, endurece escrituras de `users`, elimina autoridades/onboarding anteriores, adapta autenticación y navegación, agrega 28 casos E1-01 (23 unitarios/arquitectura + 5 emulador) y preserva consumidores deportivos como deuda explícita. El detalle mecánico final se obtiene con `git diff --stat` y `git status --short`.
+El cambio incorpora el módulo de cuenta y sus contratos, endurece escrituras de `users`, elimina autoridades/onboarding anteriores, adapta autenticación y navegación, agrega 34 casos E1-01 (29 unitarios/arquitectura + 5 emulador) y preserva consumidores deportivos como deuda explícita. El detalle mecánico final se obtiene con `git diff --stat` y `git status --short`.
 
-## 18. Veredicto
+## 18. Correcciones E1-01-C01 y E1-01-C02
 
-`E1-01 IMPLEMENTADO — PENDIENTE DE VERIFICACIÓN`
+La verificación independiente detectó dos defectos frontend acotados y ambos fueron corregidos sin modificar backend, persistencia, DTO, reglas, autorización legada, dependencias ni lockfiles:
+
+- **E1-01-C01:** el layout administrativo trataba `accountError` como espera y mantenía el skeleton. Ahora usa `AccountInitializationError`, compartido con el layout protegido, muestra un mensaje accesible sin detalles internos, mantiene oculto el contenido administrativo e invoca `retryAccount` mediante `Reintentar`.
+- **E1-01-C02:** el botón móvil no reflejaba `authenticating` y el servicio admitía llamadas concurrentes. Navbar móvil ahora presenta el mismo feedback y bloqueo que desktop; `authService` conserva una única promesa de login en vuelo y libera la guarda tras éxito, cancelación o error.
+
+Se agregaron seis pruebas de arquitectura/comportamiento para cubrir ambos hallazgos, la concurrencia, la liberación de la guarda y la preservación del logout. El gate posterior aprobó 47/47 pruebas unitarias, 32/32 pruebas con emuladores, 7/7 de mantenimiento, build de 18/18 páginas y baseline lint sin regresiones. La validación visual con navegador y proveedor real continúa pendiente como UAT manual.
+
+## 19. Veredicto
+
+`E1-01 IMPLEMENTADO — CORRECCIONES C01/C02 APLICADAS — UAT PENDIENTE`

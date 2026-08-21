@@ -6,6 +6,7 @@
 "use client";
 
 import AppSidebar from "@/components/layout/AppSidebar";
+import AccountInitializationError from "@/components/account/AccountInitializationError";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
@@ -77,19 +78,10 @@ export default function ProtectedLayout({
 
   if (accountStatus === "accountError") {
     return (
-      <main className="mx-auto flex min-h-[50vh] max-w-lg items-center px-6">
-        <section className="w-full rounded-xl border border-red-200 bg-red-50 p-6 text-red-900">
-          <h1 className="text-lg font-semibold">No pudimos inicializar tu cuenta</h1>
-          <p className="mt-2 text-sm">{accountError}</p>
-          <button
-            type="button"
-            onClick={retryAccount}
-            className="mt-4 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
-          >
-            Reintentar
-          </button>
-        </section>
-      </main>
+      <AccountInitializationError
+        message={accountError}
+        onRetry={retryAccount}
+      />
     );
   }
 

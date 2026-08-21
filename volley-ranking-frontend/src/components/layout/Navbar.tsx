@@ -304,9 +304,11 @@ export default function Navbar() {
             ) : (
               <button
                 onClick={login}
+                disabled={authenticating}
+                aria-disabled={authenticating}
                 className="w-full bg-orange-500 text-white py-2 rounded-lg"
               >
-                Ingresar con Google
+                {authenticating ? "Autenticando…" : "Ingresar con Google"}
               </button>
             )}
           </div>

@@ -6,6 +6,7 @@
 "use client";
 
 import AppSidebar from "@/components/layout/AppSidebar";
+import AccountInitializationError from "@/components/account/AccountInitializationError";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
@@ -52,8 +53,10 @@ export default function AdminLayout({
   const {
     firebaseUser,
     account,
+    accountError,
     accountStatus,
     legacyUserLoading,
+    retryAccount,
     userDoc,
   } = useAuth();
   const router = useRouter();
@@ -76,6 +79,15 @@ export default function AdminLayout({
       return;
     }
   }, [account, accountStatus, firebaseUser, legacyUserLoading, router, userDoc]);
+
+  if (accountStatus === "accountError") {
+    return (
+      <AccountInitializationError
+        message={accountError}
+        onRetry={retryAccount}
+      />
+    );
+  }
 
   if (
     accountStatus !== "ready"

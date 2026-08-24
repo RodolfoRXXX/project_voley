@@ -18,6 +18,8 @@ import { getTournamentFormatLabel, tournamentStatusLabel } from "@/types/tournam
 import useToast from "@/components/ui/toast/useToast";
 import { getAuthErrorMessage } from "@/services/authService";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePerson } from "@/hooks/usePerson";
 import PublicTournamentDetailModal from "@/components/tournaments/public/PublicTournamentDetailModal";
 import CreateMatchQuickActionModal from "@/components/dashboard/CreateMatchQuickActionModal";
 import AlertsPanel from "@/components/dashboard/AlertsPanel";
@@ -90,6 +92,7 @@ const chunkArray = <T,>(items: T[], size: number): T[][] => {
 export default function DashboardPage() {
   const router = useRouter();
   const { account, firebaseUser, login: authenticate, userDoc } = useAuth();
+  const { person, personStatus } = usePerson();
   const { showToast } = useToast();
 
   const [matches, setMatches] = useState<Match[]>([]);
@@ -695,11 +698,21 @@ export default function DashboardPage() {
               </article>
 
               <article className="rounded-md border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">
-                <p className="text-xs text-neutral-500">Ficha deportiva</p>
-                <p className="text-lg font-semibold">No disponible</p>
-                <p className="text-sm text-neutral-500">
-                  Se habilitará en un incremento posterior.
+                <p className="text-xs text-neutral-500">Ficha personal</p>
+                <p className="text-lg font-semibold">
+                  {personStatus === "ready" && person
+                    ? `${person.firstName} ${person.lastName}`
+                    : personStatus === "empty"
+                      ? "Pendiente"
+                      : personStatus === "inconsistent"
+                        ? "Requiere asistencia"
+                        : personStatus === "error"
+                          ? "No disponible"
+                          : "Consultando…"}
                 </p>
+                <Link href="/profile/person" className="mt-1 inline-block text-sm font-medium text-orange-600 hover:text-orange-700">
+                  {personStatus === "empty" ? "Crear ficha" : "Ver ficha"}
+                </Link>
               </article>
 
               <article className="rounded-md border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">

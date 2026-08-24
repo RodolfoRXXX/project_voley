@@ -33,6 +33,8 @@ if (ENABLE_ON_PENDING_ALERTS_MAINTENANCE) {
 }
 exports.ensureMyAccount = require("./callables/ensureMyAccount");
 exports.getMyAccount = require("./callables/getMyAccount");
+exports.ensureMyPerson = require("./callables/ensureMyPerson");
+exports.getMyPerson = require("./callables/getMyPerson");
 exports.getFormaciones = require("./callables/getFormaciones");
 exports.createMatch = require("./callables/createMatch");
 exports.editMatch = require("./callables/editMatch");

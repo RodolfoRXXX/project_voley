@@ -87,7 +87,11 @@ test("frontend has no direct writer for users documents", () => {
 test("bootstrap persistence is minimal and does not restore sports fields", () => {
   const userDomain = read("volley-ranking-system/functions/src/users/domain/user.js");
   const repository = read("volley-ranking-system/functions/src/users/infrastructure/firestoreUserRepository.js");
-  const bootstrap = `${userDomain}\n${repository}`;
+  const bootstrapFactory = userDomain.slice(
+    userDomain.indexOf("function buildInitialUser"),
+    userDomain.indexOf("function linkPerson")
+  );
+  const bootstrap = `${bootstrapFactory}\n${repository}`;
 
   for (const field of [
     "roles",

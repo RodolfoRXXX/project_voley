@@ -24,7 +24,31 @@ function buildInitialUser({ email, displayName, photoUrl }) {
   });
 }
 
+function linkPerson(user, personaId) {
+  if (!user || typeof user !== "object") throw new InvalidUserStateError("User is required");
+  if (Object.prototype.hasOwnProperty.call(user, "personaId")) {
+    throw new InvalidUserStateError("User already has a person link");
+  }
+  const normalizedPersonId = normalizeOptionalString(personaId);
+  if (!normalizedPersonId) throw new InvalidUserStateError("Person id is required");
+  return Object.freeze({ ...user, personaId: normalizedPersonId });
+}
+
+function hydrateUserForPersonLink(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new InvalidUserStateError("User data is required");
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "personaId")) {
+    if (typeof data.personaId !== "string" || !data.personaId || data.personaId.trim() !== data.personaId) {
+      throw new InvalidUserStateError("Person link is inconsistent");
+    }
+  }
+  return Object.freeze({ ...data });
+}
+
 module.exports = {
   InvalidUserStateError,
   buildInitialUser,
+  hydrateUserForPersonLink,
+  linkPerson,
 };

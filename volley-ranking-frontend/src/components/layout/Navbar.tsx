@@ -75,6 +75,7 @@ export default function Navbar() {
     {
       label: "Mi perfil",
       children: [
+        { label: "Ficha personal", href: "/profile/person" },
         { label: "Mis grupos", href: "/profile/groups" },
         { label: "Mis torneos", href: "/profile/tournaments" },
       ],

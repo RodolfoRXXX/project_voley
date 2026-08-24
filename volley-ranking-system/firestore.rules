@@ -100,6 +100,10 @@ service cloud.firestore {
       }
     }
 
+    match /personas/{personaId} {
+      allow read, write: if false;
+    }
+
     match /groups/{groupId} {
       allow get: if isAppAdmin() || isGroupMemberByData(resource.data);
       allow list: if isAppAdmin();

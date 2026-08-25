@@ -28,6 +28,105 @@ function sourceFiles(directory) {
   });
 }
 
+function resolveLocalImport(specifier, fromFile, rootDir = frontendRoot) {
+  if (!specifier || typeof specifier !== "string") return null;
+  if (!specifier.startsWith(".") && !specifier.startsWith("@/") && !specifier.startsWith("/")) {
+    return null;
+  }
+
+  const candidates = [];
+  if (specifier.startsWith("@/")) {
+    candidates.push(path.join(rootDir, specifier.slice(2)));
+  } else if (specifier.startsWith("/")) {
+    candidates.push(path.join(rootDir, specifier.slice(1)));
+  } else {
+    candidates.push(path.resolve(path.dirname(fromFile), specifier));
+  }
+
+  for (const candidate of candidates) {
+    const checked = [
+      candidate,
+      `${candidate}.ts`,
+      `${candidate}.tsx`,
+      `${candidate}.js`,
+      `${candidate}.jsx`,
+      path.join(candidate, "index.ts"),
+      path.join(candidate, "index.tsx"),
+      path.join(candidate, "index.js"),
+      path.join(candidate, "index.jsx"),
+    ];
+    const resolved = checked.find((possibleFile) => fs.existsSync(possibleFile));
+    if (resolved) return resolved;
+  }
+
+  return null;
+}
+
+function collectReachableLocalSources(startFile, options = {}) {
+  const { maxDepth = 25, rootDir = frontendRoot } = options;
+  const reached = new Set();
+  const queue = [{ filePath: startFile, depth: 0 }];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current) continue;
+    if (current.depth > maxDepth) continue;
+    if (!fs.existsSync(current.filePath)) continue;
+    if (!current.filePath.startsWith(rootDir)) continue;
+    if (reached.has(current.filePath)) continue;
+
+    const ext = path.extname(current.filePath).toLowerCase();
+    if (!/\.(?:ts|tsx|js|jsx)$/.test(ext)) {
+      continue;
+    }
+    if (/\.test\.(?:ts|tsx|js|jsx)$/.test(current.filePath)) continue;
+    if (current.filePath.includes("/__tests__/") || current.filePath.includes("\\__tests__\\")) continue;
+
+    reached.add(current.filePath);
+
+    const source = fs.readFileSync(current.filePath, "utf8");
+    const importMatches = [...source.matchAll(/(?:import\s+(?:[^'";]*?\s+from\s+)?|import\s*\(\s*|require\s*\(\s*|export\s+.*?\s+from\s+)(["'])([^"']+)\1/gm)];
+
+    for (const match of importMatches) {
+      const specifier = match[2];
+      if (!specifier || specifier.startsWith("firebase/") || specifier.startsWith("next/") || specifier.startsWith("react")) {
+        continue;
+      }
+
+      const resolved = resolveLocalImport(specifier, current.filePath, rootDir);
+      if (resolved && !reached.has(resolved)) {
+        queue.push({ filePath: resolved, depth: current.depth + 1 });
+      }
+    }
+  }
+
+  return reached;
+}
+
+function findMatchesFirestoreReads(reachableFiles, rootDir = frontendRoot) {
+  const hits = [];
+  const localFiles = [...reachableFiles].filter((file) => file.startsWith(rootDir));
+
+  for (const file of localFiles) {
+    const source = fs.readFileSync(file, "utf8");
+    const evidence = [
+      /collection\s*\(\s*[^,)]*\s*,\s*["']matches["']/s,
+      /doc\s*\(\s*[^,)]*\s*,\s*["']matches["']/s,
+      /query\s*\(\s*collection\s*\(\s*[^,)]*\s*,\s*["']matches["']/s,
+      /getDoc\s*\(\s*doc\s*\(\s*[^,)]*\s*,\s*["']matches["']/s,
+      /getDocs\s*\(\s*query\s*\(\s*collection\s*\(\s*[^,)]*\s*,\s*["']matches["']/s,
+      /onSnapshot\s*\(\s*collection\s*\(\s*[^,)]*\s*,\s*["']matches["']\s*\)/s,
+      /onSnapshot\s*\(\s*query\s*\(\s*collection\s*\(\s*[^,)]*\s*,\s*["']matches["']\s*\)/s,
+    ].find((pattern) => pattern.test(source));
+
+    if (evidence) {
+      hits.push({ file, evidence: evidence.toString() });
+    }
+  }
+
+  return hits;
+}
+
 function loadAuthService(signInWithPopup) {
   const filename = path.join(frontendRoot, "services", "authService.ts");
   const source = fs.readFileSync(filename, "utf8");
@@ -223,4 +322,114 @@ test("centralized logout remains delegated to Firebase Auth", () => {
 
   assert.match(authService, /await signOut\(auth\)/);
   assert.match(provider, /await logoutFromFirebase\(\)/);
+});
+
+test("dashboard no longer mounts a global matches reader or the match-only state it depends on", () => {
+  const dashboardFile = path.join(repositoryRoot, "volley-ranking-frontend/src/app/(protected)/dashboard/page.tsx");
+  const reachableFiles = collectReachableLocalSources(dashboardFile, { rootDir: path.join(repositoryRoot, "volley-ranking-frontend", "src") });
+  const matchesReads = findMatchesFirestoreReads(reachableFiles, path.join(repositoryRoot, "volley-ranking-frontend", "src"));
+  const dashboard = read("volley-ranking-frontend/src/app/(protected)/dashboard/page.tsx");
+
+  assert.deepEqual(matchesReads, []);
+  assert.doesNotMatch(dashboard, /collection\s*\(\s*db\s*,\s*["']matches["']/s);
+  assert.doesNotMatch(dashboard, /query\s*\(\s*collection\s*\(\s*db\s*,\s*["']matches["']/s);
+  assert.doesNotMatch(dashboard, /where\s*\(\s*["']estado["']\s*,\s*["']in["']/s);
+  assert.doesNotMatch(dashboard, /where\s*\(\s*["']__name__["']\s*,\s*["']in["']\s*\)/s);
+  assert.doesNotMatch(dashboard, /const\s*\[\s*matches\s*,\s*setMatches\s*\]/s);
+  assert.doesNotMatch(dashboard, /const\s*\[\s*groupsMap\s*,\s*setGroupsMap\s*\]/s);
+  assert.doesNotMatch(dashboard, /matchesLoading\b\s*[:=]/s);
+  assert.doesNotMatch(dashboard, /myUpcomingMatchesCount\b/s);
+  assert.doesNotMatch(dashboard, /getDocs\s*\(\s*query\s*\(\s*collection\s*\(\s*db\s*,\s*["']matches["']/s);
+});
+
+test("dependency graph detector catches direct and indirect matches Firestore readers while allowing valid pendingAlerts listeners", () => {
+  const tempRoot = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "e1-03-graph-"));
+  const dashboardFile = path.join(tempRoot, "dashboard.tsx");
+  const alertsFile = path.join(tempRoot, "services/alertsReader.ts");
+  const firebaseFile = path.join(tempRoot, "lib/firebase.ts");
+
+  fs.mkdirSync(path.dirname(alertsFile), { recursive: true });
+  fs.mkdirSync(path.dirname(firebaseFile), { recursive: true });
+
+  fs.writeFileSync(dashboardFile, `
+    import { readMatches } from "@/lib/firebase";
+    import { readAlerts } from "./services/alertsReader";
+    export default function Dashboard() {
+      readMatches();
+      readAlerts();
+      return null;
+    }
+  `);
+
+  fs.writeFileSync(firebaseFile, `
+    import { collection, query, where } from "firebase/firestore";
+    export function readMatches() {
+      return query(collection(db, "matches"), where("status", "==", "scheduled"));
+    }
+  `);
+
+  fs.writeFileSync(alertsFile, `
+    import { collection, onSnapshot } from "firebase/firestore";
+    export function readAlerts() {
+      return onSnapshot(collection(db, "pendingAlerts"), () => {});
+    }
+  `);
+
+  const reachable = collectReachableLocalSources(dashboardFile, { rootDir: tempRoot });
+  const violations = findMatchesFirestoreReads(reachable, tempRoot);
+
+  assert.equal(violations.length, 1);
+  assert.match(violations[0].file, /firebase\.ts$/);
+  assert.ok(reachable.has(firebaseFile));
+  assert.equal(findMatchesFirestoreReads(new Set([alertsFile]), tempRoot).length, 0);
+  assert.equal(findMatchesFirestoreReads(new Set([dashboardFile]), tempRoot).length, 0);
+});
+
+test("dependency graph detector ignores matches text, props, and route names without Firestore access", () => {
+  const tempRoot = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "e1-03-allowed-"));
+  const dashboardFile = path.join(tempRoot, "dashboard.tsx");
+  const routesFile = path.join(tempRoot, "routes.ts");
+
+  fs.writeFileSync(dashboardFile, `
+    export default function Dashboard() {
+      const props = { matches: [] };
+      const route = "/matches/123";
+      const label = "matches";
+      return props.matches.length ? route : label;
+    }
+  `);
+  fs.writeFileSync(routesFile, `
+    export const upcomingRoute = "/matches";
+  `);
+
+  const reachable = collectReachableLocalSources(dashboardFile, { rootDir: tempRoot });
+  assert.deepEqual(findMatchesFirestoreReads(reachable, tempRoot), []);
+  assert.ok(reachable.has(dashboardFile));
+  assert.equal(findMatchesFirestoreReads(new Set([routesFile]), tempRoot).length, 0);
+});
+
+test("dependency graph detector would have rejected the earlier dashboard implementation pattern", () => {
+  const tempRoot = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "e1-03-legacy-"));
+  const dashboardFile = path.join(tempRoot, "dashboard.tsx");
+  const legacyFile = path.join(tempRoot, "legacy/matchesWidget.ts");
+
+  fs.mkdirSync(path.dirname(legacyFile), { recursive: true });
+  fs.writeFileSync(dashboardFile, `
+    import { loadLegacyMatches } from "./legacy/matchesWidget";
+    export default function Dashboard() {
+      loadLegacyMatches();
+      return null;
+    }
+  `);
+  fs.writeFileSync(legacyFile, `
+    import { collection, query, where } from "firebase/firestore";
+    export function loadLegacyMatches() {
+      return query(collection(db, "matches"), where("estado", "in", ["programado", "jugando"]));
+    }
+  `);
+
+  const reachable = collectReachableLocalSources(dashboardFile, { rootDir: tempRoot });
+  const hits = findMatchesFirestoreReads(reachable, tempRoot);
+  assert.equal(hits.length, 1);
+  assert.match(hits[0].file, /matchesWidget\.ts$/);
 });

@@ -236,12 +236,6 @@ export default function DashboardPage() {
   }, [firebaseUser?.uid, userDoc?.roles]);
 
   useEffect(() => {
-    if (userDoc?.roles !== "admin") {
-      setActiveTournamentCards([]);
-      setTournamentLoading(false);
-      return;
-    }
-
     const loadTournamentCards = async () => {
       const tournamentsSnap = await getDocs(query(collection(db, "tournaments"), where("status", "==", "activo")));
 
@@ -376,7 +370,7 @@ export default function DashboardPage() {
     };
 
     loadTournamentCards().finally(() => setTournamentLoading(false));
-  }, [userDoc?.roles]);
+  }, []);
 
 
   useEffect(() => {

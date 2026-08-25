@@ -7,6 +7,7 @@
 - Ficha de referencia: `docs/implementacion/etapa-1/E1-03-ficha.md`
 - Estado documental: `E1-03 IMPLEMENTADO, VERIFICADO Y APROBADO EN UAT — LISTO PARA VERSIONAR`.
 - Estado Git observado antes del versionado: cambios locales en dashboard y prueba arquitectónica; `E1-03-ficha.md` y `E1-03-informe-implementacion.md` permanecen no rastreados. No se hizo commit, push ni deploy al momento de esta verificación.
+- Corrección posterior al primer commit: se detectó una desviación de alcance en la carga de torneos del dashboard y se limita este commit correctivo a restaurar el comportamiento legado del commit padre.
 
 ## 2. Objetivo
 
@@ -48,6 +49,8 @@ Se conservaron los flujos autorizados y funcionales del dashboard:
 - acciones rápidas de creación de partido, torneo y grupo;
 - `UpcomingActivitiesSection` manteniendo su propósito legítimo de mostrar actividades válidas;
 - componentes de detalle y modal de torneos sin introducir un nuevo lector global de partidos.
+
+La restricción temporal introducida después del primer commit para cargar torneos solo con `roles === "admin"` fue retirada. La carga de torneos vuelve exactamente a la dependencia `[]` y al comportamiento del baseline del commit padre. Esta restauración no afirma que el acceso legado a torneos sea el diseño futuro correcto; los torneos quedan pendientes de su propio incremento funcional autorizado.
 
 ## 7. Explicación de `UpcomingActivitiesSection`
 
@@ -147,7 +150,9 @@ La corrección vino de la revisión puntual de E1-03, que identificó dos hallaz
 
 Veredicto: `UAT E1-03 APROBADA`.
 
-Este informe no declara cierre del incremento, integración ni publicación remota. El siguiente paso autorizado es el versionado local de los cuatro archivos E1-03.
+La UAT anterior aprobó el retiro de `matches`; el smoke test breve posterior a esta corrección debe confirmar que la restauración del comportamiento legado de torneos no altera ese resultado. E1-03 continúa limitado al retiro del consumo global de `matches` y no diseña ni corrige el acceso futuro a torneos.
+
+Este informe no declara cierre del incremento, integración ni publicación remota. El siguiente paso autorizado es el versionado local de esta corrección.
 
 ## 15. Inventario Git final
 

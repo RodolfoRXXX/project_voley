@@ -10,9 +10,7 @@ import { collection, getDocs, limit, onSnapshot, orderBy, query, where, Timestam
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
-import MatchCard from "@/components/matchCard/MatchCard";
 import { Skeleton } from "@/components/ui/skeleton/Skeleton";
-import type { Match } from "@/types/match";
 import { tournamentPhaseTypeLabel, type TournamentPhaseType } from "@/types/tournaments/tournamentPhase";
 import { getTournamentFormatLabel, tournamentStatusLabel } from "@/types/tournaments/tournament";
 import useToast from "@/components/ui/toast/useToast";
@@ -26,8 +24,6 @@ import AlertsPanel from "@/components/dashboard/AlertsPanel";
 import UpcomingActivitiesSection from "@/components/dashboard/UpcomingActivitiesSection";
 import type { PendingAlert } from "@/types/pendingAlerts";
 import { pendingAlertPriority } from "@/types/pendingAlerts";
-
-const SOCIAL_MATCH_STATUSES = ["abierto", "verificando", "cerrado", "cancelado"] as const;
 
 type TournamentDashboardMatch = {
   id: string;
@@ -78,15 +74,6 @@ type TournamentQueryRow = {
 type UserDashboardStats = {
   groupsCount: number;
   adminGroupsCount: number;
-  myUpcomingMatchesCount: number;
-};
-
-const chunkArray = <T,>(items: T[], size: number): T[][] => {
-  const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    chunks.push(items.slice(i, i + size));
-  }
-  return chunks;
 };
 
 export default function DashboardPage() {
@@ -95,16 +82,12 @@ export default function DashboardPage() {
   const { person, personStatus } = usePerson();
   const { showToast } = useToast();
 
-  const [matches, setMatches] = useState<Match[]>([]);
   const [activeTournamentCards, setActiveTournamentCards] = useState<TournamentDashboardCard[]>([]);
   const [selectedTournamentCard, setSelectedTournamentCard] = useState<TournamentDashboardCard | null>(null);
-  const [matchesLoading, setMatchesLoading] = useState(true);
   const [tournamentLoading, setTournamentLoading] = useState(true);
-  const [groupsMap, setGroupsMap] = useState<Record<string, string>>({});
   const [userStats, setUserStats] = useState<UserDashboardStats>({
     groupsCount: 0,
     adminGroupsCount: 0,
-    myUpcomingMatchesCount: 0,
   });
   const [userStatsLoading, setUserStatsLoading] = useState(false);
   const [showCreateMatchModal, setShowCreateMatchModal] = useState(false);
@@ -185,74 +168,9 @@ export default function DashboardPage() {
     }
   };
 
-  // 🔑 HOOKS SIEMPRE ARRIBA, SIN IF
-  useEffect(() => {
-    const q = query(
-      collection(db, "matches"),
-      where("estado", "in", [...SOCIAL_MATCH_STATUSES])
-    );
-
-    const unsub = onSnapshot(q, async (snap) => {
-      const ahora = Timestamp.now();
-
-      const loadedMatches: Match[] = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Omit<Match, "id">),
-      }))
-        .filter((match) => match.horaInicio.toMillis() > ahora.toMillis());
-
-      const groupIds = Array.from(new Set(loadedMatches.map((m) => m.groupId)));
-
-      if (groupIds.length === 0) {
-        setGroupsMap({});
-        setMatchesLoading(false);
-        return;
-      }
-
-      const qGroups = query(
-        collection(db, "groups"),
-        where("__name__", "in", groupIds)
-      );
-
-      const snapGroups = await getDocs(qGroups);
-
-      const map: Record<string, string> = {};
-      const allowedGroupIds = new Set<string>();
-
-      snapGroups.docs.forEach((d) => {
-        const group = d.data();
-        map[d.id] = group.nombre;
-
-        const isGroupAdmin =
-          Array.isArray(group.adminIds) && !!firebaseUser?.uid
-            ? group.adminIds.includes(firebaseUser.uid)
-            : false;
-
-        const isGroupMember =
-          Array.isArray(group.memberIds) && firebaseUser?.uid
-            ? group.memberIds.includes(firebaseUser.uid)
-            : false;
-
-        if (isGroupAdmin || isGroupMember || userDoc?.roles === "admin") {
-          allowedGroupIds.add(d.id);
-        }
-      });
-
-      const filteredMatches = loadedMatches
-        .filter((match) => match.visibility === "public" || allowedGroupIds.has(match.groupId))
-        .sort((a, b) => a.horaInicio.toMillis() - b.horaInicio.toMillis());
-
-      setMatches(filteredMatches);
-      setGroupsMap(map);
-      setMatchesLoading(false);
-    });
-
-    return () => unsub();
-  }, [firebaseUser?.uid, userDoc?.roles]);
-
   useEffect(() => {
     if (!firebaseUser?.uid) {
-      setUserStats({ groupsCount: 0, adminGroupsCount: 0, myUpcomingMatchesCount: 0 });
+      setUserStats({ groupsCount: 0, adminGroupsCount: 0 });
       setUserStatsLoading(false);
       return;
     }
@@ -261,53 +179,19 @@ export default function DashboardPage() {
     const loadUserStats = async () => {
       setUserStatsLoading(true);
       try {
-        const [memberGroupsSnap, adminGroupsSnap, participationsSnap] = await Promise.all([
+        const [memberGroupsSnap, adminGroupsSnap] = await Promise.all([
           getDocs(query(collection(db, "groups"), where("memberIds", "array-contains", firebaseUser.uid))),
           getDocs(query(collection(db, "groups"), where("adminIds", "array-contains", firebaseUser.uid))),
-          getDocs(query(collection(db, "participations"), where("userId", "==", firebaseUser.uid))),
         ]);
 
         const groupIds = new Set<string>();
         memberGroupsSnap.docs.forEach((docSnap) => groupIds.add(docSnap.id));
         adminGroupsSnap.docs.forEach((docSnap) => groupIds.add(docSnap.id));
 
-        const matchIds = Array.from(
-          new Set(
-            participationsSnap.docs
-              .map((docSnap) => String((docSnap.data() as { matchId?: string }).matchId || ""))
-              .filter(Boolean)
-          )
-        );
-
-        const now = Timestamp.now().toMillis();
-        let upcomingCount = 0;
-
-        if (matchIds.length > 0) {
-          const idBatches = chunkArray(matchIds, 10);
-          const matchSnaps = await Promise.all(
-            idBatches.map((batch) => getDocs(query(collection(db, "matches"), where("__name__", "in", batch))))
-          );
-
-          matchSnaps.forEach((matchSnap) => {
-            matchSnap.docs.forEach((docSnap) => {
-              const matchData = docSnap.data() as { horaInicio?: Timestamp; estado?: string };
-              if (
-                matchData.horaInicio
-                && typeof matchData.horaInicio.toMillis === "function"
-                && matchData.horaInicio.toMillis() > now
-                && SOCIAL_MATCH_STATUSES.includes((matchData.estado || "") as (typeof SOCIAL_MATCH_STATUSES)[number])
-              ) {
-                upcomingCount += 1;
-              }
-            });
-          });
-        }
-
         if (!active) return;
         setUserStats({
           groupsCount: groupIds.size,
           adminGroupsCount: adminGroupsSnap.size,
-          myUpcomingMatchesCount: upcomingCount,
         });
       } finally {
         if (active) {
@@ -352,6 +236,12 @@ export default function DashboardPage() {
   }, [firebaseUser?.uid, userDoc?.roles]);
 
   useEffect(() => {
+    if (userDoc?.roles !== "admin") {
+      setActiveTournamentCards([]);
+      setTournamentLoading(false);
+      return;
+    }
+
     const loadTournamentCards = async () => {
       const tournamentsSnap = await getDocs(query(collection(db, "tournaments"), where("status", "==", "activo")));
 
@@ -486,7 +376,7 @@ export default function DashboardPage() {
     };
 
     loadTournamentCards().finally(() => setTournamentLoading(false));
-  }, []);
+  }, [userDoc?.roles]);
 
 
   useEffect(() => {
@@ -549,7 +439,7 @@ export default function DashboardPage() {
     return () => unsub();
   }, [firebaseUser?.uid]);
 
-  const loading = matchesLoading || tournamentLoading;
+  const loading = tournamentLoading;
 
   /* =====================
      SKELETON
@@ -728,12 +618,12 @@ export default function DashboardPage() {
               </article>
 
               <article className="rounded-md border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">
-                <p className="text-xs text-neutral-500">Próximos partidos</p>
+                <p className="text-xs text-neutral-500">Actividad</p>
                 <p className="text-2xl font-bold">
-                  {userStatsLoading ? "..." : userStats.myUpcomingMatchesCount}
+                  {userStatsLoading ? "..." : activeTournamentCards.length}
                 </p>
                 <p className="text-sm text-neutral-500">
-                  {activeTournamentCards.length} torneos activos
+                  torneos activos
                 </p>
               </article>
 
@@ -750,9 +640,9 @@ export default function DashboardPage() {
       )}
 
       <UpcomingActivitiesSection
-        matches={matches}
+        matches={[]}
         tournaments={activeTournamentCards}
-        groupsMap={groupsMap}
+        groupsMap={{}}
         userId={firebaseUser?.uid}
         onSelectTournament={setSelectedTournamentCard}
       />

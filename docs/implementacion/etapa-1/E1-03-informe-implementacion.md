@@ -150,11 +150,24 @@ La corrección vino de la revisión puntual de E1-03, que identificó dos hallaz
 
 Veredicto: `UAT E1-03 APROBADA`.
 
-La UAT anterior aprobó el retiro de `matches`; el smoke test breve posterior a esta corrección debe confirmar que la restauración del comportamiento legado de torneos no altera ese resultado. E1-03 continúa limitado al retiro del consumo global de `matches` y no diseña ni corrige el acceso futuro a torneos.
+La UAT anterior aprobó el retiro de `matches`. El smoke posterior a la corrección fue incompleto: los emuladores locales, el frontend local, la rama, el HEAD y el worktree fueron aprobados, pero no se pudo completar la autenticación del usuario sintético porque Google Sign-In no estaba disponible contra Auth Emulator. Por ello quedaron `NO EJECUTADO` el dashboard autenticado, la ausencia observable de `matches` autenticado y la navegación Cuenta/Persona. No se observó un fallo funcional nuevo; el commit correctivo solo retiró un guard de torneos fuera de alcance y restauró la dependencia `[]` del baseline.
 
-Este informe no declara cierre del incremento, integración ni publicación remota. El siguiente paso autorizado es el versionado local de esta corrección.
+## 15. Reverificación y estado final
 
-## 15. Inventario Git final
+- Commit correctivo: `42a7774b8d64e34e0271a1d2a1d0f7772c2bbffc`.
+- Desviación detectada: la restricción de carga de torneos a administradores globales excedía E1-03; fue retirada.
+- Stage 0 posterior: aprobado; unitarias `72/72`, sintaxis `126/126`, Emulator Suite `43/43`, build `19/19` páginas y `git diff --check` correcto.
+- Mantenimiento posterior: `7/7`, código de salida `0`.
+- Smoke posterior: emuladores locales aprobados, frontend local aprobado, rama/HEAD/worktree aprobados; autenticación sintética Google no disponible, por lo que las comprobaciones autenticadas quedaron `NO EJECUTADO`.
+- La UAT completa anterior se conserva como evidencia de aceptación funcional.
+- El riesgo residual de imports dinámicos arbitrarios del detector estático permanece aceptado; el dashboard actual no los usa para acceder a `matches`.
+- El acceso futuro a torneos queda pendiente de definición en un incremento funcional separado, sin decisión normativa dentro de E1-03.
+
+Estado: `E1-03 IMPLEMENTADO, VERIFICADO Y ACEPTADO — LISTO PARA CIERRE`.
+
+Este informe no declara despliegue remoto.
+
+## 16. Inventario Git final
 
 Se verificó el inventario final con:
 

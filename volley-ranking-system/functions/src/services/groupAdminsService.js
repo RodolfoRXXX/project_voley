@@ -1,4 +1,20 @@
+function isCanonicalGroup(group = {}) {
+  return group?.schemaVersion === 1;
+}
+
+function assertLegacyGroup(group = {}) {
+  if (isCanonicalGroup(group)) {
+    const error = new Error("CANONICAL_GROUP_NOT_SUPPORTED_BY_LEGACY_FLOW");
+    error.code = "failed-precondition";
+    throw error;
+  }
+  return group;
+}
+
 function normalizeGroupAdmins(group = {}) {
+  if (isCanonicalGroup(group)) {
+    return { admins: [], ownerId: null, adminIds: [] };
+  }
   if (Array.isArray(group.admins) && group.admins.length > 0) {
     const deduped = [];
     const seen = new Set();
@@ -69,6 +85,8 @@ function isGroupMember(group, uid) {
 }
 
 module.exports = {
+  assertLegacyGroup,
+  isCanonicalGroup,
   normalizeGroupAdmins,
   isGroupAdmin,
   isGroupMember,

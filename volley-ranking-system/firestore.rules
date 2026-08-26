@@ -25,6 +25,7 @@ service cloud.firestore {
 
     function isGroupMemberByData(group) {
       return signedIn()
+        && group.get("schemaVersion", 0) != 1
         && (hasId(group.get("memberIds", []), request.auth.uid)
           || hasId(group.get("adminIds", []), request.auth.uid)
           || group.get("ownerId", null) == request.auth.uid);
@@ -32,6 +33,7 @@ service cloud.firestore {
 
     function isGroupAdminByData(group) {
       return signedIn()
+        && group.get("schemaVersion", 0) != 1
         && (hasId(group.get("adminIds", []), request.auth.uid)
           || group.get("ownerId", null) == request.auth.uid);
     }
@@ -105,14 +107,24 @@ service cloud.firestore {
     }
 
     match /groups/{groupId} {
-      allow get: if isAppAdmin() || isGroupMemberByData(resource.data);
-      allow list: if isAppAdmin();
-      allow list: if signedIn() && request.auth.uid in resource.data.memberIds;
-      allow list: if signedIn() && request.auth.uid in resource.data.adminIds;
-      allow list: if signedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isAppAdmin() && isGroupAdmin();
-      allow update: if isAppAdmin() && isExistingGroupAdmin();
+      allow get: if resource.data.get("schemaVersion", 0) != 1
+        && (isAppAdmin() || isGroupMemberByData(resource.data));
+      // Legacy list queries remain limited to embedded relationship arrays.
+      // Canonical schema v1 has neither field, so these clauses cannot expose it.
+      allow list: if signedIn()
+        && request.auth.uid in resource.data.get("memberIds", []);
+      allow list: if signedIn()
+        && request.auth.uid in resource.data.get("adminIds", []);
+      allow create: if request.resource.data.get("schemaVersion", 0) != 1
+        && isAppAdmin() && isGroupAdmin();
+      allow update: if resource.data.get("schemaVersion", 0) != 1
+        && request.resource.data.get("schemaVersion", 0) != 1
+        && isAppAdmin() && isExistingGroupAdmin();
       allow delete: if false;
+    }
+
+    match /groupCreationGuards/{userId} {
+      allow read, write: if false;
     }
 
     match /matches/{matchId} {

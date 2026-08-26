@@ -32,6 +32,10 @@ export default function AppSidebar() {
       href: "/dashboard",
     },
     {
+      label: "Mis Grupos",
+      href: "/dashboard/groups",
+    },
+    {
       label: "Grupos",
       href: "/groups",
     },

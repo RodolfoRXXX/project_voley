@@ -103,7 +103,14 @@ const personTestPath = path.join(
   "emulator",
   "personE1.test.js"
 );
-const command = `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
+const groupTestPath = path.join(
+  systemRoot,
+  "functions",
+  "test",
+  "emulator",
+  "groupE2.test.js"
+);
+const command = `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
 const args = [
   "emulators:exec",
   "--project",

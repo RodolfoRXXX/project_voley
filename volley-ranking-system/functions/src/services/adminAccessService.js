@@ -3,6 +3,7 @@ const { db } = require("../firebase");
 const {
   isGroupAdmin,
   isGroupOwner,
+  assertLegacyGroup,
 } = require("./groupAdminsService");
 
 async function assertIsAdmin(uid) {
@@ -24,6 +25,11 @@ async function assertGroupAdmin(groupId, uid) {
   }
 
   const group = groupSnap.data();
+  try {
+    assertLegacyGroup(group);
+  } catch (_error) {
+    throw new functions.https.HttpsError("failed-precondition", "Este flujo legado no admite Grupos canónicos");
+  }
 
   if (!isGroupAdmin(group, uid)) {
     throw new functions.https.HttpsError(
@@ -43,6 +49,11 @@ async function assertGroupOwner(groupId, uid) {
   }
 
   const group = groupSnap.data();
+  try {
+    assertLegacyGroup(group);
+  } catch (_error) {
+    throw new functions.https.HttpsError("failed-precondition", "Este flujo legado no admite Grupos canónicos");
+  }
 
   if (!isGroupOwner(group, uid)) {
     throw new functions.https.HttpsError(

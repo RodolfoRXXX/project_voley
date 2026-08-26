@@ -1,6 +1,6 @@
 const functions = require("firebase-functions/v1");
 const { admin, db } = require("./firebase");
-const { normalizeGroupAdmins } = require("./services/groupAdminsService");
+const { isCanonicalGroup, normalizeGroupAdmins } = require("./services/groupAdminsService");
 const { sendEmail, getWebAppUrl } = require("./services/emailService");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { emitDomainEvent } = require("./events/domainEventBus");
@@ -127,6 +127,7 @@ function cleanStringArray(value) {
 }
 
 function getGroupAdminIds(group = {}) {
+  if (isCanonicalGroup(group)) return [];
   const normalizedAdminIds = cleanStringArray(group.adminIds);
   const adminIdsFromList = cleanStringArray(group.admins?.map((admin) => admin?.userId));
   const ownerFallbackIds = cleanStringArray([group.ownerId]);
@@ -184,6 +185,7 @@ async function getGroupVisibleToAuthContext(groupId, authContext) {
   if (!groupSnap.exists) return null;
 
   const group = groupSnap.data();
+  if (isCanonicalGroup(group)) return null;
   const memberIds = cleanStringArray(group.memberIds);
   const adminIds = getGroupAdminIds(group);
   const uid = authContext?.uid ? String(authContext.uid) : null;

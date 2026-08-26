@@ -24,6 +24,7 @@ import AlertsPanel from "@/components/dashboard/AlertsPanel";
 import UpcomingActivitiesSection from "@/components/dashboard/UpcomingActivitiesSection";
 import type { PendingAlert } from "@/types/pendingAlerts";
 import { pendingAlertPriority } from "@/types/pendingAlerts";
+import { getOwnGroupsDashboard } from "@/services/groupsService";
 
 type TournamentDashboardMatch = {
   id: string;
@@ -73,7 +74,6 @@ type TournamentQueryRow = {
 
 type UserDashboardStats = {
   groupsCount: number;
-  adminGroupsCount: number;
 };
 
 export default function DashboardPage() {
@@ -87,7 +87,6 @@ export default function DashboardPage() {
   const [tournamentLoading, setTournamentLoading] = useState(true);
   const [userStats, setUserStats] = useState<UserDashboardStats>({
     groupsCount: 0,
-    adminGroupsCount: 0,
   });
   const [userStatsLoading, setUserStatsLoading] = useState(false);
   const [showCreateMatchModal, setShowCreateMatchModal] = useState(false);
@@ -154,7 +153,7 @@ export default function DashboardPage() {
       title: "Crear grupo",
       desc: "Sumá jugadores",
       icon: "👥",
-      onClick: () => router.push("/admin/groups/new"),
+      onClick: () => router.push("/dashboard/groups/new"),
     },
   ];
 
@@ -170,7 +169,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!firebaseUser?.uid) {
-      setUserStats({ groupsCount: 0, adminGroupsCount: 0 });
+      setUserStats({ groupsCount: 0 });
       setUserStatsLoading(false);
       return;
     }
@@ -179,19 +178,11 @@ export default function DashboardPage() {
     const loadUserStats = async () => {
       setUserStatsLoading(true);
       try {
-        const [memberGroupsSnap, adminGroupsSnap] = await Promise.all([
-          getDocs(query(collection(db, "groups"), where("memberIds", "array-contains", firebaseUser.uid))),
-          getDocs(query(collection(db, "groups"), where("adminIds", "array-contains", firebaseUser.uid))),
-        ]);
-
-        const groupIds = new Set<string>();
-        memberGroupsSnap.docs.forEach((docSnap) => groupIds.add(docSnap.id));
-        adminGroupsSnap.docs.forEach((docSnap) => groupIds.add(docSnap.id));
+        const ownGroups = await getOwnGroupsDashboard();
 
         if (!active) return;
         setUserStats({
-          groupsCount: groupIds.size,
-          adminGroupsCount: adminGroupsSnap.size,
+          groupsCount: ownGroups.items.length,
         });
       } finally {
         if (active) {
@@ -604,11 +595,9 @@ export default function DashboardPage() {
                 <p className="text-2xl font-bold">
                   {userStatsLoading ? "..." : userStats.groupsCount}
                 </p>
-                {userDoc?.roles === "admin" && (
-                  <p className="text-sm text-neutral-500">
-                    {userStats.adminGroupsCount} como admin
-                  </p>
-                )}
+                <Link href="/dashboard/groups" className="text-sm font-medium text-orange-600 hover:text-orange-700">
+                  Ver Mis Grupos
+                </Link>
               </article>
 
               <article className="rounded-md border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">

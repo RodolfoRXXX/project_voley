@@ -3,34 +3,8 @@
 // services/adminGroupService.js
 
 const admin = require("firebase-admin");
-const { FieldValue } = require("firebase-admin/firestore");
 const db = admin.firestore();
-
-/**
- * Crear grupo
- */
-async function crearGrupo({
-  groupId,
-  nombre,
-  descripcion,
-  adminId,
-  visibility = "private",
-  joinApproval = true,
-}) {
-  await db.collection("groups").doc(groupId).set({
-    nombre,
-    descripcion,
-    ownerId: adminId,
-    adminIds: [adminId],
-    admins: [{ userId: adminId, role: "owner", order: 0 }],
-    memberIds: [adminId],
-    activo: true,
-    partidosTotales: 0,
-    visibility,
-    joinApproval,
-    createdAt: FieldValue.serverTimestamp(),
-  });
-}
+const { assertLegacyGroup } = require("./groupAdminsService");
 
 /**
  * Modificar grupo
@@ -45,6 +19,7 @@ async function actualizarGrupo(groupId, cambios) {
   }
 
   const actual = snap.data();
+  assertLegacyGroup(actual);
   const cambiosReales = {};
 
   Object.entries(cambios).forEach(([key, value]) => {
@@ -62,6 +37,5 @@ async function actualizarGrupo(groupId, cambios) {
 }
 
 module.exports = {
-  crearGrupo,
   actualizarGrupo,
 };

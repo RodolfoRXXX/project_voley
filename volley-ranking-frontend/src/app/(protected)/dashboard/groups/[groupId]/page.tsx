@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 
 import { GroupLoading } from "@/components/groups/GroupLoading";
 import { GroupPageShell } from "@/components/groups/GroupPageShell";
+import { OpenSeasonSection } from "@/components/seasons/OpenSeasonSection";
 import { getGroupErrorMessage, getGroupErrorReason, getOwnGroup } from "@/services/groupsService";
 import type { OwnGroup } from "@/types/OwnGroup";
 
@@ -57,9 +58,10 @@ export default function OwnGroupDetailPage() {
             <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Podés administrar este Grupo como Owner. Las funciones que requieren integrantes estarán disponibles cuando se incorporen Membresías.</p>
           </aside>
           <section className="rounded-2xl border border-dashed border-[var(--border)] p-5 sm:p-7 lg:col-span-2">
-            <h2 className="font-semibold">Estado deportivo vacío</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">El Grupo todavía no tiene Membresías ni Temporada. Es un estado válido y no requiere completar posición, dorsal, cargo o rol.</p>
+            <h2 className="font-semibold">Membresías todavía vacías</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">El Grupo puede funcionar organizativamente sin Membresías. No hace falta completar posición, dorsal, cargo o rol para administrarlo como Owner.</p>
           </section>
+          <OpenSeasonSection groupId={group.id} />
         </div>
       ) : null}
     </GroupPageShell>

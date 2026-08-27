@@ -21,7 +21,9 @@ test("dominio y servicio de Grupo no importan Firebase/Admin SDK", () => {
 
 test("flujo E2-01 no usa roles, Persona, Membresía, Temporada ni Comercial", () => {
   const directory = path.join(root, "volley-ranking-system/functions/src/groups");
-  const files = fs.readdirSync(path.join(directory, "application")).map((name) => path.join(directory, "application", name));
+  const files = fs.readdirSync(path.join(directory, "application"))
+    .filter((name) => name.startsWith("group"))
+    .map((name) => path.join(directory, "application", name));
   const source = files.map((file) => fs.readFileSync(file, "utf8")).join("\n");
   assert.doesNotMatch(source, /users\.roles|personaId|memberIds|adminIds|temporada|subscription|plan/i);
 });

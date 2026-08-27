@@ -127,6 +127,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /seasons/{seasonId} {
+      allow read, write: if false;
+    }
+
+    match /openSeasonGuards/{groupId} {
+      allow read, write: if false;
+    }
+
     match /matches/{matchId} {
       allow read: if isAppAdmin()
         || isGroupMemberById(resource.data.groupId);

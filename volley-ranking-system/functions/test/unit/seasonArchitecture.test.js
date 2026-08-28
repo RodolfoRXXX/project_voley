@@ -70,7 +70,7 @@ test("frontend cubre vacío, formulario, validación, retry estable, confirmaci�
   assert.match(form, /intentSignature/);
   assert.match(form, /attemptedPayload !== intentSignature/);
   assert.match(form, /Owner.*Persona.*Membresía/);
-  assert.match(detail, /Membresías todavía vacías/);
+  assert.match(detail, /OwnMembershipSection/);
   assert.doesNotMatch(`${form}\n${section}`, /overflow-x|Partido|Torneo|posición|dorsal/);
 });
 

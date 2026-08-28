@@ -135,6 +135,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /memberships/{membershipId} {
+      allow read, write: if false;
+    }
+
+    match /activeMembershipGuards/{guardId} {
+      allow read, write: if false;
+    }
+
     match /matches/{matchId} {
       allow read: if isAppAdmin()
         || isGroupMemberById(resource.data.groupId);

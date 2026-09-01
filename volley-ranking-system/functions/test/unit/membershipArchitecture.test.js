@@ -54,3 +54,48 @@ test("nuevo flujo no usa ni escribe contratos legacy o efectos laterales", () =>
   const source = files.map((file) => fs.readFileSync(file, "utf8")).join("\n");
   assert.doesNotMatch(source, /memberIds|adminIds|pendingRequestIds|pendingAdminRequestIds|playerIds|posicionesPreferidas|notification|alert|activity|payment|match|tournament/i);
 });
+
+test("E2-04 usa puertos member-safe, un único callable y capacidades internas no callables", () => {
+  const moduleSource = read("volley-ranking-system/functions/src/memberships/infrastructure/membershipModule.js");
+  const readerSource = read("volley-ranking-system/functions/src/memberships/infrastructure/firestoreMyCurrentGroupMembershipsReader.js");
+  const indexSource = read("volley-ranking-system/functions/index.js");
+  assert.match(moduleSource, /groups\/infrastructure\/memberContextModule/);
+  assert.doesNotMatch(readerSource, /firestore(Group|Season)Repository|openSeasonGuards|collection\("groups"\)|collection\("seasons"\)/);
+  assert.match(indexSource, /listMyCurrentGroupMemberships/);
+  assert.doesNotMatch(indexSource, /getMemberReadableGroupContext|getOpenSeasonContextForMembership/);
+  const memberContext = read("volley-ranking-system/functions/src/groups/infrastructure/firestoreMemberContext.js");
+  for (const pattern of [/collection\("seasons"\)/, /where\("groupId", "=="/, /where\("estado", "==", "abierta"\)/, /\.limit\(2\)/]) {
+    assert.match(memberContext, pattern);
+  }
+});
+
+test("consulta e índice E2-04 conservan orden exacto y no declaran __name__", () => {
+  const reader = read("volley-ranking-system/functions/src/memberships/infrastructure/firestoreMyCurrentGroupMembershipsReader.js");
+  for (const pattern of [/where\("personId", "=="/, /where\("estado", "==", "activa"\)/, /orderBy\("fechaIngreso", "desc"\)/, /orderBy\(FieldPath\.documentId\(\), "desc"\)/, /pageSize \+ 1/, /\.slice\(0, pageSize\)/]) assert.match(reader, pattern);
+  const indexes = JSON.parse(read("volley-ranking-system/firestore.indexes.json"));
+  const membershipIndexes = indexes.indexes.filter((index) => index.collectionGroup === "memberships");
+  assert.deepEqual(membershipIndexes, [
+    { collectionGroup: "memberships", queryScope: "COLLECTION", fields: [
+      { fieldPath: "personId", mode: "ASCENDING" }, { fieldPath: "groupId", mode: "ASCENDING" }, { fieldPath: "estado", mode: "ASCENDING" },
+    ] },
+    { collectionGroup: "memberships", queryScope: "COLLECTION", fields: [
+      { fieldPath: "personId", mode: "ASCENDING" }, { fieldPath: "estado", mode: "ASCENDING" }, { fieldPath: "fechaIngreso", mode: "DESCENDING" },
+    ] },
+  ]);
+  assert.equal(JSON.stringify(membershipIndexes).includes("__name__"), false);
+});
+
+test("dashboard separa ownership y pertenencia sin Firestore ni navegación administrativa member-scoped", () => {
+  const page = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/page.tsx");
+  const section = read("volley-ranking-frontend/src/components/memberships/MyCurrentGroupMembershipsSection.tsx");
+  const service = read("volley-ranking-frontend/src/services/membershipsService.ts");
+  assert.match(page, /Grupos que administrás/);
+  assert.match(section, /Grupos que integrás/);
+  assert.match(section, /PERSON_REQUIRED/);
+  assert.match(section, /Ver página siguiente/);
+  assert.match(section, /aria-live|role="alert"/);
+  assert.match(section, /focus-visible/);
+  assert.doesNotMatch(section, /dashboard\/groups\/\[groupId\]|href=.*dashboard\/groups|profile\/groups|firebase\/firestore/);
+  assert.match(service, /listMyCurrentGroupMemberships/);
+  assert.doesNotMatch(`${page}\n${section}\n${service}`, /firebase\/firestore|collection\(|getDoc\(/);
+});

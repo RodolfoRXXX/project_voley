@@ -2,6 +2,7 @@ import { httpsCallable } from "firebase/functions";
 
 import { functions } from "@/lib/firebase";
 import type { MembershipErrorReason, OwnMembership } from "@/types/OwnMembership";
+import type { ListMyCurrentGroupMembershipsResult } from "@/types/MyCurrentGroupMembership";
 
 export interface CreateMyMembershipInput { groupId: string; idempotencyKey: string; }
 export interface CreateMyMembershipResult {
@@ -11,6 +12,7 @@ export interface CreateMyMembershipResult {
 
 const createCallable = httpsCallable<CreateMyMembershipInput, CreateMyMembershipResult>(functions, "createMyMembershipForOwnedGroup");
 const getCallable = httpsCallable<{ groupId: string }, { membership: OwnMembership | null }>(functions, "getMyMembershipForOwnedGroup");
+const listMyCurrentGroupsCallable = httpsCallable<{ pageSize?: number; cursor?: string }, ListMyCurrentGroupMembershipsResult>(functions, "listMyCurrentGroupMemberships");
 
 export async function createMyMembershipForOwnedGroup(input: CreateMyMembershipInput): Promise<CreateMyMembershipResult> {
   return (await createCallable(input)).data;
@@ -18,6 +20,10 @@ export async function createMyMembershipForOwnedGroup(input: CreateMyMembershipI
 
 export async function getMyMembershipForOwnedGroup(groupId: string): Promise<{ membership: OwnMembership | null }> {
   return (await getCallable({ groupId })).data;
+}
+
+export async function listMyCurrentGroupMemberships(input: { pageSize?: number; cursor?: string } = {}): Promise<ListMyCurrentGroupMembershipsResult> {
+  return (await listMyCurrentGroupsCallable(input)).data;
 }
 
 export function getMembershipErrorReason(error: unknown): MembershipErrorReason {

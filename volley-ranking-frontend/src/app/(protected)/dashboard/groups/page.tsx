@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { GroupCard } from "@/components/groups/GroupCard";
 import { GroupLoading } from "@/components/groups/GroupLoading";
 import { GroupPageShell } from "@/components/groups/GroupPageShell";
+import { MyCurrentGroupMembershipsSection } from "@/components/memberships/MyCurrentGroupMembershipsSection";
 import { getGroupErrorMessage, getGroupErrorReason, listOwnGroups } from "@/services/groupsService";
 import type { OwnGroup } from "@/types/OwnGroup";
 
@@ -43,6 +44,11 @@ export default function OwnGroupsPage() {
 
   return (
     <GroupPageShell title="Mis Grupos" description="Administrá los Grupos que te pertenecen por ownership, sin depender de roles globales.">
+      <section aria-labelledby="owned-groups-title" className="space-y-4">
+      <div>
+        <h2 id="owned-groups-title" className="text-2xl font-semibold">Grupos que administrás</h2>
+        <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">Organizaciones que te pertenecen por ownership.</p>
+      </div>
       {status === "loading" ? <GroupLoading /> : null}
       {status === "error" ? (
         <section aria-live="polite" className="rounded-xl border border-red-300 bg-red-50 p-5 text-red-900">
@@ -58,6 +64,8 @@ export default function OwnGroupsPage() {
         </section>
       ) : null}
       {status === "ready" && items.length > 0 ? <div className="grid gap-4">{items.map((group) => <GroupCard key={group.id} group={group} />)}</div> : null}
+      </section>
+      <MyCurrentGroupMembershipsSection />
     </GroupPageShell>
   );
 }

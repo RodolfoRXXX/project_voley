@@ -19,6 +19,24 @@
       ]
     },
     {
+      "collectionGroup": "memberships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "personId",
+          "mode": "ASCENDING"
+        },
+        {
+          "fieldPath": "estado",
+          "mode": "ASCENDING"
+        },
+        {
+          "fieldPath": "fechaIngreso",
+          "mode": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "pendingAlerts",
       "queryScope": "COLLECTION",
       "fields": [

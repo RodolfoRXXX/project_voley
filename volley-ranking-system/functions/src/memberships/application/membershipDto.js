@@ -13,4 +13,21 @@ function toMembershipDto(membership) {
   });
 }
 
-module.exports = { MEMBERSHIP_DTO_KEYS, toMembershipDto };
+function toMyCurrentGroupMembershipItem(membership, group) {
+  return Object.freeze({
+    membership: Object.freeze({
+      id: membership.membershipId,
+      seasonId: membership.seasonId,
+      estado: membership.estado,
+      fechaIngreso: membership.fechaIngreso.toDate().toISOString(),
+    }),
+    group: Object.freeze({
+      id: group.id,
+      nombre: group.nombre,
+      deporte: group.deporte,
+      estado: group.estado,
+    }),
+  });
+}
+
+module.exports = { MEMBERSHIP_DTO_KEYS, toMembershipDto, toMyCurrentGroupMembershipItem };

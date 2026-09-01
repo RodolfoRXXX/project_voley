@@ -8,13 +8,15 @@ const { createFirestorePersonRepository } = require("../../persons/infrastructur
 const { createFirestoreSelfPersonReader } = require("../../infrastructure/firestoreSelfPersonReader");
 const groupService = require("../../groups/infrastructure/groupModule");
 const seasonService = require("../../groups/infrastructure/seasonModule");
+const memberContext = require("../../groups/infrastructure/memberContextModule");
 const { createFirestoreGroupRepository } = require("../../groups/infrastructure/firestoreGroupRepository");
 const { createFirestoreSelfAccountReader } = require("../../groups/infrastructure/firestoreSelfAccountReader");
 const { createMembershipService } = require("../application/membershipService");
 const { createFirestoreActiveMembershipGuard } = require("./firestoreActiveMembershipGuard");
 const { createFirestoreMembershipRepository } = require("./firestoreMembershipRepository");
 const { createFirestoreMyMembershipReader } = require("./firestoreMyMembershipReader");
-const { createOpenSeasonContextAdapter, createOwnedGroupContextAdapter, createSelfPersonContextAdapter } = require("./membershipExternalContexts");
+const { createFirestoreMyCurrentGroupMembershipsReader } = require("./firestoreMyCurrentGroupMembershipsReader");
+const { createMemberGroupContextAdapter, createOpenSeasonContextAdapter, createOwnedGroupContextAdapter, createSelfPersonContextAdapter } = require("./membershipExternalContexts");
 
 const accountService = createAccountService({ userRepository: createFirestoreUserRepository({ db }) });
 const selfAccountReader = createFirestoreSelfAccountReader({ accountService });
@@ -33,4 +35,6 @@ module.exports = createMembershipService({
   membershipRepository,
   activeMembershipGuard: createFirestoreActiveMembershipGuard({ db, groupRepository }),
   myMembershipReader: createFirestoreMyMembershipReader({ db, groupRepository, membershipRepository }),
+  myCurrentGroupMembershipsReader: createFirestoreMyCurrentGroupMembershipsReader({ db, membershipRepository }),
+  memberGroupContext: createMemberGroupContextAdapter({ memberContext }),
 });

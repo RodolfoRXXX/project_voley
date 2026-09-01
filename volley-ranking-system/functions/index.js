@@ -44,6 +44,7 @@ exports.getOpenSeasonContext = require("./callables/getOpenSeasonContext");
 exports.getOwnSeason = require("./callables/getOwnSeason");
 exports.createMyMembershipForOwnedGroup = require("./callables/createMyMembershipForOwnedGroup");
 exports.getMyMembershipForOwnedGroup = require("./callables/getMyMembershipForOwnedGroup");
+exports.listMyCurrentGroupMemberships = require("./callables/listMyCurrentGroupMemberships");
 exports.getFormaciones = require("./callables/getFormaciones");
 exports.createMatch = require("./callables/createMatch");
 exports.editMatch = require("./callables/editMatch");

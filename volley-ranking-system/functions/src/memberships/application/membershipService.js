@@ -1,7 +1,8 @@
 "use strict";
 
 const { buildMembership, InvalidMembershipStateError } = require("../domain/membership");
-const { toMembershipDto } = require("./membershipDto");
+const { toMembershipDto, toMyCurrentGroupMembershipItem } = require("./membershipDto");
+const { decodeMyGroupsCursor, encodeMyGroupsCursor } = require("./membershipCursor");
 const {
   MembershipAccountRequiredError,
   MembershipDependencyUnavailableError,
@@ -14,13 +15,14 @@ const {
   MembershipValidationError,
 } = require("./membershipErrors");
 const { activeMembershipGuardId, hashMembershipIdempotencyKey, hashMembershipRequest } = require("./membershipHashing");
+const { isTransientDependencyError } = require("../../shared/application/transientDependencyError");
 
 function requireActor(identity) {
   if (!identity || typeof identity.userId !== "string" || !identity.userId.trim()) throw new MembershipUnauthenticatedError();
   return identity.userId.trim();
 }
 
-function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, myMembershipReader }) {
+function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, myMembershipReader, myCurrentGroupMembershipsReader, memberGroupContext }) {
   if (!selfAccountReader || !selfPersonContext || !ownedGroupContext || !openSeasonContext || !membershipRepository || !activeMembershipGuard || !myMembershipReader) {
     throw new TypeError("Membership service dependencies are required");
   }
@@ -32,7 +34,8 @@ function createMembershipService({ selfAccountReader, selfPersonContext, ownedGr
       if (account.userId !== userId) throw new MembershipDependencyUnavailableError();
     } catch (error) {
       if (error instanceof MembershipError) throw error;
-      throw new MembershipDependencyUnavailableError({ cause: error });
+      if (isTransientDependencyError(error)) throw new MembershipDependencyUnavailableError({ cause: error });
+      throw new MembershipInternalError({ cause: error });
     }
   }
 
@@ -102,6 +105,39 @@ function createMembershipService({ selfAccountReader, selfPersonContext, ownedGr
       } catch (error) {
         if (error instanceof MembershipError) throw error;
         throw new MembershipDependencyUnavailableError({ cause: error });
+      }
+    },
+
+    async listMyCurrentGroupMemberships(identity, input) {
+      const userId = requireActor(identity);
+      await requireAccount(userId);
+      const person = await requirePerson(userId);
+      if (!myCurrentGroupMembershipsReader || !memberGroupContext) {
+        throw new MembershipDependencyUnavailableError();
+      }
+      const position = input.cursor ? decodeMyGroupsCursor(input.cursor) : null;
+      try {
+        const page = await myCurrentGroupMembershipsReader.listPage({
+          personId: person.personId,
+          pageSize: input.pageSize,
+          position,
+        });
+        const items = [];
+        for (const candidate of page.candidates) {
+          await myCurrentGroupMembershipsReader.requireIntegrity({ personId: person.personId, candidate });
+          const group = await memberGroupContext.getGroup({ groupId: candidate.groupId });
+          const openSeason = await memberGroupContext.getOpenSeason({ groupId: candidate.groupId });
+          if (!openSeason || openSeason.id !== candidate.seasonId) continue;
+          items.push(toMyCurrentGroupMembershipItem(candidate, group));
+        }
+        const nextCursor = page.hasLookahead
+          ? encodeMyGroupsCursor(page.cursorAnchor)
+          : null;
+        return Object.freeze({ items: Object.freeze(items), nextCursor });
+      } catch (error) {
+        if (error instanceof MembershipError) throw error;
+        if (isTransientDependencyError(error)) throw new MembershipDependencyUnavailableError({ cause: error });
+        throw new MembershipInternalError({ cause: error });
       }
     },
   };

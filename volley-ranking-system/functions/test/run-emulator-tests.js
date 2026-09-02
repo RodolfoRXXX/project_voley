@@ -131,9 +131,11 @@ const membershipListTestPath = path.join(
   "emulator",
   "membershipListE2.test.js"
 );
-const command = process.env.E2_04_FOCAL === "1"
-  ? `node --test --test-concurrency=1 "${membershipListTestPath}"`
-  : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${seasonTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
+const command = process.env.E2_05_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${membershipTestPath}"`
+  : process.env.E2_04_FOCAL === "1"
+    ? `node --test --test-concurrency=1 "${membershipListTestPath}"`
+    : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${seasonTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
 const args = [
   "emulators:exec",
   "--project",

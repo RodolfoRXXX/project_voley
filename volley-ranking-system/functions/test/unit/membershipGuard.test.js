@@ -8,6 +8,8 @@ const {
   MembershipConflictError,
   MembershipDependencyUnavailableError,
   MembershipIncompatibleStateError,
+  MembershipNotFoundError,
+  MembershipReactivationRequiredError,
 } = require("../../src/memberships/application/membershipErrors");
 const {
   ACTIVE_MEMBERSHIP_GUARD_FIELDS,
@@ -15,6 +17,7 @@ const {
   createFirestoreActiveMembershipGuard,
   hydrateActiveMembershipGuard,
   isAmbiguousTransactionFailure,
+  isClosedFinalizedMembershipQueryFailure,
   isMembershipContention,
   mapInfrastructureError,
   resolveAfterContention,
@@ -164,6 +167,109 @@ test("INTERNAL transaccional sólo resuelve con competidor confirmado", async ()
     membershipRepository: absent.input.membershipRepository,
   }), (error) => error === original);
   assert.deepEqual(absent.reads, ["guard", "active-pair"]);
+});
+
+function finalizedQueryCode3Setup(authoritativeResult) {
+  const original = Object.assign(new Error("arbitrary diagnostic text"), { code: 3 });
+  const membership = {
+    membershipId: "membership-candidate",
+    ...context,
+    seasonId: "season-1",
+    estado: "activa",
+  };
+  const activeGuard = {
+    membershipId: "membership-stored",
+    ...context,
+    seasonId: "season-1",
+    idempotencyKeyHash: "a".repeat(64),
+    requestHash: "b".repeat(64),
+    createdAt: timestamp,
+    guardVersion: 1,
+  };
+  const stored = { ...membership, membershipId: "membership-stored" };
+  const lifecycleGuard = {
+    reference() { return { kind: "lifecycle-ref" }; },
+    hydrate() { return null; },
+    async getForOwner() {
+      if (authoritativeResult instanceof Error) throw authoritativeResult;
+      return authoritativeResult || { kind: "active-only", membership: stored, activeGuard };
+    },
+  };
+  const membershipRepository = {
+    activePairQuery() { return { kind: "active-query" }; },
+    finalizedPairQuery() { return { kind: "finalized-query" }; },
+    createInitial() { assert.fail("code 3 must not reach writes"); },
+  };
+  const transaction = {
+    async getAll() {
+      return [
+        { exists: false, id: guardId, data: () => undefined },
+        { exists: false, id: "lifecycle", data: () => undefined },
+      ];
+    },
+    async get(query) {
+      if (query.kind === "active-query") return { empty: true };
+      if (query.kind === "finalized-query") throw original;
+      throw new Error("unexpected query");
+    },
+  };
+  const db = {
+    collection() { return { doc() { return { kind: "active-ref" }; } }; },
+    async runTransaction(callback) { return callback(transaction); },
+  };
+  const guard = createFirestoreActiveMembershipGuard({
+    db,
+    groupRepository: { async getById() { return { estado: "activo", ownerId: "owner-1" }; } },
+  });
+  return {
+    original,
+    activeGuard,
+    stored,
+    invoke(overrides = {}) {
+      return guard.confirmActiveMembership({
+        userId: "owner-1",
+        membership,
+        guardId,
+        lifecycleGuardId: "lifecycle",
+        idempotencyKeyHash: "a".repeat(64),
+        requestHash: "b".repeat(64),
+        membershipRepository,
+        lifecycleGuard,
+        ...overrides,
+      });
+    },
+  };
+}
+
+test("code 3 de finalized query recupera sólo una intención activa autoritativamente confirmada", async () => {
+  const same = finalizedQueryCode3Setup();
+  const result = await same.invoke();
+  assert.equal(result.outcome, "EXISTING_IDEMPOTENT");
+  assert.equal(result.membership, same.stored);
+  assert.equal(isClosedFinalizedMembershipQueryFailure(same.original), true);
+  assert.equal(isMembershipContention(same.original), false);
+  assert.equal(isAmbiguousTransactionFailure(same.original), false);
+
+  const differentState = {
+    kind: "active-only",
+    membership: same.stored,
+    activeGuard: { ...same.activeGuard, idempotencyKeyHash: "c".repeat(64) },
+  };
+  await assert.rejects(() => finalizedQueryCode3Setup(differentState).invoke(), MembershipAlreadyExistsError);
+});
+
+test("code 3 de finalized query distingue lifecycle, corrupción y ausencia sin DTO activo falso", async () => {
+  const finalizedMembership = { ...finalizedQueryCode3Setup().stored, estado: "finalizada", schemaVersion: 2 };
+  await assert.rejects(
+    () => finalizedQueryCode3Setup({ kind: "lifecycle-only", membership: finalizedMembership }).invoke(),
+    MembershipReactivationRequiredError
+  );
+  await assert.rejects(
+    () => finalizedQueryCode3Setup(new MembershipIncompatibleStateError()).invoke(),
+    MembershipIncompatibleStateError
+  );
+  const absent = finalizedQueryCode3Setup(new MembershipNotFoundError());
+  await assert.rejects(() => absent.invoke(), (error) => error === absent.original);
 });
 
 test("relectura tras contención confirma Membresía de otra intención", async () => {

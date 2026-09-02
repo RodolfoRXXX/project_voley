@@ -24,6 +24,13 @@ function createFirestoreMembershipRepository({ db }) {
         .where("estado", "==", "activa")
         .limit(2);
     },
+    finalizedPairQuery({ personId, groupId }) {
+      return db.collection("memberships")
+        .where("personId", "==", personId)
+        .where("groupId", "==", groupId)
+        .where("estado", "==", "finalizada")
+        .limit(2);
+    },
     createInitial(transaction, membership) {
       transaction.create(reference(membership.membershipId), {
         personId: membership.personId,
@@ -32,6 +39,13 @@ function createFirestoreMembershipRepository({ db }) {
         estado: membership.estado,
         fechaIngreso: FieldValue.serverTimestamp(),
         createdAt: FieldValue.serverTimestamp(),
+        schemaVersion: membership.schemaVersion,
+      });
+    },
+    updateFinalized(transaction, membership) {
+      transaction.update(reference(membership.membershipId), {
+        estado: membership.estado,
+        fechaEgreso: membership.fechaEgreso,
         schemaVersion: membership.schemaVersion,
       });
     },

@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { createMembershipService } = require("../../src/memberships/application/membershipService");
-const { activeMembershipGuardId } = require("../../src/memberships/application/membershipHashing");
+const { activeMembershipGuardId, membershipLifecycleGuardId } = require("../../src/memberships/application/membershipHashing");
 const {
   createFirestoreActiveMembershipGuard,
   isMembershipContention,
@@ -80,6 +80,12 @@ test("E2-03 crea y consulta Membresía propia del Owner con unicidad transaccion
     orphanGroup: "e2-03-group-orphan", orphanSeason: "e2-03-season-orphan", brokenGuardGroup: "e2-03-group-broken-guard", brokenGuardSeason: "e2-03-season-broken-guard",
     secondGroup: "e2-03-group-second", secondSeason: "e2-03-season-second", raceGroup: "e2-03-group-race", raceSeason: "e2-03-season-race",
     concurrentRaceGroup: "e2-03-group-concurrent-race", concurrentRaceSeason: "e2-03-season-concurrent-race",
+    finalizeGroup: "e2-03-e205-group-finalize", finalizeSeason: "e2-03-e205-season-finalize",
+    concurrentFinalizeGroup: "e2-03-e205-group-concurrent-finalize", concurrentFinalizeSeason: "e2-03-e205-season-concurrent-finalize",
+    noOpenFinalizeGroup: "e2-03-e205-group-no-open-finalize", noOpenFinalizeSeason: "e2-03-e205-season-no-open-finalize",
+    transferFinalizeGroup: "e2-03-e205-group-transfer-finalize", transferFinalizeSeason: "e2-03-e205-season-transfer-finalize",
+    raceFinalizeGroup: "e2-03-e205-group-race-finalize", raceFinalizeSeason: "e2-03-e205-season-race-finalize",
+    noneFinalizeGroup: "e2-03-e205-group-none-finalize", noneFinalizeSeason: "e2-03-e205-season-none-finalize",
   };
   const contentionCases = Array.from({ length: 20 }, (_, index) => ({
     groupId: index === 0 ? ids.differentGroup : `e2-03-group-contention-${String(index).padStart(2, "0")}`,
@@ -88,15 +94,20 @@ test("E2-03 crea y consulta Membresía propia del Owner con unicidad transaccion
   const membershipGroupIds = [
     ids.ownerGroup, ids.sameGroup, ...contentionCases.map((item) => item.groupId), ids.orphanGroup,
     ids.brokenGuardGroup, ids.secondGroup, ids.raceGroup, ids.concurrentRaceGroup,
+    ids.finalizeGroup, ids.concurrentFinalizeGroup, ids.noOpenFinalizeGroup,
+    ids.transferFinalizeGroup, ids.raceFinalizeGroup, ids.noneFinalizeGroup,
   ];
   const possibleGuardPairs = [
     [ids.ownerGroup, ids.person], [ids.orphanGroup, ids.person],
     [ids.brokenGuardGroup, ids.person], [ids.secondGroup, ids.person],
     [ids.raceGroup, ids.person], [ids.concurrentRaceGroup, ids.person], [ids.sameGroup, ids.samePerson],
+    [ids.finalizeGroup, ids.person], [ids.concurrentFinalizeGroup, ids.person], [ids.noOpenFinalizeGroup, ids.person],
+    [ids.transferFinalizeGroup, ids.person], [ids.raceFinalizeGroup, ids.person], [ids.noneFinalizeGroup, ids.person],
     ...contentionCases.map((item) => [item.groupId, ids.differentPerson]),
   ];
   for (const [groupId, personId] of possibleGuardPairs) {
     fixtures.register(db.collection("activeMembershipGuards").doc(activeMembershipGuardId(groupId, personId)));
+    fixtures.register(db.collection("membershipLifecycleGuards").doc(membershipLifecycleGuardId(groupId, personId)));
   }
   const callFunction = async (host, callableProjectId, name, data, idToken) => {
     const result = await invokeFunction(host, callableProjectId, name, data, idToken);
@@ -129,6 +140,12 @@ test("E2-03 crea y consulta Membresía propia del Owner con unicidad transaccion
       seedGroupAndSeason(db, ids.secondGroup, owner.uid, ids.secondSeason),
       seedGroupAndSeason(db, ids.raceGroup, owner.uid, ids.raceSeason),
       seedGroupAndSeason(db, ids.concurrentRaceGroup, owner.uid, ids.concurrentRaceSeason),
+      seedGroupAndSeason(db, ids.finalizeGroup, owner.uid, ids.finalizeSeason),
+      seedGroupAndSeason(db, ids.concurrentFinalizeGroup, owner.uid, ids.concurrentFinalizeSeason),
+      seedGroupAndSeason(db, ids.noOpenFinalizeGroup, owner.uid, ids.noOpenFinalizeSeason),
+      seedGroupAndSeason(db, ids.transferFinalizeGroup, owner.uid, ids.transferFinalizeSeason),
+      seedGroupAndSeason(db, ids.raceFinalizeGroup, owner.uid, ids.raceFinalizeSeason),
+      seedGroupAndSeason(db, ids.noneFinalizeGroup, owner.uid, ids.noneFinalizeSeason),
     ]);
     await db.collection("groups").doc(ids.noSeasonGroup).set({ nombre: "Sin temporada", deporte: "voleibol", ownerId: owner.uid, estado: "activo", createdAt: new Date(), schemaVersion: 1 });
 
@@ -313,14 +330,23 @@ test("E2-03 crea y consulta Membresía propia del Owner con unicidad transaccion
           callFunction(functionsHost, projectId, "createMyMembershipForOwnedGroup", command(fixture.groupId, `e2-03-contention-${String(index).padStart(2, "0")}-key-a`), concurrentDifferent.idToken),
           callFunction(functionsHost, projectId, "createMyMembershipForOwnedGroup", command(fixture.groupId, `e2-03-contention-${String(index).padStart(2, "0")}-key-b`), concurrentDifferent.idToken),
         ]);
+        const guardId = activeMembershipGuardId(fixture.groupId, ids.differentPerson);
+        const lifecycleId = membershipLifecycleGuardId(fixture.groupId, ids.differentPerson);
+        const [active, guard, lifecycle] = await Promise.all([
+          db.collection("memberships").where("personId", "==", ids.differentPerson).where("groupId", "==", fixture.groupId).where("estado", "==", "activa").get(),
+          db.collection("activeMembershipGuards").doc(guardId).get(),
+          db.collection("membershipLifecycleGuards").doc(lifecycleId).get(),
+        ]);
+        const persisted = {
+          activeCount: active.size,
+          activeGuardCount: guard.exists ? 1 : 0,
+          lifecycleGuardCount: lifecycle.exists ? 1 : 0,
+          correlated: active.size === 1 && guard.exists && guard.data().membershipId === active.docs[0].id,
+        };
+        assert.deepEqual(persisted, { activeCount: 1, activeGuardCount: 1, lifecycleGuardCount: 0, correlated: true }, JSON.stringify({ index, different, persisted }));
         assert.equal(different.filter((item) => item.body?.result?.outcome === "CREATED_ACTIVE").length, 1, JSON.stringify({ index, different }));
-        assert.equal(different.filter((item) => ["MEMBERSHIP_ALREADY_EXISTS", "CONFLICT"].includes(item.body?.error?.details?.reason)).length, 1, JSON.stringify({ index, different }));
-        assert.equal(different.some((item) => item.body?.error?.details?.reason === "INTERNAL_ERROR"), false, JSON.stringify({ index, different }));
-        const active = await db.collection("memberships").where("personId", "==", ids.differentPerson).where("groupId", "==", fixture.groupId).where("estado", "==", "activa").get();
-        assert.equal(active.size, 1);
-        const guard = await db.collection("activeMembershipGuards").doc(activeMembershipGuardId(fixture.groupId, ids.differentPerson)).get();
-        assert.equal(guard.exists, true);
-        assert.equal(guard.data().membershipId, active.docs[0].id);
+        assert.equal(different.filter((item) => ["MEMBERSHIP_ALREADY_EXISTS", "CONFLICT"].includes(item.body?.error?.details?.reason)).length, 1, JSON.stringify({ index, different, persisted }));
+        assert.equal(different.some((item) => item.body?.error?.details?.reason === "INTERNAL_ERROR"), false, JSON.stringify({ index, different, persisted }));
       }
     });
 
@@ -342,6 +368,9 @@ test("E2-03 crea y consulta Membresía propia del Owner con unicidad transaccion
       const multiple = await callFunction(functionsHost, projectId, "createMyMembershipForOwnedGroup", command(ids.orphanGroup, "e2-03-multiple-attempt-key-01"), owner.idToken);
       assert.equal(multiple.body?.error?.details?.reason, "INCOMPATIBLE_STATE");
       assert.equal((await db.collection("memberships").where("personId", "==", ids.person).where("groupId", "==", ids.orphanGroup).where("estado", "==", "activa").limit(2).get()).size, 2);
+      await db.collection("memberships").doc("e2-03-orphan-membership").delete();
+      await db.collection("memberships").doc("e2-03-second-orphan-membership").delete();
+      await db.collection("activeMembershipGuards").doc(brokenGuardId).delete();
     });
 
     await t.test("ownership transferido antes de invocar es autorización negativa normal", async () => {
@@ -400,15 +429,118 @@ test("E2-03 crea y consulta Membresía propia del Owner con unicidad transaccion
       assert.equal((await db.collection("activeMembershipGuards").doc(activeMembershipGuardId(ids.concurrentRaceGroup, ids.person)).get()).exists, false);
     });
 
+    await t.test("E2-05 transición exacta, repetición, consulta, CU-025 y E2-04", async () => {
+      const createdForFinalize = await callFunction(functionsHost, projectId, "createMyMembershipForOwnedGroup", command(ids.finalizeGroup, "e2-05-create-finalize-key-001"), owner.idToken);
+      assert.equal(createdForFinalize.body?.result?.outcome, "CREATED_ACTIVE", JSON.stringify(createdForFinalize.body));
+      const before = (await db.collection("memberships").doc(createdForFinalize.body.result.membership.id).get()).data();
+      const finalized = await callFunction(functionsHost, projectId, "finalizeMyMembershipForOwnedGroup", { groupId: ids.finalizeGroup }, owner.idToken);
+      assert.equal(finalized.body?.result?.outcome, "FINALIZED", JSON.stringify(finalized.body));
+      assert.deepEqual(Object.keys(finalized.body.result.membership).sort(), ["estado", "fechaEgreso", "fechaIngreso", "groupId", "id", "seasonId"]);
+      const membershipRef = db.collection("memberships").doc(createdForFinalize.body.result.membership.id);
+      const persisted = (await membershipRef.get()).data();
+      assert.deepEqual(Object.keys(persisted).sort(), ["createdAt", "estado", "fechaEgreso", "fechaIngreso", "groupId", "personId", "schemaVersion", "seasonId"]);
+      assert.equal(persisted.schemaVersion, 2);
+      assert.equal(persisted.estado, "finalizada");
+      for (const field of ["personId", "groupId", "seasonId", "fechaIngreso", "createdAt"]) assert.deepEqual(persisted[field], before[field]);
+      const activeId = activeMembershipGuardId(ids.finalizeGroup, ids.person);
+      assert.equal((await db.collection("activeMembershipGuards").doc(activeId).get()).exists, false);
+      const lifecycle = (await db.collection("membershipLifecycleGuards").doc(membershipLifecycleGuardId(ids.finalizeGroup, ids.person)).get()).data();
+      assert.deepEqual(Object.keys(lifecycle).sort(), ["creationIdempotencyKeyHash", "creationRequestHash", "finalizedAt", "groupId", "lifecycleGuardVersion", "membershipId", "personId", "seasonId"]);
+      assert.equal(lifecycle.finalizedAt.isEqual(persisted.fechaEgreso), true);
+      assert.equal(lifecycle.membershipId, createdForFinalize.body.result.membership.id);
+      const repeated = await callFunction(functionsHost, projectId, "finalizeMyMembershipForOwnedGroup", { groupId: ids.finalizeGroup }, owner.idToken);
+      assert.equal(repeated.body?.result?.outcome, "ALREADY_FINALIZED", JSON.stringify(repeated.body));
+      assert.equal(repeated.body.result.membership.fechaEgreso, finalized.body.result.membership.fechaEgreso);
+      const queried = await callFunction(functionsHost, projectId, "getMyMembershipForOwnedGroup", { groupId: ids.finalizeGroup }, owner.idToken);
+      assert.deepEqual(queried.body?.result?.membership, finalized.body.result.membership);
+      for (const key of ["e2-05-create-finalize-key-001", "e2-05-other-create-key-0001"]) {
+        const blocked = await callFunction(functionsHost, projectId, "createMyMembershipForOwnedGroup", command(ids.finalizeGroup, key), owner.idToken);
+        assert.equal(blocked.body?.error?.details?.reason, "MEMBERSHIP_REACTIVATION_REQUIRED", JSON.stringify(blocked.body));
+      }
+      const listed = await callFunction(functionsHost, projectId, "listMyCurrentGroupMemberships", { pageSize: 20 }, owner.idToken);
+      assert.equal(listed.status, 200, JSON.stringify(listed.body));
+      assert.equal(Array.isArray(listed.body?.result?.items), true, JSON.stringify(listed.body));
+      assert.equal(listed.body.result.items.some((item) => item.membership.id === createdForFinalize.body.result.membership.id), false);
+    });
+
+    await t.test("E2-05 payload, ausencia, Temporada no abierta y ownership fallan sin escribir", async () => {
+      const invalid = await callFunction(functionsHost, projectId, "finalizeMyMembershipForOwnedGroup", { groupId: ids.noneFinalizeGroup, personId: ids.person }, owner.idToken);
+      assert.equal(invalid.body?.error?.details?.reason, "VALIDATION_FAILED");
+      const none = await callFunction(functionsHost, projectId, "finalizeMyMembershipForOwnedGroup", { groupId: ids.noneFinalizeGroup }, owner.idToken);
+      assert.equal(none.body?.error?.details?.reason, "MEMBERSHIP_NOT_FOUND", JSON.stringify(none.body));
+
+      const noOpenCreated = await callFunction(functionsHost, projectId, "createMyMembershipForOwnedGroup", command(ids.noOpenFinalizeGroup, "e2-05-no-open-create-key-001"), owner.idToken);
+      assert.equal(noOpenCreated.body?.result?.outcome, "CREATED_ACTIVE");
+      await db.collection("openSeasonGuards").doc(ids.noOpenFinalizeGroup).delete();
+      await db.collection("seasons").doc(ids.noOpenFinalizeSeason).update({ estado: "cerrada" });
+      const noOpen = await callFunction(functionsHost, projectId, "finalizeMyMembershipForOwnedGroup", { groupId: ids.noOpenFinalizeGroup }, owner.idToken);
+      assert.equal(noOpen.body?.error?.details?.reason, "OPEN_SEASON_REQUIRED", JSON.stringify(noOpen.body));
+      assert.equal((await db.collection("memberships").doc(noOpenCreated.body.result.membership.id).get()).data().estado, "activa");
+      assert.equal((await db.collection("activeMembershipGuards").doc(activeMembershipGuardId(ids.noOpenFinalizeGroup, ids.person)).get()).exists, true);
+
+      await db.collection("openSeasonGuards").doc(ids.noOpenFinalizeGroup).set({ seasonId: "e2-05-season-missing", idempotencyKeyHash: "a".repeat(64), requestHash: "b".repeat(64), createdAt: new Date(), guardVersion: 1 });
+      const corruptSeason = await callFunction(functionsHost, projectId, "finalizeMyMembershipForOwnedGroup", { groupId: ids.noOpenFinalizeGroup }, owner.idToken);
+      assert.equal(corruptSeason.body?.error?.details?.reason, "INCOMPATIBLE_STATE", JSON.stringify(corruptSeason.body));
+      assert.equal((await db.collection("memberships").doc(noOpenCreated.body.result.membership.id).get()).data().estado, "activa");
+      await db.collection("openSeasonGuards").doc(ids.noOpenFinalizeGroup).delete();
+
+      const transferred = await callFunction(functionsHost, projectId, "createMyMembershipForOwnedGroup", command(ids.transferFinalizeGroup, "e2-05-transfer-create-key-01"), owner.idToken);
+      assert.equal(transferred.body?.result?.outcome, "CREATED_ACTIVE");
+      await db.collection("groups").doc(ids.transferFinalizeGroup).update({ ownerId: globalAdmin.uid });
+      const denied = await callFunction(functionsHost, projectId, "finalizeMyMembershipForOwnedGroup", { groupId: ids.transferFinalizeGroup }, owner.idToken);
+      assert.equal(denied.body?.error?.details?.reason, "NOT_AUTHORIZED");
+      assert.equal((await db.collection("memberships").doc(transferred.body.result.membership.id).get()).data().estado, "activa");
+    });
+
+    await t.test("E2-05 doble finalización y alta contra finalización convergen sin recrear", async () => {
+      const concurrentCreated = await callFunction(functionsHost, projectId, "createMyMembershipForOwnedGroup", command(ids.concurrentFinalizeGroup, "e2-05-concurrent-create-key"), owner.idToken);
+      assert.equal(concurrentCreated.body?.result?.outcome, "CREATED_ACTIVE");
+      const concurrent = await Promise.all([
+        callFunction(functionsHost, projectId, "finalizeMyMembershipForOwnedGroup", { groupId: ids.concurrentFinalizeGroup }, owner.idToken),
+        callFunction(functionsHost, projectId, "finalizeMyMembershipForOwnedGroup", { groupId: ids.concurrentFinalizeGroup }, owner.idToken),
+      ]);
+      assert.equal(concurrent.filter((item) => item.body?.result?.outcome === "FINALIZED").length, 1, JSON.stringify(concurrent));
+      assert.equal(concurrent.filter((item) => item.body?.result?.outcome === "ALREADY_FINALIZED").length, 1, JSON.stringify(concurrent));
+      assert.equal((await db.collection("memberships").where("groupId", "==", ids.concurrentFinalizeGroup).get()).size, 1);
+
+      const raceCreated = await callFunction(functionsHost, projectId, "createMyMembershipForOwnedGroup", command(ids.raceFinalizeGroup, "e2-05-race-create-key-0001"), owner.idToken);
+      assert.equal(raceCreated.body?.result?.outcome, "CREATED_ACTIVE");
+      const race = await Promise.all([
+        callFunction(functionsHost, projectId, "finalizeMyMembershipForOwnedGroup", { groupId: ids.raceFinalizeGroup }, owner.idToken),
+        callFunction(functionsHost, projectId, "createMyMembershipForOwnedGroup", command(ids.raceFinalizeGroup, "e2-05-race-other-key-0001"), owner.idToken),
+      ]);
+      assert.equal(race.some((item) => ["FINALIZED", "ALREADY_FINALIZED"].includes(item.body?.result?.outcome)), true, JSON.stringify(race));
+      assert.equal(race.some((item) => ["MEMBERSHIP_ALREADY_EXISTS", "MEMBERSHIP_REACTIVATION_REQUIRED", "CONFLICT"].includes(item.body?.error?.details?.reason)), true, JSON.stringify(race));
+      assert.equal((await db.collection("memberships").where("groupId", "==", ids.raceFinalizeGroup).get()).size, 1);
+      assert.equal((await db.collection("memberships").where("groupId", "==", ids.raceFinalizeGroup).where("estado", "==", "activa").get()).size, 0);
+    });
+
+    await t.test("E2-05 both y lifecycle corrupto fallan cerrados sin reparación", async () => {
+      const lifecycleRef = db.collection("membershipLifecycleGuards").doc(membershipLifecycleGuardId(ids.finalizeGroup, ids.person));
+      const lifecycleBefore = (await lifecycleRef.get()).data();
+      const activeRef = db.collection("activeMembershipGuards").doc(activeMembershipGuardId(ids.finalizeGroup, ids.person));
+      await activeRef.set({ membershipId: lifecycleBefore.membershipId, personId: ids.person, groupId: ids.finalizeGroup, seasonId: ids.finalizeSeason, idempotencyKeyHash: "a".repeat(64), requestHash: "b".repeat(64), createdAt: new Date(), guardVersion: 1 });
+      const both = await callFunction(functionsHost, projectId, "finalizeMyMembershipForOwnedGroup", { groupId: ids.finalizeGroup }, owner.idToken);
+      assert.equal(both.body?.error?.details?.reason, "INCOMPATIBLE_STATE");
+      assert.equal((await activeRef.get()).exists, true);
+      await activeRef.delete();
+      await lifecycleRef.update({ creationRequestHash: "corrupt" });
+      const corrupt = await callFunction(functionsHost, projectId, "getMyMembershipForOwnedGroup", { groupId: ids.finalizeGroup }, owner.idToken);
+      assert.equal(corrupt.body?.error?.details?.reason, "INCOMPATIBLE_STATE");
+      assert.equal((await lifecycleRef.get()).data().creationRequestHash, "corrupt");
+      await lifecycleRef.set(lifecycleBefore);
+    });
+
     await t.test("reglas niegan get/list/create/update/delete directos para todos los actores", async () => {
       const guardId = activeMembershipGuardId(ids.ownerGroup, ids.person);
       for (const actor of [null, owner, globalAdmin, noPerson]) {
-        for (const path of [`memberships/${created.id}`, `activeMembershipGuards/${guardId}`]) {
+        for (const path of [`memberships/${created.id}`, `activeMembershipGuards/${guardId}`, `membershipLifecycleGuards/${membershipLifecycleGuardId(ids.finalizeGroup, ids.person)}`]) {
           assert.equal((await firestoreRequest({ host: firestoreHost, projectId, path, idToken: actor?.idToken })).status, 403);
         }
       }
       assert.equal((await firestoreRequest({ host: firestoreHost, projectId, path: "memberships", idToken: owner.idToken })).status, 403);
       assert.equal((await firestoreRequest({ host: firestoreHost, projectId, path: "activeMembershipGuards", idToken: globalAdmin.idToken })).status, 403);
+      assert.equal((await firestoreRequest({ host: firestoreHost, projectId, path: "membershipLifecycleGuards", idToken: owner.idToken })).status, 403);
       const create = await firestoreRequest({ host: firestoreHost, projectId, path: "memberships/e2-03-client", idToken: owner.idToken, method: "PATCH", body: { fields: { estado: { stringValue: "activa" } } } });
       const update = await firestoreRequest({ host: firestoreHost, projectId, path: `memberships/${created.id}`, idToken: owner.idToken, method: "PATCH", body: { fields: { estado: { stringValue: "activa" } } } });
       const remove = await firestoreRequest({ host: firestoreHost, projectId, path: `memberships/${created.id}`, idToken: globalAdmin.idToken, method: "DELETE" });

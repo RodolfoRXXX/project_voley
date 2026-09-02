@@ -1,17 +1,22 @@
 import { httpsCallable } from "firebase/functions";
 
 import { functions } from "@/lib/firebase";
-import type { MembershipErrorReason, OwnMembership } from "@/types/OwnMembership";
+import type { ActiveOwnMembership, FinalizedOwnMembership, MembershipErrorReason, OwnMembership } from "@/types/OwnMembership";
 import type { ListMyCurrentGroupMembershipsResult } from "@/types/MyCurrentGroupMembership";
 
 export interface CreateMyMembershipInput { groupId: string; idempotencyKey: string; }
 export interface CreateMyMembershipResult {
   outcome: "CREATED_ACTIVE" | "EXISTING_IDEMPOTENT";
-  membership: OwnMembership;
+  membership: ActiveOwnMembership;
+}
+export interface FinalizeMyMembershipResult {
+  outcome: "FINALIZED" | "ALREADY_FINALIZED";
+  membership: FinalizedOwnMembership;
 }
 
 const createCallable = httpsCallable<CreateMyMembershipInput, CreateMyMembershipResult>(functions, "createMyMembershipForOwnedGroup");
 const getCallable = httpsCallable<{ groupId: string }, { membership: OwnMembership | null }>(functions, "getMyMembershipForOwnedGroup");
+const finalizeCallable = httpsCallable<{ groupId: string }, FinalizeMyMembershipResult>(functions, "finalizeMyMembershipForOwnedGroup");
 const listMyCurrentGroupsCallable = httpsCallable<{ pageSize?: number; cursor?: string }, ListMyCurrentGroupMembershipsResult>(functions, "listMyCurrentGroupMemberships");
 
 export async function createMyMembershipForOwnedGroup(input: CreateMyMembershipInput): Promise<CreateMyMembershipResult> {
@@ -20,6 +25,10 @@ export async function createMyMembershipForOwnedGroup(input: CreateMyMembershipI
 
 export async function getMyMembershipForOwnedGroup(groupId: string): Promise<{ membership: OwnMembership | null }> {
   return (await getCallable({ groupId })).data;
+}
+
+export async function finalizeMyMembershipForOwnedGroup(groupId: string): Promise<FinalizeMyMembershipResult> {
+  return (await finalizeCallable({ groupId })).data;
 }
 
 export async function listMyCurrentGroupMemberships(input: { pageSize?: number; cursor?: string } = {}): Promise<ListMyCurrentGroupMembershipsResult> {
@@ -35,6 +44,7 @@ export function getMembershipErrorReason(error: unknown): MembershipErrorReason 
         "UNAUTHENTICATED", "ACCOUNT_REQUIRED", "PERSON_REQUIRED", "PERSON_INCOMPATIBLE",
         "GROUP_NOT_FOUND", "GROUP_INCOMPATIBLE", "NOT_AUTHORIZED", "OPEN_SEASON_REQUIRED",
         "SEASON_INCOMPATIBLE", "VALIDATION_FAILED", "MEMBERSHIP_ALREADY_EXISTS",
+        "MEMBERSHIP_NOT_FOUND", "MEMBERSHIP_REACTIVATION_REQUIRED",
         "IDEMPOTENCY_CONFLICT", "INCOMPATIBLE_STATE", "CONFLICT",
         "DEPENDENCY_UNAVAILABLE", "INTERNAL_ERROR",
       ];
@@ -57,6 +67,8 @@ export function getMembershipErrorMessage(reason: MembershipErrorReason): string
     SEASON_INCOMPATIBLE: "El contexto de Temporada no es compatible.",
     VALIDATION_FAILED: "La solicitud no es válida.",
     MEMBERSHIP_ALREADY_EXISTS: "Ya existe una Membresía activa para tu Persona en este Grupo.",
+    MEMBERSHIP_NOT_FOUND: "No encontramos una Membresía propia para finalizar.",
+    MEMBERSHIP_REACTIVATION_REQUIRED: "Tu Membresía está finalizada. La reactivación todavía no está disponible.",
     IDEMPOTENCY_CONFLICT: "La intención ya fue usada con otro contexto. Revisá el estado antes de continuar.",
     INCOMPATIBLE_STATE: "El estado de Membresía no es compatible. No intentes repararlo desde esta pantalla.",
     CONFLICT: "Otra operación se confirmó al mismo tiempo. Reintentá la misma intención.",

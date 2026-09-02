@@ -1,7 +1,7 @@
 "use strict";
 
 const { buildMembership, InvalidMembershipStateError } = require("../domain/membership");
-const { toMembershipDto, toMyCurrentGroupMembershipItem } = require("./membershipDto");
+const { toFinalizedMembershipDto, toMembershipDto, toMyCurrentGroupMembershipItem } = require("./membershipDto");
 const { decodeMyGroupsCursor, encodeMyGroupsCursor } = require("./membershipCursor");
 const {
   MembershipAccountRequiredError,
@@ -14,15 +14,16 @@ const {
   MembershipUnauthenticatedError,
   MembershipValidationError,
 } = require("./membershipErrors");
-const { activeMembershipGuardId, hashMembershipIdempotencyKey, hashMembershipRequest } = require("./membershipHashing");
+const { activeMembershipGuardId, hashMembershipIdempotencyKey, hashMembershipRequest, membershipLifecycleGuardId } = require("./membershipHashing");
 const { isTransientDependencyError } = require("../../shared/application/transientDependencyError");
+const { annotateMembershipError, inheritMembershipDiagnostic } = require("./membershipObservability");
 
 function requireActor(identity) {
   if (!identity || typeof identity.userId !== "string" || !identity.userId.trim()) throw new MembershipUnauthenticatedError();
   return identity.userId.trim();
 }
 
-function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, myMembershipReader, myCurrentGroupMembershipsReader, memberGroupContext }) {
+function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, lifecycleGuard, myMembershipReader, myCurrentGroupMembershipsReader, memberGroupContext }) {
   if (!selfAccountReader || !selfPersonContext || !ownedGroupContext || !openSeasonContext || !membershipRepository || !activeMembershipGuard || !myMembershipReader) {
     throw new TypeError("Membership service dependencies are required");
   }
@@ -56,13 +57,27 @@ function createMembershipService({ selfAccountReader, selfPersonContext, ownedGr
     return season;
   }
 
+  async function atStage(operation, stage, action) {
+    try {
+      return await action();
+    } catch (error) {
+      throw annotateMembershipError(error, { operation, stage });
+    }
+  }
+
+  function internalAt(error, operation, stage) {
+    return inheritMembershipDiagnostic(new MembershipInternalError({ cause: error }), error, {
+      operation, stage, mapper: "MembershipInternalError",
+    });
+  }
+
   return {
     async createMyMembershipForOwnedGroup(identity, input) {
       const userId = requireActor(identity);
-      await requireAccount(userId);
-      const person = await requirePerson(userId);
-      await requireOwnedGroup(userId, input.groupId);
-      const season = await requireOpenSeason(userId, input.groupId);
+      await atStage("create", "account", () => requireAccount(userId));
+      const person = await atStage("create", "person", () => requirePerson(userId));
+      await atStage("create", "group", () => requireOwnedGroup(userId, input.groupId));
+      const season = await atStage("create", "season", () => requireOpenSeason(userId, input.groupId));
       let membership;
       try {
         membership = buildMembership({
@@ -77,34 +92,87 @@ function createMembershipService({ selfAccountReader, selfPersonContext, ownedGr
       }
 
       try {
-        const result = await activeMembershipGuard.confirmActiveMembership({
+        const result = await atStage("create", "active-guard", () => activeMembershipGuard.confirmActiveMembership({
           userId,
           membership,
           guardId: activeMembershipGuardId(membership.groupId, membership.personId),
+          lifecycleGuardId: membershipLifecycleGuardId(membership.groupId, membership.personId),
           idempotencyKeyHash: hashMembershipIdempotencyKey(userId, membership.groupId, membership.personId, input.idempotencyKey),
           requestHash: hashMembershipRequest(userId, membership.personId, membership.groupId, membership.seasonId),
           membershipRepository,
-        });
+          lifecycleGuard,
+        }));
         const persisted = result.membership || await membershipRepository.getById(result.membershipId);
         if (!persisted) throw new MembershipDependencyUnavailableError();
-        return Object.freeze({ outcome: result.outcome, membership: toMembershipDto(persisted) });
+        return await atStage("create", "dto", async () => Object.freeze({ outcome: result.outcome, membership: toMembershipDto(persisted) }));
       } catch (error) {
         if (error instanceof MembershipError) throw error;
-        throw new MembershipInternalError({ cause: error });
+        throw internalAt(error, "create", "active-guard");
       }
     },
 
     async getMyMembershipForOwnedGroup(identity, groupId) {
       const userId = requireActor(identity);
-      await requireAccount(userId);
-      const person = await requirePerson(userId);
-      await requireOwnedGroup(userId, groupId);
+      await atStage("get", "account", () => requireAccount(userId));
+      const person = await atStage("get", "person", () => requirePerson(userId));
+      await atStage("get", "group", () => requireOwnedGroup(userId, groupId));
       try {
+        if (lifecycleGuard) {
+          try {
+            const state = await atStage("get", "lifecycle-guard", () => lifecycleGuard.getForOwner({ userId, personId: person.personId, groupId, membershipRepository }));
+            return await atStage("get", "dto", async () => Object.freeze({
+              membership: state.kind === "lifecycle-only"
+                ? toFinalizedMembershipDto(state.membership)
+                : toMembershipDto(state.membership),
+            }));
+          } catch (error) {
+            const { MembershipNotFoundError } = require("./membershipErrors");
+            if (error instanceof MembershipNotFoundError) return Object.freeze({ membership: null });
+            throw error;
+          }
+        }
         const membership = await myMembershipReader.getActiveForOwner({ userId, personId: person.personId, groupId });
         return Object.freeze({ membership: membership ? toMembershipDto(membership) : null });
       } catch (error) {
         if (error instanceof MembershipError) throw error;
         throw new MembershipDependencyUnavailableError({ cause: error });
+      }
+    },
+
+    async finalizeMyMembershipForOwnedGroup(identity, input) {
+      const userId = requireActor(identity);
+      await atStage("finalize", "account", () => requireAccount(userId));
+      const person = await atStage("finalize", "person", () => requirePerson(userId));
+      await atStage("finalize", "group", () => requireOwnedGroup(userId, input.groupId));
+      if (!lifecycleGuard) throw new MembershipDependencyUnavailableError();
+      try {
+        const current = await atStage("finalize", "lifecycle-guard", () => lifecycleGuard.getForOwner({
+          userId,
+          personId: person.personId,
+          groupId: input.groupId,
+          membershipRepository,
+        }));
+        if (current.kind === "lifecycle-only") {
+          return await atStage("finalize", "dto", async () => Object.freeze({
+            outcome: "ALREADY_FINALIZED",
+            membership: toFinalizedMembershipDto(current.membership),
+          }));
+        }
+        const openSeason = await atStage("finalize", "season", () => memberGroupContext.getOpenSeason({ groupId: input.groupId }));
+        if (openSeason && (openSeason.groupId !== input.groupId || openSeason.estado !== "abierta")) {
+          throw new MembershipSeasonIncompatibleError();
+        }
+        const result = await atStage("finalize", "lifecycle-guard", () => lifecycleGuard.finalizeForOwner({
+          userId,
+          personId: person.personId,
+          groupId: input.groupId,
+          openSeasonId: openSeason?.id || null,
+          membershipRepository,
+        }));
+        return await atStage("finalize", "dto", async () => Object.freeze({ outcome: result.outcome, membership: toFinalizedMembershipDto(result.membership) }));
+      } catch (error) {
+        if (error instanceof MembershipError) throw error;
+        throw internalAt(error, "finalize", "lifecycle-guard");
       }
     },
 

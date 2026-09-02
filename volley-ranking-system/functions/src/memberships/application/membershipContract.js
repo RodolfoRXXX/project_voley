@@ -43,6 +43,12 @@ function validateGetMembershipPayload(data) {
   return data;
 }
 
+function validateFinalizeMembershipPayload(data) {
+  assertExactObject(data, ["groupId"]);
+  assertGroupId(data.groupId);
+  return data;
+}
+
 function validateListMyCurrentGroupMembershipsPayload(data) {
   if (!isPlainObject(data)) throw new MembershipValidationError();
   const keys = Object.keys(data);
@@ -72,6 +78,7 @@ module.exports = {
   MY_GROUPS_MAX_PAGE_SIZE,
   isPlainObject,
   validateCreateMembershipPayload,
+  validateFinalizeMembershipPayload,
   validateGetMembershipPayload,
   validateListMyCurrentGroupMembershipsPayload,
 };

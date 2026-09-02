@@ -9,7 +9,7 @@ const root = path.resolve(__dirname, "../../../..");
 function read(relative) { return fs.readFileSync(path.join(root, relative), "utf8"); }
 
 test("Dominio y Aplicación de Membresía no importan Firebase ni Agregados externos", () => {
-  const files = ["membership.js", "../application/membershipService.js", "../application/membershipDto.js", "../application/membershipContract.js"];
+  const files = ["membership.js", "../application/membershipService.js", "../application/membershipDto.js", "../application/membershipContract.js", "../application/membershipObservability.js"];
   const source = files.map((file) => read(`volley-ranking-system/functions/src/memberships/domain/${file}`)).join("\n");
   assert.doesNotMatch(source, /firebase-admin|firebase\/functions|firestoreSeasonRepository|openSeasonGuards/);
   assert.doesNotMatch(read("volley-ranking-system/functions/src/memberships/domain/membership.js"), /ownerId|memberIds|adminIds|roles|plan|subscription/i);
@@ -98,4 +98,20 @@ test("dashboard separa ownership y pertenencia sin Firestore ni navegación admi
   assert.doesNotMatch(section, /dashboard\/groups\/\[groupId\]|href=.*dashboard\/groups|profile\/groups|firebase\/firestore/);
   assert.match(service, /listMyCurrentGroupMemberships/);
   assert.doesNotMatch(`${page}\n${section}\n${service}`, /firebase\/firestore|collection\(|getDoc\(/);
+});
+
+test("E2-05 arquitectura, timestamp y frontend se verifican estructuralmente (no conducta)", () => {
+  const lifecycle = read("volley-ranking-system/functions/src/memberships/infrastructure/firestoreMembershipLifecycleGuard.js");
+  const service = read("volley-ranking-system/functions/src/memberships/application/membershipService.js");
+  const component = read("volley-ranking-frontend/src/components/memberships/OwnMembershipSection.tsx");
+  const frontendService = read("volley-ranking-frontend/src/services/membershipsService.ts");
+  assert.match(lifecycle, /now = \(\) => Timestamp\.now\(\)/);
+  assert.match(lifecycle, /const finalizedAt = now\(\)/);
+  assert.equal((lifecycle.match(/Timestamp\.now\(\)/g) || []).length, 1);
+  for (const pattern of [/updateFinalized/, /transaction\.delete\(activeRef\)/, /transaction\.create\(lifecycleRef/, /membership\.finalize\(finalizedAt\)/]) assert.match(lifecycle, pattern);
+  assert.doesNotMatch(`${service}\n${read("volley-ranking-system/functions/src/memberships/domain/membership.js")}`, /firebase-admin|firebase\/functions/);
+  assert.doesNotMatch(lifecycle, /FieldValue\.serverTimestamp/);
+  for (const pattern of [/Finalizar mi Membresía/, /Confirmar finalización/, /conservar el ownership/, /reactivación todavía no está disponible/, /finalizeMyMembershipForOwnedGroup/, /membershipFinalizationMachine/, /aria-live/, /alertdialog/]) assert.match(`${component}\n${frontendService}`, pattern);
+  assert.doesNotMatch(`${component}\n${frontendService}`, /firebase\/firestore|updateDoc\(|setDoc\(/);
+  assert.match(read("volley-ranking-system/functions/index.js"), /finalizeMyMembershipForOwnedGroup/);
 });

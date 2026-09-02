@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { validateCreateMembershipPayload, validateGetMembershipPayload, validateListMyCurrentGroupMembershipsPayload } = require("../../src/memberships/application/membershipContract");
+const { validateCreateMembershipPayload, validateFinalizeMembershipPayload, validateGetMembershipPayload, validateListMyCurrentGroupMembershipsPayload } = require("../../src/memberships/application/membershipContract");
 const { MembershipValidationError } = require("../../src/memberships/application/membershipErrors");
 
 const valid = { groupId: "group-1", idempotencyKey: "e2-03-valid-key-0001" };
@@ -11,6 +11,17 @@ test("comando acepta exclusivamente groupId e idempotencyKey", () => {
   assert.deepEqual(validateCreateMembershipPayload(valid), valid);
   for (const extra of ["uid", "userId", "personId", "seasonId", "estado", "fechaIngreso", "rol", "cargo", "permisos"]) {
     assert.throws(() => validateCreateMembershipPayload({ ...valid, [extra]: "forbidden" }), MembershipValidationError);
+  }
+});
+
+test("E2-05 finalización acepta sólo groupId en objeto plano cerrado", () => {
+  assert.deepEqual(validateFinalizeMembershipPayload({ groupId: "group-1" }), { groupId: "group-1" });
+  class Custom {}
+  for (const invalid of [null, [], new Date(), new Custom(), {}, { groupId: " a " }, { groupId: "a/b" }]) {
+    assert.throws(() => validateFinalizeMembershipPayload(invalid), MembershipValidationError);
+  }
+  for (const extra of ["uid", "userId", "personId", "membershipId", "seasonId", "estado", "fechaEgreso", "motivo", "roles", "permisos", "idempotencyKey"]) {
+    assert.throws(() => validateFinalizeMembershipPayload({ groupId: "group-1", [extra]: "x" }), MembershipValidationError);
   }
 });
 

@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
 const test = require("node:test");
-const { activeMembershipGuardId, hashMembershipIdempotencyKey, hashMembershipRequest } = require("../../src/memberships/application/membershipHashing");
+const { activeMembershipGuardId, hashMembershipIdempotencyKey, hashMembershipRequest, membershipLifecycleGuardId } = require("../../src/memberships/application/membershipHashing");
 
 function reference(parts) {
   const hash = crypto.createHash("sha256");
@@ -16,6 +16,7 @@ function reference(parts) {
 
 test("ID y hashes usan dominios y length-prefix exactos", () => {
   assert.equal(activeMembershipGuardId("group-1", "person-1"), reference(["sportexa:E2-03:active-membership-guard:v1", "group-1", "person-1"]));
+  assert.equal(membershipLifecycleGuardId("group-1", "person-1"), reference(["sportexa:E2-05:membership-lifecycle-guard:v1", "group-1", "person-1"]));
   assert.equal(hashMembershipIdempotencyKey("uid", "group-1", "person-1", "raw-key"), reference(["sportexa:E2-03:idempotency:v1", "uid", "group-1", "person-1", "raw-key"]));
   assert.equal(hashMembershipRequest("uid", "person-1", "group-1", "season-1"), reference(["sportexa:E2-03:request:v1", "contract-v1", "uid", "person-1", "group-1", "season-1"]));
 });

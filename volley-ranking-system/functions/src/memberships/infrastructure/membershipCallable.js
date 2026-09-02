@@ -2,6 +2,7 @@
 
 const functions = require("firebase-functions/v1");
 const { MembershipError, MembershipUnauthenticatedError } = require("../application/membershipErrors");
+const { annotateMembershipError, logUnexpectedMembershipError } = require("../application/membershipObservability");
 
 const MEMBERSHIP_HTTPS_CODES = Object.freeze({
   UNAUTHENTICATED: "unauthenticated",
@@ -15,6 +16,8 @@ const MEMBERSHIP_HTTPS_CODES = Object.freeze({
   SEASON_INCOMPATIBLE: "failed-precondition",
   VALIDATION_FAILED: "invalid-argument",
   MEMBERSHIP_ALREADY_EXISTS: "already-exists",
+  MEMBERSHIP_NOT_FOUND: "not-found",
+  MEMBERSHIP_REACTIVATION_REQUIRED: "failed-precondition",
   IDEMPOTENCY_CONFLICT: "aborted",
   INCOMPATIBLE_STATE: "failed-precondition",
   CONFLICT: "aborted",
@@ -39,14 +42,17 @@ function toMembershipHttpsError(error) {
   return new functions.https.HttpsError("internal", "Membership operation failed", { reason: "INTERNAL_ERROR" });
 }
 
-function createMembershipCallableHandler({ operation, validatePayload, selectArgument }) {
+function createMembershipCallableHandler({ operation, operationName, validatePayload, selectArgument, logger = console }) {
   return async (data, context) => {
     try {
       const identity = membershipIdentityFromCallableContext(context);
       const validated = validatePayload(data);
       return await operation(identity, selectArgument ? selectArgument(validated) : validated);
     } catch (error) {
-      if (!(error instanceof MembershipError)) console.error("Membership callable failed", { name: error?.name, code: error?.code });
+      annotateMembershipError(error, { operation: operationName, stage: "callable" });
+      if (!(error instanceof MembershipError) || error.reason === "INTERNAL_ERROR") {
+        logUnexpectedMembershipError({ error, operation: operationName, logger });
+      }
       throw toMembershipHttpsError(error);
     }
   };

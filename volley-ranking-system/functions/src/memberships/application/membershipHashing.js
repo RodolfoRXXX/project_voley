@@ -17,6 +17,10 @@ function activeMembershipGuardId(groupId, personId) {
   return sha256LengthPrefixed(["sportexa:E2-03:active-membership-guard:v1", groupId, personId]);
 }
 
+function membershipLifecycleGuardId(groupId, personId) {
+  return sha256LengthPrefixed(["sportexa:E2-05:membership-lifecycle-guard:v1", groupId, personId]);
+}
+
 function hashMembershipIdempotencyKey(userId, groupId, personId, key) {
   return sha256LengthPrefixed(["sportexa:E2-03:idempotency:v1", userId, groupId, personId, key]);
 }
@@ -25,4 +29,4 @@ function hashMembershipRequest(userId, personId, groupId, seasonId) {
   return sha256LengthPrefixed(["sportexa:E2-03:request:v1", "contract-v1", userId, personId, groupId, seasonId]);
 }
 
-module.exports = { activeMembershipGuardId, hashMembershipIdempotencyKey, hashMembershipRequest, sha256LengthPrefixed };
+module.exports = { activeMembershipGuardId, hashMembershipIdempotencyKey, hashMembershipRequest, membershipLifecycleGuardId, sha256LengthPrefixed };

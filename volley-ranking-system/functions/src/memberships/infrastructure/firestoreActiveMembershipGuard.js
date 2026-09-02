@@ -14,14 +14,29 @@ const {
   MembershipIdempotencyConflictError,
   MembershipIncompatibleStateError,
   MembershipNotAuthorizedError,
+  MembershipNotFoundError,
+  MembershipReactivationRequiredError,
 } = require("../application/membershipErrors");
 const { activeMembershipGuardId } = require("../application/membershipHashing");
+const { annotateMembershipError } = require("../application/membershipObservability");
 
 const ACTIVE_MEMBERSHIP_GUARD_FIELDS = Object.freeze([
   "membershipId", "personId", "groupId", "seasonId",
   "idempotencyKeyHash", "requestHash", "createdAt", "guardVersion",
 ]);
 const HASH_PATTERN = /^[a-f0-9]{64}$/;
+const transactionOperationByError = new WeakMap();
+
+async function atTransactionOperation(operation, work) {
+  try {
+    return await work();
+  } catch (error) {
+    if (error && (typeof error === "object" || typeof error === "function")) {
+      transactionOperationByError.set(error, operation);
+    }
+    throw error;
+  }
+}
 
 function validId(value) {
   return typeof value === "string" && value.trim() === value && value.length > 0 && !value.includes("/");
@@ -103,6 +118,13 @@ function isAmbiguousTransactionFailure(error) {
   );
 }
 
+function isClosedFinalizedMembershipQueryFailure(error) {
+  return errorChain(error).some((current) =>
+    [3, "3"].includes(current.code)
+    && transactionOperationByError.get(current) === "finalized-membership-query"
+  );
+}
+
 async function resolveAfterContention({
   guardRef,
   guardId,
@@ -111,8 +133,31 @@ async function resolveAfterContention({
   requestHash,
   membershipRepository,
   unconfirmedError,
+  userId,
+  lifecycleGuard,
 }) {
   try {
+    if (lifecycleGuard) {
+      try {
+        const state = await lifecycleGuard.getForOwner({
+          userId,
+          personId: membership.personId,
+          groupId: membership.groupId,
+          membershipRepository,
+        });
+        if (state.kind === "lifecycle-only") throw new MembershipReactivationRequiredError();
+        const activeGuard = state.activeGuard;
+        if (activeGuard.idempotencyKeyHash === idempotencyKeyHash) {
+          if (activeGuard.requestHash !== requestHash) throw new MembershipIdempotencyConflictError();
+          return { outcome: "EXISTING_IDEMPOTENT", membershipId: state.membership.membershipId, membership: state.membership };
+        }
+        throw new MembershipAlreadyExistsError();
+      } catch (error) {
+        if (!(error instanceof MembershipNotFoundError)) throw error;
+        if (unconfirmedError) throw unconfirmedError;
+        throw new MembershipConflictError();
+      }
+    }
     const guard = hydrateActiveMembershipGuard(await guardRef.get(), {
       guardId,
       personId: membership.personId,
@@ -133,6 +178,7 @@ async function resolveAfterContention({
     }
     throw new MembershipAlreadyExistsError();
   } catch (error) {
+    annotateMembershipError(error, { operation: "create", stage: "authoritative-reread" });
     throw mapInfrastructureError(error);
   }
 }
@@ -141,14 +187,28 @@ function createFirestoreActiveMembershipGuard({ db, groupRepository }) {
   if (!db || !groupRepository) throw new TypeError("Active Membership guard dependencies are required");
 
   return {
-    async confirmActiveMembership({ userId, membership, guardId, idempotencyKeyHash, requestHash, membershipRepository }) {
+    async confirmActiveMembership({ userId, membership, guardId, lifecycleGuardId, idempotencyKeyHash, requestHash, membershipRepository, lifecycleGuard }) {
       const guardRef = db.collection("activeMembershipGuards").doc(guardId);
+      const lifecycleRef = lifecycleGuard?.reference(lifecycleGuardId);
+      let transactionAttempt = 0;
       try {
         return await db.runTransaction(async (transaction) => {
+          transactionAttempt += 1;
           await requireOwnedGroup({ groupRepository, transaction, groupId: membership.groupId, userId });
-          const guard = hydrateActiveMembershipGuard(await transaction.get(guardRef), {
+          const snapshots = lifecycleRef
+            ? await transaction.getAll(guardRef, lifecycleRef)
+            : [await transaction.get(guardRef)];
+          const guard = hydrateActiveMembershipGuard(snapshots[0], {
             guardId, personId: membership.personId, groupId: membership.groupId,
           });
+          const lifecycle = lifecycleRef ? lifecycleGuard.hydrate(snapshots[1], {
+            guardId: lifecycleGuardId, personId: membership.personId, groupId: membership.groupId,
+          }) : null;
+          if (guard && lifecycle) throw new MembershipIncompatibleStateError("Active and lifecycle guards coexist");
+          if (lifecycle) {
+            await lifecycleGuard.requireFinalizedCurrent({ transaction, lifecycle, membershipRepository });
+            throw new MembershipReactivationRequiredError();
+          }
           if (guard) {
             const persisted = await membershipRepository.getById(guard.membershipId, transaction);
             assertMembershipCorrelated(persisted, guard);
@@ -160,7 +220,11 @@ function createFirestoreActiveMembershipGuard({ db, groupRepository }) {
           }
 
           const active = await transaction.get(membershipRepository.activePairQuery(membership));
+          const finalized = lifecycleGuard
+            ? await atTransactionOperation("finalized-membership-query", () => transaction.get(membershipRepository.finalizedPairQuery(membership)))
+            : undefined;
           if (!active.empty) throw new MembershipIncompatibleStateError("Active Membership exists without its guard");
+          if (finalized && !finalized.empty) throw new MembershipIncompatibleStateError("Finalized Membership exists without its lifecycle guard");
 
           membershipRepository.createInitial(transaction, membership);
           transaction.create(guardRef, {
@@ -176,6 +240,7 @@ function createFirestoreActiveMembershipGuard({ db, groupRepository }) {
           return { outcome: "CREATED_ACTIVE", membershipId: membership.membershipId };
         });
       } catch (error) {
+        annotateMembershipError(error, { operation: "create", stage: "transaction", attempt: transactionAttempt });
         if (isMembershipContention(error)) {
           return resolveAfterContention({
             guardRef,
@@ -184,6 +249,8 @@ function createFirestoreActiveMembershipGuard({ db, groupRepository }) {
             idempotencyKeyHash,
             requestHash,
             membershipRepository,
+            userId,
+            lifecycleGuard,
           });
         }
         if (isAmbiguousTransactionFailure(error)) {
@@ -195,6 +262,21 @@ function createFirestoreActiveMembershipGuard({ db, groupRepository }) {
             requestHash,
             membershipRepository,
             unconfirmedError: error,
+            userId,
+            lifecycleGuard,
+          });
+        }
+        if (isClosedFinalizedMembershipQueryFailure(error)) {
+          return resolveAfterContention({
+            guardRef,
+            guardId,
+            membership,
+            idempotencyKeyHash,
+            requestHash,
+            membershipRepository,
+            unconfirmedError: error,
+            userId,
+            lifecycleGuard,
           });
         }
         throw mapInfrastructureError(error);
@@ -209,6 +291,7 @@ module.exports = {
   createFirestoreActiveMembershipGuard,
   hydrateActiveMembershipGuard,
   isAmbiguousTransactionFailure,
+  isClosedFinalizedMembershipQueryFailure,
   isMembershipContention,
   mapInfrastructureError,
   requireOwnedGroup,

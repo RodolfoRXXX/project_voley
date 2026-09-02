@@ -1,13 +1,22 @@
-export type MembershipState = "activa";
-
-export interface OwnMembership {
+export interface ActiveOwnMembership {
   id: string;
   personId: string;
   groupId: string;
   seasonId: string;
-  estado: MembershipState;
+  estado: "activa";
   fechaIngreso: string;
 }
+
+export interface FinalizedOwnMembership {
+  id: string;
+  groupId: string;
+  seasonId: string;
+  estado: "finalizada";
+  fechaIngreso: string;
+  fechaEgreso: string;
+}
+
+export type OwnMembership = ActiveOwnMembership | FinalizedOwnMembership;
 
 export type MembershipErrorReason =
   | "UNAUTHENTICATED"
@@ -21,6 +30,8 @@ export type MembershipErrorReason =
   | "SEASON_INCOMPATIBLE"
   | "VALIDATION_FAILED"
   | "MEMBERSHIP_ALREADY_EXISTS"
+  | "MEMBERSHIP_NOT_FOUND"
+  | "MEMBERSHIP_REACTIVATION_REQUIRED"
   | "IDEMPOTENCY_CONFLICT"
   | "INCOMPATIBLE_STATE"
   | "CONFLICT"

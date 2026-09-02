@@ -14,6 +14,7 @@ const { createFirestoreSelfAccountReader } = require("../../groups/infrastructur
 const { createMembershipService } = require("../application/membershipService");
 const { createFirestoreActiveMembershipGuard } = require("./firestoreActiveMembershipGuard");
 const { createFirestoreMembershipRepository } = require("./firestoreMembershipRepository");
+const { createFirestoreMembershipLifecycleGuard } = require("./firestoreMembershipLifecycleGuard");
 const { createFirestoreMyMembershipReader } = require("./firestoreMyMembershipReader");
 const { createFirestoreMyCurrentGroupMembershipsReader } = require("./firestoreMyCurrentGroupMembershipsReader");
 const { createMemberGroupContextAdapter, createOpenSeasonContextAdapter, createOwnedGroupContextAdapter, createSelfPersonContextAdapter } = require("./membershipExternalContexts");
@@ -24,6 +25,7 @@ const personRepository = createFirestorePersonRepository({ db });
 const userPersonLinkRepository = createFirestoreUserPersonLinkRepository({ db });
 const groupRepository = createFirestoreGroupRepository({ db });
 const membershipRepository = createFirestoreMembershipRepository({ db });
+const lifecycleGuard = createFirestoreMembershipLifecycleGuard({ db, groupRepository });
 
 module.exports = createMembershipService({
   selfAccountReader,
@@ -34,6 +36,7 @@ module.exports = createMembershipService({
   openSeasonContext: createOpenSeasonContextAdapter({ seasonService }),
   membershipRepository,
   activeMembershipGuard: createFirestoreActiveMembershipGuard({ db, groupRepository }),
+  lifecycleGuard,
   myMembershipReader: createFirestoreMyMembershipReader({ db, groupRepository, membershipRepository }),
   myCurrentGroupMembershipsReader: createFirestoreMyCurrentGroupMembershipsReader({ db, membershipRepository }),
   memberGroupContext: createMemberGroupContextAdapter({ memberContext }),

@@ -18,6 +18,9 @@ const timestamp = { toDate: () => new Date("2026-08-27T12:00:00.000Z") };
 function persisted(overrides = {}) {
   return { membershipId: "membership-generated", personId: "person-1", groupId: "group-1", seasonId: "season-1", estado: "activa", fechaIngreso: timestamp, createdAt: timestamp, schemaVersion: 1, ...overrides };
 }
+function finalized(overrides = {}) {
+  return persisted({ estado: "finalizada", fechaEgreso: { toDate: () => new Date("2026-09-01T12:00:00.000Z") }, schemaVersion: 2, ...overrides });
+}
 function setup(overrides = {}) {
   const calls = [];
   const dependencies = {
@@ -60,18 +63,20 @@ test("retry idempotente devuelve la misma Membresía provista por el guard", asy
   assert.equal(result.membership.id, "same-id");
 });
 
-test("error de infraestructura desconocido permanece INTERNAL_ERROR sanitizado", async () => {
-  const unknown = Object.assign(new Error("detalle interno local"), { code: 13 });
-  const { service } = setup({
-    activeMembershipGuard: { async confirmActiveMembership() { throw unknown; } },
-  });
-  await assert.rejects(
-    () => service.createMyMembershipForOwnedGroup({ userId: "uid" }, input),
-    (error) => error instanceof MembershipInternalError
-      && error.reason === "INTERNAL_ERROR"
-      && error.message === "Membership operation failed"
-      && error.cause === unknown
-  );
+test("errores desconocidos, incluido code 3 sin estado confirmado, permanecen INTERNAL_ERROR sanitizado", async () => {
+  for (const code of [13, 3]) {
+    const unknown = Object.assign(new Error("detalle interno local"), { code });
+    const { service } = setup({
+      activeMembershipGuard: { async confirmActiveMembership() { throw unknown; } },
+    });
+    await assert.rejects(
+      () => service.createMyMembershipForOwnedGroup({ userId: "uid" }, input),
+      (error) => error instanceof MembershipInternalError
+        && error.reason === "INTERNAL_ERROR"
+        && error.message === "Membership operation failed"
+        && error.cause === unknown
+    );
+  }
 });
 
 test("autenticación, cuenta y Persona requerida fallan antes de reservar ID", async () => {
@@ -206,4 +211,60 @@ test("corrupción o dependencia corta la página sin lista parcial", async () =>
     },
   });
   await assert.rejects(() => service.listMyCurrentGroupMemberships({ userId: "uid" }, { pageSize: 20 }), (error) => error === incompatible);
+});
+
+test("E2-05 finaliza con DTO mínimo y recupera lifecycle-only sin exigir apertura", async () => {
+  const ended = finalized();
+  let lifecycleReads = 0;
+  const finalizedSetup = setup({
+    lifecycleGuard: {
+      async finalizeForOwner() { return { outcome: "FINALIZED", membership: ended }; },
+      async getForOwner() {
+        lifecycleReads += 1;
+        return lifecycleReads === 1
+          ? { kind: "active-only", membership: persisted(), activeGuard: {} }
+          : { kind: "lifecycle-only", membership: ended };
+      },
+    },
+  });
+  const result = await finalizedSetup.service.finalizeMyMembershipForOwnedGroup({ userId: "uid" }, { groupId: "group-1" });
+  assert.equal(result.outcome, "FINALIZED");
+  assert.deepEqual(Object.keys(result.membership).sort(), ["estado", "fechaEgreso", "fechaIngreso", "groupId", "id", "seasonId"]);
+  const queried = await finalizedSetup.service.getMyMembershipForOwnedGroup({ userId: "uid" }, "group-1");
+  assert.equal(queried.membership.estado, "finalizada");
+
+  const closed = setup({
+    memberGroupContext: { async getOpenSeason() { assert.fail("lifecycle-only must not query the open Season"); } },
+    lifecycleGuard: { async getForOwner() { return { kind: "lifecycle-only", membership: ended }; } },
+  });
+  assert.equal((await closed.service.finalizeMyMembershipForOwnedGroup({ userId: "uid" }, { groupId: "group-1" })).outcome, "ALREADY_FINALIZED");
+});
+
+test("E2-05 ausencia legítima de apertura se entrega a la máquina y bloquea sólo una activa", async () => {
+  const { service } = setup({
+    memberGroupContext: { async getOpenSeason() { return null; } },
+    lifecycleGuard: {
+      async getForOwner() { return { kind: "active-only", membership: persisted(), activeGuard: {} }; },
+      async finalizeForOwner(input) {
+        assert.equal(input.openSeasonId, null);
+        throw new MembershipOpenSeasonRequiredError();
+      },
+    },
+  });
+  await assert.rejects(
+    () => service.finalizeMyMembershipForOwnedGroup({ userId: "uid" }, { groupId: "group-1" }),
+    MembershipOpenSeasonRequiredError
+  );
+});
+
+test("E2-05 corrupción del contexto temporal conserva reason incompatible", async () => {
+  const incompatible = new (require("../../src/memberships/application/membershipErrors").MembershipIncompatibleStateError)();
+  const { service } = setup({
+    memberGroupContext: { async getOpenSeason() { throw incompatible; } },
+    lifecycleGuard: { async getForOwner() { return { kind: "active-only", membership: persisted(), activeGuard: {} }; } },
+  });
+  await assert.rejects(
+    () => service.finalizeMyMembershipForOwnedGroup({ userId: "uid" }, { groupId: "group-1" }),
+    (error) => error === incompatible
+  );
 });

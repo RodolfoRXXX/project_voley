@@ -125,6 +125,10 @@ function isClosedFinalizedMembershipQueryFailure(error) {
   );
 }
 
+function isCreateTransactionBoundaryCode3(error) {
+  return errorChain(error).some((current) => [3, "3"].includes(current.code));
+}
+
 async function resolveAfterContention({
   guardRef,
   guardId,
@@ -266,7 +270,9 @@ function createFirestoreActiveMembershipGuard({ db, groupRepository }) {
             lifecycleGuard,
           });
         }
-        if (isClosedFinalizedMembershipQueryFailure(error)) {
+        // Recovery for code 3 is entered only at this creation-transaction boundary.
+        // It accepts an outcome exclusively after a complete authoritative reread.
+        if (isCreateTransactionBoundaryCode3(error)) {
           return resolveAfterContention({
             guardRef,
             guardId,

@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { activeMembershipGuardId } = require("../../src/memberships/application/membershipHashing");
+const { activeMembershipGuardId, membershipLifecycleGuardId } = require("../../src/memberships/application/membershipHashing");
 const {
   MembershipAlreadyExistsError,
   MembershipConflictError,
@@ -22,6 +22,7 @@ const {
   mapInfrastructureError,
   resolveAfterContention,
 } = require("../../src/memberships/infrastructure/firestoreActiveMembershipGuard");
+const { createFirestoreMembershipLifecycleGuard } = require("../../src/memberships/infrastructure/firestoreMembershipLifecycleGuard");
 
 const timestamp = { toDate: () => new Date("2026-08-27T12:00:00.000Z") };
 const context = { personId: "person-1", groupId: "group-1" };
@@ -241,6 +242,131 @@ function finalizedQueryCode3Setup(authoritativeResult) {
   };
 }
 
+function transactionBoundaryFailureSetup({ transactionError, authoritativeResult }) {
+  const membership = {
+    membershipId: "membership-candidate",
+    ...context,
+    seasonId: "season-1",
+    estado: "activa",
+  };
+  const activeGuard = {
+    membershipId: "membership-stored",
+    ...context,
+    seasonId: "season-1",
+    idempotencyKeyHash: "a".repeat(64),
+    requestHash: "b".repeat(64),
+    createdAt: timestamp,
+    guardVersion: 1,
+  };
+  const stored = { ...membership, membershipId: "membership-stored" };
+  let authoritativeReads = 0;
+  const lifecycleGuard = {
+    reference() { return { kind: "lifecycle-ref" }; },
+    async getForOwner() {
+      authoritativeReads += 1;
+      if (authoritativeResult instanceof Error) throw authoritativeResult;
+      return authoritativeResult || { kind: "active-only", membership: stored, activeGuard };
+    },
+  };
+  const guard = createFirestoreActiveMembershipGuard({
+    db: {
+      collection() { return { doc() { return { kind: "active-ref" }; } }; },
+      async runTransaction() { throw transactionError; },
+    },
+    groupRepository: {},
+  });
+  return {
+    activeGuard,
+    stored,
+    get authoritativeReads() { return authoritativeReads; },
+    invoke(overrides = {}) {
+      return guard.confirmActiveMembership({
+        userId: "owner-1",
+        membership,
+        guardId,
+        lifecycleGuardId: "lifecycle",
+        idempotencyKeyHash: "a".repeat(64),
+        requestHash: "b".repeat(64),
+        membershipRepository: {},
+        lifecycleGuard,
+        ...overrides,
+      });
+    },
+  };
+}
+
+function transactionBoundaryAuthoritativeStateSetup({
+  activeGuardData = data,
+  persisted,
+  activeDocs,
+  finalizedDocs = [],
+} = {}) {
+  const original = Object.assign(new Error("transaction boundary"), { code: 3 });
+  const membership = {
+    membershipId: "membership-candidate",
+    ...context,
+    seasonId: "season-1",
+    estado: "activa",
+  };
+  const stored = persisted === undefined
+    ? { ...membership, membershipId: "membership-1" }
+    : persisted;
+  const resolvedActiveDocs = activeDocs === undefined
+    ? [{ id: "membership-1", membership: stored }]
+    : activeDocs;
+  const lifecycleId = membershipLifecycleGuardId(context.groupId, context.personId);
+  const absent = (id) => ({ exists: false, id, data: () => undefined });
+  const reference = (collection, id) => ({ collection, id });
+  let transactionRuns = 0;
+  const transaction = {
+    async getAll() {
+      return [
+        activeGuardData ? snapshot(activeGuardData) : absent(guardId),
+        absent(lifecycleId),
+      ];
+    },
+    async get(query) {
+      if (query.kind === "active-query") return { empty: resolvedActiveDocs.length === 0, docs: resolvedActiveDocs };
+      if (query.kind === "finalized-query") return { empty: finalizedDocs.length === 0, docs: finalizedDocs };
+      throw new Error("unexpected query");
+    },
+  };
+  const db = {
+    collection(collection) { return { doc: (id) => reference(collection, id) }; },
+    async runTransaction(callback) {
+      transactionRuns += 1;
+      if (transactionRuns === 1) throw original;
+      return callback(transaction);
+    },
+  };
+  const groupRepository = { async getById() { return { estado: "activo", ownerId: "owner-1" }; } };
+  const membershipRepository = {
+    async getById() { return stored; },
+    activePairQuery() { return { kind: "active-query" }; },
+    finalizedPairQuery() { return { kind: "finalized-query" }; },
+    fromSnapshot(document) { return document.membership; },
+  };
+  const lifecycleGuard = createFirestoreMembershipLifecycleGuard({ db, groupRepository });
+  const guard = createFirestoreActiveMembershipGuard({ db, groupRepository });
+  return {
+    original,
+    get transactionRuns() { return transactionRuns; },
+    invoke(overrides = {}) {
+      return guard.confirmActiveMembership({
+        userId: "owner-1",
+        membership,
+        guardId,
+        lifecycleGuardId: lifecycleId,
+        idempotencyKeyHash: "a".repeat(64),
+        requestHash: "b".repeat(64),
+        membershipRepository,
+        lifecycleGuard,
+        ...overrides,
+      });
+    },
+  };
+}
+
 test("code 3 de finalized query recupera sólo una intención activa autoritativamente confirmada", async () => {
   const same = finalizedQueryCode3Setup();
   const result = await same.invoke();
@@ -270,6 +396,97 @@ test("code 3 de finalized query distingue lifecycle, corrupción y ausencia sin 
   );
   const absent = finalizedQueryCode3Setup(new MembershipNotFoundError());
   await assert.rejects(() => absent.invoke(), (error) => error === absent.original);
+});
+
+test("code 3 en el límite transaccional recupera sólo la misma intención confirmada", async () => {
+  const original = Object.assign(new Error("transaction boundary"), { code: 3 });
+  const same = transactionBoundaryFailureSetup({ transactionError: original });
+  const result = await same.invoke();
+  assert.equal(result.outcome, "EXISTING_IDEMPOTENT");
+  assert.equal(result.membership, same.stored);
+  assert.equal(same.authoritativeReads, 1);
+  assert.equal(isClosedFinalizedMembershipQueryFailure(original), false);
+  assert.equal(isMembershipContention(original), false);
+  assert.equal(isAmbiguousTransactionFailure(original), false);
+});
+
+test("code 3 en el límite distingue una intención ganadora diferente", async () => {
+  const original = Object.assign(new Error("transaction boundary"), { code: "3" });
+  const setup = transactionBoundaryFailureSetup({ transactionError: original });
+  await assert.rejects(
+    () => setup.invoke({ idempotencyKeyHash: "c".repeat(64) }),
+    MembershipAlreadyExistsError
+  );
+  assert.equal(setup.authoritativeReads, 1);
+});
+
+test("code 3 conserva el error original ante ausencia autoritativa", async () => {
+  const original = Object.assign(new Error("transaction boundary"), { code: 3 });
+  const setup = transactionBoundaryFailureSetup({
+    transactionError: original,
+    authoritativeResult: new MembershipNotFoundError(),
+  });
+  await assert.rejects(() => setup.invoke(), (error) => error === original);
+  assert.equal(setup.authoritativeReads, 1);
+});
+
+test("code 3 falla cerrado ante estado parcial, guard no correlacionado o duplicados", async () => {
+  for (const diagnostic of ["partial state", "uncorrelated guard", "duplicate active memberships"]) {
+    const incompatible = new MembershipIncompatibleStateError(diagnostic);
+    const setup = transactionBoundaryFailureSetup({
+      transactionError: Object.assign(new Error("transaction boundary"), { code: 3 }),
+      authoritativeResult: incompatible,
+    });
+    await assert.rejects(() => setup.invoke(), (error) => error === incompatible);
+    assert.equal(setup.authoritativeReads, 1);
+  }
+});
+
+test("code 3 exige cardinalidad y correlación reales en la relectura autoritativa", async () => {
+  const confirmed = transactionBoundaryAuthoritativeStateSetup();
+  assert.equal((await confirmed.invoke()).outcome, "EXISTING_IDEMPOTENT");
+  assert.equal(confirmed.transactionRuns, 2);
+
+  const absent = transactionBoundaryAuthoritativeStateSetup({ activeGuardData: null, activeDocs: [] });
+  await assert.rejects(() => absent.invoke(), (error) => error === absent.original);
+
+  const partial = transactionBoundaryAuthoritativeStateSetup({ activeGuardData: null });
+  await assert.rejects(() => partial.invoke(), MembershipIncompatibleStateError);
+
+  const uncorrelated = transactionBoundaryAuthoritativeStateSetup({
+    persisted: { membershipId: "membership-1", ...context, seasonId: "other", estado: "activa" },
+  });
+  await assert.rejects(() => uncorrelated.invoke(), MembershipIncompatibleStateError);
+
+  const duplicateMembership = {
+    membershipId: "membership-duplicate",
+    ...context,
+    seasonId: "season-1",
+    estado: "activa",
+  };
+  const duplicates = transactionBoundaryAuthoritativeStateSetup({
+    activeDocs: [
+      { id: "membership-1", membership: { membershipId: "membership-1", ...context, seasonId: "season-1", estado: "activa" } },
+      { id: "membership-duplicate", membership: duplicateMembership },
+    ],
+  });
+  await assert.rejects(() => duplicates.invoke(), MembershipIncompatibleStateError);
+});
+
+test("la recuperación estrecha no reclasifica otros códigos ni absorbe code 3 de la relectura", async () => {
+  const differentCode = Object.assign(new Error("not code 3"), { code: 9 });
+  const untouched = transactionBoundaryFailureSetup({ transactionError: differentCode });
+  await assert.rejects(() => untouched.invoke(), (error) => error === differentCode);
+  assert.equal(untouched.authoritativeReads, 0);
+
+  const boundaryCode3 = Object.assign(new Error("transaction boundary"), { code: 3 });
+  const rereadCode3 = Object.assign(new Error("authoritative reread"), { code: 3 });
+  const rereadFailure = transactionBoundaryFailureSetup({
+    transactionError: boundaryCode3,
+    authoritativeResult: rereadCode3,
+  });
+  await assert.rejects(() => rereadFailure.invoke(), (error) => error === rereadCode3);
+  assert.equal(rereadFailure.authoritativeReads, 1);
 });
 
 test("relectura tras contención confirma Membresía de otra intención", async () => {

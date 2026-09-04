@@ -19,6 +19,22 @@ const { isTransactionConflict, isUnavailable } = require("./firestoreGroupCreati
 const OPEN_SEASON_GUARD_FIELDS = Object.freeze(["seasonId", "idempotencyKeyHash", "requestHash", "createdAt", "guardVersion"]);
 const HASH_PATTERN = /^[a-f0-9]{64}$/;
 
+function errorChain(error) {
+  const chain = [];
+  const visited = new Set();
+  let current = error;
+  while (current && (typeof current === "object" || typeof current === "function") && !visited.has(current) && chain.length < 6) {
+    visited.add(current);
+    chain.push(current);
+    current = current.cause;
+  }
+  return chain;
+}
+
+function isOpenSeasonTransactionBoundaryCode3(error) {
+  return errorChain(error).some((current) => [3, "3"].includes(current.code));
+}
+
 function hydrateOpenSeasonGuard(snapshot, groupId) {
   if (!snapshot.exists) return null;
   const data = snapshot.data();
@@ -34,6 +50,53 @@ function hydrateOpenSeasonGuard(snapshot, groupId) {
     && !Number.isNaN(data.createdAt.toDate().getTime());
   if (!valid || snapshot.id !== groupId) throw new SeasonIncompatibleStateError("Open season guard is invalid");
   return data;
+}
+
+function assertOpenSeasonCorrelated(persisted, guard, groupId) {
+  if (!persisted
+    || persisted.seasonId !== guard.seasonId
+    || persisted.groupId !== groupId
+    || persisted.estado !== "abierta") {
+    throw new SeasonIncompatibleStateError("Open season guard reference is inconsistent");
+  }
+}
+
+async function resolveConfirmedOpenSeasonAfterCode3({
+  originalError,
+  guardRef,
+  groupRepository,
+  userId,
+  season,
+  idempotencyKeyHash,
+  requestHash,
+  seasonRepository,
+  db,
+}) {
+  let group;
+  let guard;
+  let persisted;
+  try {
+    group = await groupRepository.getById(season.groupId);
+    guard = hydrateOpenSeasonGuard(await guardRef.get(), season.groupId);
+    const openSeasons = await db.collection("seasons")
+      .where("groupId", "==", season.groupId)
+      .where("estado", "==", "abierta")
+      .limit(2)
+      .get();
+    if (!group || group.groupId !== season.groupId || group.ownerId !== userId) throw originalError;
+    if (!guard || openSeasons.size !== 1) throw originalError;
+    persisted = seasonRepository.fromSnapshot(openSeasons.docs[0]);
+    assertOpenSeasonCorrelated(persisted, guard, season.groupId);
+  } catch (error) {
+    if (error === originalError) throw error;
+    throw originalError;
+  }
+
+  if (guard.idempotencyKeyHash === idempotencyKeyHash) {
+    if (guard.requestHash !== requestHash) throw new SeasonIdempotencyConflictError();
+    return { outcome: "EXISTING_IDEMPOTENT", seasonId: persisted.seasonId, season: persisted };
+  }
+  throw new OpenSeasonAlreadyExistsError();
 }
 
 function createFirestoreOpenSeasonGuard({ db, groupRepository }) {
@@ -87,6 +150,21 @@ function createFirestoreOpenSeasonGuard({ db, groupRepository }) {
           return { outcome: "CREATED_OPEN", seasonId: season.seasonId };
         });
       } catch (error) {
+        // Numeric code 3 is recoverable only at this opening-transaction boundary,
+        // and only after a complete authoritative reread proves the committed state.
+        if (!(error instanceof SeasonError) && isOpenSeasonTransactionBoundaryCode3(error)) {
+          return resolveConfirmedOpenSeasonAfterCode3({
+            originalError: error,
+            guardRef,
+            groupRepository,
+            userId,
+            season,
+            idempotencyKeyHash,
+            requestHash,
+            seasonRepository,
+            db,
+          });
+        }
         if (error instanceof SeasonError) throw error;
         if (error instanceof InvalidGroupStateError) throw new SeasonGroupIncompatibleError({ cause: error });
         if (error instanceof InvalidSeasonStateError) throw new SeasonIncompatibleStateError(undefined, { cause: error });
@@ -98,4 +176,11 @@ function createFirestoreOpenSeasonGuard({ db, groupRepository }) {
   };
 }
 
-module.exports = { OPEN_SEASON_GUARD_FIELDS, createFirestoreOpenSeasonGuard, hydrateOpenSeasonGuard };
+module.exports = {
+  OPEN_SEASON_GUARD_FIELDS,
+  assertOpenSeasonCorrelated,
+  createFirestoreOpenSeasonGuard,
+  hydrateOpenSeasonGuard,
+  isOpenSeasonTransactionBoundaryCode3,
+  resolveConfirmedOpenSeasonAfterCode3,
+};

@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { GroupLoading } from "@/components/groups/GroupLoading";
 import { GroupPageShell } from "@/components/groups/GroupPageShell";
 import { OwnMembershipSection } from "@/components/memberships/OwnMembershipSection";
+import { PendingGroupJoinRequestsSection } from "@/components/groupJoinRequests/PendingGroupJoinRequestsSection";
 import { OpenSeasonSection } from "@/components/seasons/OpenSeasonSection";
 import { getGroupErrorMessage, getGroupErrorReason, getOwnGroup } from "@/services/groupsService";
 import type { OwnGroup } from "@/types/OwnGroup";
@@ -60,6 +61,7 @@ export default function OwnGroupDetailPage() {
           </aside>
           <OpenSeasonSection groupId={group.id} />
           <OwnMembershipSection groupId={group.id} />
+          <PendingGroupJoinRequestsSection groupId={group.id} />
         </div>
       ) : null}
     </GroupPageShell>

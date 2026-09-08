@@ -138,7 +138,27 @@ const groupJoinRequestTestPath = path.join(
   "emulator",
   "groupJoinRequestE2.test.js"
 );
-const command = process.env.E2_06_FOCAL === "1"
+const groupJoinRequestDecisionTestPath = path.join(
+  systemRoot,
+  "functions",
+  "test",
+  "emulator",
+  "groupJoinRequestDecisionE2.test.js"
+);
+const groupJoinRequestDecisionGapsTestPath = path.join(
+  systemRoot,
+  "functions",
+  "test",
+  "emulator",
+  "groupJoinRequestDecisionGapsE2.test.js"
+);
+const command = process.env.E2_07_CLEANUP_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${groupJoinRequestDecisionTestPath}" && node --test --test-concurrency=1 "${membershipTestPath}" && node --test --test-concurrency=1 "${seasonTestPath}"`
+  : process.env.E2_07_GAPS_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${groupJoinRequestDecisionGapsTestPath}"`
+  : process.env.E2_07_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${groupJoinRequestDecisionTestPath}"`
+  : process.env.E2_06_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${groupJoinRequestTestPath}"`
   : process.env.E2_02_FOCAL === "1"
     ? `node --test --test-concurrency=1 "${seasonTestPath}"`
@@ -146,7 +166,7 @@ const command = process.env.E2_06_FOCAL === "1"
       ? `node --test --test-concurrency=1 "${membershipTestPath}"`
       : process.env.E2_04_FOCAL === "1"
         ? `node --test --test-concurrency=1 "${membershipListTestPath}"`
-        : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${seasonTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${groupJoinRequestTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
+        : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${seasonTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${groupJoinRequestTestPath}" "${groupJoinRequestDecisionTestPath}" "${groupJoinRequestDecisionGapsTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
 const args = [
   "emulators:exec",
   "--project",

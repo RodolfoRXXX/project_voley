@@ -29,6 +29,11 @@ function validateCreate(data) {
   return Object.freeze({ groupId: id(data.groupId), idempotencyKey: data.idempotencyKey });
 }
 function validateCancel(data) { closed(data, ["groupId", "requestId"]); return Object.freeze({ groupId: id(data.groupId), requestId: id(data.requestId) }); }
+function validateDecision(data) {
+  closed(data, ["groupId", "requestId", "idempotencyKey"]);
+  if (typeof data.idempotencyKey !== "string" || !KEY_PATTERN.test(data.idempotencyKey)) throw new GroupJoinRequestValidationError();
+  return Object.freeze({ groupId: id(data.groupId), requestId: id(data.requestId), idempotencyKey: data.idempotencyKey });
+}
 function validateList(data) {
   closed(data, ["groupId"], ["pageSize", "cursor"]);
   const pageSize = data.pageSize === undefined ? 20 : data.pageSize;
@@ -39,4 +44,4 @@ function validateList(data) {
   return Object.freeze({ groupId: id(data.groupId), pageSize, ...(data.cursor === undefined ? {} : { cursor: data.cursor }) });
 }
 
-module.exports = { validateCancelGroupJoinRequestPayload: validateCancel, validateCreateGroupJoinRequestPayload: validateCreate, validateGroupJoinRequestGroupPayload: validateGroup, validateListGroupJoinRequestsPayload: validateList };
+module.exports = { validateCancelGroupJoinRequestPayload: validateCancel, validateCreateGroupJoinRequestPayload: validateCreate, validateGroupJoinRequestDecisionPayload: validateDecision, validateGroupJoinRequestGroupPayload: validateGroup, validateGroupJoinRequestResultPayload: validateCancel, validateListGroupJoinRequestsPayload: validateList };

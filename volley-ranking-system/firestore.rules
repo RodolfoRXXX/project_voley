@@ -159,6 +159,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /groupJoinRequestDecisionIntents/{intentId} {
+      allow read, write: if false;
+    }
+
+    match /groupJoinRequestApprovalCoordinations/{requestId} {
+      allow read, write: if false;
+    }
+
     match /matches/{matchId} {
       allow read: if isAppAdmin()
         || isGroupMemberById(resource.data.groupId);

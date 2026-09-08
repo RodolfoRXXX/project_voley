@@ -12,7 +12,8 @@ test("una reconsulta autoritativa vacía tras cancelación incierta exige prepar
   const module = { exports: {} };
   Function("module", "exports", output)(module, module.exports);
   const { resolveAuthoritativeCandidateView } = module.exports;
-  assert.equal(resolveAuthoritativeCandidateView(false, true), "cancelled");
-  assert.equal(resolveAuthoritativeCandidateView(false, false), "eligible");
-  assert.equal(resolveAuthoritativeCandidateView(true, true), "pending");
+  assert.equal(resolveAuthoritativeCandidateView(null, true), "cancelled");
+  assert.equal(resolveAuthoritativeCandidateView(null, false), "eligible");
+  assert.equal(resolveAuthoritativeCandidateView("PENDING", true), "pending");
+  assert.equal(resolveAuthoritativeCandidateView("APPROVAL_IN_PROGRESS", true), "approval-in-progress");
 });

@@ -5,7 +5,7 @@ import { cancelMyGroupJoinRequest, createMyGroupJoinRequest, getGroupJoinRequest
 import type { KnownGroupJoinPreview, OwnGroupJoinRequest } from "@/types/GroupJoinRequest";
 import { resolveAuthoritativeCandidateView } from "./groupJoinRequestCandidateState";
 
-type View = "loading" | "eligible" | "creating" | "pending" | "cancel-confirm" | "cancelling" | "cancelled" | "error";
+type View = "loading" | "eligible" | "creating" | "pending" | "approval-in-progress" | "cancel-confirm" | "cancelling" | "cancelled" | "error";
 type RetryAction = "load" | "create" | "cancel";
 function newKey() { return `group-join-${crypto.randomUUID()}`; }
 
@@ -27,7 +27,7 @@ export function GroupJoinRequestCandidate({ groupId }: { groupId: string }) {
       const preview = await getKnownGroupJoinPreview(groupId);
       const current = await getMyCurrentGroupJoinRequest(groupId);
       setGroup(preview.group); setRequest(current.request);
-      setView(resolveAuthoritativeCandidateView(Boolean(current.request), consumedIntentRequiresExplicitRenewal.current));
+      setView(resolveAuthoritativeCandidateView(current.request?.estado === "pendiente" ? current.request.decisionStatus : null, consumedIntentRequiresExplicitRenewal.current));
     } catch (cause) { retryAction.current = "load"; setError(getGroupJoinRequestErrorMessage(getGroupJoinRequestErrorReason(cause))); setView("error"); queueMicrotask(() => result.current?.focus()); }
   }, [groupId]);
   useEffect(() => { void load(); }, [load]);
@@ -38,7 +38,7 @@ export function GroupJoinRequestCandidate({ groupId }: { groupId: string }) {
     try {
       const response = await createMyGroupJoinRequest({ groupId, idempotencyKey: keyRef.current });
       consumedIntentRequiresExplicitRenewal.current = true;
-      setRequest(response.request); setView(response.request.estado === "cancelada" ? "cancelled" : "pending"); queueMicrotask(() => result.current?.focus());
+      setRequest(response.request); setView(response.request.estado === "pendiente" ? resolveAuthoritativeCandidateView(response.request.decisionStatus, true) : "cancelled"); queueMicrotask(() => result.current?.focus());
     } catch (cause) {
       const reason = getGroupJoinRequestErrorReason(cause);
       retryAction.current = "create"; setError(getGroupJoinRequestErrorMessage(reason)); setView("error"); queueMicrotask(() => result.current?.focus());
@@ -60,6 +60,7 @@ export function GroupJoinRequestCandidate({ groupId }: { groupId: string }) {
       {view === "eligible" ? <section className="mt-5 rounded-2xl border border-[var(--border)] p-5"><h2 className="font-semibold">Solicitar ingreso</h2><p className="mt-2 text-sm text-[var(--text-muted)]">El Owner podrá ver tu nombre y apellido mientras la solicitud esté pendiente.</p><button type="button" className="mt-4 min-h-11 rounded-lg bg-orange-600 px-5 py-2 font-semibold text-white" onClick={() => void create()}>Solicitar ingreso</button></section> : null}
       {view === "creating" ? <p className="mt-5" role="status" aria-live="polite">Confirmando solicitud…</p> : null}
       {view === "pending" && request?.estado === "pendiente" ? <section className="mt-5 rounded-2xl border border-emerald-300 bg-emerald-50 p-5" aria-live="polite"><h2 className="font-semibold text-emerald-950">Solicitud pendiente</h2><p className="mt-2 text-sm text-emerald-900">Creada el <time dateTime={request.createdAt}>{new Date(request.createdAt).toLocaleDateString("es-AR")}</time>.</p><button type="button" className="mt-4 min-h-11 rounded-lg border border-red-400 px-4 py-2 font-semibold text-red-800" onClick={() => setView("cancel-confirm")}>Cancelar solicitud</button></section> : null}
+      {view === "approval-in-progress" && request?.estado === "pendiente" ? <section className="mt-5 rounded-2xl border border-amber-300 bg-amber-50 p-5" aria-live="polite"><h2 className="font-semibold">Aprobación en proceso</h2><p className="mt-2 text-sm">El Owner está coordinando tu Membresía. Todavía no hay una aprobación confirmada.</p><button type="button" className="mt-4 min-h-11 rounded-lg border px-4 py-2 font-semibold" onClick={() => void load()}>Reconsultar estado</button></section> : null}
       {view === "cancel-confirm" && request?.estado === "pendiente" ? <section className="mt-5 rounded-2xl border border-amber-300 bg-amber-50 p-5" role="alertdialog" aria-modal="true" aria-labelledby="cancel-request-title" aria-describedby="cancel-request-description" onKeyDown={(event) => { if (event.key === "Escape") setView("pending"); }}><h2 id="cancel-request-title" className="font-semibold">Confirmar cancelación</h2><p id="cancel-request-description" className="mt-2 text-sm">La solicitud se conservará como historia cancelada. Podrás iniciar otra después.</p><div className="mt-4 flex flex-col gap-2 sm:flex-row"><button ref={cancelButton} type="button" className="min-h-11 rounded-lg border px-4 py-2 font-semibold" onClick={() => setView("pending")}>Volver</button><button type="button" className="min-h-11 rounded-lg bg-red-700 px-4 py-2 font-semibold text-white" onClick={() => void cancel()}>Sí, cancelar solicitud</button></div></section> : null}
       {view === "cancelling" ? <p className="mt-5" role="status" aria-live="polite">Cancelando solicitud…</p> : null}
       {view === "cancelled" ? <section className="mt-5 rounded-2xl border border-slate-300 bg-slate-50 p-5" aria-live="polite"><h2 className="font-semibold">Sin solicitud pendiente</h2>{request?.estado === "cancelada" ? <p className="mt-2 text-sm">Cancelada el <time dateTime={request.cancelledAt}>{new Date(request.cancelledAt).toLocaleDateString("es-AR")}</time>.</p> : <p className="mt-2 text-sm">El estado autoritativo confirma que ya no existe una solicitud pendiente.</p>}<button type="button" className="mt-4 min-h-11 rounded-lg border border-orange-500 px-4 py-2 font-semibold" onClick={beginNew}>Preparar una nueva solicitud</button></section> : null}

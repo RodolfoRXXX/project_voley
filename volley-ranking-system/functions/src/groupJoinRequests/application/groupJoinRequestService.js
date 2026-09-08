@@ -8,7 +8,7 @@ const {
   GroupJoinRequestPersonRequiredError,
   GroupJoinRequestUnauthenticatedError,
 } = require("./groupJoinRequestErrors");
-const { toOwnGroupJoinRequestDto, toOwnerItem, toPreview } = require("./groupJoinRequestDto");
+const { toApprovalDto, toDecisionResultDto, toOwnGroupJoinRequestDto, toOwnerItem, toPreview, toRejectionDto } = require("./groupJoinRequestDto");
 const { isTransientDependencyError } = require("../../shared/application/transientDependencyError");
 
 function createGroupJoinRequestService({ accountCapability, personCapability, store }) {
@@ -41,10 +41,13 @@ function createGroupJoinRequestService({ accountCapability, personCapability, st
 
   return {
     async getKnownGroupJoinPreview(identity, input, observe) { const context = await candidate(identity); const group = await safe(() => store.preview({ ...context, groupId: input.groupId, observe })); return Object.freeze({ group: toPreview(group) }); },
-    async createMyGroupJoinRequest(identity, input, observe) { const context = await candidate(identity); const result = await safe(() => store.create({ ...context, ...input, observe })); return Object.freeze({ outcome: result.outcome, request: toOwnGroupJoinRequestDto(result.request) }); },
-    async getMyCurrentGroupJoinRequest(identity, input, observe) { const context = await candidate(identity); const request = await safe(() => store.getCurrent({ personId: context.personId, groupId: input.groupId, observe })); return Object.freeze({ request: request ? toOwnGroupJoinRequestDto(request) : null }); },
+    async createMyGroupJoinRequest(identity, input, observe) { const context = await candidate(identity); const result = await safe(() => store.create({ ...context, ...input, observe })); return Object.freeze({ outcome: result.outcome, request: toOwnGroupJoinRequestDto(result.request, result.decisionStatus) }); },
+    async getMyCurrentGroupJoinRequest(identity, input, observe) { const context = await candidate(identity); const result = await safe(() => store.getCurrent({ personId: context.personId, groupId: input.groupId, observe })); return Object.freeze({ request: result ? toOwnGroupJoinRequestDto(result.request, result.decisionStatus) : null }); },
     async cancelMyGroupJoinRequest(identity, input, observe) { const context = await candidate(identity); const result = await safe(() => store.cancel({ personId: context.personId, ...input, observe })); return Object.freeze({ outcome: result.outcome, request: toOwnGroupJoinRequestDto(result.request) }); },
-    async listPendingGroupJoinRequestsForOwnedGroup(identity, input, observe) { const userId = actor(identity); await account(userId); const result = await safe(() => store.listOwned({ userId, ...input, observe })); return Object.freeze({ items: result.composed.map(({ request, person: value }) => toOwnerItem(request, value)), nextCursor: result.nextCursor }); },
+    async listPendingGroupJoinRequestsForOwnedGroup(identity, input, observe) { const userId = actor(identity); await account(userId); const result = await safe(() => store.listOwned({ userId, ...input, observe })); return Object.freeze({ items: result.composed.map(({ request, person: value, decisionStatus }) => toOwnerItem(request, value, decisionStatus)), nextCursor: result.nextCursor }); },
+    async approveGroupJoinRequest(identity, input, observe) { const userId = actor(identity); await account(userId); const result = await safe(() => store.approve({ userId, ...input, observe })); return toApprovalDto(result.outcome, result.request, result.membership); },
+    async rejectGroupJoinRequest(identity, input, observe) { const userId = actor(identity); await account(userId); const result = await safe(() => store.reject({ userId, ...input, observe })); return toRejectionDto(result.outcome, result.request); },
+    async getGroupJoinRequestDecisionResult(identity, input, observe) { const userId = actor(identity); await account(userId); const result = await safe(() => store.getDecisionResult({ userId, ...input, observe })); return toDecisionResultDto(result); },
   };
 }
 module.exports = { createGroupJoinRequestService };

@@ -171,15 +171,15 @@ test("E2-06 solicitud propia usa fuente autoritativa, idempotencia, privacidad, 
       const badKey = "e2-06-incompatible-intent", badIntentId = groupJoinRequestIntentId(candidateTwo.uid, badKey), atIntent = admin.firestore.Timestamp.now(); fixtures.register(db.collection("groupJoinRequestIntents").doc(badIntentId)); await db.collection("groupJoinRequestIntents").doc(badIntentId).set({ requestId: "e2-06-missing", personId: ids.candidateTwoPerson, groupId: ids.otherGroup, requestHash: "c".repeat(64), createdAt: atIntent, intentVersion: 1, unexpected: true });
       const badIntent = await call("createMyGroupJoinRequest", command(ids.otherGroup, badKey), candidateTwo.idToken); assert.equal(badIntent.body.error.details.reason, "INCOMPATIBLE_STATE"); await db.collection("groupJoinRequestIntents").doc(badIntentId).delete();
       const futureId = "e2-06-future-state"; fixtures.register(db.collection("groupJoinRequests").doc(futureId)); await db.collection("groupJoinRequests").doc(futureId).set({ personId: ids.candidatePerson, groupId: ids.otherGroup, estado: "aprobada", createdAt: admin.firestore.Timestamp.now(), schemaVersion: 2 });
-      const future = await call("cancelMyGroupJoinRequest", { groupId: ids.otherGroup, requestId: futureId }, candidate.idToken); assert.equal(future.body.error.details.reason, "REQUEST_NOT_PENDING");
+      const future = await call("cancelMyGroupJoinRequest", { groupId: ids.otherGroup, requestId: futureId }, candidate.idToken); assert.equal(future.body.error.details.reason, "INCOMPATIBLE_STATE");
       const duplicateA = "e2-06-duplicate-a", duplicateB = "e2-06-duplicate-b", duplicateGuard = pendingGroupJoinRequestGuardId(ids.otherGroup, ids.candidateTwoPerson), at = admin.firestore.Timestamp.now();
       for (const id of [duplicateA, duplicateB]) { fixtures.register(db.collection("groupJoinRequests").doc(id)); await db.collection("groupJoinRequests").doc(id).set({ personId: ids.candidateTwoPerson, groupId: ids.otherGroup, estado: "pendiente", createdAt: at, schemaVersion: 1 }); }
       fixtures.register(db.collection("pendingGroupJoinRequestGuards").doc(duplicateGuard)); await db.collection("pendingGroupJoinRequestGuards").doc(duplicateGuard).set({ requestId: duplicateA, personId: ids.candidateTwoPerson, groupId: ids.otherGroup, createdAt: at, guardVersion: 1 });
       const duplicate = await call("getMyCurrentGroupJoinRequest", { groupId: ids.otherGroup }, candidateTwo.idToken); assert.equal(duplicate.body.error.details.reason, "INCOMPATIBLE_STATE");
     });
 
-    await t.test("reglas deniegan get y write de las tres colecciones a todos los actores", async () => {
-      for (const collection of ["groupJoinRequests", "pendingGroupJoinRequestGuards", "groupJoinRequestIntents"]) for (const token of [undefined, candidate.idToken, owner.idToken, member.idToken, globalAdmin.idToken]) {
+    await t.test("reglas deniegan get y write de las colecciones de Solicitud a todos los actores", async () => {
+      for (const collection of ["groupJoinRequests", "pendingGroupJoinRequestGuards", "groupJoinRequestIntents", "groupJoinRequestDecisionIntents", "groupJoinRequestApprovalCoordinations"]) for (const token of [undefined, candidate.idToken, owner.idToken, member.idToken, globalAdmin.idToken]) {
         assert.equal(await firestore(process.env.FIRESTORE_EMULATOR_HOST, projectId, `${collection}/forbidden`, token), 403);
         assert.equal(await firestore(process.env.FIRESTORE_EMULATOR_HOST, projectId, collection, token), 403);
         assert.equal(await firestore(process.env.FIRESTORE_EMULATOR_HOST, projectId, collection, token, "POST"), 403);

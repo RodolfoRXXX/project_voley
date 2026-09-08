@@ -1,7 +1,7 @@
 "use strict";
 const functions = require("firebase-functions/v1");
 const { GroupJoinRequestError, GroupJoinRequestUnauthenticatedError } = require("../application/groupJoinRequestErrors");
-const CODES = Object.freeze({ UNAUTHENTICATED: "unauthenticated", ACCOUNT_REQUIRED: "failed-precondition", PERSON_REQUIRED: "failed-precondition", PERSON_INCOMPATIBLE: "failed-precondition", GROUP_NOT_AVAILABLE: "not-found", GROUP_INCOMPATIBLE: "failed-precondition", OWNER_CANNOT_REQUEST: "failed-precondition", ACTIVE_MEMBERSHIP_EXISTS: "already-exists", REQUEST_ALREADY_PENDING: "already-exists", REQUEST_NOT_FOUND: "not-found", REQUEST_NOT_PENDING: "failed-precondition", NOT_AUTHORIZED: "permission-denied", VALIDATION_FAILED: "invalid-argument", IDEMPOTENCY_CONFLICT: "already-exists", INCOMPATIBLE_STATE: "failed-precondition", CONFLICT: "aborted", DEPENDENCY_UNAVAILABLE: "unavailable", INTERNAL_ERROR: "internal" });
+const CODES = Object.freeze({ UNAUTHENTICATED: "unauthenticated", ACCOUNT_REQUIRED: "failed-precondition", PERSON_REQUIRED: "failed-precondition", PERSON_INCOMPATIBLE: "failed-precondition", GROUP_NOT_AVAILABLE: "not-found", GROUP_INCOMPATIBLE: "failed-precondition", OWNER_CANNOT_REQUEST: "failed-precondition", ACTIVE_MEMBERSHIP_EXISTS: "already-exists", REQUEST_ALREADY_PENDING: "already-exists", REQUEST_NOT_FOUND: "not-found", REQUEST_NOT_PENDING: "failed-precondition", REQUEST_CANCELLED: "failed-precondition", DECISION_ALREADY_APPROVED: "failed-precondition", DECISION_ALREADY_REJECTED: "failed-precondition", APPROVAL_IN_PROGRESS: "failed-precondition", OPEN_SEASON_REQUIRED: "failed-precondition", SEASON_INCOMPATIBLE: "failed-precondition", MEMBERSHIP_REACTIVATION_REQUIRED: "failed-precondition", NOT_AUTHORIZED: "permission-denied", VALIDATION_FAILED: "invalid-argument", IDEMPOTENCY_CONFLICT: "already-exists", INCOMPATIBLE_STATE: "failed-precondition", CONFLICT: "aborted", DEPENDENCY_UNAVAILABLE: "unavailable", INTERNAL_ERROR: "internal" });
 function identity(context) { if (!context?.auth?.uid) throw new GroupJoinRequestUnauthenticatedError(); return Object.freeze({ userId: context.auth.uid }); }
 function toHttps(error) {
   if (error instanceof functions.https.HttpsError) return error;
@@ -13,7 +13,7 @@ function handler({ operation, operationName, validatePayload, logger = console }
     const startedAt = Date.now();
     let observation = { stage: "request-validation", classification: "first-attempt" };
     const observe = (candidate) => {
-      if (!candidate || typeof candidate.stage !== "string" || !/^[a-z-]+$/.test(candidate.stage) || !["first-attempt", "retry", "recovery"].includes(candidate.classification)) return;
+      if (!candidate || typeof candidate.stage !== "string" || !/^[a-z-]+$/.test(candidate.stage) || !["first-attempt", "retry", "recovery", "contention", "uncertain", "incompatible"].includes(candidate.classification)) return;
       observation = { stage: candidate.stage, classification: candidate.classification };
     };
     try {

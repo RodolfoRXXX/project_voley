@@ -33,7 +33,7 @@ import { getTournamentFormatLabel } from "@/types/tournaments/tournament";
 import ShareOptionsButton from "@/components/ui/share/ShareOptionsButton";
 import { getPublicGroupDetailUrl } from "@/lib/share/publicShareUrls";
 import type { PendingAlert } from "@/types/pendingAlerts";
-import { pendingAlertPriority } from "@/types/pendingAlerts";
+import { isRetiredLegacyGroupJoinAlert, pendingAlertPriority } from "@/types/pendingAlerts";
 import AdminResourcePendingAlerts from "@/components/admin/AdminResourcePendingAlerts";
 
 type GroupMember = {
@@ -64,7 +64,6 @@ type GroupData = {
   adminId?: string;
   adminIds?: string[];
   members?: GroupMember[];
-  pendingRequests?: GroupMember[];
   pendingAdminRequests?: GroupMember[];
   [key: string]: unknown;
 };
@@ -425,6 +424,7 @@ export default function AdminGroupPage() {
             meta: data.meta,
           } as PendingAlert;
         })
+        .filter((alert) => !isRetiredLegacyGroupJoinAlert(alert))
         .sort((a, b) => a.priority - b.priority);
 
       setPendingAlerts(nextAlerts);
@@ -457,7 +457,9 @@ export default function AdminGroupPage() {
   }
 
   const memberIds: string[] = Array.isArray(data.memberIds) ? data.memberIds : [];
-  const pendingIds: string[] = Array.isArray(data.pendingRequestIds) ? data.pendingRequestIds : [];
+  const pendingAdminIds: string[] = Array.isArray(data.pendingAdminRequestIds)
+    ? data.pendingAdminRequestIds
+    : [];
 
   const adminUserIds =
     Array.isArray(data.admins) && data.admins.length > 0
@@ -468,7 +470,7 @@ export default function AdminGroupPage() {
       ? data.adminIds
       : [];
 
-  const allUserIds = [...new Set([...memberIds, ...pendingIds])];
+  const allUserIds = [...new Set([...memberIds, ...pendingAdminIds])];
 
   const loadUsersByIds = async (ids: string[]) => {
     if (ids.length === 0) return [];
@@ -528,17 +530,12 @@ export default function AdminGroupPage() {
   };
 
   const members = sortMembersWithAdminsFirst(memberIds.map(buildMember), data.ownerId);
-  const pendingRequests = pendingIds.map(buildMember);
-
-  const pendingAdminRequests: GroupMember[] = Array.isArray(data.pendingAdminRequestIds)
-    ? data.pendingAdminRequestIds.map(buildMember)
-    : [];
+  const pendingAdminRequests: GroupMember[] = pendingAdminIds.map(buildMember);
 
   const groupData: GroupData = {
     id: snap.id,
     ...data,
     members,
-    pendingRequests,
     pendingAdminRequests,
     nombre: typeof data.nombre === "string" ? data.nombre : "",
   };
@@ -796,25 +793,6 @@ export default function AdminGroupPage() {
     }
   };
 
-  //aceptar / rechazar solicitudes
-
-  const resolveRequest = async (
-    userId: string,
-    action: "approve" | "reject"
-  ) => {
-    try {
-      setActingKey(`${action}-${userId}`);
-
-      await postWithAuth(
-        `/api/groups/${groupId}/requests/${userId}/${action}`
-      );
-      await loadGroupDetails();
-
-    } finally {
-      setActingKey(null);
-    }
-  };
-
   //aceptar / rechazar solicitudes de admin
 
   const resolveAdminRequest = async (
@@ -859,7 +837,6 @@ export default function AdminGroupPage() {
 
   const isPrimaryAdmin = !!firebaseUser?.uid && group.ownerId === firebaseUser.uid;
   const adminMembersCount = (group.members ?? []).filter((member) => member.isAdmin).length;
-  const pendingRequests: GroupMember[] = Array.isArray(group.pendingRequests) ? group.pendingRequests : [];
   const pendingAdminRequests: GroupMember[] = Array.isArray(group.pendingAdminRequests) ? group.pendingAdminRequests : [];
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-6">
@@ -1072,7 +1049,7 @@ export default function AdminGroupPage() {
         <MembersTabs
           tab={membersTab}
           onChange={setMembersTab}
-          requestsCount={pendingRequests.length}
+          requestsCount={pendingAdminRequests.length}
         />
 
         {membersTab === "members" && (
@@ -1136,33 +1113,7 @@ export default function AdminGroupPage() {
               </div>
             )}
 
-            {pendingRequests.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-amber-700">Solicitudes de ingreso</p>
-                <ul className="space-y-2">
-                  {pendingRequests.map((member) => (
-                    <li
-                      key={`pending-${member.id}`}
-                      className="rounded-md border border-white/60 bg-white/70 dark:bg-slate-900/60 p-3 transition"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <MemberIdentity member={member} subtitle="Solicitud pendiente" />
-                        <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
-                          <ActionButton onClick={() => resolveRequest(member.id, "approve")} loading={actingKey === `approve-${member.id}`} variant="success_outline" compact>
-                            Aceptar
-                          </ActionButton>
-                          <ActionButton onClick={() => resolveRequest(member.id, "reject")} loading={actingKey === `reject-${member.id}`} variant="danger_outline" compact>
-                            Eliminar
-                          </ActionButton>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {pendingRequests.length === 0 && pendingAdminRequests.length === 0 && (
+            {pendingAdminRequests.length === 0 && (
               <p className="text-sm text-neutral-500">No hay solicitudes pendientes.</p>
             )}
           </div>

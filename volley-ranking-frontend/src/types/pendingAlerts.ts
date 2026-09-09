@@ -66,6 +66,12 @@ export const pendingAlertPriority: Record<PendingAlertSeverity, number> = {
   info: 300,
 };
 
+export function isRetiredLegacyGroupJoinAlert(alert: Pick<PendingAlert, "kind" | "meta">): boolean {
+  return alert.kind === "group_join_requests_pending"
+    || (alert.kind === "group_membership_result"
+      && (alert.meta?.decision === "accepted" || alert.meta?.decision === "rejected"));
+}
+
 export const pendingAlertSeverityLabel: Record<PendingAlertSeverity, string> = {
   urgent: "Urgente",
   warning: "Advertencia",

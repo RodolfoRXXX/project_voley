@@ -39,10 +39,8 @@ type GroupDetail = {
   visibility: "public" | "private";
   joinApproval: boolean;
   members: GroupMember[];
-  pendingRequests: GroupMember[];
   pendingAdminRequests: GroupMember[];
   memberIds: string[];
-  pendingRequestIds: string[];
   pendingAdminRequestIds: string[];
   adminIds: string[];
   ownerId: string | null;
@@ -193,22 +191,16 @@ export default function GrupoPublicDetailPage() {
     const unsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) return;
       const data = snap.data();
-      const livePendingIds = Array.isArray(data.pendingRequestIds) ? data.pendingRequestIds : [];
       const livePendingAdminIds = Array.isArray(data.pendingAdminRequestIds)
         ? data.pendingAdminRequestIds
         : [];
 
-      const currentPendingIds = group.pendingRequestIds || [];
       const currentPendingAdminIds = group.pendingAdminRequestIds || [];
-
-      const pendingChanged =
-        livePendingIds.length !== currentPendingIds.length ||
-        livePendingIds.some((id: string, index: number) => id !== currentPendingIds[index]);
       const pendingAdminChanged =
         livePendingAdminIds.length !== currentPendingAdminIds.length ||
         livePendingAdminIds.some((id: string, index: number) => id !== currentPendingAdminIds[index]);
 
-      if (pendingChanged || pendingAdminChanged) {
+      if (pendingAdminChanged) {
         loadGroup();
       }
     });
@@ -285,18 +277,6 @@ export default function GrupoPublicDetailPage() {
     }
   };
 
-  const resolveRequest = async (userId: string, action: "approve" | "reject") => {
-    try {
-      setActingKey(`${action}-${userId}`);
-      await postWithAuth(`/api/groups/${groupId}/requests/${userId}/${action}`);
-      await loadGroup();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "No se pudo actualizar la solicitud");
-    } finally {
-      setActingKey(null);
-    }
-  };
-
   const resolveAdminRequest = async (userId: string, action: "approve" | "reject") => {
     try {
       setActingKey(`admin-${action}-${userId}`);
@@ -333,8 +313,8 @@ export default function GrupoPublicDetailPage() {
     }
   };
 
-  const renderMember = (member: GroupMember, isPending = false) => (
-    <li key={`${isPending ? "pending" : "member"}-${member.id}`} className="rounded-md border border-neutral-200 p-3 text-sm flex items-center justify-between gap-3">
+  const renderMember = (member: GroupMember) => (
+    <li key={`member-${member.id}`} className="rounded-md border border-neutral-200 p-3 text-sm flex items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         <UserAvatar nombre={member.name} photoURL={member.photoURL} size={36} />
         <div>
@@ -347,26 +327,7 @@ export default function GrupoPublicDetailPage() {
 
       {group?.canManageMembers && (
         <div className="flex items-center gap-2">
-          {isPending ? (
-            <>
-              <ActionButton
-                onClick={() => resolveRequest(member.id, "approve")}
-                loading={actingKey === `approve-${member.id}`}
-                variant="success_outline"
-                compact
-              >
-                Aceptar
-              </ActionButton>
-              <ActionButton
-                onClick={() => resolveRequest(member.id, "reject")}
-                loading={actingKey === `reject-${member.id}`}
-                variant="danger_outline"
-                compact
-              >
-                Eliminar
-              </ActionButton>
-            </>
-          ) : !member.isAdmin ? (
+          {!member.isAdmin ? (
             <ActionButton
               onClick={() => removeMember(member.id)}
               loading={actingKey === `remove-${member.id}`}
@@ -561,13 +522,6 @@ export default function GrupoPublicDetailPage() {
                     </li>
                   ))}
                 </ul>
-              </div>
-            )}
-
-            {group.pendingRequests.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-amber-700">Solicitudes de ingreso</p>
-                <ul className="space-y-2">{group.pendingRequests.map((member) => renderMember(member, true))}</ul>
               </div>
             )}
 

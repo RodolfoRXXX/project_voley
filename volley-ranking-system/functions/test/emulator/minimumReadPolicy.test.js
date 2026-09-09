@@ -317,7 +317,7 @@ test("aplica privado por defecto y acceso contextual mínimo", async (t) => {
         idToken: outsider.idToken,
       });
       assert.equal(authenticated.status, 200, JSON.stringify(authenticated.body));
-      assert.equal(authenticated.body.groups[0].membershipStatus, "pending");
+      assert.equal(authenticated.body.groups[0].membershipStatus, "none");
       assert.equal(Object.hasOwn(authenticated.body.groups[0], "pendingRequestIds"), false);
     });
 

@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { ActionButton } from "@/components/ui/action/ActionButton";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
@@ -28,7 +29,7 @@ type PublicGroup = {
   membershipStatus: JoinState;
 };
 
-type JoinState = "none" | "member" | "pending";
+type JoinState = "none" | "member";
 
 /* =====================
    SKELETON
@@ -103,7 +104,7 @@ function GroupsSkeleton() {
 ===================== */
 
 export default function GruposPage() {
-  const { firebaseUser, userDoc } = useAuth();
+  const { firebaseUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -163,20 +164,8 @@ export default function GruposPage() {
     router.replace(queryString ? `${pathname}?${queryString}` : pathname);
   };
 
-  const getJoinState = (group: PublicGroup): JoinState => {
-    if (!firebaseUser?.uid) return "none";
-    return group.membershipStatus;
-  };
-
-  const joinGroup = async (group: PublicGroup) => {
-    if (!firebaseUser) {
-      setError("Debes iniciar sesión para unirte a un grupo");
-      return;
-    }
-
-    const state = getJoinState(group);
-    const isLeaving = state === "member";
-
+  const leaveGroup = async (group: PublicGroup) => {
+    if (!firebaseUser || group.membershipStatus !== "member") return;
     const execute = async () => {
       const token = await firebaseUser.getIdToken();
       const res = await fetch(`/api/groups/${group.id}/join`, {
@@ -200,41 +189,18 @@ export default function GruposPage() {
       );
     };
 
-    if (isLeaving) {
-      run(
-        `leave-group-${group.id}`,
-        execute,
-        {
-          confirm: {
-            message: `¿Querés salir del grupo "${group.name}"?`,
-            confirmText: "Salir del grupo",
-            variant: "danger",
-          },
-          successMessage: "Saliste del grupo",
-        }
-      );
-    } else {
-      run(
-        `join-group-${group.id}`,
-        execute,
-        {
-          successMessage: group.joinApproval
-            ? "Solicitud enviada"
-            : "Te uniste al grupo",
-        }
-      );
-    }
-  };
-
-  const isOnboarded = userDoc?.onboarded === true;
-
-  const getButtonConfig = (group: PublicGroup) => {
-    const state = getJoinState(group);
-    if (state === "member")
-      return { label: "- Salir del grupo", variant: "danger_outline" as const };
-    if (state === "pending")
-      return { label: "Pendiente", variant: "warning" as const };
-    return { label: "+ Agregarme", variant: "success" as const };
+    run(
+      `leave-group-${group.id}`,
+      execute,
+      {
+        confirm: {
+          message: `¿Querés salir del grupo "${group.name}"?`,
+          confirmText: "Salir del grupo",
+          variant: "danger",
+        },
+        successMessage: "Saliste del grupo",
+      }
+    );
   };
 
   if (loading) return <GroupsSkeleton />;
@@ -302,8 +268,6 @@ export default function GruposPage() {
         <section className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredGroups.map((group) => {
-              const buttonConfig = getButtonConfig(group);
-
               return (
                 <div key={group.id} className="rounded-md border border-neutral-200 bg-white p-4 flex flex-col h-full">
                   {/* HEADER (crece libremente) */}
@@ -346,19 +310,22 @@ export default function GruposPage() {
                     </div>
 
                     <div className="pt-2">
-                      {firebaseUser && !isOnboarded ? (
-                        <p className="text-sm text-amber-700">
-                          Debes completar tu perfil para unirte a este grupo.
-                        </p>
-                      ) : (
+                      {group.membershipStatus === "member" ? (
                         <ActionButton
-                          onClick={() => joinGroup(group)}
-                          loading={isLoading(`leave-group-${group.id}`) || isLoading(`join-group-${group.id}`)}
-                          variant={buttonConfig.variant}
+                          onClick={() => leaveGroup(group)}
+                          loading={isLoading(`leave-group-${group.id}`)}
+                          variant="danger_outline"
                           compact
                         >
-                          {buttonConfig.label}
+                          - Salir del grupo
                         </ActionButton>
+                      ) : (
+                        <Link
+                          href={`/join/groups/${encodeURIComponent(group.id)}`}
+                          className="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900"
+                        >
+                          Solicitar ingreso →
+                        </Link>
                       )}
                     </div>
 

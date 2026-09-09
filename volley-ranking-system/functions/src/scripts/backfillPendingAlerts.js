@@ -33,11 +33,6 @@ function getGroupName(group = {}) {
   return String(group.nombre || group.name || "Grupo");
 }
 
-function getJoinRequestsCount(group = {}) {
-  const memberIds = new Set(cleanStringArray(group.memberIds));
-  return cleanStringArray(group.pendingRequestIds).filter((userId) => !memberIds.has(userId)).length;
-}
-
 function getAdminRequestsCount(group = {}) {
   const adminIds = new Set(getGroupAdminIds(group));
   return cleanStringArray(group.pendingAdminRequestIds).filter((userId) => !adminIds.has(userId)).length;
@@ -61,35 +56,7 @@ async function backfillGroupAlerts() {
     const groupId = groupDoc.id;
     const group = groupDoc.data();
     const groupName = getGroupName(group);
-    const joinRequestsCount = getJoinRequestsCount(group);
     const adminRequestsCount = getAdminRequestsCount(group);
-
-    if (joinRequestsCount > 0) {
-      for (const adminId of getGroupAdminIds(group)) {
-        processed += 1;
-        await maybeWrite(`group_join_requests_pending -> ${adminId}/${groupId}`, () =>
-          upsertPendingAlert({
-            userId: adminId,
-            alertId: `group_join_requests_pending_${groupId}`,
-            kind: "group_join_requests_pending",
-            severity: "warning",
-            title: "Solicitudes pendientes de ingreso",
-            message: `${groupName} tiene ${joinRequestsCount} solicitud${joinRequestsCount === 1 ? "" : "es"} pendiente${joinRequestsCount === 1 ? "" : "s"}.`,
-            link: {
-              path: `/admin/groups/${groupId}`,
-              label: "Revisar grupo",
-            },
-            resource: {
-              groupId,
-            },
-            meta: {
-              groupName,
-              pendingCount: joinRequestsCount,
-            },
-          })
-        );
-      }
-    }
 
     if (adminRequestsCount > 0) {
       const ownerId = getGroupOwnerId(group);

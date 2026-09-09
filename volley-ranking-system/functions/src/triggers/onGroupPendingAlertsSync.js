@@ -33,11 +33,6 @@ function getGroupOwnerId(group = {}) {
   return group.ownerId ? String(group.ownerId) : null;
 }
 
-function getJoinRequestsCount(group = {}) {
-  const memberIds = new Set(cleanStringArray(group.memberIds));
-  return cleanStringArray(group.pendingRequestIds).filter((userId) => !memberIds.has(userId)).length;
-}
-
 function getAdminRequestsCount(group = {}) {
   const adminIds = new Set(getGroupAdminIds(group));
   return cleanStringArray(group.pendingAdminRequestIds).filter((userId) => !adminIds.has(userId)).length;
@@ -47,49 +42,8 @@ function getGroupName(group = {}) {
   return String(group.nombre || group.name || "Grupo");
 }
 
-function joinRequestsAlertId(groupId) {
-  return `group_join_requests_pending_${groupId}`;
-}
-
 function adminRequestsAlertId(groupId) {
   return `group_admin_requests_pending_${groupId}`;
-}
-
-async function syncJoinRequestsAlerts(groupId, beforeGroup, afterGroup) {
-  const beforeAdminIds = getGroupAdminIds(beforeGroup || {});
-  const afterAdminIds = afterGroup ? getGroupAdminIds(afterGroup) : [];
-  const affectedAdminIds = Array.from(new Set([...beforeAdminIds, ...afterAdminIds]));
-  const pendingCount = afterGroup ? getJoinRequestsCount(afterGroup) : 0;
-  const afterAdminIdsSet = new Set(afterAdminIds);
-  const alertId = joinRequestsAlertId(groupId);
-
-  await Promise.all(
-    affectedAdminIds.map((adminId) => {
-      if (afterAdminIdsSet.has(adminId) && pendingCount > 0) {
-        return upsertPendingAlert({
-          userId: adminId,
-          alertId,
-          kind: "group_join_requests_pending",
-          severity: "warning",
-          title: "Solicitudes pendientes de ingreso",
-          message: `${getGroupName(afterGroup)} tiene ${pendingCount} solicitud${pendingCount === 1 ? "" : "es"} pendiente${pendingCount === 1 ? "" : "s"}.`,
-          link: {
-            path: `/admin/groups/${groupId}`,
-            label: "Revisar grupo",
-          },
-          resource: {
-            groupId,
-          },
-          meta: {
-            groupName: getGroupName(afterGroup),
-            pendingCount,
-          },
-        });
-      }
-
-      return resolvePendingAlert(adminId, alertId);
-    })
-  );
 }
 
 async function syncAdminRequestsAlerts(groupId, beforeGroup, afterGroup) {
@@ -137,7 +91,6 @@ module.exports = functions.firestore
     const groupId = context.params.groupId;
 
     await Promise.all([
-      syncJoinRequestsAlerts(groupId, beforeGroup, afterGroup),
       syncAdminRequestsAlerts(groupId, beforeGroup, afterGroup),
       syncAcceptedTournamentAlertsForGroup(groupId, beforeGroup, afterGroup),
       syncPendingRegistrationAlertsForGroup(groupId, beforeGroup, afterGroup),

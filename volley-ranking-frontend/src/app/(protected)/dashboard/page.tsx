@@ -23,7 +23,7 @@ import CreateMatchQuickActionModal from "@/components/dashboard/CreateMatchQuick
 import AlertsPanel from "@/components/dashboard/AlertsPanel";
 import UpcomingActivitiesSection from "@/components/dashboard/UpcomingActivitiesSection";
 import type { PendingAlert } from "@/types/pendingAlerts";
-import { pendingAlertPriority } from "@/types/pendingAlerts";
+import { isRetiredLegacyGroupJoinAlert, pendingAlertPriority } from "@/types/pendingAlerts";
 import { getOwnGroupsDashboard } from "@/services/groupsService";
 
 type TournamentDashboardMatch = {
@@ -410,7 +410,9 @@ export default function DashboardPage() {
         } satisfies PendingAlert;
       });
 
-      const normalized = loaded.filter((alert) => alert.kind !== "complete_profile");
+      const normalized = loaded.filter(
+        (alert) => alert.kind !== "complete_profile" && !isRetiredLegacyGroupJoinAlert(alert)
+      );
 
       const sorted = normalized.sort((a, b) => a.priority - b.priority || (b.updatedAt || 0) - (a.updatedAt || 0));
       setPendingAlerts(sorted);

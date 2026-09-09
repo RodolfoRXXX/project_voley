@@ -152,8 +152,17 @@ const groupJoinRequestDecisionGapsTestPath = path.join(
   "emulator",
   "groupJoinRequestDecisionGapsE2.test.js"
 );
+const legacyJoinRetirementTestPath = path.join(
+  systemRoot,
+  "functions",
+  "test",
+  "emulator",
+  "legacyJoinRetirementE2.test.js"
+);
 const command = process.env.E2_07_CLEANUP_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${groupJoinRequestDecisionTestPath}" && node --test --test-concurrency=1 "${membershipTestPath}" && node --test --test-concurrency=1 "${seasonTestPath}"`
+  : process.env.E2_08_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${legacyJoinRetirementTestPath}"`
   : process.env.E2_07_GAPS_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${groupJoinRequestDecisionGapsTestPath}"`
   : process.env.E2_07_FOCAL === "1"
@@ -166,7 +175,7 @@ const command = process.env.E2_07_CLEANUP_FOCAL === "1"
       ? `node --test --test-concurrency=1 "${membershipTestPath}"`
       : process.env.E2_04_FOCAL === "1"
         ? `node --test --test-concurrency=1 "${membershipListTestPath}"`
-        : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${seasonTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${groupJoinRequestTestPath}" "${groupJoinRequestDecisionTestPath}" "${groupJoinRequestDecisionGapsTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
+        : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${seasonTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${groupJoinRequestTestPath}" "${groupJoinRequestDecisionTestPath}" "${groupJoinRequestDecisionGapsTestPath}" "${legacyJoinRetirementTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
 const args = [
   "emulators:exec",
   "--project",

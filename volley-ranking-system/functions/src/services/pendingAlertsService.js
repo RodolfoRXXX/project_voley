@@ -120,16 +120,13 @@ async function dismissPendingAlert(userId, alertId) {
   return resolvePendingAlert(userId, alertId);
 }
 
-async function createGroupMembershipResultAlert({
+async function createGroupRemovalAlert({
   userId,
   groupId,
   groupName,
-  decision,
 }) {
-  if (!userId || !groupId || !["accepted", "rejected", "removed"].includes(decision)) return;
+  if (!userId || !groupId) return;
 
-  const isAccepted = decision === "accepted";
-  const isRemoved = decision === "removed";
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
   await upsertPendingAlert({
@@ -137,28 +134,15 @@ async function createGroupMembershipResultAlert({
     alertId: `group_membership_result_${groupId}`,
     kind: "group_membership_result",
     severity: "info",
-    title: isAccepted
-      ? "Solicitud de grupo aceptada"
-      : isRemoved
-        ? "Integrante eliminado del grupo"
-        : "Solicitud de grupo rechazada",
-    message: isAccepted
-      ? `Fuiste aceptado en ${groupName || "el grupo"}.`
-      : isRemoved
-        ? `Fuiste eliminado de ${groupName || "el grupo"}.`
-        : `Tu solicitud para unirte a ${groupName || "el grupo"} fue rechazada.`,
-    link: isRemoved
-      ? null
-      : {
-          path: isAccepted ? `/groups/${groupId}` : "/groups",
-          label: isAccepted ? "Ver grupo" : "Ver grupos",
-        },
+    title: "Integrante eliminado del grupo",
+    message: `Fuiste eliminado de ${groupName || "el grupo"}.`,
+    link: null,
     resource: {
       groupId,
     },
     meta: {
       groupName: groupName || "Grupo",
-      decision,
+      decision: "removed",
     },
     expiresAt,
   });
@@ -219,7 +203,7 @@ async function createGroupTournamentRejectionAlert({
 module.exports = {
   PENDING_ALERT_PRIORITIES,
   TOURNAMENT_GROUP_PENDING_ALERT_KINDS,
-  createGroupMembershipResultAlert,
+  createGroupRemovalAlert,
   createGroupTournamentRejectionAlert,
   isTournamentPendingAlertKind,
   resolvePendingAlert,

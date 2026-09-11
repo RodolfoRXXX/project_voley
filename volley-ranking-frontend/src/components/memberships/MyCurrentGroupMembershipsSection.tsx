@@ -86,6 +86,7 @@ export function MyCurrentGroupMembershipsSection() {
                 <h3 className="break-words text-lg font-semibold">{group.nombre}</h3>
                 <p className="mt-2 text-sm capitalize text-[var(--text-muted)]">{group.deporte}</p>
                 <p className="mt-3 text-sm">Integrás este Grupo mediante una Membresía activa.</p>
+                <p className="mt-2 text-sm text-[var(--text-muted)]">Primera incorporación: <time dateTime={membership.fechaIngreso}>{new Date(membership.fechaIngreso).toLocaleDateString("es-AR")}</time></p>
               </article>
             ))}
           </div>

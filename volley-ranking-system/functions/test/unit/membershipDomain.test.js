@@ -8,8 +8,10 @@ const {
   FINALIZED_MEMBERSHIP_FIELDS,
   MEMBERSHIP_FIELDS,
   buildMembership,
+  finalizeMembership,
   hydrateMembership,
 } = require("../../src/memberships/domain/membership");
+const { membershipValidityPeriodId } = require("../../src/memberships/application/membershipHashing");
 
 const timestamp = { toDate: () => new Date("2026-08-27T12:00:00.000Z") };
 const document = {
@@ -19,7 +21,7 @@ const document = {
 
 test("construye el Aggregate Root mínimo, activo e inmutable", () => {
   const membership = buildMembership({ membershipId: "opaque-id", personId: "person-1", groupId: "group-1", seasonId: "season-1" });
-  assert.deepEqual(membership, { membershipId: "opaque-id", personId: "person-1", groupId: "group-1", seasonId: "season-1", estado: "activa", schemaVersion: 1 });
+  assert.deepEqual(membership, { membershipId: "opaque-id", personId: "person-1", groupId: "group-1", seasonId: "season-1", estado: "activa", schemaVersion: 3 });
   assert.equal(Object.isFrozen(membership), true);
 });
 
@@ -36,18 +38,21 @@ test("E2-05 hidrata finalizada v2 exacta y rechaza versiones cruzadas", () => {
   }
 });
 
-test("E2-05 finalize conserva identidad, exige orden temporal y rechaza segunda transición", () => {
+test("E2-09 CU-027 evoluciona activa v1 a v3 y materializa período 1 cerrado", () => {
   const active = hydrateMembership("opaque-id", document);
   const finalizedAt = { toDate: () => new Date("2026-08-28T12:00:00.000Z") };
-  const finalized = active.finalize(finalizedAt);
-  assert.deepEqual(Object.keys(finalized).sort(), ["createdAt", "estado", "fechaEgreso", "fechaIngreso", "groupId", "membershipId", "personId", "schemaVersion", "seasonId"]);
+  const transition = finalizeMembership({ membership: active, finalizedAt, firstPeriodId: membershipValidityPeriodId(active.membershipId, 1) });
+  const finalized = transition.membership;
+  assert.deepEqual(Object.keys(finalized).sort(), ["createdAt", "estado", "fechaEgreso", "fechaIngreso", "groupId", "latestPeriodId", "membershipId", "periodCount", "personId", "schemaVersion", "seasonId"]);
   assert.equal(finalized.membershipId, active.membershipId);
   assert.equal(finalized.fechaIngreso, active.fechaIngreso);
   assert.equal(finalized.createdAt, active.createdAt);
   assert.equal(finalized.fechaEgreso, finalizedAt);
-  assert.equal(finalized.schemaVersion, 2);
-  assert.throws(() => active.finalize({ toDate: () => new Date("2026-08-26T12:00:00.000Z") }), InvalidMembershipStateError);
-  assert.throws(() => finalized.finalize(finalizedAt), InvalidMembershipStateError);
+  assert.equal(finalized.schemaVersion, 3);
+  assert.equal(transition.periods[0].ordinal, 1);
+  assert.equal(transition.periods[0].estado, "cerrado");
+  assert.throws(() => finalizeMembership({ membership: active, finalizedAt: { toDate: () => new Date("2026-08-26T12:00:00.000Z") }, firstPeriodId: membershipValidityPeriodId(active.membershipId, 1) }), InvalidMembershipStateError);
+  assert.throws(() => finalizeMembership({ membership: finalized, finalizedAt, firstPeriodId: membershipValidityPeriodId(active.membershipId, 1) }), InvalidMembershipStateError);
 });
 
 test("rechaza IDs vacíos, no canónicos o con slash", () => {

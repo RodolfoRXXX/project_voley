@@ -6,7 +6,7 @@ class Time { constructor(ms) { this.ms = ms; } toDate() { return new Date(this.m
 const pending = { requestId: "r", personId: "p", groupId: "g", estado: "pendiente", createdAt: new Time(0), schemaVersion: 1 };
 function service(overrides = {}) {
   const calls = [];
-  const store = { preview: async (input) => { calls.push(["preview", input]); return { id: "g", nombre: "Grupo", deporte: "voleibol" }; }, create: async (input) => { calls.push(["create", input]); return { outcome: "CREATED_PENDING", request: pending, decisionStatus: "PENDING" }; }, getCurrent: async (input) => { calls.push(["get", input]); return { request: pending, decisionStatus: "PENDING" }; }, cancel: async (input) => { calls.push(["cancel", input]); return { outcome: "CANCELLED", request: { ...pending, estado: "cancelada", cancelledAt: new Time(1) } }; }, listOwned: async (input) => { calls.push(["list", input]); return { composed: [{ request: pending, person: { firstName: "Ana", lastName: "Pérez" }, decisionStatus: "PENDING" }], nextCursor: null }; }, ...overrides.store };
+  const store = { preview: async (input) => { calls.push(["preview", input]); return { id: "g", nombre: "Grupo", deporte: "voleibol" }; }, create: async (input) => { calls.push(["create", input]); return { outcome: "CREATED_PENDING", request: pending, decisionStatus: "PENDING" }; }, getCurrent: async (input) => { calls.push(["get", input]); return { request: pending, decisionStatus: "PENDING" }; }, cancel: async (input) => { calls.push(["cancel", input]); return { outcome: "CANCELLED", request: { ...pending, estado: "cancelada", cancelledAt: new Time(1) } }; }, listOwned: async (input) => { calls.push(["list", input]); return { composed: [{ request: pending, person: { firstName: "Ana", lastName: "Pérez" }, decisionStatus: "PENDING", approvalEffect: "CREATE_MEMBERSHIP" }], nextCursor: null }; }, ...overrides.store };
   return { calls, api: createGroupJoinRequestService({ accountCapability: overrides.account || { getContext: async () => ({ status: "found" }) }, personCapability: overrides.person || { getOwnContext: async () => ({ status: "found", personId: "p" }) }, store }) };
 }
 test("servicio deriva UID y Persona y produce DTOs mínimos", async () => {
@@ -14,7 +14,7 @@ test("servicio deriva UID y Persona y produce DTOs mínimos", async () => {
   assert.deepEqual(await api.getKnownGroupJoinPreview({ userId: "u" }, { groupId: "g" }), { group: { id: "g", nombre: "Grupo", deporte: "voleibol" } });
   assert.deepEqual((await api.createMyGroupJoinRequest({ userId: "u" }, { groupId: "g", idempotencyKey: "secret" })).request, { id: "r", groupId: "g", estado: "pendiente", decisionStatus: "PENDING", createdAt: "1970-01-01T00:00:00.000Z" });
   const owner = await api.listPendingGroupJoinRequestsForOwnedGroup({ userId: "owner" }, { groupId: "g", pageSize: 20 });
-  assert.deepEqual(owner, { items: [{ id: "r", estado: "pendiente", decisionStatus: "PENDING", createdAt: "1970-01-01T00:00:00.000Z", person: { firstName: "Ana", lastName: "Pérez" } }], nextCursor: null });
+  assert.deepEqual(owner, { items: [{ id: "r", estado: "pendiente", decisionStatus: "PENDING", createdAt: "1970-01-01T00:00:00.000Z", person: { firstName: "Ana", lastName: "Pérez" }, approvalEffect: "CREATE_MEMBERSHIP" }], nextCursor: null });
   assert.equal(JSON.stringify(owner).includes("personId"), false); assert.equal(JSON.stringify(owner).includes("hidden"), false);
   assert.equal(calls[0][1].userId, "u"); assert.equal(calls[0][1].personId, "p");
 });

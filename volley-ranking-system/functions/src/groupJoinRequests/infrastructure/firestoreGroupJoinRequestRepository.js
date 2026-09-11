@@ -20,7 +20,7 @@ function createFirestoreGroupJoinRequestRepository({ db }) {
     },
     updateCancelled(transaction, request) { transaction.update(reference(request.requestId), { estado: "cancelada", cancelledAt: request.cancelledAt }); },
     updateRejected(transaction, request) { transaction.set(reference(request.requestId), { personId: request.personId, groupId: request.groupId, estado: request.estado, createdAt: request.createdAt, decisionIntentId: request.decisionIntentId, decidedBy: request.decidedBy, decidedAt: request.decidedAt, schemaVersion: 2 }); },
-    updateApproved(transaction, request) { transaction.set(reference(request.requestId), { personId: request.personId, groupId: request.groupId, estado: request.estado, createdAt: request.createdAt, decisionIntentId: request.decisionIntentId, decidedBy: request.decidedBy, decidedAt: request.decidedAt, membershipId: request.membershipId, schemaVersion: 2 }); },
+    updateApproved(transaction, request) { transaction.set(reference(request.requestId), { personId: request.personId, groupId: request.groupId, estado: request.estado, createdAt: request.createdAt, decisionIntentId: request.decisionIntentId, decidedBy: request.decidedBy, decidedAt: request.decidedAt, membershipId: request.membershipId, seasonId: request.seasonId, approvalEffect: request.approvalEffect, membershipActivationOrdinal: request.membershipActivationOrdinal, schemaVersion: 3 }); },
   };
 }
 module.exports = { createFirestoreGroupJoinRequestRepository };

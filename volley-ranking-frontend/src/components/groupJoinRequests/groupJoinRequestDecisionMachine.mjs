@@ -2,13 +2,16 @@ export const uncertainDecisionReasons = new Set(["DEPENDENCY_UNAVAILABLE", "CONF
 export function newDecisionIntent(action, requestId, keyFactory) { return Object.freeze({ action, requestId, idempotencyKey: keyFactory() }); }
 export function createDecisionIntentRegistry(keyFactory) {
   const intents = new Map();
+  const rotateAfterConfirmation = new Set();
   return Object.freeze({
     getOrCreate(action, requestId) {
       const id = `${requestId}:${action}`;
+      if (rotateAfterConfirmation.delete(id)) intents.delete(id);
       if (!intents.has(id)) intents.set(id, newDecisionIntent(action, requestId, keyFactory));
       return intents.get(id);
     },
     confirm(action, requestId) { intents.delete(`${requestId}:${action}`); },
+    requireNewConfirmation(action, requestId) { rotateAfterConfirmation.add(`${requestId}:${action}`); },
   });
 }
 export function createRequestFlights() {

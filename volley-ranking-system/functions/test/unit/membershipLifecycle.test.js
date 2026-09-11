@@ -6,7 +6,7 @@ const { hydrateMembership } = require("../../src/memberships/domain/membership")
 const { membershipLifecycleGuardId } = require("../../src/memberships/application/membershipHashing");
 const { activeMembershipGuardId } = require("../../src/memberships/application/membershipHashing");
 const { MembershipIncompatibleStateError } = require("../../src/memberships/application/membershipErrors");
-const { MEMBERSHIP_LIFECYCLE_GUARD_FIELDS, assertFinalizedMembershipCorrelated, createFirestoreMembershipLifecycleGuard, hydrateMembershipLifecycleGuard, sameTimestamp } = require("../../src/memberships/infrastructure/firestoreMembershipLifecycleGuard");
+const { MEMBERSHIP_LIFECYCLE_GUARD_FIELDS, MEMBERSHIP_LIFECYCLE_GUARD_V1_FIELDS, assertFinalizedMembershipCorrelated, createFirestoreMembershipLifecycleGuard, hydrateMembershipLifecycleGuard, sameTimestamp } = require("../../src/memberships/infrastructure/firestoreMembershipLifecycleGuard");
 
 const timestamp = { toDate: () => new Date("2026-09-01T12:00:00.000Z"), isEqual: (other) => other === timestamp };
 const id = membershipLifecycleGuardId("group-1", "person-1");
@@ -19,7 +19,7 @@ const snapshot = (value = data, snapshotId = id) => ({ exists: true, id: snapsho
 
 test("E2-05 lifecycle v1 posee ID, campos y versión exactos", () => {
   const guard = hydrateMembershipLifecycleGuard(snapshot(), { guardId: id, personId: "person-1", groupId: "group-1" });
-  assert.deepEqual(Object.keys(guard).sort(), [...MEMBERSHIP_LIFECYCLE_GUARD_FIELDS].sort());
+  assert.deepEqual(Object.keys(guard).sort(), [...MEMBERSHIP_LIFECYCLE_GUARD_V1_FIELDS].sort());
   for (const invalid of [{ ...data, extra: true }, { ...data, lifecycleGuardVersion: 2 }, { ...data, creationRequestHash: "raw" }, { ...data, finalizedAt: new Date() }]) {
     assert.throws(() => hydrateMembershipLifecycleGuard(snapshot(invalid), { guardId: id, personId: "person-1", groupId: "group-1" }), MembershipIncompatibleStateError);
   }
@@ -34,6 +34,15 @@ test("E2-05 lifecycle correlaciona finalizada y fechaEgreso exacta", () => {
   assert.doesNotThrow(() => assertFinalizedMembershipCorrelated(membership, data));
   assert.equal(sameTimestamp(timestamp, timestamp), true);
   assert.throws(() => assertFinalizedMembershipCorrelated({ ...membership, seasonId: "other" }, data), MembershipIncompatibleStateError);
+});
+
+test("E2-09 lifecycle guard v2 no conserva hashes históricos y correlaciona último período", () => {
+  const v2 = { membershipId: "membership-1", personId: "person-1", groupId: "group-1", seasonId: "season-1", lastActivationOrdinal: 2, finalizedAt: timestamp, lifecycleGuardVersion: 2 };
+  const guard = hydrateMembershipLifecycleGuard(snapshot(v2), { guardId: id, personId: "person-1", groupId: "group-1" });
+  assert.deepEqual(Object.keys(guard).sort(), [...MEMBERSHIP_LIFECYCLE_GUARD_FIELDS].sort());
+  const membership = { membershipId: "membership-1", personId: "person-1", groupId: "group-1", seasonId: "season-1", estado: "finalizada", schemaVersion: 3, periodCount: 2, fechaEgreso: timestamp };
+  assert.doesNotThrow(() => assertFinalizedMembershipCorrelated(membership, guard, { ordinal: 2, estado: "cerrado", endedAt: timestamp }));
+  assert.equal(JSON.stringify(guard).includes("Hash"), false);
 });
 
 test("E2-05 usa una sola lectura del reloj inyectado para Membresía y lifecycle", async () => {
@@ -61,6 +70,7 @@ test("E2-05 usa una sola lectura del reloj inyectado para Membresía y lifecycle
     delete(value) { writes.push({ type: "delete", value }); },
     create(value, body) { writes.push({ type: "create", value, body }); },
     update(value, body) { writes.push({ type: "update", value, body }); },
+    set(value, body) { writes.push({ type: "set", value, body }); },
   };
   let clockCalls = 0;
   const membershipRepository = {
@@ -68,12 +78,10 @@ test("E2-05 usa una sola lectura del reloj inyectado para Membresía y lifecycle
     activePairQuery() { return { kind: "active-query" }; },
     finalizedPairQuery() { return { kind: "finalized-query" }; },
     fromSnapshot() { return membership; },
-    updateFinalized(tx, finalizedMembership) {
-      tx.update(ref("memberships", finalizedMembership.membershipId), {
-        estado: finalizedMembership.estado,
-        fechaEgreso: finalizedMembership.fechaEgreso,
-        schemaVersion: finalizedMembership.schemaVersion,
-      });
+    async requirePeriodIntegrity() { return { firstPeriod: null, latestPeriod: null, openPeriods: [] }; },
+    persistTransition(tx, transition) {
+      tx.set(ref("memberships", transition.membership.membershipId), transition.membership);
+      for (const period of transition.periods) tx.set(ref("validityPeriods", period.periodId), period);
     },
   };
   const guard = createFirestoreMembershipLifecycleGuard({
@@ -91,5 +99,5 @@ test("E2-05 usa una sola lectura del reloj inyectado para Membresía y lifecycle
   assert.equal(clockCalls, 1);
   assert.equal(result.membership.fechaEgreso, egreso);
   assert.equal(writes.find((entry) => entry.type === "create").body.finalizedAt, egreso);
-  assert.deepEqual(writes.map((entry) => entry.type), ["update", "delete", "create"]);
+  assert.deepEqual(writes.map((entry) => entry.type), ["set", "set", "delete", "create"]);
 });

@@ -2,8 +2,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { activeMembershipGuardId, membershipLifecycleGuardId } = require("../../src/memberships/application/membershipHashing");
-const { groupJoinRequestDecisionHash, groupJoinRequestDecisionIntentId, groupJoinRequestMembershipHash, groupJoinRequestMembershipIdempotencyHash, pendingGroupJoinRequestGuardId } = require("../../src/groupJoinRequests/application/groupJoinRequestHashing");
+const { activeMembershipGuardId, membershipLifecycleGuardId, membershipValidityPeriodId } = require("../../src/memberships/application/membershipHashing");
+const { groupJoinRequestDecisionHash, groupJoinRequestDecisionIntentId, pendingGroupJoinRequestGuardId } = require("../../src/groupJoinRequests/application/groupJoinRequestHashing");
 const { createFirestoreFixtureRegistry } = require("../helpers/firestoreFixtureRegistry");
 const { assertSafeFirebaseTestEnvironment } = require("../guards/firebaseTestGuard");
 const { SYNTHETIC_DATA } = require("../fixtures/syntheticData");
@@ -45,8 +45,8 @@ test("E2-07 closes the remaining deterministic persistence frontiers", async (t)
   async function claim(groupId, requestId, seasonId, key, requestedBy = owner.uid) {
     const intentId = groupJoinRequestDecisionIntentId(requestedBy, key), at = T.now();
     await Promise.all([
-      fixtures.set(db.collection("groupJoinRequestDecisionIntents").doc(intentId), { requestId, personId, groupId, action: "approve", requestedBy, requestHash: groupJoinRequestDecisionHash(requestId, personId, groupId, "approve"), createdAt: at, intentVersion: 1 }),
-      fixtures.set(db.collection("groupJoinRequestApprovalCoordinations").doc(requestId), { requestId, personId, groupId, seasonId, decisionIntentId: intentId, requestedBy, createdAt: at, coordinationVersion: 1 }),
+      fixtures.set(db.collection("groupJoinRequestDecisionIntents").doc(intentId), { requestId, personId, groupId, action: "approve", requestedBy, requestHash: groupJoinRequestDecisionHash(requestId, personId, groupId, "approve"), createdAt: at, intentStatus: "pending", intentVersion: 2 }),
+      fixtures.set(db.collection("groupJoinRequestApprovalCoordinations").doc(requestId), { requestId, personId, groupId, seasonId, decisionIntentId: intentId, requestedBy, approvalEffect: "CREATE_MEMBERSHIP", membershipId: `${requestId}-membership`, expectedActivationOrdinal: 1, createdAt: at, coordinationVersion: 2 }),
     ]);
     return intentId;
   }
@@ -82,7 +82,7 @@ test("E2-07 closes the remaining deterministic persistence frontiers", async (t)
       const membershipRef = register("memberships", membershipId), activeRef = register("activeMembershipGuards", guardId);
       register("groupJoinRequestDecisionIntents", groupJoinRequestDecisionIntentId(owner.uid, key)); register("groupJoinRequestApprovalCoordinations", requestId);
       await Promise.all([membershipRef.set({ personId, groupId, seasonId, estado: "activa", fechaIngreso: at, createdAt: at, schemaVersion: 1 }), activeRef.set({ membershipId, personId, groupId, seasonId, idempotencyKeyHash: "c".repeat(64), requestHash: "d".repeat(64), createdAt: at, guardVersion: 1 })]);
-      const blocked = await call("approveGroupJoinRequest", { groupId, requestId, idempotencyKey: key }); assert.equal(blocked.body.error.details.reason, "ACTIVE_MEMBERSHIP_EXISTS"); assert.deepEqual(await counts(groupId, requestId), { requests: 1, active: 1, intents: 1, claims: 0 });
+      const blocked = await call("approveGroupJoinRequest", { groupId, requestId, idempotencyKey: key }); assert.equal(blocked.body.error.details.reason, "ACTIVE_MEMBERSHIP_EXISTS"); assert.deepEqual(await counts(groupId, requestId), { requests: 1, active: 1, intents: 0, claims: 0 });
       await Promise.all([membershipRef.delete(), activeRef.delete()]);
       const retry = await call("approveGroupJoinRequest", { groupId, requestId, idempotencyKey: key }); assert.equal(retry.body.result.outcome, "APPROVED"); register("memberships", retry.body.result.decision.membership.id);
       assert.deepEqual(await counts(groupId, requestId), { requests: 1, active: 1, intents: 1, claims: 0 });
@@ -95,15 +95,15 @@ test("E2-07 closes the remaining deterministic persistence frontiers", async (t)
       const responses = await Promise.all([call("approveGroupJoinRequest", { groupId, requestId, idempotencyKey: key1 }), call("approveGroupJoinRequest", { groupId, requestId, idempotencyKey: key2 })]);
       for (const response of responses) assert.equal(response.status, 200, JSON.stringify(response.body));
       const ids = new Set(responses.map((response) => response.body.result.decision.membership.id)); assert.equal(ids.size, 1); register("memberships", [...ids][0]);
-      assert.deepEqual(await counts(groupId, requestId), { requests: 1, active: 1, intents: 2, claims: 0 });
+      assert.deepEqual(await counts(groupId, requestId), { requests: 1, active: 1, intents: 1, claims: 0 });
     });
 
     await t.test("ownership before claim and finalized membership keep authoritative semantics", async () => {
       const groupId = "e2-07-gaps-transfer", requestId = "e2-07-gaps-transfer-request", key = "e2-07-gaps-transfer-key-01"; await setup(groupId, requestId); register("groupJoinRequestDecisionIntents", groupJoinRequestDecisionIntentId(nextOwner.uid, key)); register("groupJoinRequestApprovalCoordinations", requestId); register("activeMembershipGuards", activeMembershipGuardId(groupId, personId)); await db.collection("groups").doc(groupId).update({ ownerId: nextOwner.uid });
       assert.equal((await call("approveGroupJoinRequest", { groupId, requestId, idempotencyKey: key }, owner)).body.error.details.reason, "NOT_AUTHORIZED");
       const approved = await call("approveGroupJoinRequest", { groupId, requestId, idempotencyKey: key }, nextOwner); assert.equal(approved.body.result.outcome, "APPROVED");
-      const membershipId = approved.body.result.decision.membership.id, membershipRef = register("memberships", membershipId), activeRef = db.collection("activeMembershipGuards").doc(activeMembershipGuardId(groupId, personId)), active = (await activeRef.get()).data(), finalizedAt = T.now();
-      await db.runTransaction(async (transaction) => { const snapshot = await transaction.get(membershipRef); transaction.update(membershipRef, { ...snapshot.data(), estado: "finalizada", fechaEgreso: finalizedAt, schemaVersion: 2 }); transaction.create(register("membershipLifecycleGuards", membershipLifecycleGuardId(groupId, personId)), { membershipId, personId, groupId, seasonId: active.seasonId, creationIdempotencyKeyHash: active.idempotencyKeyHash, creationRequestHash: active.requestHash, finalizedAt, lifecycleGuardVersion: 1 }); transaction.delete(activeRef); });
+      const membershipId = approved.body.result.decision.membership.id, membershipRef = register("memberships", membershipId), activeRef = db.collection("activeMembershipGuards").doc(activeMembershipGuardId(groupId, personId)), active = (await activeRef.get()).data(), finalizedAt = T.now(), periodRef = membershipRef.collection("validityPeriods").doc(membershipValidityPeriodId(membershipId, active.activationOrdinal)); fixtures.register(periodRef);
+      await db.runTransaction(async (transaction) => { const [snapshot, periodSnapshot] = await transaction.getAll(membershipRef, periodRef); transaction.update(membershipRef, { ...snapshot.data(), estado: "finalizada", fechaEgreso: finalizedAt }); transaction.update(periodRef, { ...periodSnapshot.data(), estado: "cerrado", endedAt: finalizedAt }); transaction.create(register("membershipLifecycleGuards", membershipLifecycleGuardId(groupId, personId)), { membershipId, personId, groupId, seasonId: active.seasonId, lastActivationOrdinal: active.activationOrdinal, finalizedAt, lifecycleGuardVersion: 2 }); transaction.delete(activeRef); });
       const result = await call("getGroupJoinRequestDecisionResult", { groupId, requestId }, nextOwner); assert.equal(result.body.result.status, "APPROVED"); assert.equal(result.body.result.membership.id, membershipId);
     });
 

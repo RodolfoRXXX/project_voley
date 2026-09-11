@@ -21,6 +21,19 @@ function membershipLifecycleGuardId(groupId, personId) {
   return sha256LengthPrefixed(["sportexa:E2-05:membership-lifecycle-guard:v1", groupId, personId]);
 }
 
+function membershipValidityPeriodId(membershipId, ordinal) {
+  if (!Number.isSafeInteger(ordinal) || ordinal < 1) throw new TypeError("Validity period ordinal is invalid");
+  return sha256LengthPrefixed(["sportexa:E2-09:membership-validity-period:v1", membershipId, String(ordinal)]);
+}
+
+function hashGroupJoinRequestActivationIdempotency(decisionIntentId, membershipId, expectedActivationOrdinal) {
+  return sha256LengthPrefixed(["sportexa:E2-09:membership-activation-idempotency:v1", decisionIntentId, membershipId, String(expectedActivationOrdinal)]);
+}
+
+function hashGroupJoinRequestReactivationRequest(requestId, personId, groupId, seasonId, membershipId, expectedActivationOrdinal) {
+  return sha256LengthPrefixed(["sportexa:E2-09:membership-reactivation-request:v1", requestId, personId, groupId, seasonId, membershipId, String(expectedActivationOrdinal)]);
+}
+
 function hashMembershipIdempotencyKey(userId, groupId, personId, key) {
   return sha256LengthPrefixed(["sportexa:E2-03:idempotency:v1", userId, groupId, personId, key]);
 }
@@ -29,4 +42,13 @@ function hashMembershipRequest(userId, personId, groupId, seasonId) {
   return sha256LengthPrefixed(["sportexa:E2-03:request:v1", "contract-v1", userId, personId, groupId, seasonId]);
 }
 
-module.exports = { activeMembershipGuardId, hashMembershipIdempotencyKey, hashMembershipRequest, membershipLifecycleGuardId, sha256LengthPrefixed };
+module.exports = {
+  activeMembershipGuardId,
+  hashGroupJoinRequestActivationIdempotency,
+  hashGroupJoinRequestReactivationRequest,
+  hashMembershipIdempotencyKey,
+  hashMembershipRequest,
+  membershipLifecycleGuardId,
+  membershipValidityPeriodId,
+  sha256LengthPrefixed,
+};

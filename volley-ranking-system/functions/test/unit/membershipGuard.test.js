@@ -13,6 +13,7 @@ const {
 } = require("../../src/memberships/application/membershipErrors");
 const {
   ACTIVE_MEMBERSHIP_GUARD_FIELDS,
+  ACTIVE_MEMBERSHIP_GUARD_V1_FIELDS,
   assertMembershipCorrelated,
   createFirestoreActiveMembershipGuard,
   hydrateActiveMembershipGuard,
@@ -33,7 +34,7 @@ function snapshot(overrides = {}, id = guardId) { return { exists: true, id, dat
 
 test("guard exacto se hidrata y conserva ocho campos", () => {
   assert.deepEqual(hydrateActiveMembershipGuard(snapshot(), { guardId, ...context }), data);
-  assert.deepEqual(Object.keys(data).sort(), [...ACTIVE_MEMBERSHIP_GUARD_FIELDS].sort());
+  assert.deepEqual(Object.keys(data).sort(), [...ACTIVE_MEMBERSHIP_GUARD_V1_FIELDS].sort());
 });
 
 test("guard incompatible, colisión y clave cruda fallan cerrado", () => {
@@ -42,8 +43,17 @@ test("guard incompatible, colisión y clave cruda fallan cerrado", () => {
   }
 });
 
+test("E2-09 active guard v2 correlaciona activación y período abierto exactos", () => {
+  const period = { periodId: "period-2", ordinal: 2, estado: "abierto", startedAt: timestamp };
+  const v2 = { membershipId: "membership-1", ...context, seasonId: "season-1", activationOrdinal: 2, activatedAt: timestamp, activationIdempotencyHash: "a".repeat(64), activationRequestHash: "b".repeat(64), guardVersion: 2 };
+  const hydrated = hydrateActiveMembershipGuard({ exists: true, id: guardId, data: () => v2 }, { guardId, ...context });
+  assert.deepEqual(Object.keys(hydrated).sort(), [...ACTIVE_MEMBERSHIP_GUARD_FIELDS].sort());
+  assert.doesNotThrow(() => assertMembershipCorrelated({ membershipId: "membership-1", ...context, seasonId: "season-1", estado: "activa", schemaVersion: 3, periodCount: 2, latestPeriodId: "period-2" }, hydrated, period));
+  assert.throws(() => assertMembershipCorrelated({ membershipId: "membership-1", ...context, seasonId: "season-1", estado: "activa", schemaVersion: 3, periodCount: 3, latestPeriodId: "period-2" }, hydrated, period), MembershipIncompatibleStateError);
+});
+
 test("Membresía correlacionada debe coincidir íntegramente", () => {
-  const membership = { membershipId: "membership-1", ...context, seasonId: "season-1", estado: "activa" };
+  const membership = { membershipId: "membership-1", ...context, seasonId: "season-1", estado: "activa", schemaVersion: 1 };
   assert.doesNotThrow(() => assertMembershipCorrelated(membership, data));
   for (const broken of [null, { ...membership, seasonId: "other" }, { ...membership, estado: "inactiva" }]) {
     assert.throws(() => assertMembershipCorrelated(broken, data), MembershipIncompatibleStateError);
@@ -76,10 +86,10 @@ function resolutionSetup({ guardSnapshot = snapshot(), persisted, activeEmpty = 
     membershipId: "membership-candidate",
     ...context,
     seasonId: "season-1",
-    estado: "activa",
+    estado: "activa", schemaVersion: 1,
   };
   const stored = persisted === undefined
-    ? { membershipId: "membership-1", ...context, seasonId: "season-1", estado: "activa" }
+    ? { membershipId: "membership-1", ...context, seasonId: "season-1", estado: "activa", schemaVersion: 1 }
     : persisted;
   return {
     reads,
@@ -176,7 +186,7 @@ function finalizedQueryCode3Setup(authoritativeResult) {
     membershipId: "membership-candidate",
     ...context,
     seasonId: "season-1",
-    estado: "activa",
+    estado: "activa", schemaVersion: 1,
   };
   const activeGuard = {
     membershipId: "membership-stored",
@@ -247,7 +257,7 @@ function transactionBoundaryFailureSetup({ transactionError, authoritativeResult
     membershipId: "membership-candidate",
     ...context,
     seasonId: "season-1",
-    estado: "activa",
+    estado: "activa", schemaVersion: 1,
   };
   const activeGuard = {
     membershipId: "membership-stored",
@@ -306,7 +316,7 @@ function transactionBoundaryAuthoritativeStateSetup({
     membershipId: "membership-candidate",
     ...context,
     seasonId: "season-1",
-    estado: "activa",
+    estado: "activa", schemaVersion: 1,
   };
   const stored = persisted === undefined
     ? { ...membership, membershipId: "membership-1" }
@@ -454,7 +464,7 @@ test("code 3 exige cardinalidad y correlación reales en la relectura autoritati
   await assert.rejects(() => partial.invoke(), MembershipIncompatibleStateError);
 
   const uncorrelated = transactionBoundaryAuthoritativeStateSetup({
-    persisted: { membershipId: "membership-1", ...context, seasonId: "other", estado: "activa" },
+    persisted: { membershipId: "membership-1", ...context, seasonId: "other", estado: "activa", schemaVersion: 1 },
   });
   await assert.rejects(() => uncorrelated.invoke(), MembershipIncompatibleStateError);
 
@@ -462,11 +472,11 @@ test("code 3 exige cardinalidad y correlación reales en la relectura autoritati
     membershipId: "membership-duplicate",
     ...context,
     seasonId: "season-1",
-    estado: "activa",
+    estado: "activa", schemaVersion: 1,
   };
   const duplicates = transactionBoundaryAuthoritativeStateSetup({
     activeDocs: [
-      { id: "membership-1", membership: { membershipId: "membership-1", ...context, seasonId: "season-1", estado: "activa" } },
+      { id: "membership-1", membership: { membershipId: "membership-1", ...context, seasonId: "season-1", estado: "activa", schemaVersion: 1 } },
       { id: "membership-duplicate", membership: duplicateMembership },
     ],
   });
@@ -508,7 +518,7 @@ test("relectura tras contención falla cerrado ante guard, Membresía u orfandad
   await assert.rejects(() => resolveAfterContention(invalidGuard.input), MembershipIncompatibleStateError);
 
   const invalidMembership = resolutionSetup({
-    persisted: { membershipId: "membership-1", ...context, seasonId: "other", estado: "activa" },
+    persisted: { membershipId: "membership-1", ...context, seasonId: "other", estado: "activa", schemaVersion: 1 },
   });
   await assert.rejects(() => resolveAfterContention(invalidMembership.input), MembershipIncompatibleStateError);
 

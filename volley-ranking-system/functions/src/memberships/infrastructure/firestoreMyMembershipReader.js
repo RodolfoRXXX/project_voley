@@ -28,7 +28,8 @@ function createFirestoreMyMembershipReader({ db, groupRepository, membershipRepo
             return null;
           }
           const membership = await membershipRepository.getById(guard.membershipId, transaction);
-          assertMembershipCorrelated(membership, guard);
+          const periods = membership ? await membershipRepository.requirePeriodIntegrity({ transaction, membership }) : null;
+          assertMembershipCorrelated(membership, guard, periods?.latestPeriod);
           return membership;
         });
       } catch (error) {

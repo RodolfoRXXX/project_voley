@@ -15,7 +15,8 @@ function createMembershipCandidateContext({ db, membershipRepository }) {
       const membership = querySnapshot.empty ? null : membershipRepository.fromSnapshot(querySnapshot.docs[0]);
       if (!guard && !membership) return;
       if (!guard || !membership) throw new MembershipIncompatibleStateError("Active Membership and guard are asymmetric");
-      assertMembershipCorrelated(membership, guard);
+      const periods = await membershipRepository.requirePeriodIntegrity({ transaction, membership });
+      assertMembershipCorrelated(membership, guard, periods.latestPeriod);
       return membership;
     },
   };

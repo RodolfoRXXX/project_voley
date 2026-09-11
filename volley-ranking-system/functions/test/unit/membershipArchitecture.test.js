@@ -108,10 +108,29 @@ test("E2-05 arquitectura, timestamp y frontend se verifican estructuralmente (no
   assert.match(lifecycle, /now = \(\) => Timestamp\.now\(\)/);
   assert.match(lifecycle, /const finalizedAt = now\(\)/);
   assert.equal((lifecycle.match(/Timestamp\.now\(\)/g) || []).length, 1);
-  for (const pattern of [/updateFinalized/, /transaction\.delete\(activeRef\)/, /transaction\.create\(lifecycleRef/, /membership\.finalize\(finalizedAt\)/]) assert.match(lifecycle, pattern);
+  for (const pattern of [/persistTransition/, /transaction\.delete\(activeRef\)/, /transaction\.create\(lifecycleRef/, /finalizeMembership/]) assert.match(lifecycle, pattern);
   assert.doesNotMatch(`${service}\n${read("volley-ranking-system/functions/src/memberships/domain/membership.js")}`, /firebase-admin|firebase\/functions/);
   assert.doesNotMatch(lifecycle, /FieldValue\.serverTimestamp/);
   for (const pattern of [/Finalizar mi Membresía/, /Confirmar finalización/, /conservar el ownership/, /reactivación todavía no está disponible/, /finalizeMyMembershipForOwnedGroup/, /membershipFinalizationMachine/, /aria-live/, /alertdialog/]) assert.match(`${component}\n${frontendService}`, pattern);
   assert.doesNotMatch(`${component}\n${frontendService}`, /firebase\/firestore|updateDoc\(|setDoc\(/);
   assert.match(read("volley-ranking-system/functions/index.js"), /finalizeMyMembershipForOwnedGroup/);
+});
+
+test("E2-09 períodos permanecen subordinados, sin repositorio ni superficie pública propia", () => {
+  const membershipRoot = path.join(root, "volley-ranking-system/functions/src/memberships");
+  const files = [];
+  const visit = (directory) => { for (const entry of fs.readdirSync(directory, { withFileTypes: true })) { const target = path.join(directory, entry.name); if (entry.isDirectory()) visit(target); else files.push(target); } };
+  visit(membershipRoot);
+  assert.equal(files.some((file) => /ValidityPeriodRepository|validityPeriodRepository/i.test(path.basename(file))), false);
+  assert.doesNotMatch(read("volley-ranking-system/functions/index.js"), /validityPeriod/i);
+  assert.match(read("volley-ranking-system/functions/src/memberships/infrastructure/firestoreMembershipRepository.js"), /collection\("validityPeriods"\)/);
+  const rules = read("volley-ranking-system/firestore.rules");
+  assert.match(rules, /match \/validityPeriods\/\{periodId\}[\s\S]*allow read, write: if false/);
+});
+
+test("E2-09 frontend no escribe Firestore y comunica primera incorporación y reactivación", () => {
+  const source = ["volley-ranking-frontend/src/components/groupJoinRequests/PendingGroupJoinRequestsSection.tsx", "volley-ranking-frontend/src/components/memberships/MyCurrentGroupMembershipsSection.tsx", "volley-ranking-frontend/src/services/groupJoinRequestsService.ts"].map(read).join("\n");
+  assert.doesNotMatch(source, /firebase\/firestore|setDoc\(|updateDoc\(|addDoc\(/);
+  for (const marker of ["Primera incorporación", "REACTIVATE_MEMBERSHIP", "Reactivar Membresía y aprobar Solicitud", "MEMBERSHIP_REACTIVATION_SUPERSEDED", "MEMBERSHIP_SEASON_NOT_REACTIVATABLE"]) assert.match(source, new RegExp(marker));
+  assert.doesNotMatch(source, /Activo desde/);
 });

@@ -61,20 +61,17 @@ function createFirestoreMyCurrentGroupMembershipsReader({ db, membershipReposito
 
     async requireIntegrity({ personId, candidate }) {
       try {
-        const active = await membershipRepository.activePairQuery({ personId, groupId: candidate.groupId }).get();
-        const memberships = active.docs.map((document) => hydrateMembership(document.id, document.data()));
-        if (memberships.length !== 1 || memberships[0].membershipId !== candidate.membershipId) {
-          throw new MembershipIncompatibleStateError("Active Membership uniqueness is incompatible");
-        }
-        const guardId = activeMembershipGuardId(candidate.groupId, personId);
-        const guard = hydrateActiveMembershipGuard(
-          await db.collection("activeMembershipGuards").doc(guardId).get(),
-          { guardId, personId, groupId: candidate.groupId }
-        );
-        if (!guard) throw new MembershipIncompatibleStateError("Active Membership guard is absent");
-        assertMembershipCorrelated(candidate, guard);
-        assertMembershipCorrelated(memberships[0], guard);
-        return candidate;
+        return await db.runTransaction(async (transaction) => {
+          const active = await transaction.get(membershipRepository.activePairQuery({ personId, groupId: candidate.groupId }));
+          const memberships = active.docs.map((document) => hydrateMembership(document.id, document.data()));
+          if (memberships.length !== 1 || memberships[0].membershipId !== candidate.membershipId) throw new MembershipIncompatibleStateError("Active Membership uniqueness is incompatible");
+          const guardId = activeMembershipGuardId(candidate.groupId, personId);
+          const guard = hydrateActiveMembershipGuard(await transaction.get(db.collection("activeMembershipGuards").doc(guardId)), { guardId, personId, groupId: candidate.groupId });
+          if (!guard) throw new MembershipIncompatibleStateError("Active Membership guard is absent");
+          const periods = await membershipRepository.requirePeriodIntegrity({ transaction, membership: memberships[0] });
+          assertMembershipCorrelated(memberships[0], guard, periods.latestPeriod);
+          return memberships[0];
+        });
       } catch (error) {
         if (error instanceof InvalidMembershipStateError) {
           throw new MembershipIncompatibleStateError(undefined, { cause: error });

@@ -11,11 +11,11 @@ function createGroupJoinRequestSeasonCapability({ db }) {
   async function readOpen({ unitOfWork, groupId }) {
     try {
       const guardSnapshot = await unitOfWork.get(db.collection("openSeasonGuards").doc(groupId));
-      const openSnapshot = await unitOfWork.get(db.collection("seasons").where("groupId", "==", groupId).where("estado", "==", "abierta").limit(2));
       const guard = hydrateOpenSeasonGuard(guardSnapshot, groupId);
-      if (!guard && openSnapshot.empty) return Object.freeze({ status: "absent" });
-      if (!guard || openSnapshot.size !== 1) return Object.freeze({ status: "incompatible" });
-      const season = repository.fromSnapshot(openSnapshot.docs[0]);
+      if (!guard) return Object.freeze({ status: "absent" });
+      const seasonSnapshot = await unitOfWork.get(db.collection("seasons").doc(guard.seasonId));
+      if (!seasonSnapshot.exists) return Object.freeze({ status: "incompatible" });
+      const season = repository.fromSnapshot(seasonSnapshot);
       if (!season || season.seasonId !== guard.seasonId || season.groupId !== groupId || season.estado !== "abierta") return Object.freeze({ status: "incompatible" });
       return Object.freeze({ status: "open", seasonId: season.seasonId, groupId });
     } catch (error) {

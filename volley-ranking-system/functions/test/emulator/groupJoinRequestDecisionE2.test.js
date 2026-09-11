@@ -1,8 +1,8 @@
 "use strict";
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { activeMembershipGuardId, membershipLifecycleGuardId } = require("../../src/memberships/application/membershipHashing");
-const { groupJoinRequestDecisionHash, groupJoinRequestDecisionIntentId, groupJoinRequestIntentId, groupJoinRequestMembershipHash, groupJoinRequestMembershipIdempotencyHash, pendingGroupJoinRequestGuardId } = require("../../src/groupJoinRequests/application/groupJoinRequestHashing");
+const { activeMembershipGuardId, membershipLifecycleGuardId, membershipValidityPeriodId } = require("../../src/memberships/application/membershipHashing");
+const { groupJoinRequestActivationIdempotencyHash, groupJoinRequestDecisionHash, groupJoinRequestDecisionIntentId, groupJoinRequestIntentId, groupJoinRequestReactivationHash, pendingGroupJoinRequestGuardId } = require("../../src/groupJoinRequests/application/groupJoinRequestHashing");
 const { createFirestoreFixtureRegistry } = require("../helpers/firestoreFixtureRegistry");
 const { assertSafeFirebaseTestEnvironment } = require("../guards/firebaseTestGuard");
 const { SYNTHETIC_DATA } = require("../fixtures/syntheticData");
@@ -51,20 +51,22 @@ test("E2-07 decide Solicitudes con coordinación recuperable y cardinalidad auto
     ]);
     return { requests, active, decisionIntents, claims };
   }
-  async function manualClaim(groupId, requestId, seasonId, requestedBy, key) {
+  async function manualClaim(groupId, requestId, seasonId, requestedBy, key, membershipId = `${requestId}-membership`, approvalEffect = "CREATE_MEMBERSHIP", expectedActivationOrdinal = 1) {
     const request = (await db.collection("groupJoinRequests").doc(requestId).get()).data(); const intentId = groupJoinRequestDecisionIntentId(requestedBy, key); const at = T.now();
     register("groupJoinRequestDecisionIntents", intentId); register("groupJoinRequestApprovalCoordinations", requestId);
     await Promise.all([
-      db.collection("groupJoinRequestDecisionIntents").doc(intentId).set({ requestId, personId, groupId, action: "approve", requestedBy, requestHash: groupJoinRequestDecisionHash(requestId, personId, groupId, "approve"), createdAt: at, intentVersion: 1 }),
-      db.collection("groupJoinRequestApprovalCoordinations").doc(requestId).set({ requestId, personId, groupId, seasonId, decisionIntentId: intentId, requestedBy, createdAt: at, coordinationVersion: 1 }),
+      db.collection("groupJoinRequestDecisionIntents").doc(intentId).set({ requestId, personId, groupId, action: "approve", requestedBy, requestHash: groupJoinRequestDecisionHash(requestId, personId, groupId, "approve"), createdAt: at, intentStatus: "pending", intentVersion: 2 }),
+      db.collection("groupJoinRequestApprovalCoordinations").doc(requestId).set({ requestId, personId, groupId, seasonId, decisionIntentId: intentId, requestedBy, approvalEffect, membershipId, expectedActivationOrdinal, createdAt: at, coordinationVersion: 2 }),
     ]);
     assert.equal(request.estado, "pendiente"); return intentId;
   }
-  async function manualOwnMembership(groupId, requestId, seasonId, membershipId) {
+  async function manualOwnMembership(groupId, requestId, seasonId, membershipId, requestedBy, key) {
     const at = T.now(), guardId = activeMembershipGuardId(groupId, personId); register("memberships", membershipId); register("activeMembershipGuards", guardId);
+    const intentId = groupJoinRequestDecisionIntentId(requestedBy, key); const periodId = membershipValidityPeriodId(membershipId, 1); fixtures.register(db.collection("memberships").doc(membershipId).collection("validityPeriods").doc(periodId));
     await Promise.all([
-      db.collection("memberships").doc(membershipId).set({ personId, groupId, seasonId, estado: "activa", fechaIngreso: at, createdAt: at, schemaVersion: 1 }),
-      db.collection("activeMembershipGuards").doc(guardId).set({ membershipId, personId, groupId, seasonId, idempotencyKeyHash: groupJoinRequestMembershipIdempotencyHash(requestId, personId, groupId), requestHash: groupJoinRequestMembershipHash(requestId, personId, groupId, seasonId), createdAt: at, guardVersion: 1 }),
+      db.collection("memberships").doc(membershipId).set({ personId, groupId, seasonId, estado: "activa", fechaIngreso: at, createdAt: at, latestPeriodId: periodId, periodCount: 1, schemaVersion: 3 }),
+      db.collection("memberships").doc(membershipId).collection("validityPeriods").doc(periodId).set({ ordinal: 1, estado: "abierto", startedAt: at, periodSchemaVersion: 1 }),
+      db.collection("activeMembershipGuards").doc(guardId).set({ membershipId, personId, groupId, seasonId, activationOrdinal: 1, activatedAt: at, activationIdempotencyHash: groupJoinRequestActivationIdempotencyHash(intentId, membershipId, 1), activationRequestHash: groupJoinRequestReactivationHash(requestId, personId, groupId, seasonId, membershipId, 1), guardVersion: 2 }),
     ]);
   }
 
@@ -81,7 +83,7 @@ test("E2-07 decide Solicitudes con coordinación recuperable y cardinalidad auto
       assert.deepEqual(new Set(concurrent.map((r) => r.body.result.decision.membership.id)), new Set([membershipId]));
       const aliasKey = "e2-07-approve-key-0002"; register("groupJoinRequestDecisionIntents", groupJoinRequestDecisionIntentId(owner.uid, aliasKey)); const recovered = await call("approveGroupJoinRequest", { groupId, requestId, idempotencyKey: aliasKey }); assert.equal(recovered.body.result.outcome, "ALREADY_APPROVED");
       const result = await call("getGroupJoinRequestDecisionResult", { groupId, requestId }); assert.deepEqual(result.body.result.membership, { id: membershipId, seasonId });
-      const state = await cardinality(groupId, requestId); assert.equal(state.requests.size, 1); assert.equal(state.requests.docs[0].data().estado, "aprobada"); assert.equal(state.active.size, 1); assert.equal(state.claims.size, 0); assert.equal(state.decisionIntents.size, 2);
+      const state = await cardinality(groupId, requestId); assert.equal(state.requests.size, 1); assert.equal(state.requests.docs[0].data().estado, "aprobada"); assert.equal(state.active.size, 1); assert.equal(state.claims.size, 0); assert.equal(state.decisionIntents.size, 1);
       assert.equal((await db.collection("pendingGroupJoinRequestGuards").doc(pendingGroupJoinRequestGuardId(groupId, personId)).get()).exists, false);
     });
 
@@ -98,7 +100,7 @@ test("E2-07 decide Solicitudes con coordinación recuperable y cardinalidad auto
     });
 
     await t.test("claim parcial bloquea cancelación/rechazo y luego recupera la misma Membresía", async () => {
-      const groupId = "e2-07-partial", key = "e2-07-partial-key-001", seasonId = await setupGroup(groupId); const requestId = await createRequest(groupId, "e2-07-create-partial"); await manualClaim(groupId, requestId, seasonId, owner.uid, key); const membershipId = "e2-07-partial-membership"; await manualOwnMembership(groupId, requestId, seasonId, membershipId);
+      const groupId = "e2-07-partial", key = "e2-07-partial-key-001", seasonId = await setupGroup(groupId); const requestId = await createRequest(groupId, "e2-07-create-partial"); const membershipId = "e2-07-partial-membership"; await manualClaim(groupId, requestId, seasonId, owner.uid, key, membershipId); await manualOwnMembership(groupId, requestId, seasonId, membershipId, owner.uid, key);
       const [cancel, reject, progress, list, candidateView] = await Promise.all([call("cancelMyGroupJoinRequest", { groupId, requestId }, candidate), call("rejectGroupJoinRequest", { groupId, requestId, idempotencyKey: "e2-07-partial-reject" }), call("getGroupJoinRequestDecisionResult", { groupId, requestId }), call("listPendingGroupJoinRequestsForOwnedGroup", { groupId }), call("getMyCurrentGroupJoinRequest", { groupId }, candidate)]);
       assert.equal(cancel.body.error.details.reason, "APPROVAL_IN_PROGRESS"); assert.equal(reject.body.error.details.reason, "APPROVAL_IN_PROGRESS"); assert.equal(progress.body.result.status, "APPROVAL_IN_PROGRESS"); assert.equal(list.body.result.items[0].decisionStatus, "APPROVAL_IN_PROGRESS"); assert.equal(candidateView.body.result.request.decisionStatus, "APPROVAL_IN_PROGRESS");
       const recovered = await call("approveGroupJoinRequest", { groupId, requestId, idempotencyKey: key }); assert.equal(recovered.body.result.decision.membership.id, membershipId); assert.equal((await cardinality(groupId, requestId)).active.size, 1);
@@ -107,20 +109,24 @@ test("E2-07 decide Solicitudes con coordinación recuperable y cardinalidad auto
     await t.test("Membresía activa ajena libera sólo el claim y conserva intent/pendiente", async () => {
       const groupId = "e2-07-foreign", key = "e2-07-foreign-key-001", seasonId = await setupGroup(groupId); const requestId = await createRequest(groupId, "e2-07-create-foreign"); const at = T.now(), membershipId = "e2-07-foreign-membership", guardId = activeMembershipGuardId(groupId, personId); register("memberships", membershipId); register("activeMembershipGuards", guardId); registerDecision(owner.uid, key, requestId, groupId);
       await Promise.all([db.collection("memberships").doc(membershipId).set({ personId, groupId, seasonId, estado: "activa", fechaIngreso: at, createdAt: at, schemaVersion: 1 }), db.collection("activeMembershipGuards").doc(guardId).set({ membershipId, personId, groupId, seasonId, idempotencyKeyHash: "c".repeat(64), requestHash: "d".repeat(64), createdAt: at, guardVersion: 1 })]);
-      const response = await call("approveGroupJoinRequest", { groupId, requestId, idempotencyKey: key }); assert.equal(response.body.error.details.reason, "ACTIVE_MEMBERSHIP_EXISTS"); const state = await cardinality(groupId, requestId); assert.equal(state.active.size, 1); assert.equal(state.claims.size, 0); assert.equal(state.decisionIntents.size, 1); assert.equal(state.requests.docs[0].data().estado, "pendiente");
+      const response = await call("approveGroupJoinRequest", { groupId, requestId, idempotencyKey: key }); assert.equal(response.body.error.details.reason, "ACTIVE_MEMBERSHIP_EXISTS"); const state = await cardinality(groupId, requestId); assert.equal(state.active.size, 1); assert.equal(state.claims.size, 0); assert.equal(state.decisionIntents.size, 0); assert.equal(state.requests.docs[0].data().estado, "pendiente");
     });
 
-    await t.test("lifecycle finalizado exige reactivación y no crea ni adopta", async () => {
+    await t.test("lifecycle finalizado v2 reactiva la misma Membresía y materializa sus períodos", async () => {
       const groupId = "e2-07-lifecycle", key = "e2-07-lifecycle-key01", seasonId = await setupGroup(groupId); const requestId = await createRequest(groupId, "e2-07-create-lifecycle"); const membershipId = "e2-07-finalized", at = T.now(), lifecycleId = membershipLifecycleGuardId(groupId, personId); register("memberships", membershipId); register("membershipLifecycleGuards", lifecycleId); registerDecision(owner.uid, key, requestId, groupId);
       await Promise.all([db.collection("memberships").doc(membershipId).set({ personId, groupId, seasonId, estado: "finalizada", fechaIngreso: at, fechaEgreso: at, createdAt: at, schemaVersion: 2 }), db.collection("membershipLifecycleGuards").doc(lifecycleId).set({ membershipId, personId, groupId, seasonId, creationIdempotencyKeyHash: "e".repeat(64), creationRequestHash: "f".repeat(64), finalizedAt: at, lifecycleGuardVersion: 1 })]);
-      const response = await call("approveGroupJoinRequest", { groupId, requestId, idempotencyKey: key }); assert.equal(response.body.error.details.reason, "MEMBERSHIP_REACTIVATION_REQUIRED"); const state = await cardinality(groupId, requestId); assert.equal(state.active.size, 0); assert.equal(state.claims.size, 0); assert.equal(state.requests.docs[0].data().estado, "pendiente");
+      const response = await call("approveGroupJoinRequest", { groupId, requestId, idempotencyKey: key }); assert.equal(response.body.result.outcome, "APPROVED"); assert.equal(response.body.result.decision.membership.id, membershipId);
+      const period1Id = membershipValidityPeriodId(membershipId, 1), period2Id = membershipValidityPeriodId(membershipId, 2); fixtures.register(db.collection("memberships").doc(membershipId).collection("validityPeriods").doc(period1Id)); fixtures.register(db.collection("memberships").doc(membershipId).collection("validityPeriods").doc(period2Id));
+      const [root, period1, period2] = await Promise.all([db.collection("memberships").doc(membershipId).get(), db.collection("memberships").doc(membershipId).collection("validityPeriods").doc(period1Id).get(), db.collection("memberships").doc(membershipId).collection("validityPeriods").doc(period2Id).get()]);
+      assert.equal(root.data().schemaVersion, 3); assert.equal(root.data().estado, "activa"); assert.equal(root.data().periodCount, 2); assert.equal(root.data().latestPeriodId, period2Id); assert.equal(Object.hasOwn(root.data(), "fechaEgreso"), false); assert.equal(period1.data().estado, "cerrado"); assert.equal(period1.data().startedAt.toMillis(), at.toMillis()); assert.equal(period1.data().endedAt.toMillis(), at.toMillis()); assert.equal(period2.data().estado, "abierto");
+      const state = await cardinality(groupId, requestId); assert.equal(state.active.size, 1); assert.equal(state.claims.size, 0); assert.equal(state.requests.docs[0].data().estado, "aprobada"); assert.equal((await db.collection("membershipLifecycleGuards").doc(lifecycleId).get()).exists, false);
     });
 
     await t.test("cambio de Temporada antes de Membresía libera; después de Membresía recupera", async () => {
       const groupId = "e2-07-season-change", key = "e2-07-season-change1", seasonId = await setupGroup(groupId); const requestId = await createRequest(groupId, "e2-07-create-seasonchg"); await manualClaim(groupId, requestId, seasonId, owner.uid, key);
       const nextSeason = `${groupId}-season-next`, at = T.now(); await fixtures.set(db.collection("seasons").doc(nextSeason), { ...season(groupId), createdAt: at }); await db.collection("openSeasonGuards").doc(groupId).set({ seasonId: nextSeason, idempotencyKeyHash: "1".repeat(64), requestHash: "2".repeat(64), createdAt: at, guardVersion: 1 }); await db.collection("seasons").doc(seasonId).delete();
       const changed = await call("approveGroupJoinRequest", { groupId, requestId, idempotencyKey: key }); assert.equal(changed.body.error.details.reason, "SEASON_INCOMPATIBLE"); assert.equal((await db.collection("groupJoinRequestApprovalCoordinations").doc(requestId).get()).exists, false);
-      const groupId2 = "e2-07-season-after", key2 = "e2-07-season-after-01", seasonId2 = await setupGroup(groupId2); const requestId2 = await createRequest(groupId2, "e2-07-create-seasonafter"); await manualClaim(groupId2, requestId2, seasonId2, owner.uid, key2); await manualOwnMembership(groupId2, requestId2, seasonId2, "e2-07-season-after-member"); await db.collection("openSeasonGuards").doc(groupId2).delete(); await db.collection("seasons").doc(seasonId2).delete();
+      const groupId2 = "e2-07-season-after", key2 = "e2-07-season-after-01", seasonId2 = await setupGroup(groupId2); const requestId2 = await createRequest(groupId2, "e2-07-create-seasonafter"); const membershipId2 = "e2-07-season-after-member"; await manualClaim(groupId2, requestId2, seasonId2, owner.uid, key2, membershipId2); await manualOwnMembership(groupId2, requestId2, seasonId2, membershipId2, owner.uid, key2); await db.collection("openSeasonGuards").doc(groupId2).delete(); await db.collection("seasons").doc(seasonId2).delete();
       const recovered = await call("approveGroupJoinRequest", { groupId: groupId2, requestId: requestId2, idempotencyKey: key2 }); assert.equal(recovered.body.result.outcome, "APPROVED");
     });
 

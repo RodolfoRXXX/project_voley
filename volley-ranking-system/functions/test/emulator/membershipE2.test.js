@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { createMembershipService } = require("../../src/memberships/application/membershipService");
-const { activeMembershipGuardId, membershipLifecycleGuardId } = require("../../src/memberships/application/membershipHashing");
+const { activeMembershipGuardId, membershipLifecycleGuardId, membershipValidityPeriodId } = require("../../src/memberships/application/membershipHashing");
 const {
   createFirestoreActiveMembershipGuard,
   isMembershipContention,
@@ -191,17 +191,27 @@ test("E2-03 crea y consulta Membresía propia del Owner con unicidad transaccion
       assert.notEqual(created.id, ids.ownerGroup);
 
       const document = (await db.collection("memberships").doc(created.id).get()).data();
-      assert.deepEqual(Object.keys(document).sort(), ["createdAt", "estado", "fechaIngreso", "groupId", "personId", "schemaVersion", "seasonId"]);
-      assert.equal(document.schemaVersion, 1);
+      assert.deepEqual(Object.keys(document).sort(), ["createdAt", "estado", "fechaIngreso", "groupId", "latestPeriodId", "periodCount", "personId", "schemaVersion", "seasonId"]);
+      assert.equal(document.schemaVersion, 3);
+      assert.equal(document.periodCount, 1);
+      assert.equal(document.latestPeriodId, membershipValidityPeriodId(created.id, 1));
       assert.equal(document.fechaIngreso.isEqual(document.createdAt), true);
+      const period = (await db.collection("memberships").doc(created.id).collection("validityPeriods").doc(document.latestPeriodId).get()).data();
+      assert.deepEqual(Object.keys(period).sort(), ["estado", "ordinal", "periodSchemaVersion", "startedAt"]);
+      assert.equal(period.estado, "abierto");
+      assert.equal(period.ordinal, 1);
+      assert.equal(period.periodSchemaVersion, 1);
+      assert.equal(period.startedAt.isEqual(document.fechaIngreso), true);
       const guardId = activeMembershipGuardId(ids.ownerGroup, ids.person);
       const guard = (await db.collection("activeMembershipGuards").doc(guardId).get()).data();
-      assert.deepEqual(Object.keys(guard).sort(), ["createdAt", "groupId", "guardVersion", "idempotencyKeyHash", "membershipId", "personId", "requestHash", "seasonId"]);
+      assert.deepEqual(Object.keys(guard).sort(), ["activatedAt", "activationIdempotencyHash", "activationOrdinal", "activationRequestHash", "groupId", "guardVersion", "membershipId", "personId", "seasonId"]);
       assert.equal(guard.membershipId, created.id);
       assert.equal(guard.personId, ids.person);
       assert.equal(guard.groupId, ids.ownerGroup);
       assert.equal(guard.seasonId, ids.ownerSeason);
-      assert.match(guard.idempotencyKeyHash, /^[a-f0-9]{64}$/);
+      assert.equal(guard.activationOrdinal, 1);
+      assert.equal(guard.activatedAt.isEqual(document.fechaIngreso), true);
+      assert.match(guard.activationIdempotencyHash, /^[a-f0-9]{64}$/);
       assert.equal(JSON.stringify(guard).includes("e2-03-idempotency-key-0001"), false);
       assert.deepEqual(await Promise.all(watched.map(async (ref) => (await ref.get()).data())), before);
       for (const collection of ["requests", "activities", "notifications", "alerts", "payments", "matches", "teams", "participations"]) {
@@ -438,14 +448,22 @@ test("E2-03 crea y consulta Membresía propia del Owner con unicidad transaccion
       assert.deepEqual(Object.keys(finalized.body.result.membership).sort(), ["estado", "fechaEgreso", "fechaIngreso", "groupId", "id", "seasonId"]);
       const membershipRef = db.collection("memberships").doc(createdForFinalize.body.result.membership.id);
       const persisted = (await membershipRef.get()).data();
-      assert.deepEqual(Object.keys(persisted).sort(), ["createdAt", "estado", "fechaEgreso", "fechaIngreso", "groupId", "personId", "schemaVersion", "seasonId"]);
-      assert.equal(persisted.schemaVersion, 2);
+      assert.deepEqual(Object.keys(persisted).sort(), ["createdAt", "estado", "fechaEgreso", "fechaIngreso", "groupId", "latestPeriodId", "periodCount", "personId", "schemaVersion", "seasonId"]);
+      assert.equal(persisted.schemaVersion, 3);
       assert.equal(persisted.estado, "finalizada");
+      assert.equal(persisted.periodCount, 1);
+      assert.equal(persisted.latestPeriodId, membershipValidityPeriodId(createdForFinalize.body.result.membership.id, 1));
       for (const field of ["personId", "groupId", "seasonId", "fechaIngreso", "createdAt"]) assert.deepEqual(persisted[field], before[field]);
+      const closedPeriod = (await membershipRef.collection("validityPeriods").doc(persisted.latestPeriodId).get()).data();
+      assert.equal(closedPeriod.estado, "cerrado");
+      assert.equal(closedPeriod.startedAt.isEqual(persisted.fechaIngreso), true);
+      assert.equal(closedPeriod.endedAt.isEqual(persisted.fechaEgreso), true);
       const activeId = activeMembershipGuardId(ids.finalizeGroup, ids.person);
       assert.equal((await db.collection("activeMembershipGuards").doc(activeId).get()).exists, false);
       const lifecycle = (await db.collection("membershipLifecycleGuards").doc(membershipLifecycleGuardId(ids.finalizeGroup, ids.person)).get()).data();
-      assert.deepEqual(Object.keys(lifecycle).sort(), ["creationIdempotencyKeyHash", "creationRequestHash", "finalizedAt", "groupId", "lifecycleGuardVersion", "membershipId", "personId", "seasonId"]);
+      assert.deepEqual(Object.keys(lifecycle).sort(), ["finalizedAt", "groupId", "lastActivationOrdinal", "lifecycleGuardVersion", "membershipId", "personId", "seasonId"]);
+      assert.equal(lifecycle.lifecycleGuardVersion, 2);
+      assert.equal(lifecycle.lastActivationOrdinal, 1);
       assert.equal(lifecycle.finalizedAt.isEqual(persisted.fechaEgreso), true);
       assert.equal(lifecycle.membershipId, createdForFinalize.body.result.membership.id);
       const repeated = await callFunction(functionsHost, projectId, "finalizeMyMembershipForOwnedGroup", { groupId: ids.finalizeGroup }, owner.idToken);

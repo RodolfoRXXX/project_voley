@@ -23,6 +23,8 @@ const definitions = {
   OpenSeasonRequired: ["OPEN_SEASON_REQUIRED", "An open Season is required"],
   SeasonIncompatible: ["SEASON_INCOMPATIBLE", "Season context is incompatible"],
   MembershipReactivationRequired: ["MEMBERSHIP_REACTIVATION_REQUIRED", "Membership reactivation is required"],
+  MembershipSeasonNotReactivatable: ["MEMBERSHIP_SEASON_NOT_REACTIVATABLE", "The previous Membership cannot be reactivated in the current Season"],
+  MembershipReactivationSuperseded: ["MEMBERSHIP_REACTIVATION_SUPERSEDED", "The reactivated Membership was finalized before approval"],
   NotAuthorized: ["NOT_AUTHORIZED", "The actor is not authorized"],
   Validation: ["VALIDATION_FAILED", "Request payload is invalid"],
   IdempotencyConflict: ["IDEMPOTENCY_CONFLICT", "Idempotency key was used with another request"],

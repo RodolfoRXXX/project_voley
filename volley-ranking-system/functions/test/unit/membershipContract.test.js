@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { validateCreateMembershipPayload, validateFinalizeMembershipPayload, validateGetMembershipPayload, validateListMyCurrentGroupMembershipsPayload } = require("../../src/memberships/application/membershipContract");
+const { validateCreateMembershipPayload, validateFinalizeMembershipPayload, validateGetMembershipPayload, validateLeaveMyGroupMembershipPayload, validateListMyCurrentGroupMembershipsPayload } = require("../../src/memberships/application/membershipContract");
 const { MembershipValidationError } = require("../../src/memberships/application/membershipErrors");
 
 const valid = { groupId: "group-1", idempotencyKey: "e2-03-valid-key-0001" };
@@ -37,6 +37,16 @@ test("clave respeta alfabeto y longitud cerrados", () => {
     assert.throws(() => validateCreateMembershipPayload({ ...valid, idempotencyKey: key }), MembershipValidationError);
   }
   assert.doesNotThrow(() => validateCreateMembershipPayload({ ...valid, idempotencyKey: "A._:-0123456789ab" }));
+});
+
+test("E2-10 salida propia acepta exclusivamente groupId e idempotencyKey", () => {
+  assert.deepEqual(validateLeaveMyGroupMembershipPayload(valid), valid);
+  for (const extra of ["uid", "userId", "personId", "membershipId", "seasonId", "estado", "fechaEgreso", "ordinal", "actor", "roles", "permisos", "guards", "motivo"]) {
+    assert.throws(() => validateLeaveMyGroupMembershipPayload({ ...valid, [extra]: "forbidden" }), MembershipValidationError);
+  }
+  for (const invalid of [{ ...valid, groupId: "x".repeat(1501) }, { ...valid, idempotencyKey: "short" }]) {
+    assert.throws(() => validateLeaveMyGroupMembershipPayload(invalid), MembershipValidationError);
+  }
 });
 
 test("listado propio aplica default 20 y contrato cerrado", () => {

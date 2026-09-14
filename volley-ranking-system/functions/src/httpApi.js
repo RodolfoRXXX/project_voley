@@ -294,72 +294,6 @@ async function handleGroupDetail(req, res, authContext, groupId) {
   });
 }
 
-async function handleLeaveGroup(req, res, authContext, groupId) {
-  if (!authContext.uid) {
-    res.status(404).json({ error: "Not found" });
-    return;
-  }
-
-  const group = await getGroupVisibleToAuthContext(groupId, authContext);
-  if (!group) {
-    res.status(404).json({ error: "Not found" });
-    return;
-  }
-
-  const memberIds = cleanStringArray(group.memberIds);
-  const normalizedAdmins = normalizeGroupAdmins(group);
-  const pendingAdminRequestIds = cleanStringArray(group.pendingAdminRequestIds);
-
-  const isMember = memberIds.includes(authContext.uid);
-  const isAdmin = normalizedAdmins.adminIds.includes(authContext.uid);
-  const isOwner = normalizedAdmins.ownerId === authContext.uid;
-
-  if (!isMember) {
-    res.status(404).json({ error: "Not found" });
-    return;
-  }
-
-  let nextAdmins = normalizedAdmins.admins.map((item) => ({ ...item }));
-
-  if (isOwner && normalizedAdmins.adminIds.length <= 1) {
-    res.status(400).json({
-      error:
-        "Hay un solo administrador. Asigna otro para que tome su lugar.",
-    });
-    return;
-  }
-
-  const nextMemberIds = memberIds.filter((id) => id !== authContext.uid);
-  const nextPendingAdminIds = pendingAdminRequestIds.filter((id) => id !== authContext.uid);
-  pendingAdminRequestIds.length = 0;
-  pendingAdminRequestIds.push(...nextPendingAdminIds);
-
-  if (isAdmin) {
-    nextAdmins = nextAdmins.filter((item) => item.userId !== authContext.uid);
-  }
-
-  const normalizedNextAdmins = nextAdmins.map((item, index) => ({
-    ...item,
-    role: index === 0 ? "owner" : "admin",
-    order: index,
-  }));
-
-  await db.collection("groups").doc(groupId).update({
-    memberIds: Array.from(new Set(nextMemberIds)),
-    admins: normalizedNextAdmins,
-    ownerId: normalizedNextAdmins[0]?.userId || null,
-    adminIds: normalizedNextAdmins.map((item) => item.userId),
-    pendingAdminRequestIds: Array.from(new Set(pendingAdminRequestIds)),
-  });
-
-  res.status(200).json({
-    ok: true,
-    memberIds: Array.from(new Set(nextMemberIds)),
-    adminIds: normalizedNextAdmins.map((item) => item.userId),
-    membershipStatus: "none",
-  });
-}
-
 async function handleGroupMemberRemoval(req, res, authContext, groupId, userId) {
   const group = await getGroupVisibleToAuthContext(groupId, authContext);
   if (!group) {
@@ -924,12 +858,6 @@ module.exports = functions
   const detailMatch = req.path.match(/^\/groups\/([^/]+)\/public$/);
   if (req.method === "GET" && detailMatch) {
     await handleGroupDetail(req, res, authContext, detailMatch[1]);
-    return;
-  }
-
-  const joinMatch = req.path.match(/^\/groups\/([^/]+)\/join$/);
-  if (req.method === "POST" && joinMatch) {
-    await handleLeaveGroup(req, res, authContext, joinMatch[1]);
     return;
   }
 

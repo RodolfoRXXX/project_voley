@@ -23,9 +23,14 @@ function assertExactObject(data, expectedKeys) {
 }
 
 function assertGroupId(groupId) {
-  if (typeof groupId !== "string" || !groupId.trim() || groupId !== groupId.trim() || groupId.includes("/")) {
+  if (typeof groupId !== "string" || !groupId.trim() || groupId !== groupId.trim() || groupId.includes("/")
+    || Buffer.byteLength(groupId, "utf8") > 1500) {
     throw new MembershipValidationError("Group id is invalid");
   }
+}
+
+function validateLeaveMyGroupMembershipPayload(data) {
+  return validateCreateMembershipPayload(data);
 }
 
 function validateCreateMembershipPayload(data) {
@@ -80,5 +85,6 @@ module.exports = {
   validateCreateMembershipPayload,
   validateFinalizeMembershipPayload,
   validateGetMembershipPayload,
+  validateLeaveMyGroupMembershipPayload,
   validateListMyCurrentGroupMembershipsPayload,
 };

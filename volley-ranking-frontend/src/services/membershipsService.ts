@@ -2,7 +2,7 @@ import { httpsCallable } from "firebase/functions";
 
 import { functions } from "@/lib/firebase";
 import type { ActiveOwnMembership, FinalizedOwnMembership, MembershipErrorReason, OwnMembership } from "@/types/OwnMembership";
-import type { ListMyCurrentGroupMembershipsResult } from "@/types/MyCurrentGroupMembership";
+import type { LeaveMyGroupMembershipResult, ListMyCurrentGroupMembershipsResult } from "@/types/MyCurrentGroupMembership";
 
 export interface CreateMyMembershipInput { groupId: string; idempotencyKey: string; }
 export interface CreateMyMembershipResult {
@@ -18,6 +18,7 @@ const createCallable = httpsCallable<CreateMyMembershipInput, CreateMyMembership
 const getCallable = httpsCallable<{ groupId: string }, { membership: OwnMembership | null }>(functions, "getMyMembershipForOwnedGroup");
 const finalizeCallable = httpsCallable<{ groupId: string }, FinalizeMyMembershipResult>(functions, "finalizeMyMembershipForOwnedGroup");
 const listMyCurrentGroupsCallable = httpsCallable<{ pageSize?: number; cursor?: string }, ListMyCurrentGroupMembershipsResult>(functions, "listMyCurrentGroupMemberships");
+const leaveMyGroupCallable = httpsCallable<{ groupId: string; idempotencyKey: string }, LeaveMyGroupMembershipResult>(functions, "leaveMyGroupMembership");
 
 export async function createMyMembershipForOwnedGroup(input: CreateMyMembershipInput): Promise<CreateMyMembershipResult> {
   return (await createCallable(input)).data;
@@ -35,6 +36,10 @@ export async function listMyCurrentGroupMemberships(input: { pageSize?: number; 
   return (await listMyCurrentGroupsCallable(input)).data;
 }
 
+export async function leaveMyGroupMembership(input: { groupId: string; idempotencyKey: string }): Promise<LeaveMyGroupMembershipResult> {
+  return (await leaveMyGroupCallable(input)).data;
+}
+
 export function getMembershipErrorReason(error: unknown): MembershipErrorReason {
   if (typeof error === "object" && error !== null && "details" in error) {
     const details = (error as { details?: unknown }).details;
@@ -44,7 +49,8 @@ export function getMembershipErrorReason(error: unknown): MembershipErrorReason 
         "UNAUTHENTICATED", "ACCOUNT_REQUIRED", "PERSON_REQUIRED", "PERSON_INCOMPATIBLE",
         "GROUP_NOT_FOUND", "GROUP_INCOMPATIBLE", "NOT_AUTHORIZED", "OPEN_SEASON_REQUIRED",
         "SEASON_INCOMPATIBLE", "VALIDATION_FAILED", "MEMBERSHIP_ALREADY_EXISTS",
-        "MEMBERSHIP_NOT_FOUND", "MEMBERSHIP_REACTIVATION_REQUIRED",
+        "MEMBERSHIP_NOT_FOUND", "MEMBERSHIP_NOT_ACTIVE", "MEMBERSHIP_REACTIVATION_REQUIRED",
+        "MEMBERSHIP_SEASON_NOT_MODIFIABLE",
         "IDEMPOTENCY_CONFLICT", "INCOMPATIBLE_STATE", "CONFLICT",
         "DEPENDENCY_UNAVAILABLE", "INTERNAL_ERROR",
       ];
@@ -68,7 +74,9 @@ export function getMembershipErrorMessage(reason: MembershipErrorReason): string
     VALIDATION_FAILED: "La solicitud no es válida.",
     MEMBERSHIP_ALREADY_EXISTS: "Ya existe una Membresía activa para tu Persona en este Grupo.",
     MEMBERSHIP_NOT_FOUND: "No encontramos una Membresía propia para finalizar.",
+    MEMBERSHIP_NOT_ACTIVE: "Tu Membresía ya no está activa. Actualizá el listado antes de continuar.",
     MEMBERSHIP_REACTIVATION_REQUIRED: "Tu Membresía está finalizada. La reactivación todavía no está disponible.",
+    MEMBERSHIP_SEASON_NOT_MODIFIABLE: "La Temporada de esta Membresía ya no está abierta. No se realizó la salida.",
     IDEMPOTENCY_CONFLICT: "La intención ya fue usada con otro contexto. Revisá el estado antes de continuar.",
     INCOMPATIBLE_STATE: "El estado de Membresía no es compatible. No intentes repararlo desde esta pantalla.",
     CONFLICT: "Otra operación se confirmó al mismo tiempo. Reintentá la misma intención.",

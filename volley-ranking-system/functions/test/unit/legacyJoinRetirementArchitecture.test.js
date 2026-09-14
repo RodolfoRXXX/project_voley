@@ -13,11 +13,9 @@ function read(root, relativePath) {
   return fs.readFileSync(path.join(root, relativePath), "utf8");
 }
 
-test("E2-08 deja /join exclusivamente para salida y retira las decisiones por UID", () => {
+test("E2-10 retira exclusivamente la salida legacy por /join y conserva administración", () => {
   const api = read(functionsRoot, "src/httpApi.js");
-  assert.match(api, /async function handleLeaveGroup/);
-  assert.match(api, /const joinMatch = req\.path\.match/);
-  assert.match(api, /await handleLeaveGroup\(req, res, authContext, joinMatch\[1\]\)/);
+  assert.doesNotMatch(api, /async function handleLeaveGroup|const joinMatch = req\.path\.match|await handleLeaveGroup/);
   for (const retired of [
     "handleJoinGroup",
     "handleJoinRequestAction",
@@ -25,13 +23,6 @@ test("E2-08 deja /join exclusivamente para salida y retira las decisiones por UI
     "rejectJoinRequestMatch",
     "membershipStatus = \"pending\"",
   ]) assert.equal(api.includes(retired), false, retired);
-
-  const leaveHandler = api.slice(
-    api.indexOf("async function handleLeaveGroup"),
-    api.indexOf("async function handleGroupMemberRemoval")
-  );
-  assert.match(leaveHandler, /if \(!isMember\)[\s\S]*status\(404\)\.json\(\{ error: "Not found" \}\)/);
-  assert.doesNotMatch(leaveHandler, /pendingRequestIds/);
 
   const addHandler = api.slice(
     api.indexOf("async function handleGroupMemberAdd"),
@@ -42,20 +33,21 @@ test("E2-08 deja /join exclusivamente para salida y retira las decisiones por UI
   assert.equal((api.match(/pendingRequestIds/g) || []).length, (addHandler.match(/pendingRequestIds/g) || []).length);
 });
 
-test("BFF y superficies legacy retiran ingreso/decisión pero preservan salida y acceso canónico", () => {
+test("BFF y superficies legacy retiran salida por arrays y preservan acceso canónico", () => {
   const approve = path.join(frontendRoot, "src/app/api/groups/[groupId]/requests/[userId]/approve/route.ts");
   const reject = path.join(frontendRoot, "src/app/api/groups/[groupId]/requests/[userId]/reject/route.ts");
   assert.equal(fs.existsSync(approve), false);
   assert.equal(fs.existsSync(reject), false);
-  assert.equal(fs.existsSync(path.join(frontendRoot, "src/app/api/groups/[groupId]/join/route.ts")), true);
+  assert.equal(fs.existsSync(path.join(frontendRoot, "src/app/api/groups/[groupId]/join/route.ts")), false);
 
   const publicList = read(frontendRoot, "src/app/(public)/groups/page.tsx");
   const publicDetail = read(frontendRoot, "src/app/(public)/groups/[groupId]/page.tsx");
   const adminDetail = read(frontendRoot, "src/app/(admin)/admin/groups/[groupId]/page.tsx");
   const profile = read(frontendRoot, "src/app/(protected)/profile/groups/page.tsx");
   assert.match(publicList, /href=\{`\/join\/groups\/\$\{encodeURIComponent\(group\.id\)\}`\}/);
-  assert.match(publicList, /const leaveGroup/);
-  assert.match(profile, /\/api\/groups\/\$\{group\.id\}\/join/);
+  assert.doesNotMatch(publicList, /const leaveGroup|leave-group-|\/api\/groups\/\$\{group\.id\}\/join/);
+  assert.doesNotMatch(profile, /const leaveGroup|leave-group-|\/api\/groups\/\$\{group\.id\}\/join/);
+  assert.match(publicList, /Gestioná tu Membresía desde Mis grupos/);
   for (const source of [publicList, publicDetail, adminDetail]) {
     assert.doesNotMatch(source, /\/requests\/\$\{userId\}\/(approve|reject)|pendingRequests|pendingRequestIds/);
   }

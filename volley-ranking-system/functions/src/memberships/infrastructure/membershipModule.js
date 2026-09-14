@@ -10,11 +10,13 @@ const groupService = require("../../groups/infrastructure/groupModule");
 const seasonService = require("../../groups/infrastructure/seasonModule");
 const memberContext = require("../../groups/infrastructure/memberContextModule");
 const { createFirestoreGroupRepository } = require("../../groups/infrastructure/firestoreGroupRepository");
+const { createFirestoreSeasonRepository } = require("../../groups/infrastructure/firestoreSeasonRepository");
 const { createFirestoreSelfAccountReader } = require("../../groups/infrastructure/firestoreSelfAccountReader");
 const { createMembershipService } = require("../application/membershipService");
 const { createFirestoreActiveMembershipGuard } = require("./firestoreActiveMembershipGuard");
 const { createFirestoreMembershipRepository } = require("./firestoreMembershipRepository");
 const { createFirestoreMembershipLifecycleGuard } = require("./firestoreMembershipLifecycleGuard");
+const { createFirestoreMembershipSelfExitStore } = require("./firestoreMembershipSelfExitStore");
 const { createFirestoreMyMembershipReader } = require("./firestoreMyMembershipReader");
 const { createFirestoreMyCurrentGroupMembershipsReader } = require("./firestoreMyCurrentGroupMembershipsReader");
 const { createMemberGroupContextAdapter, createOpenSeasonContextAdapter, createOwnedGroupContextAdapter, createSelfPersonContextAdapter } = require("./membershipExternalContexts");
@@ -25,7 +27,17 @@ const personRepository = createFirestorePersonRepository({ db });
 const userPersonLinkRepository = createFirestoreUserPersonLinkRepository({ db });
 const groupRepository = createFirestoreGroupRepository({ db });
 const membershipRepository = createFirestoreMembershipRepository({ db });
+const seasonRepository = createFirestoreSeasonRepository({ db });
 const lifecycleGuard = createFirestoreMembershipLifecycleGuard({ db, groupRepository });
+const selfExitStore = createFirestoreMembershipSelfExitStore({
+  db,
+  membershipRepository,
+  groupRepository,
+  seasonRepository,
+  userPersonLinkRepository,
+  personRepository,
+  lifecycleGuard,
+});
 
 module.exports = createMembershipService({
   selfAccountReader,
@@ -37,6 +49,7 @@ module.exports = createMembershipService({
   membershipRepository,
   activeMembershipGuard: createFirestoreActiveMembershipGuard({ db, groupRepository }),
   lifecycleGuard,
+  selfExitStore,
   myMembershipReader: createFirestoreMyMembershipReader({ db, groupRepository, membershipRepository }),
   myCurrentGroupMembershipsReader: createFirestoreMyCurrentGroupMembershipsReader({ db, membershipRepository }),
   memberGroupContext: createMemberGroupContextAdapter({ memberContext }),

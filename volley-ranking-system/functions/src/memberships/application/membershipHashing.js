@@ -42,12 +42,27 @@ function hashMembershipRequest(userId, personId, groupId, seasonId) {
   return sha256LengthPrefixed(["sportexa:E2-03:request:v1", "contract-v1", userId, personId, groupId, seasonId]);
 }
 
+function membershipSelfExitIntentId(userId, key) {
+  return sha256LengthPrefixed(["sportexa:E2-10:membership-self-exit-intent:v1", userId, key]);
+}
+
+function hashMembershipSelfExitIdempotencyKey(userId, key) {
+  return sha256LengthPrefixed(["sportexa:E2-10:membership-self-exit-key:v1", userId, key]);
+}
+
+function hashMembershipSelfExitRequest(userId, personId, groupId) {
+  return sha256LengthPrefixed(["sportexa:E2-10:membership-self-exit-request:v1", "contract-v1", userId, personId, groupId]);
+}
+
 module.exports = {
   activeMembershipGuardId,
   hashGroupJoinRequestActivationIdempotency,
   hashGroupJoinRequestReactivationRequest,
   hashMembershipIdempotencyKey,
   hashMembershipRequest,
+  hashMembershipSelfExitIdempotencyKey,
+  hashMembershipSelfExitRequest,
+  membershipSelfExitIntentId,
   membershipLifecycleGuardId,
   membershipValidityPeriodId,
   sha256LengthPrefixed,

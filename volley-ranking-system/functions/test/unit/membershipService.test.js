@@ -30,13 +30,14 @@ function setup(overrides = {}) {
     openSeasonContext: { async getForOwner() { calls.push("season"); return { id: "season-1", groupId: "group-1", estado: "abierta" }; } },
     membershipRepository: { newId() { calls.push("newId"); return "membership-generated"; }, async getById() { calls.push("recover"); return persisted(); } },
     activeMembershipGuard: { async confirmActiveMembership(input) { calls.push("guard"); return { outcome: "CREATED_ACTIVE", membershipId: input.membership.membershipId }; } },
+    selfExitStore: { async confirm(args) { calls.push(["self-exit", args]); return { membershipId: "membership-generated", groupId: "group-1", seasonId: "season-1", activationOrdinal: 1, endedAt: timestamp, actorWasOwner: false }; } },
     myMembershipReader: { async getActiveForOwner() { calls.push("reader"); return null; } },
     myCurrentGroupMembershipsReader: {
       async listPage() { calls.push("list-page"); return { candidates: [], hasLookahead: false, cursorAnchor: null }; },
       async requireIntegrity() { calls.push("integrity"); },
     },
     memberGroupContext: {
-      async getGroup({ groupId }) { calls.push("member-group"); return { id: groupId, nombre: "Grupo", deporte: "voleibol", estado: "activo" }; },
+      async getGroup({ groupId }) { calls.push("member-group"); return { id: groupId, nombre: "Grupo", deporte: "voleibol", estado: "activo", viewerIsOwner: false }; },
       async getOpenSeason({ groupId }) { calls.push("member-season"); return { id: "season-1", groupId, estado: "abierta" }; },
     },
     ...overrides,
@@ -95,6 +96,36 @@ test("Persona incompatible y no Owner se conservan sin usar roles globales", asy
 
 test("Temporada abierta es obligatoria y se correlaciona", async () => {
   await assert.rejects(() => setup({ openSeasonContext: { async getForOwner() { return null; } } }).service.createMyMembershipForOwnedGroup({ userId: "uid" }, input), MembershipOpenSeasonRequiredError);
+});
+
+test("E2-10 autoriza por Cuenta y Persona propias y devuelve EXIT_CONFIRMED mínimo", async () => {
+  const { service, calls } = setup();
+  const result = await service.leaveMyGroupMembership({ userId: "uid", roles: ["ignored"] }, input);
+  assert.deepEqual(result, {
+    outcome: "EXIT_CONFIRMED",
+    exit: {
+      membershipId: "membership-generated",
+      groupId: "group-1",
+      seasonId: "season-1",
+      activationOrdinal: 1,
+      endedAt: "2026-08-27T12:00:00.000Z",
+      actorWasOwner: false,
+    },
+  });
+  assert.deepEqual(calls.slice(0, 2), ["account", "person"]);
+  const command = calls.find((call) => Array.isArray(call) && call[0] === "self-exit")[1];
+  assert.deepEqual(Object.keys(command).sort(), ["groupId", "idempotencyKeyHash", "intentId", "personId", "requestHash", "userId"]);
+  assert.match(command.intentId, /^[a-f0-9]{64}$/);
+  assert.equal(JSON.stringify(command).includes(input.idempotencyKey), false);
+});
+
+test("E2-10 corta antes del intent sin Cuenta o Persona", async () => {
+  const noAccount = setup({ selfAccountReader: { async getByUserId() { return null; } } });
+  await assert.rejects(() => noAccount.service.leaveMyGroupMembership({ userId: "uid" }, input), MembershipAccountRequiredError);
+  assert.equal(noAccount.calls.some((call) => Array.isArray(call) && call[0] === "self-exit"), false);
+  const noPerson = setup({ selfPersonContext: { async getForUser() { return null; } } });
+  await assert.rejects(() => noPerson.service.leaveMyGroupMembership({ userId: "uid" }, input), MembershipPersonRequiredError);
+  assert.equal(noPerson.calls.some((call) => Array.isArray(call) && call[0] === "self-exit"), false);
 });
 
 test("consulta owner/self-scoped devuelve ausencia o Membresía exacta", async () => {
@@ -164,7 +195,7 @@ test("listado propio compone DTO exacto y excluye temporada no coincidente", asy
       async requireIntegrity({ candidate }) { calls.push(["integrity", candidate.membershipId]); },
     },
     memberGroupContext: {
-      async getGroup({ groupId }) { return { id: groupId, nombre: `Grupo ${groupId}`, deporte: "voleibol", estado: "activo" }; },
+      async getGroup({ groupId }) { return { id: groupId, nombre: `Grupo ${groupId}`, deporte: "voleibol", estado: "activo", viewerIsOwner: groupId === "group-1" }; },
       async getOpenSeason({ groupId }) { return { id: groupId === "group-1" ? "season-1" : "season-new", groupId, estado: "abierta" }; },
     },
   });
@@ -173,7 +204,8 @@ test("listado propio compone DTO exacto y excluye temporada no coincidente", asy
   assert.deepEqual(Object.keys(result).sort(), ["items", "nextCursor"]);
   assert.deepEqual(Object.keys(result.items[0]).sort(), ["group", "membership"]);
   assert.deepEqual(Object.keys(result.items[0].membership).sort(), ["estado", "fechaIngreso", "id", "seasonId"]);
-  assert.deepEqual(Object.keys(result.items[0].group).sort(), ["deporte", "estado", "id", "nombre"]);
+  assert.deepEqual(Object.keys(result.items[0].group).sort(), ["deporte", "estado", "id", "nombre", "viewerIsOwner"]);
+  assert.equal(result.items[0].group.viewerIsOwner, true);
   assert.equal(JSON.stringify(result).includes("personId"), false);
   assert.equal(result.nextCursor, null);
   assert.equal(calls.filter((call) => Array.isArray(call) && call[0] === "integrity").length, 2);
@@ -193,7 +225,7 @@ test("página filtrada conserva cursor desde el último crudo procesado", async 
       async requireIntegrity() {},
     },
     memberGroupContext: {
-      async getGroup() { return { id: "group-1", nombre: "Grupo", deporte: "voleibol", estado: "activo" }; },
+      async getGroup() { return { id: "group-1", nombre: "Grupo", deporte: "voleibol", estado: "activo", viewerIsOwner: false }; },
       async getOpenSeason() { return null; },
     },
   });

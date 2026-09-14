@@ -20,8 +20,10 @@ class MembershipSeasonIncompatibleError extends MembershipError { constructor(op
 class MembershipValidationError extends MembershipError { constructor(message = "Membership request is invalid", options = {}) { super("VALIDATION_FAILED", message, options); } }
 class MembershipAlreadyExistsError extends MembershipError { constructor() { super("MEMBERSHIP_ALREADY_EXISTS", "An active Membership already exists"); } }
 class MembershipNotFoundError extends MembershipError { constructor() { super("MEMBERSHIP_NOT_FOUND", "Membership was not found"); } }
+class MembershipNotActiveError extends MembershipError { constructor() { super("MEMBERSHIP_NOT_ACTIVE", "Membership is not active"); } }
 class MembershipReactivationRequiredError extends MembershipError { constructor() { super("MEMBERSHIP_REACTIVATION_REQUIRED", "Membership reactivation is required"); } }
 class MembershipSeasonNotReactivatableError extends MembershipError { constructor(options = {}) { super("MEMBERSHIP_SEASON_NOT_REACTIVATABLE", "Membership season is not reactivatable", options); } }
+class MembershipSeasonNotModifiableError extends MembershipError { constructor(options = {}) { super("MEMBERSHIP_SEASON_NOT_MODIFIABLE", "Membership season is not modifiable", options); } }
 class MembershipReactivationSupersededError extends MembershipError { constructor(options = {}) { super("MEMBERSHIP_REACTIVATION_SUPERSEDED", "Membership reactivation was superseded", options); } }
 class MembershipIdempotencyConflictError extends MembershipError { constructor(options = {}) { super("IDEMPOTENCY_CONFLICT", "Idempotency key was used with another request", options); } }
 class MembershipIncompatibleStateError extends MembershipError { constructor(message = "Membership state is incompatible", options = {}) { super("INCOMPATIBLE_STATE", message, options); } }
@@ -41,6 +43,7 @@ module.exports = {
   MembershipIncompatibleStateError,
   MembershipInternalError,
   MembershipNotFoundError,
+  MembershipNotActiveError,
   MembershipNotAuthorizedError,
   MembershipOpenSeasonRequiredError,
   MembershipPersonIncompatibleError,
@@ -48,6 +51,7 @@ module.exports = {
   MembershipReactivationRequiredError,
   MembershipReactivationSupersededError,
   MembershipSeasonNotReactivatableError,
+  MembershipSeasonNotModifiableError,
   MembershipSeasonIncompatibleError,
   MembershipUnauthenticatedError,
   MembershipValidationError,

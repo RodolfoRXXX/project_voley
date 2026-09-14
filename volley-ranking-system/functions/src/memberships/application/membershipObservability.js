@@ -1,7 +1,7 @@
 "use strict";
 
 const DIAGNOSTIC = Symbol("membershipDiagnostic");
-const OPERATIONS = new Set(["create", "finalize", "get"]);
+const OPERATIONS = new Set(["create", "finalize", "get", "self-exit"]);
 const STAGES = new Set([
   "account", "person", "group", "season", "active-guard", "lifecycle-guard",
   "transaction", "authoritative-reread", "dto", "callable",

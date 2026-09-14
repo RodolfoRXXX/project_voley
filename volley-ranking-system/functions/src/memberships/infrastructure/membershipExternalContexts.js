@@ -78,11 +78,11 @@ function createOpenSeasonContextAdapter({ seasonService }) {
 function createMemberGroupContextAdapter({ memberContext }) {
   if (!memberContext) throw new TypeError("memberContext is required");
   return {
-    async getGroup({ groupId }) {
+    async getGroup({ groupId, userId }) {
       try {
-        const group = await memberContext.getMemberReadableGroupContext({ groupId });
+        const group = await memberContext.getMemberReadableGroupContext({ groupId, userId });
         if (!group || group.id !== groupId || group.estado !== "activo"
-          || group.deporte !== "voleibol" || typeof group.nombre !== "string") {
+          || group.deporte !== "voleibol" || typeof group.nombre !== "string" || typeof group.viewerIsOwner !== "boolean") {
           throw new MembershipIncompatibleStateError("Member-readable Group context is invalid");
         }
         return group;

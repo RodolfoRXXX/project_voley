@@ -1,7 +1,7 @@
 "use strict";
 
 const { buildMembership, InvalidMembershipStateError } = require("../domain/membership");
-const { toFinalizedMembershipDto, toMembershipDto, toMyCurrentGroupMembershipItem } = require("./membershipDto");
+const { toFinalizedMembershipDto, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem } = require("./membershipDto");
 const { decodeMyGroupsCursor, encodeMyGroupsCursor } = require("./membershipCursor");
 const {
   MembershipAccountRequiredError,
@@ -14,7 +14,7 @@ const {
   MembershipUnauthenticatedError,
   MembershipValidationError,
 } = require("./membershipErrors");
-const { activeMembershipGuardId, hashMembershipIdempotencyKey, hashMembershipRequest, membershipLifecycleGuardId } = require("./membershipHashing");
+const { activeMembershipGuardId, hashMembershipIdempotencyKey, hashMembershipRequest, hashMembershipSelfExitIdempotencyKey, hashMembershipSelfExitRequest, membershipLifecycleGuardId, membershipSelfExitIntentId } = require("./membershipHashing");
 const { isTransientDependencyError } = require("../../shared/application/transientDependencyError");
 const { annotateMembershipError, inheritMembershipDiagnostic } = require("./membershipObservability");
 
@@ -23,7 +23,7 @@ function requireActor(identity) {
   return identity.userId.trim();
 }
 
-function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, lifecycleGuard, myMembershipReader, myCurrentGroupMembershipsReader, memberGroupContext }) {
+function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, lifecycleGuard, selfExitStore, myMembershipReader, myCurrentGroupMembershipsReader, memberGroupContext }) {
   if (!selfAccountReader || !selfPersonContext || !ownedGroupContext || !openSeasonContext || !membershipRepository || !activeMembershipGuard || !myMembershipReader) {
     throw new TypeError("Membership service dependencies are required");
   }
@@ -176,6 +176,27 @@ function createMembershipService({ selfAccountReader, selfPersonContext, ownedGr
       }
     },
 
+    async leaveMyGroupMembership(identity, input) {
+      const userId = requireActor(identity);
+      await atStage("self-exit", "account", () => requireAccount(userId));
+      const person = await atStage("self-exit", "person", () => requirePerson(userId));
+      if (!selfExitStore) throw new MembershipDependencyUnavailableError();
+      try {
+        const result = await atStage("self-exit", "transaction", () => selfExitStore.confirm({
+          userId,
+          personId: person.personId,
+          groupId: input.groupId,
+          intentId: membershipSelfExitIntentId(userId, input.idempotencyKey),
+          idempotencyKeyHash: hashMembershipSelfExitIdempotencyKey(userId, input.idempotencyKey),
+          requestHash: hashMembershipSelfExitRequest(userId, person.personId, input.groupId),
+        }));
+        return await atStage("self-exit", "dto", async () => toMembershipSelfExitDto(result));
+      } catch (error) {
+        if (error instanceof MembershipError) throw error;
+        throw internalAt(error, "self-exit", "transaction");
+      }
+    },
+
     async listMyCurrentGroupMemberships(identity, input) {
       const userId = requireActor(identity);
       await requireAccount(userId);
@@ -193,7 +214,7 @@ function createMembershipService({ selfAccountReader, selfPersonContext, ownedGr
         const items = [];
         for (const candidate of page.candidates) {
           await myCurrentGroupMembershipsReader.requireIntegrity({ personId: person.personId, candidate });
-          const group = await memberGroupContext.getGroup({ groupId: candidate.groupId });
+          const group = await memberGroupContext.getGroup({ groupId: candidate.groupId, userId });
           const openSeason = await memberGroupContext.getOpenSeason({ groupId: candidate.groupId });
           if (!openSeason || openSeason.id !== candidate.seasonId) continue;
           items.push(toMyCurrentGroupMembershipItem(candidate, group));

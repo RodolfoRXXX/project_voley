@@ -7,8 +7,6 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton, SkeletonSoft } from "@/components/ui/skeleton/Skeleton";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
-import { ActionButton } from "@/components/ui/action/ActionButton";
-import { useAction } from "@/components/ui/action/useAction";
 
 type GroupItem = {
   id: string;
@@ -55,7 +53,6 @@ export default function ProfileGroupsPage() {
   const { firebaseUser, loading: authLoading } = useAuth();
   const [groups, setGroups] = useState<GroupItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { run, isLoading } = useAction();
 
   useEffect(() => {
     const load = async () => {
@@ -201,36 +198,6 @@ export default function ProfileGroupsPage() {
     load();
   }, [firebaseUser]);
 
-  const leaveGroup = async (group: GroupItem) => {
-    if (!firebaseUser) return;
-
-    await run(
-      `leave-group-${group.id}`,
-      async () => {
-        const token = await firebaseUser.getIdToken();
-        const res = await fetch(`/api/groups/${group.id}/join`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const payload = await res.json();
-        if (!res.ok) {
-          throw new Error(payload?.error || "No se pudo salir del grupo");
-        }
-
-        setGroups((prev) => prev.filter((g) => g.id !== group.id));
-      },
-      {
-        confirm: {
-          message: `¿Querés salir del grupo "${group.nombre}"?`,
-          confirmText: "Salir del grupo",
-          variant: "danger",
-        },
-        successMessage: "Saliste del grupo",
-      }
-    );
-  };
-
   if (authLoading || loading) {
     return (
       <section className="space-y-5">
@@ -323,15 +290,6 @@ export default function ProfileGroupsPage() {
                 </div>
 
                 <div className="flex items-center justify-between pt-2">
-                  <ActionButton
-                    onClick={() => leaveGroup(group)}
-                    loading={isLoading(`leave-group-${group.id}`)}
-                    variant="danger_outline"
-                    compact
-                  >
-                    - Salir del grupo
-                  </ActionButton>
-
                   <Link
                     href={`/profile/groups/${group.id}`}
                     className="text-sm text-neutral-500 hover:text-neutral-800 transition-colors"

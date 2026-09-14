@@ -9,10 +9,8 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import { ActionButton } from "@/components/ui/action/ActionButton";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
 import InformationPill from "@/components/ui/status/InformationPill";
-import { useAction } from "@/components/ui/action/useAction";
 
 /* =====================
    TYPES
@@ -38,7 +36,7 @@ type JoinState = "none" | "member";
 function GroupsSkeleton() {
   return (
     <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-8">
-      
+
       {/* HEADER */}
       <div className="space-y-2">
         <Skeleton className="h-8 w-40" />
@@ -112,7 +110,6 @@ export default function GruposPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(searchParams.get("q") ?? "");
-  const { run, isLoading } = useAction();
 
   const endpoint = "/api/groups/public";
 
@@ -162,45 +159,6 @@ export default function GruposPage() {
     }
     const queryString = nextParams.toString();
     router.replace(queryString ? `${pathname}?${queryString}` : pathname);
-  };
-
-  const leaveGroup = async (group: PublicGroup) => {
-    if (!firebaseUser || group.membershipStatus !== "member") return;
-    const execute = async () => {
-      const token = await firebaseUser.getIdToken();
-      const res = await fetch(`/api/groups/${group.id}/join`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const payload = await res.json();
-      if (!res.ok)
-        throw new Error(payload?.error || "No se pudo actualizar la membresía");
-
-      setGroups((prev) =>
-        prev.map((g) =>
-          g.id === group.id
-            ? {
-                ...g,
-                membershipStatus: payload.membershipStatus || "none",
-              }
-            : g
-        )
-      );
-    };
-
-    run(
-      `leave-group-${group.id}`,
-      execute,
-      {
-        confirm: {
-          message: `¿Querés salir del grupo "${group.name}"?`,
-          confirmText: "Salir del grupo",
-          variant: "danger",
-        },
-        successMessage: "Saliste del grupo",
-      }
-    );
   };
 
   if (loading) return <GroupsSkeleton />;
@@ -311,14 +269,7 @@ export default function GruposPage() {
 
                     <div className="pt-2">
                       {group.membershipStatus === "member" ? (
-                        <ActionButton
-                          onClick={() => leaveGroup(group)}
-                          loading={isLoading(`leave-group-${group.id}`)}
-                          variant="danger_outline"
-                          compact
-                        >
-                          - Salir del grupo
-                        </ActionButton>
+                        <p className="text-sm text-neutral-600">Ya integrás este Grupo. Gestioná tu Membresía desde Mis grupos.</p>
                       ) : (
                         <Link
                           href={`/join/groups/${encodeURIComponent(group.id)}`}

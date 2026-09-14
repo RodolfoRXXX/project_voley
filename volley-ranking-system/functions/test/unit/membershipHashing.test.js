@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
 const test = require("node:test");
-const { activeMembershipGuardId, hashGroupJoinRequestActivationIdempotency, hashGroupJoinRequestReactivationRequest, hashMembershipIdempotencyKey, hashMembershipRequest, membershipLifecycleGuardId, membershipValidityPeriodId } = require("../../src/memberships/application/membershipHashing");
+const { activeMembershipGuardId, hashGroupJoinRequestActivationIdempotency, hashGroupJoinRequestReactivationRequest, hashMembershipIdempotencyKey, hashMembershipRequest, hashMembershipSelfExitIdempotencyKey, hashMembershipSelfExitRequest, membershipLifecycleGuardId, membershipSelfExitIntentId, membershipValidityPeriodId } = require("../../src/memberships/application/membershipHashing");
 
 function reference(parts) {
   const hash = crypto.createHash("sha256");
@@ -33,4 +33,12 @@ test("contextos distintos producen valores distintos y nunca contienen la clave 
   assert.match(value, /^[a-f0-9]{64}$/);
   assert.equal(value.includes("secret-key"), false);
   assert.notEqual(value, hashMembershipIdempotencyKey("uid", "group-2", "person-1", "secret-key-123456"));
+});
+
+test("E2-10 deriva intent y hashes con dominios exactos y sin clave cruda", () => {
+  const key = "self-exit-key-0001";
+  assert.equal(membershipSelfExitIntentId("uid", key), reference(["sportexa:E2-10:membership-self-exit-intent:v1", "uid", key]));
+  assert.equal(hashMembershipSelfExitIdempotencyKey("uid", key), reference(["sportexa:E2-10:membership-self-exit-key:v1", "uid", key]));
+  assert.equal(hashMembershipSelfExitRequest("uid", "person-1", "group-1"), reference(["sportexa:E2-10:membership-self-exit-request:v1", "contract-v1", "uid", "person-1", "group-1"]));
+  assert.equal(membershipSelfExitIntentId("uid", key).includes(key), false);
 });

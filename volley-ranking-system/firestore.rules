@@ -151,6 +151,10 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /membershipSelfExitIntents/{intentId} {
+      allow read, write: if false;
+    }
+
     match /groupJoinRequests/{requestId} {
       allow read, write: if false;
     }

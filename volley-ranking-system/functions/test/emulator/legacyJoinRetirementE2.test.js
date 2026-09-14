@@ -143,14 +143,12 @@ test("E2-08 retira ingreso legacy sin alterar las capacidades preservadas", asyn
       assert.deepEqual(afterCounts, beforeCounts);
     });
 
-    await t.test("/join conserva la salida legacy sin tocar solicitudes históricas", async () => {
+    await t.test("/join rechaza la salida legacy sin tocar Grupo ni solicitudes históricas", async () => {
+      const beforeGroup = (await groupRef.get()).data();
       const result = await call(`/groups/${groupId}/join`, { token: member.idToken });
-      assert.equal(result.status, 200, JSON.stringify(result.body));
-      assert.equal(result.body.membershipStatus, "none");
-      assert.equal(Object.hasOwn(result.body, "pendingRequestIds"), false);
-      const group = (await groupRef.get()).data();
-      assert.equal(group.memberIds.includes(member.uid), false);
-      assert.deepEqual(group.pendingRequestIds, [pending.uid]);
+      assert.equal(result.status, 404, JSON.stringify(result.body));
+      assert.deepEqual(result.body, { error: "Not found" });
+      assert.deepEqual((await groupRef.get()).data(), beforeGroup);
     });
 
     await t.test("alta separada y solicitudes administrativas siguen operativas", async () => {

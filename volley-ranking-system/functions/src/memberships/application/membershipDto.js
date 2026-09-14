@@ -38,8 +38,23 @@ function toMyCurrentGroupMembershipItem(membership, group) {
       nombre: group.nombre,
       deporte: group.deporte,
       estado: group.estado,
+      viewerIsOwner: group.viewerIsOwner,
     }),
   });
 }
 
-module.exports = { FINALIZED_MEMBERSHIP_DTO_KEYS, MEMBERSHIP_DTO_KEYS, toFinalizedMembershipDto, toMembershipDto, toMyCurrentGroupMembershipItem };
+function toMembershipSelfExitDto(result) {
+  return Object.freeze({
+    outcome: "EXIT_CONFIRMED",
+    exit: Object.freeze({
+      membershipId: result.membershipId,
+      groupId: result.groupId,
+      seasonId: result.seasonId,
+      activationOrdinal: result.activationOrdinal,
+      endedAt: result.endedAt.toDate().toISOString(),
+      actorWasOwner: result.actorWasOwner,
+    }),
+  });
+}
+
+module.exports = { FINALIZED_MEMBERSHIP_DTO_KEYS, MEMBERSHIP_DTO_KEYS, toFinalizedMembershipDto, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem };

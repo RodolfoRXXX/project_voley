@@ -34,14 +34,15 @@ function createFirestoreMemberContext({ db, groupRepository, seasonRepository })
   }
 
   return Object.freeze({
-    async getMemberReadableGroupContext({ groupId }) {
+    async getMemberReadableGroupContext({ groupId, userId }) {
       requireId(groupId);
+      requireId(userId);
       try {
         const group = await groupRepository.getById(groupId);
         if (!group || group.groupId !== groupId || group.estado !== "activo") {
           throw new MemberContextIncompatibleError("Group is absent or inactive");
         }
-        return Object.freeze({ id: group.groupId, nombre: group.nombre, deporte: group.deporte, estado: group.estado });
+        return Object.freeze({ id: group.groupId, nombre: group.nombre, deporte: group.deporte, estado: group.estado, viewerIsOwner: group.ownerId === userId });
       } catch (error) {
         throw mapContextError(error);
       }

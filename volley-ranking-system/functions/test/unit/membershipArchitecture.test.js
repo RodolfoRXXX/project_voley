@@ -15,10 +15,11 @@ test("Dominio y Aplicación de Membresía no importan Firebase ni Agregados exte
   assert.doesNotMatch(read("volley-ranking-system/functions/src/memberships/domain/membership.js"), /ownerId|memberIds|adminIds|roles|plan|subscription/i);
 });
 
-test("Módulo consume Temporada por capacidad pública y no por persistencia interna", () => {
+test("E2-10 transacción consume repositorio de Temporada sólo dentro de infraestructura", () => {
   const moduleSource = read("volley-ranking-system/functions/src/memberships/infrastructure/membershipModule.js");
   assert.match(moduleSource, /groups\/infrastructure\/seasonModule/);
-  assert.doesNotMatch(moduleSource, /firestoreSeasonRepository|firestoreOpenSeasonReader|firestoreOpenSeasonGuard|openSeasonGuards|collection\("seasons"\)/);
+  assert.match(moduleSource, /firestoreSeasonRepository/);
+  assert.doesNotMatch(read("volley-ranking-system/functions/src/memberships/application/membershipService.js"), /firestoreSeasonRepository|openSeasonGuards|collection\("seasons"\)/);
 });
 
 test("repositorio de Membresía es exclusivo y usa consulta exacta limit 2", () => {
@@ -133,4 +134,18 @@ test("E2-09 frontend no escribe Firestore y comunica primera incorporación y re
   assert.doesNotMatch(source, /firebase\/firestore|setDoc\(|updateDoc\(|addDoc\(/);
   for (const marker of ["Primera incorporación", "REACTIVATE_MEMBERSHIP", "Reactivar Membresía y aprobar Solicitud", "MEMBERSHIP_REACTIVATION_SUPERSEDED", "MEMBERSHIP_SEASON_NOT_REACTIVATABLE"]) assert.match(source, new RegExp(marker));
   assert.doesNotMatch(source, /Activo desde/);
+});
+
+test("E2-10 expone callable propio, intent deny-all, UX self y retiro legacy acotado", () => {
+  const store = read("volley-ranking-system/functions/src/memberships/infrastructure/firestoreMembershipSelfExitStore.js");
+  const service = read("volley-ranking-system/functions/src/memberships/application/membershipService.js");
+  const frontend = read("volley-ranking-frontend/src/components/memberships/MyCurrentGroupMembershipsSection.tsx");
+  const frontendService = read("volley-ranking-frontend/src/services/membershipsService.ts");
+  const rules = read("volley-ranking-system/firestore.rules");
+  for (const marker of [/leaveMyGroupMembership/, /membershipSelfExitIntentId/, /hashMembershipSelfExitRequest/]) assert.match(service, marker);
+  for (const marker of [/finalizeMembership/, /transaction\.delete\(activeRef\)/, /transaction\.create\(lifecycleRef/, /transaction\.create\(intentRef/, /openSeasonGuards/, /where\("estado", "==", "abierta"\)/]) assert.match(store, marker);
+  assert.match(rules, /match \/membershipSelfExitIntents\/\{intentId\}[\s\S]*allow read, write: if false/);
+  for (const marker of [/Salir del grupo/, /Seguirás siendo Owner/, /alertdialog/, /sendingRef\.current/, /Reintentar la misma salida/, /membershipSelfExitMachine/, /leaveMyGroupMembership/]) assert.match(`${frontend}\n${frontendService}`, marker);
+  assert.doesNotMatch(`${frontend}\n${frontendService}`, /firebase\/firestore|setDoc\(|updateDoc\(/);
+  assert.match(read("volley-ranking-system/functions/index.js"), /leaveMyGroupMembership/);
 });

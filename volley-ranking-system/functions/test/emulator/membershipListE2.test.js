@@ -111,7 +111,8 @@ test("E2-04 lista Grupos operativos propios con cursor, integridad y capacidades
       for (const item of all) {
         assert.deepEqual(Object.keys(item).sort(), ["group", "membership"]);
         assert.deepEqual(Object.keys(item.membership).sort(), ["estado", "fechaIngreso", "id", "seasonId"]);
-        assert.deepEqual(Object.keys(item.group).sort(), ["deporte", "estado", "id", "nombre"]);
+        assert.deepEqual(Object.keys(item.group).sort(), ["deporte", "estado", "id", "nombre", "viewerIsOwner"]);
+        assert.equal(typeof item.group.viewerIsOwner, "boolean");
         assert.equal(JSON.stringify(item).includes("personId"), false);
         assert.match(item.membership.fechaIngreso, /Z$/);
       }

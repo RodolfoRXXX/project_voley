@@ -5,6 +5,28 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "groupId",
+          "mode": "ASCENDING"
+        },
+        {
+          "fieldPath": "seasonId",
+          "mode": "ASCENDING"
+        },
+        {
+          "fieldPath": "estado",
+          "mode": "ASCENDING"
+        },
+        {
+          "fieldPath": "fechaIngreso",
+          "mode": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "memberships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "personId",
           "mode": "ASCENDING"
         },

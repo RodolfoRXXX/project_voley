@@ -57,4 +57,16 @@ function toMembershipSelfExitDto(result) {
   });
 }
 
-module.exports = { FINALIZED_MEMBERSHIP_DTO_KEYS, MEMBERSHIP_DTO_KEYS, toFinalizedMembershipDto, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem };
+function toOwnerActiveGroupMemberItem(membership, person, isOwner) {
+  const personDto = person?.status === "available"
+    ? Object.freeze({ status: "AVAILABLE", firstName: person.firstName, lastName: person.lastName })
+    : Object.freeze({ status: "UNAVAILABLE" });
+  return Object.freeze({
+    membershipId: membership.membershipId,
+    joinedAt: membership.fechaIngreso.toDate().toISOString(),
+    isOwner: Boolean(isOwner),
+    person: personDto,
+  });
+}
+
+module.exports = { FINALIZED_MEMBERSHIP_DTO_KEYS, MEMBERSHIP_DTO_KEYS, toFinalizedMembershipDto, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem, toOwnerActiveGroupMemberItem };

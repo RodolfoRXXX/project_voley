@@ -47,6 +47,7 @@ exports.getMyMembershipForOwnedGroup = require("./callables/getMyMembershipForOw
 exports.finalizeMyMembershipForOwnedGroup = require("./callables/finalizeMyMembershipForOwnedGroup");
 exports.listMyCurrentGroupMemberships = require("./callables/listMyCurrentGroupMemberships");
 exports.leaveMyGroupMembership = require("./callables/leaveMyGroupMembership");
+exports.listActiveGroupMembersForOwnedGroup = require("./callables/listActiveGroupMembersForOwnedGroup");
 exports.getKnownGroupJoinPreview = require("./callables/getKnownGroupJoinPreview");
 exports.createMyGroupJoinRequest = require("./callables/createMyGroupJoinRequest");
 exports.getMyCurrentGroupJoinRequest = require("./callables/getMyCurrentGroupJoinRequest");

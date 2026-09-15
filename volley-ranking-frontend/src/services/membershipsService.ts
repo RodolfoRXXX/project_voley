@@ -3,6 +3,7 @@ import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
 import type { ActiveOwnMembership, FinalizedOwnMembership, MembershipErrorReason, OwnMembership } from "@/types/OwnMembership";
 import type { LeaveMyGroupMembershipResult, ListMyCurrentGroupMembershipsResult } from "@/types/MyCurrentGroupMembership";
+import type { ListActiveGroupMembersResult } from "@/types/ActiveGroupMember";
 
 export interface CreateMyMembershipInput { groupId: string; idempotencyKey: string; }
 export interface CreateMyMembershipResult {
@@ -19,6 +20,7 @@ const getCallable = httpsCallable<{ groupId: string }, { membership: OwnMembersh
 const finalizeCallable = httpsCallable<{ groupId: string }, FinalizeMyMembershipResult>(functions, "finalizeMyMembershipForOwnedGroup");
 const listMyCurrentGroupsCallable = httpsCallable<{ pageSize?: number; cursor?: string }, ListMyCurrentGroupMembershipsResult>(functions, "listMyCurrentGroupMemberships");
 const leaveMyGroupCallable = httpsCallable<{ groupId: string; idempotencyKey: string }, LeaveMyGroupMembershipResult>(functions, "leaveMyGroupMembership");
+const listActiveGroupMembersCallable = httpsCallable<{ groupId: string; pageSize?: number; cursor?: string }, ListActiveGroupMembersResult>(functions, "listActiveGroupMembersForOwnedGroup");
 
 export async function createMyMembershipForOwnedGroup(input: CreateMyMembershipInput): Promise<CreateMyMembershipResult> {
   return (await createCallable(input)).data;
@@ -40,6 +42,10 @@ export async function leaveMyGroupMembership(input: { groupId: string; idempoten
   return (await leaveMyGroupCallable(input)).data;
 }
 
+export async function listActiveGroupMembersForOwnedGroup(input: { groupId: string; pageSize?: number; cursor?: string }): Promise<ListActiveGroupMembersResult> {
+  return (await listActiveGroupMembersCallable(input)).data;
+}
+
 export function getMembershipErrorReason(error: unknown): MembershipErrorReason {
   if (typeof error === "object" && error !== null && "details" in error) {
     const details = (error as { details?: unknown }).details;
@@ -52,7 +58,7 @@ export function getMembershipErrorReason(error: unknown): MembershipErrorReason 
         "MEMBERSHIP_NOT_FOUND", "MEMBERSHIP_NOT_ACTIVE", "MEMBERSHIP_REACTIVATION_REQUIRED",
         "MEMBERSHIP_SEASON_NOT_MODIFIABLE",
         "IDEMPOTENCY_CONFLICT", "INCOMPATIBLE_STATE", "CONFLICT",
-        "DEPENDENCY_UNAVAILABLE", "INTERNAL_ERROR",
+        "DEPENDENCY_UNAVAILABLE", "INTERNAL_ERROR", "GROUP_NOT_ACCESSIBLE", "ROSTER_CONTEXT_CHANGED",
       ];
       if (known.includes(reason)) return reason;
     }
@@ -82,6 +88,8 @@ export function getMembershipErrorMessage(reason: MembershipErrorReason): string
     CONFLICT: "Otra operación se confirmó al mismo tiempo. Reintentá la misma intención.",
     DEPENDENCY_UNAVAILABLE: "No pudimos confirmar el estado. Reintentá la misma intención.",
     INTERNAL_ERROR: "No pudimos completar la operación. Reintentá la misma intención.",
+    GROUP_NOT_ACCESSIBLE: "No tenés acceso al roster de este Grupo.",
+    ROSTER_CONTEXT_CHANGED: "La Temporada abierta cambió. Reiniciamos el listado.",
   };
   return messages[reason];
 }

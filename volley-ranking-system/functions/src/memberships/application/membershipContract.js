@@ -6,6 +6,9 @@ const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{16,128}$/;
 const MY_GROUPS_DEFAULT_PAGE_SIZE = 20;
 const MY_GROUPS_MAX_PAGE_SIZE = 20;
 const MY_GROUPS_MAX_CURSOR_LENGTH = 2048;
+const OWNER_ROSTER_DEFAULT_PAGE_SIZE = 20;
+const OWNER_ROSTER_MAX_PAGE_SIZE = 20;
+const OWNER_ROSTER_MAX_CURSOR_LENGTH = 2048;
 
 function isPlainObject(data) {
   if (!data || typeof data !== "object" || Array.isArray(data)) return false;
@@ -76,15 +79,45 @@ function validateListMyCurrentGroupMembershipsPayload(data) {
   return Object.freeze(cursor === undefined ? { pageSize } : { pageSize, cursor });
 }
 
+function validateListActiveGroupMembersForOwnedGroupPayload(data) {
+  if (!isPlainObject(data)) throw new MembershipValidationError();
+  const keys = Object.keys(data);
+  if (!Object.prototype.hasOwnProperty.call(data, "groupId")
+    || keys.some((key) => !["groupId", "pageSize", "cursor"].includes(key))) {
+    throw new MembershipValidationError("Request contains missing or unknown properties");
+  }
+  assertGroupId(data.groupId);
+  const pageSize = Object.prototype.hasOwnProperty.call(data, "pageSize")
+    ? data.pageSize
+    : OWNER_ROSTER_DEFAULT_PAGE_SIZE;
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > OWNER_ROSTER_MAX_PAGE_SIZE) {
+    throw new MembershipValidationError("Page size is invalid");
+  }
+  let cursor;
+  if (Object.prototype.hasOwnProperty.call(data, "cursor")) {
+    cursor = data.cursor;
+    if (typeof cursor !== "string" || !cursor || cursor.length > OWNER_ROSTER_MAX_CURSOR_LENGTH) {
+      throw new MembershipValidationError("Cursor is invalid");
+    }
+  }
+  return Object.freeze(cursor === undefined
+    ? { groupId: data.groupId, pageSize }
+    : { groupId: data.groupId, pageSize, cursor });
+}
+
 module.exports = {
   IDEMPOTENCY_KEY_PATTERN,
   MY_GROUPS_DEFAULT_PAGE_SIZE,
   MY_GROUPS_MAX_CURSOR_LENGTH,
   MY_GROUPS_MAX_PAGE_SIZE,
+  OWNER_ROSTER_DEFAULT_PAGE_SIZE,
+  OWNER_ROSTER_MAX_CURSOR_LENGTH,
+  OWNER_ROSTER_MAX_PAGE_SIZE,
   isPlainObject,
   validateCreateMembershipPayload,
   validateFinalizeMembershipPayload,
   validateGetMembershipPayload,
   validateLeaveMyGroupMembershipPayload,
+  validateListActiveGroupMembersForOwnedGroupPayload,
   validateListMyCurrentGroupMembershipsPayload,
 };

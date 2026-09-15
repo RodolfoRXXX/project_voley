@@ -25,6 +25,8 @@ const MEMBERSHIP_HTTPS_CODES = Object.freeze({
   CONFLICT: "aborted",
   DEPENDENCY_UNAVAILABLE: "unavailable",
   INTERNAL_ERROR: "internal",
+  GROUP_NOT_ACCESSIBLE: "permission-denied",
+  ROSTER_CONTEXT_CHANGED: "aborted",
 });
 
 function membershipIdentityFromCallableContext(context) {
@@ -60,4 +62,39 @@ function createMembershipCallableHandler({ operation, operationName, validatePay
   };
 }
 
-module.exports = { MEMBERSHIP_HTTPS_CODES, createMembershipCallableHandler, membershipIdentityFromCallableContext, toMembershipHttpsError };
+function createOwnerActiveRosterCallableHandler({ operation, validatePayload, logger = console }) {
+  return async (data, context) => {
+    const startedAt = Date.now();
+    try {
+      const identity = membershipIdentityFromCallableContext(context);
+      const input = validatePayload(data);
+      const result = await operation(identity, input);
+      logger.info?.("membership.owner-active-roster-list", {
+        operation: "owner-active-roster-list",
+        stage: "complete",
+        outcome: result.scope.status,
+        requestedPageSize: input.pageSize,
+        returnedCount: result.items.length,
+        hasContinuation: result.nextCursor !== null,
+        unavailablePersonCount: result.items.filter((item) => item.person.status === "UNAVAILABLE").length,
+        durationMs: Date.now() - startedAt,
+      });
+      return result;
+    } catch (error) {
+      annotateMembershipError(error, { operation: "owner-active-roster-list", stage: "callable" });
+      const reason = error instanceof MembershipError ? error.reason : "INTERNAL_ERROR";
+      logger.warn?.("membership.owner-active-roster-list", {
+        operation: "owner-active-roster-list",
+        stage: "callable",
+        reason,
+        durationMs: Date.now() - startedAt,
+      });
+      if (!(error instanceof MembershipError) || error.reason === "INTERNAL_ERROR") {
+        logUnexpectedMembershipError({ error, operation: "owner-active-roster-list", logger });
+      }
+      throw toMembershipHttpsError(error);
+    }
+  };
+}
+
+module.exports = { MEMBERSHIP_HTTPS_CODES, createMembershipCallableHandler, createOwnerActiveRosterCallableHandler, membershipIdentityFromCallableContext, toMembershipHttpsError };

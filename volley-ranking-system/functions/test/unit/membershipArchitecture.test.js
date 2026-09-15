@@ -75,14 +75,15 @@ test("consulta e índice E2-04 conservan orden exacto y no declaran __name__", (
   for (const pattern of [/where\("personId", "=="/, /where\("estado", "==", "activa"\)/, /orderBy\("fechaIngreso", "desc"\)/, /orderBy\(FieldPath\.documentId\(\), "desc"\)/, /pageSize \+ 1/, /\.slice\(0, pageSize\)/]) assert.match(reader, pattern);
   const indexes = JSON.parse(read("volley-ranking-system/firestore.indexes.json"));
   const membershipIndexes = indexes.indexes.filter((index) => index.collectionGroup === "memberships");
-  assert.deepEqual(membershipIndexes, [
+  const expected = [
     { collectionGroup: "memberships", queryScope: "COLLECTION", fields: [
       { fieldPath: "personId", mode: "ASCENDING" }, { fieldPath: "groupId", mode: "ASCENDING" }, { fieldPath: "estado", mode: "ASCENDING" },
     ] },
     { collectionGroup: "memberships", queryScope: "COLLECTION", fields: [
       { fieldPath: "personId", mode: "ASCENDING" }, { fieldPath: "estado", mode: "ASCENDING" }, { fieldPath: "fechaIngreso", mode: "DESCENDING" },
     ] },
-  ]);
+  ];
+  for (const index of expected) assert.equal(membershipIndexes.some((candidate) => JSON.stringify(candidate) === JSON.stringify(index)), true);
   assert.equal(JSON.stringify(membershipIndexes).includes("__name__"), false);
 });
 

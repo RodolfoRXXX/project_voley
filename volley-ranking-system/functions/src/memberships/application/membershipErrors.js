@@ -30,6 +30,8 @@ class MembershipIncompatibleStateError extends MembershipError { constructor(mes
 class MembershipConflictError extends MembershipError { constructor(options = {}) { super("CONFLICT", "Membership operation conflicted", options); } }
 class MembershipDependencyUnavailableError extends MembershipError { constructor(options = {}) { super("DEPENDENCY_UNAVAILABLE", "A required dependency is unavailable", options); } }
 class MembershipInternalError extends MembershipError { constructor(options = {}) { super("INTERNAL_ERROR", "Membership operation failed", options); } }
+class MembershipGroupNotAccessibleError extends MembershipError { constructor() { super("GROUP_NOT_ACCESSIBLE", "Group is not accessible"); } }
+class MembershipRosterContextChangedError extends MembershipError { constructor() { super("ROSTER_CONTEXT_CHANGED", "Roster context changed"); } }
 
 module.exports = {
   MembershipAccountRequiredError,
@@ -39,6 +41,7 @@ module.exports = {
   MembershipError,
   MembershipGroupIncompatibleError,
   MembershipGroupNotFoundError,
+  MembershipGroupNotAccessibleError,
   MembershipIdempotencyConflictError,
   MembershipIncompatibleStateError,
   MembershipInternalError,
@@ -50,6 +53,7 @@ module.exports = {
   MembershipPersonRequiredError,
   MembershipReactivationRequiredError,
   MembershipReactivationSupersededError,
+  MembershipRosterContextChangedError,
   MembershipSeasonNotReactivatableError,
   MembershipSeasonNotModifiableError,
   MembershipSeasonIncompatibleError,

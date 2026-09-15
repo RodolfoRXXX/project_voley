@@ -1,10 +1,10 @@
 "use strict";
 
 const DIAGNOSTIC = Symbol("membershipDiagnostic");
-const OPERATIONS = new Set(["create", "finalize", "get", "self-exit"]);
+const OPERATIONS = new Set(["create", "finalize", "get", "self-exit", "owner-active-roster-list"]);
 const STAGES = new Set([
   "account", "person", "group", "season", "active-guard", "lifecycle-guard",
-  "transaction", "authoritative-reread", "dto", "callable",
+  "transaction", "authoritative-reread", "dto", "callable", "cursor", "roster-page", "person-projection",
 ]);
 
 function safeCode(error) {

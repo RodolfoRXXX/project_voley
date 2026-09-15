@@ -1,8 +1,9 @@
 "use strict";
 
 const { buildMembership, InvalidMembershipStateError } = require("../domain/membership");
-const { toFinalizedMembershipDto, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem } = require("./membershipDto");
+const { toFinalizedMembershipDto, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem, toOwnerActiveGroupMemberItem } = require("./membershipDto");
 const { decodeMyGroupsCursor, encodeMyGroupsCursor } = require("./membershipCursor");
+const { decodeOwnerGroupMembersCursor, encodeOwnerGroupMembersCursor } = require("./ownerGroupMembersCursor");
 const {
   MembershipAccountRequiredError,
   MembershipDependencyUnavailableError,
@@ -23,7 +24,7 @@ function requireActor(identity) {
   return identity.userId.trim();
 }
 
-function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, lifecycleGuard, selfExitStore, myMembershipReader, myCurrentGroupMembershipsReader, memberGroupContext }) {
+function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, lifecycleGuard, selfExitStore, myMembershipReader, myCurrentGroupMembershipsReader, memberGroupContext, ownerActiveGroupMembersReader }) {
   if (!selfAccountReader || !selfPersonContext || !ownedGroupContext || !openSeasonContext || !membershipRepository || !activeMembershipGuard || !myMembershipReader) {
     throw new TypeError("Membership service dependencies are required");
   }
@@ -227,6 +228,43 @@ function createMembershipService({ selfAccountReader, selfPersonContext, ownedGr
         if (error instanceof MembershipError) throw error;
         if (isTransientDependencyError(error)) throw new MembershipDependencyUnavailableError({ cause: error });
         throw new MembershipInternalError({ cause: error });
+      }
+    },
+
+    async listActiveGroupMembersForOwnedGroup(identity, input) {
+      const operation = "owner-active-roster-list";
+      const userId = requireActor(identity);
+      await atStage(operation, "account", () => requireAccount(userId));
+      if (!ownerActiveGroupMembersReader) throw new MembershipDependencyUnavailableError();
+      const position = await atStage(operation, "cursor", async () => input.cursor
+        ? decodeOwnerGroupMembersCursor(input.cursor, { groupId: input.groupId, userId })
+        : null);
+      try {
+        const page = await atStage(operation, "roster-page", () => ownerActiveGroupMembersReader.listPage({
+          userId,
+          groupId: input.groupId,
+          pageSize: input.pageSize,
+          position,
+        }));
+        const items = await atStage(operation, "dto", async () => Object.freeze(page.rows.map(({ membership, person, isOwner }) =>
+          toOwnerActiveGroupMemberItem(membership, person, isOwner))));
+        const nextCursor = page.hasLookahead
+          ? encodeOwnerGroupMembersCursor({
+            groupId: input.groupId,
+            seasonId: page.seasonId,
+            userId,
+            ...page.cursorAnchor,
+          })
+          : null;
+        return Object.freeze({
+          scope: Object.freeze({ status: page.scopeStatus }),
+          items,
+          nextCursor,
+        });
+      } catch (error) {
+        if (error instanceof MembershipError) throw error;
+        if (isTransientDependencyError(error)) throw new MembershipDependencyUnavailableError({ cause: error });
+        throw internalAt(error, operation, "roster-page");
       }
     },
   };

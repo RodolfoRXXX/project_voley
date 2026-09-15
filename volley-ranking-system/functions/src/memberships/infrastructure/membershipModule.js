@@ -19,7 +19,10 @@ const { createFirestoreMembershipLifecycleGuard } = require("./firestoreMembersh
 const { createFirestoreMembershipSelfExitStore } = require("./firestoreMembershipSelfExitStore");
 const { createFirestoreMyMembershipReader } = require("./firestoreMyMembershipReader");
 const { createFirestoreMyCurrentGroupMembershipsReader } = require("./firestoreMyCurrentGroupMembershipsReader");
+const { createFirestoreActiveGroupMembersForOwnerReader } = require("./firestoreActiveGroupMembersForOwnerReader");
 const { createMemberGroupContextAdapter, createOpenSeasonContextAdapter, createOwnedGroupContextAdapter, createSelfPersonContextAdapter } = require("./membershipExternalContexts");
+const { createGroupRosterContextCapability } = require("../../groups/public/groupRosterContextCapability");
+const { createActiveGroupMemberPersonCapability } = require("../../persons/public/activeGroupMemberPersonCapability");
 
 const accountService = createAccountService({ userRepository: createFirestoreUserRepository({ db }) });
 const selfAccountReader = createFirestoreSelfAccountReader({ accountService });
@@ -38,6 +41,8 @@ const selfExitStore = createFirestoreMembershipSelfExitStore({
   personRepository,
   lifecycleGuard,
 });
+const rosterGroupCapability = createGroupRosterContextCapability({ db });
+const rosterPersonCapability = createActiveGroupMemberPersonCapability({ db });
 
 module.exports = createMembershipService({
   selfAccountReader,
@@ -53,4 +58,10 @@ module.exports = createMembershipService({
   myMembershipReader: createFirestoreMyMembershipReader({ db, groupRepository, membershipRepository }),
   myCurrentGroupMembershipsReader: createFirestoreMyCurrentGroupMembershipsReader({ db, membershipRepository }),
   memberGroupContext: createMemberGroupContextAdapter({ memberContext }),
+  ownerActiveGroupMembersReader: createFirestoreActiveGroupMembersForOwnerReader({
+    db,
+    membershipRepository,
+    groupCapability: rosterGroupCapability,
+    personCapability: rosterPersonCapability,
+  }),
 });

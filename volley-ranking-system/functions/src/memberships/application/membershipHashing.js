@@ -54,6 +54,33 @@ function hashMembershipSelfExitRequest(userId, personId, groupId) {
   return sha256LengthPrefixed(["sportexa:E2-10:membership-self-exit-request:v1", "contract-v1", userId, personId, groupId]);
 }
 
+function membershipAdministrativeFinalizationActivationRef({ actorUserId, groupId, membershipId, targetPersonId, seasonId, activationOrdinal, periodId, activeGuardVersion }) {
+  return sha256LengthPrefixed([
+    "sportexa:E2-12:administrative-finalization-activation-ref:v1",
+    actorUserId, groupId, membershipId, targetPersonId, seasonId,
+    String(activationOrdinal), periodId, String(activeGuardVersion),
+  ]);
+}
+
+function membershipAdministrativeFinalizationIntentId(actorUserId, key) {
+  return sha256LengthPrefixed(["sportexa:E2-12:membership-administrative-finalization-intent:v1", actorUserId, key]);
+}
+
+function hashMembershipAdministrativeFinalizationKey(actorUserId, key) {
+  return sha256LengthPrefixed(["sportexa:E2-12:membership-administrative-finalization-key:v1", actorUserId, key]);
+}
+
+function hashMembershipAdministrativeFinalizationRequest(actorUserId, groupId, membershipId, activationRef) {
+  return sha256LengthPrefixed([
+    "sportexa:E2-12:membership-administrative-finalization-request:v1",
+    "contract-v1", actorUserId, groupId, membershipId, activationRef,
+  ]);
+}
+
+function hashMembershipAdministrativeActivationRef(activationRef) {
+  return sha256LengthPrefixed(["sportexa:E2-12:membership-administrative-finalization-activation-ref-hash:v1", activationRef]);
+}
+
 module.exports = {
   activeMembershipGuardId,
   hashGroupJoinRequestActivationIdempotency,
@@ -63,6 +90,11 @@ module.exports = {
   hashMembershipSelfExitIdempotencyKey,
   hashMembershipSelfExitRequest,
   membershipSelfExitIntentId,
+  membershipAdministrativeFinalizationActivationRef,
+  membershipAdministrativeFinalizationIntentId,
+  hashMembershipAdministrativeFinalizationKey,
+  hashMembershipAdministrativeFinalizationRequest,
+  hashMembershipAdministrativeActivationRef,
   membershipLifecycleGuardId,
   membershipValidityPeriodId,
   sha256LengthPrefixed,

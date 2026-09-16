@@ -17,12 +17,15 @@ const { createFirestoreActiveMembershipGuard } = require("./firestoreActiveMembe
 const { createFirestoreMembershipRepository } = require("./firestoreMembershipRepository");
 const { createFirestoreMembershipLifecycleGuard } = require("./firestoreMembershipLifecycleGuard");
 const { createFirestoreMembershipSelfExitStore } = require("./firestoreMembershipSelfExitStore");
+const { createFirestoreMembershipAdministrativeFinalizationStore } = require("./firestoreMembershipAdministrativeFinalizationStore");
 const { createFirestoreMyMembershipReader } = require("./firestoreMyMembershipReader");
 const { createFirestoreMyCurrentGroupMembershipsReader } = require("./firestoreMyCurrentGroupMembershipsReader");
 const { createFirestoreActiveGroupMembersForOwnerReader } = require("./firestoreActiveGroupMembersForOwnerReader");
 const { createMemberGroupContextAdapter, createOpenSeasonContextAdapter, createOwnedGroupContextAdapter, createSelfPersonContextAdapter } = require("./membershipExternalContexts");
 const { createGroupRosterContextCapability } = require("../../groups/public/groupRosterContextCapability");
 const { createActiveGroupMemberPersonCapability } = require("../../persons/public/activeGroupMemberPersonCapability");
+const { createAdministrativeMembershipFinalizationContextCapability } = require("../../groups/public/administrativeMembershipFinalizationContextCapability");
+const { createAdministrativeMembershipFinalizationPersonCapability } = require("../../persons/public/administrativeMembershipFinalizationPersonCapability");
 
 const accountService = createAccountService({ userRepository: createFirestoreUserRepository({ db }) });
 const selfAccountReader = createFirestoreSelfAccountReader({ accountService });
@@ -43,6 +46,12 @@ const selfExitStore = createFirestoreMembershipSelfExitStore({
 });
 const rosterGroupCapability = createGroupRosterContextCapability({ db });
 const rosterPersonCapability = createActiveGroupMemberPersonCapability({ db });
+const administrativeFinalizationStore = createFirestoreMembershipAdministrativeFinalizationStore({
+  db,
+  membershipRepository,
+  groupCapability: createAdministrativeMembershipFinalizationContextCapability({ db }),
+  personCapability: createAdministrativeMembershipFinalizationPersonCapability({ db }),
+});
 
 module.exports = createMembershipService({
   selfAccountReader,
@@ -55,6 +64,7 @@ module.exports = createMembershipService({
   activeMembershipGuard: createFirestoreActiveMembershipGuard({ db, groupRepository }),
   lifecycleGuard,
   selfExitStore,
+  administrativeFinalizationStore,
   myMembershipReader: createFirestoreMyMembershipReader({ db, groupRepository, membershipRepository }),
   myCurrentGroupMembershipsReader: createFirestoreMyCurrentGroupMembershipsReader({ db, membershipRepository }),
   memberGroupContext: createMemberGroupContextAdapter({ memberContext }),

@@ -124,7 +124,7 @@ test("reader E2-11 distingue una dependencia transitoria de Persona ausente", as
   );
 });
 
-test("arquitectura E2-11 conserva módulos, callable-only, deny-all y ausencia de controles administrativos", () => {
+test("arquitectura E2-11 conserva reader/DTO y E2-12 limita la acción a terceros AVAILABLE", () => {
   const root = path.resolve(__dirname, "../../../..");
   const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
   const reader = read("volley-ranking-system/functions/src/memberships/infrastructure/firestoreActiveGroupMembersForOwnerReader.js");
@@ -140,7 +140,8 @@ test("arquitectura E2-11 conserva módulos, callable-only, deny-all y ausencia d
   assert.doesNotMatch(reader, /memberIds|adminIds|users\.roles|notification|activity|payment|tournament/i);
   assert.doesNotMatch(`${frontend}\n${frontendService}`, /firebase\/firestore|collection\(|getDoc\(|setDoc\(|updateDoc\(/);
   for (const marker of ["Integrantes", "Cargando integrantes", "NO_OPEN_SEASON", "No hay un roster actual", "Todavía no hay integrantes", "Identidad no disponible", "Owner", "Cargar más", "Reintentar", "ROSTER_CONTEXT_CHANGED", "aria-live", "aria-busy", "role=\"alert\"", "tabIndex={-1}", "min-h-11", "sm:grid-cols-2", "lg:col-span-2"]) assert.match(frontend, new RegExp(marker));
-  assert.doesNotMatch(frontend, />\s*(Finalizar|Expulsar|Suspender|Editar)|kebab|checkbox/i);
+  for (const marker of [/item\.person\.status === "AVAILABLE" && !item\.isOwner/, /availableThirdParty \?/, /Finalizar Membresía/]) assert.match(frontend, marker);
+  assert.doesNotMatch(frontend, />\s*(Expulsar|Suspender|Editar)|kebab|checkbox/i);
   for (const collection of ["memberships", "validityPeriods", "activeMembershipGuards", "personas", "seasons", "openSeasonGuards"]) assert.match(rules, new RegExp(collection));
   assert.equal(indexes.indexes.filter((index) => index.collectionGroup === "memberships"
     && index.queryScope === "COLLECTION"

@@ -31,6 +31,10 @@ function setup(overrides = {}) {
     membershipRepository: { newId() { calls.push("newId"); return "membership-generated"; }, async getById() { calls.push("recover"); return persisted(); } },
     activeMembershipGuard: { async confirmActiveMembership(input) { calls.push("guard"); return { outcome: "CREATED_ACTIVE", membershipId: input.membership.membershipId }; } },
     selfExitStore: { async confirm(args) { calls.push(["self-exit", args]); return { membershipId: "membership-generated", groupId: "group-1", seasonId: "season-1", activationOrdinal: 1, endedAt: timestamp, actorWasOwner: false }; } },
+    administrativeFinalizationStore: {
+      async prepare(args) { calls.push(["administrative-prepare", args]); return { firstName: "Target", lastName: "Person", activationRef: "a".repeat(64) }; },
+      async confirm(args) { calls.push(["administrative-finalize", args]); return { membershipId: args.membershipId, finalizedAt: timestamp }; },
+    },
     myMembershipReader: { async getActiveForOwner() { calls.push("reader"); return null; } },
     myCurrentGroupMembershipsReader: {
       async listPage() { calls.push("list-page"); return { candidates: [], hasLookahead: false, cursorAnchor: null }; },
@@ -299,4 +303,17 @@ test("E2-05 corrupción del contexto temporal conserva reason incompatible", asy
     () => service.finalizeMyMembershipForOwnedGroup({ userId: "uid" }, { groupId: "group-1" }),
     (error) => error === incompatible
   );
+});
+
+test("E2-12 finalizacion administrativa no exige Persona propia en Aplicacion", async () => {
+  const { service, calls } = setup({ selfPersonContext: { async getForUser() { calls.push("person"); return null; } } });
+  const prepared = await service.prepareActiveGroupMemberFinalizationForOwnedGroup(
+    { userId: "uid" },
+    { groupId: "group-1", membershipId: "membership-target" }
+  );
+  assert.equal(prepared.activationRef, "a".repeat(64));
+  assert.equal(calls.includes("person"), false);
+  assert.deepEqual(calls.find((call) => Array.isArray(call) && call[0] === "administrative-prepare")[1], {
+    actorUserId: "uid", groupId: "group-1", membershipId: "membership-target",
+  });
 });

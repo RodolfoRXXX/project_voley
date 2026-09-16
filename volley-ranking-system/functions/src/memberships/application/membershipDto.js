@@ -69,4 +69,12 @@ function toOwnerActiveGroupMemberItem(membership, person, isOwner) {
   });
 }
 
-module.exports = { FINALIZED_MEMBERSHIP_DTO_KEYS, MEMBERSHIP_DTO_KEYS, toFinalizedMembershipDto, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem, toOwnerActiveGroupMemberItem };
+function toAdministrativeFinalizationPreparation(result) {
+  return Object.freeze({ person: Object.freeze({ firstName: result.firstName, lastName: result.lastName }), activationRef: result.activationRef });
+}
+
+function toAdministrativeFinalizationResult(result) {
+  return Object.freeze({ outcome: "MEMBERSHIP_FINALIZATION_CONFIRMED", effect: Object.freeze({ membershipId: result.membershipId, finalizedAt: result.finalizedAt.toDate().toISOString() }) });
+}
+
+module.exports = { FINALIZED_MEMBERSHIP_DTO_KEYS, MEMBERSHIP_DTO_KEYS, toAdministrativeFinalizationPreparation, toAdministrativeFinalizationResult, toFinalizedMembershipDto, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem, toOwnerActiveGroupMemberItem };

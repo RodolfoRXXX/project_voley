@@ -9,6 +9,7 @@ const MY_GROUPS_MAX_CURSOR_LENGTH = 2048;
 const OWNER_ROSTER_DEFAULT_PAGE_SIZE = 20;
 const OWNER_ROSTER_MAX_PAGE_SIZE = 20;
 const OWNER_ROSTER_MAX_CURSOR_LENGTH = 2048;
+const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 
 function isPlainObject(data) {
   if (!data || typeof data !== "object" || Array.isArray(data)) return false;
@@ -30,6 +31,27 @@ function assertGroupId(groupId) {
     || Buffer.byteLength(groupId, "utf8") > 1500) {
     throw new MembershipValidationError("Group id is invalid");
   }
+}
+
+function assertDocumentId(value) {
+  if (typeof value !== "string" || !value.trim() || value !== value.trim() || value.includes("/")
+    || Buffer.byteLength(value, "utf8") > 1500) throw new MembershipValidationError("Document id is invalid");
+}
+
+function validatePrepareActiveGroupMemberFinalizationPayload(data) {
+  assertExactObject(data, ["groupId", "membershipId"]);
+  assertGroupId(data.groupId);
+  assertDocumentId(data.membershipId);
+  return Object.freeze({ groupId: data.groupId, membershipId: data.membershipId });
+}
+
+function validateFinalizeActiveGroupMemberPayload(data) {
+  assertExactObject(data, ["groupId", "membershipId", "activationRef", "idempotencyKey"]);
+  assertGroupId(data.groupId);
+  assertDocumentId(data.membershipId);
+  if (typeof data.activationRef !== "string" || !SHA256_PATTERN.test(data.activationRef)) throw new MembershipValidationError("Activation reference is invalid");
+  if (typeof data.idempotencyKey !== "string" || !IDEMPOTENCY_KEY_PATTERN.test(data.idempotencyKey)) throw new MembershipValidationError("Idempotency key is invalid");
+  return Object.freeze({ groupId: data.groupId, membershipId: data.membershipId, activationRef: data.activationRef, idempotencyKey: data.idempotencyKey });
 }
 
 function validateLeaveMyGroupMembershipPayload(data) {
@@ -120,4 +142,6 @@ module.exports = {
   validateLeaveMyGroupMembershipPayload,
   validateListActiveGroupMembersForOwnedGroupPayload,
   validateListMyCurrentGroupMembershipsPayload,
+  validatePrepareActiveGroupMemberFinalizationPayload,
+  validateFinalizeActiveGroupMemberPayload,
 };

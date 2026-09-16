@@ -27,6 +27,10 @@ const MEMBERSHIP_HTTPS_CODES = Object.freeze({
   INTERNAL_ERROR: "internal",
   GROUP_NOT_ACCESSIBLE: "permission-denied",
   ROSTER_CONTEXT_CHANGED: "aborted",
+  TARGET_MEMBERSHIP_NOT_ACCESSIBLE: "not-found",
+  TARGET_IS_SELF: "failed-precondition",
+  TARGET_MEMBERSHIP_NOT_ACTIVE: "failed-precondition",
+  MEMBERSHIP_ACTIVATION_CHANGED: "aborted",
 });
 
 function membershipIdentityFromCallableContext(context) {
@@ -97,4 +101,27 @@ function createOwnerActiveRosterCallableHandler({ operation, validatePayload, lo
   };
 }
 
-module.exports = { MEMBERSHIP_HTTPS_CODES, createMembershipCallableHandler, createOwnerActiveRosterCallableHandler, membershipIdentityFromCallableContext, toMembershipHttpsError };
+function createAdministrativeFinalizationCallableHandler({ operation, operationName, validatePayload, logger = console }) {
+  return async (data, context) => {
+    const startedAt = Date.now();
+    try {
+      const identity = membershipIdentityFromCallableContext(context);
+      const input = validatePayload(data);
+      const result = await operation(identity, input);
+      logger.info?.("membership.administrative-finalization", {
+        operation: operationName,
+        outcome: result?.outcome || "PREPARED",
+        durationMs: Date.now() - startedAt,
+      });
+      return result;
+    } catch (error) {
+      annotateMembershipError(error, { operation: operationName, stage: "callable" });
+      const reason = error instanceof MembershipError ? error.reason : "INTERNAL_ERROR";
+      logger.warn?.("membership.administrative-finalization", { operation: operationName, reason, durationMs: Date.now() - startedAt });
+      if (!(error instanceof MembershipError) || error.reason === "INTERNAL_ERROR") logUnexpectedMembershipError({ error, operation: operationName, logger });
+      throw toMembershipHttpsError(error);
+    }
+  };
+}
+
+module.exports = { MEMBERSHIP_HTTPS_CODES, createAdministrativeFinalizationCallableHandler, createMembershipCallableHandler, createOwnerActiveRosterCallableHandler, membershipIdentityFromCallableContext, toMembershipHttpsError };

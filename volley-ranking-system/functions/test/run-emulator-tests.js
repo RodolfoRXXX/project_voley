@@ -173,6 +173,13 @@ const membershipOwnerRosterTestPath = path.join(
   "emulator",
   "membershipOwnerRosterE2.test.js"
 );
+const membershipAdministrativeFinalizationTestPath = path.join(
+  systemRoot,
+  "functions",
+  "test",
+  "emulator",
+  "membershipAdministrativeFinalizationE2.test.js"
+);
 const legacyJoinRetirementTestPath = path.join(
   systemRoot,
   "functions",
@@ -180,7 +187,9 @@ const legacyJoinRetirementTestPath = path.join(
   "emulator",
   "legacyJoinRetirementE2.test.js"
 );
-const command = process.env.E2_07_CLEANUP_FOCAL === "1"
+const command = process.env.E2_12_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${membershipAdministrativeFinalizationTestPath}"`
+  : process.env.E2_07_CLEANUP_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${groupJoinRequestDecisionTestPath}" && node --test --test-concurrency=1 "${membershipTestPath}" && node --test --test-concurrency=1 "${seasonTestPath}"`
   : process.env.E2_11_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${membershipOwnerRosterTestPath}"`
@@ -202,7 +211,7 @@ const command = process.env.E2_07_CLEANUP_FOCAL === "1"
       ? `node --test --test-concurrency=1 "${membershipTestPath}"`
       : process.env.E2_04_FOCAL === "1"
         ? `node --test --test-concurrency=1 "${membershipListTestPath}"`
-        : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${seasonTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${groupJoinRequestTestPath}" "${groupJoinRequestDecisionTestPath}" "${groupJoinRequestDecisionGapsTestPath}" "${membershipReactivationTestPath}" "${membershipSelfExitTestPath}" "${membershipOwnerRosterTestPath}" "${legacyJoinRetirementTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
+        : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${seasonTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${groupJoinRequestTestPath}" "${groupJoinRequestDecisionTestPath}" "${groupJoinRequestDecisionGapsTestPath}" "${membershipReactivationTestPath}" "${membershipSelfExitTestPath}" "${membershipOwnerRosterTestPath}" "${membershipAdministrativeFinalizationTestPath}" "${legacyJoinRetirementTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
 const args = [
   "emulators:exec",
   "--project",

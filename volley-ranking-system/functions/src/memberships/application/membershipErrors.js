@@ -32,6 +32,10 @@ class MembershipDependencyUnavailableError extends MembershipError { constructor
 class MembershipInternalError extends MembershipError { constructor(options = {}) { super("INTERNAL_ERROR", "Membership operation failed", options); } }
 class MembershipGroupNotAccessibleError extends MembershipError { constructor() { super("GROUP_NOT_ACCESSIBLE", "Group is not accessible"); } }
 class MembershipRosterContextChangedError extends MembershipError { constructor() { super("ROSTER_CONTEXT_CHANGED", "Roster context changed"); } }
+class MembershipTargetNotAccessibleError extends MembershipError { constructor() { super("TARGET_MEMBERSHIP_NOT_ACCESSIBLE", "Target Membership is not accessible"); } }
+class MembershipTargetIsSelfError extends MembershipError { constructor() { super("TARGET_IS_SELF", "The target Membership belongs to the actor"); } }
+class MembershipTargetNotActiveError extends MembershipError { constructor() { super("TARGET_MEMBERSHIP_NOT_ACTIVE", "Target Membership is not active"); } }
+class MembershipActivationChangedError extends MembershipError { constructor() { super("MEMBERSHIP_ACTIVATION_CHANGED", "Membership activation changed"); } }
 
 module.exports = {
   MembershipAccountRequiredError,
@@ -54,6 +58,10 @@ module.exports = {
   MembershipReactivationRequiredError,
   MembershipReactivationSupersededError,
   MembershipRosterContextChangedError,
+  MembershipTargetNotAccessibleError,
+  MembershipTargetIsSelfError,
+  MembershipTargetNotActiveError,
+  MembershipActivationChangedError,
   MembershipSeasonNotReactivatableError,
   MembershipSeasonNotModifiableError,
   MembershipSeasonIncompatibleError,

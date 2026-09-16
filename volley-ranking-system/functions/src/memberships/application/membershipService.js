@@ -1,7 +1,7 @@
 "use strict";
 
 const { buildMembership, InvalidMembershipStateError } = require("../domain/membership");
-const { toFinalizedMembershipDto, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem, toOwnerActiveGroupMemberItem } = require("./membershipDto");
+const { toAdministrativeFinalizationPreparation, toAdministrativeFinalizationResult, toFinalizedMembershipDto, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem, toOwnerActiveGroupMemberItem } = require("./membershipDto");
 const { decodeMyGroupsCursor, encodeMyGroupsCursor } = require("./membershipCursor");
 const { decodeOwnerGroupMembersCursor, encodeOwnerGroupMembersCursor } = require("./ownerGroupMembersCursor");
 const {
@@ -15,7 +15,7 @@ const {
   MembershipUnauthenticatedError,
   MembershipValidationError,
 } = require("./membershipErrors");
-const { activeMembershipGuardId, hashMembershipIdempotencyKey, hashMembershipRequest, hashMembershipSelfExitIdempotencyKey, hashMembershipSelfExitRequest, membershipLifecycleGuardId, membershipSelfExitIntentId } = require("./membershipHashing");
+const { activeMembershipGuardId, hashMembershipAdministrativeActivationRef, hashMembershipAdministrativeFinalizationKey, hashMembershipAdministrativeFinalizationRequest, hashMembershipIdempotencyKey, hashMembershipRequest, hashMembershipSelfExitIdempotencyKey, hashMembershipSelfExitRequest, membershipAdministrativeFinalizationIntentId, membershipLifecycleGuardId, membershipSelfExitIntentId } = require("./membershipHashing");
 const { isTransientDependencyError } = require("../../shared/application/transientDependencyError");
 const { annotateMembershipError, inheritMembershipDiagnostic } = require("./membershipObservability");
 
@@ -24,7 +24,7 @@ function requireActor(identity) {
   return identity.userId.trim();
 }
 
-function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, lifecycleGuard, selfExitStore, myMembershipReader, myCurrentGroupMembershipsReader, memberGroupContext, ownerActiveGroupMembersReader }) {
+function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, lifecycleGuard, selfExitStore, administrativeFinalizationStore, myMembershipReader, myCurrentGroupMembershipsReader, memberGroupContext, ownerActiveGroupMembersReader }) {
   if (!selfAccountReader || !selfPersonContext || !ownedGroupContext || !openSeasonContext || !membershipRepository || !activeMembershipGuard || !myMembershipReader) {
     throw new TypeError("Membership service dependencies are required");
   }
@@ -266,6 +266,34 @@ function createMembershipService({ selfAccountReader, selfPersonContext, ownedGr
         if (isTransientDependencyError(error)) throw new MembershipDependencyUnavailableError({ cause: error });
         throw internalAt(error, operation, "roster-page");
       }
+    },
+
+    async prepareActiveGroupMemberFinalizationForOwnedGroup(identity, input) {
+      const operation = "administrative-finalization-prepare";
+      const userId = requireActor(identity);
+      await atStage(operation, "account", () => requireAccount(userId));
+      if (!administrativeFinalizationStore) throw new MembershipDependencyUnavailableError();
+      const result = await atStage(operation, "transaction", () => administrativeFinalizationStore.prepare({
+        actorUserId: userId, groupId: input.groupId, membershipId: input.membershipId,
+      }));
+      return toAdministrativeFinalizationPreparation(result);
+    },
+
+    async finalizeActiveGroupMemberForOwnedGroup(identity, input) {
+      const operation = "administrative-finalization";
+      const userId = requireActor(identity);
+      await atStage(operation, "account", () => requireAccount(userId));
+      if (!administrativeFinalizationStore) throw new MembershipDependencyUnavailableError();
+      const args = {
+        actorUserId: userId, groupId: input.groupId, membershipId: input.membershipId,
+        activationRef: input.activationRef,
+        intentId: membershipAdministrativeFinalizationIntentId(userId, input.idempotencyKey),
+        idempotencyKeyHash: hashMembershipAdministrativeFinalizationKey(userId, input.idempotencyKey),
+        activationRefHash: hashMembershipAdministrativeActivationRef(input.activationRef),
+        requestHash: hashMembershipAdministrativeFinalizationRequest(userId, input.groupId, input.membershipId, input.activationRef),
+      };
+      const result = await atStage(operation, "transaction", () => administrativeFinalizationStore.confirm(args));
+      return toAdministrativeFinalizationResult(result);
     },
   };
 }

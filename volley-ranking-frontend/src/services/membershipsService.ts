@@ -14,6 +14,14 @@ export interface FinalizeMyMembershipResult {
   outcome: "FINALIZED" | "ALREADY_FINALIZED";
   membership: FinalizedOwnMembership;
 }
+export interface PrepareActiveGroupMemberFinalizationResult {
+  person: { firstName: string; lastName: string };
+  activationRef: string;
+}
+export interface FinalizeActiveGroupMemberResult {
+  outcome: "MEMBERSHIP_FINALIZATION_CONFIRMED";
+  effect: { membershipId: string; finalizedAt: string };
+}
 
 const createCallable = httpsCallable<CreateMyMembershipInput, CreateMyMembershipResult>(functions, "createMyMembershipForOwnedGroup");
 const getCallable = httpsCallable<{ groupId: string }, { membership: OwnMembership | null }>(functions, "getMyMembershipForOwnedGroup");
@@ -21,6 +29,8 @@ const finalizeCallable = httpsCallable<{ groupId: string }, FinalizeMyMembership
 const listMyCurrentGroupsCallable = httpsCallable<{ pageSize?: number; cursor?: string }, ListMyCurrentGroupMembershipsResult>(functions, "listMyCurrentGroupMemberships");
 const leaveMyGroupCallable = httpsCallable<{ groupId: string; idempotencyKey: string }, LeaveMyGroupMembershipResult>(functions, "leaveMyGroupMembership");
 const listActiveGroupMembersCallable = httpsCallable<{ groupId: string; pageSize?: number; cursor?: string }, ListActiveGroupMembersResult>(functions, "listActiveGroupMembersForOwnedGroup");
+const prepareAdministrativeFinalizationCallable = httpsCallable<{ groupId: string; membershipId: string }, PrepareActiveGroupMemberFinalizationResult>(functions, "prepareActiveGroupMemberFinalizationForOwnedGroup");
+const finalizeAdministrativeFinalizationCallable = httpsCallable<{ groupId: string; membershipId: string; activationRef: string; idempotencyKey: string }, FinalizeActiveGroupMemberResult>(functions, "finalizeActiveGroupMemberForOwnedGroup");
 
 export async function createMyMembershipForOwnedGroup(input: CreateMyMembershipInput): Promise<CreateMyMembershipResult> {
   return (await createCallable(input)).data;
@@ -46,6 +56,14 @@ export async function listActiveGroupMembersForOwnedGroup(input: { groupId: stri
   return (await listActiveGroupMembersCallable(input)).data;
 }
 
+export async function prepareActiveGroupMemberFinalizationForOwnedGroup(input: { groupId: string; membershipId: string }): Promise<PrepareActiveGroupMemberFinalizationResult> {
+  return (await prepareAdministrativeFinalizationCallable(input)).data;
+}
+
+export async function finalizeActiveGroupMemberForOwnedGroup(input: { groupId: string; membershipId: string; activationRef: string; idempotencyKey: string }): Promise<FinalizeActiveGroupMemberResult> {
+  return (await finalizeAdministrativeFinalizationCallable(input)).data;
+}
+
 export function getMembershipErrorReason(error: unknown): MembershipErrorReason {
   if (typeof error === "object" && error !== null && "details" in error) {
     const details = (error as { details?: unknown }).details;
@@ -59,6 +77,7 @@ export function getMembershipErrorReason(error: unknown): MembershipErrorReason 
         "MEMBERSHIP_SEASON_NOT_MODIFIABLE",
         "IDEMPOTENCY_CONFLICT", "INCOMPATIBLE_STATE", "CONFLICT",
         "DEPENDENCY_UNAVAILABLE", "INTERNAL_ERROR", "GROUP_NOT_ACCESSIBLE", "ROSTER_CONTEXT_CHANGED",
+        "TARGET_MEMBERSHIP_NOT_ACCESSIBLE", "TARGET_IS_SELF", "TARGET_MEMBERSHIP_NOT_ACTIVE", "MEMBERSHIP_ACTIVATION_CHANGED",
       ];
       if (known.includes(reason)) return reason;
     }
@@ -90,6 +109,10 @@ export function getMembershipErrorMessage(reason: MembershipErrorReason): string
     INTERNAL_ERROR: "No pudimos completar la operación. Reintentá la misma intención.",
     GROUP_NOT_ACCESSIBLE: "No tenés acceso al roster de este Grupo.",
     ROSTER_CONTEXT_CHANGED: "La Temporada abierta cambió. Reiniciamos el listado.",
+    TARGET_MEMBERSHIP_NOT_ACCESSIBLE: "La Membresía seleccionada ya no está disponible en este Grupo.",
+    TARGET_IS_SELF: "Para finalizar tu propia Membresía usá la acción de salida personal.",
+    TARGET_MEMBERSHIP_NOT_ACTIVE: "La Membresía seleccionada ya no está activa. Actualizamos el roster.",
+    MEMBERSHIP_ACTIVATION_CHANGED: "La activación cambió. Volvé a revisar y confirmar la Membresía actual.",
   };
   return messages[reason];
 }

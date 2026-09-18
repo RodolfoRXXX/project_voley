@@ -30,58 +30,13 @@ user {
 
 El usuario es identidad + preferencias.
 
-🏐 GROUP
+🏐 GRUPO
 
-Representa un torneo recurrente.
+Grupo canónico usa `schemaVersion: 1`, `ownerId` contextual y escritura exclusiva del backend. Temporada, Membresía y Solicitud son raíces independientes; la pertenencia y la administración no se representan mediante arrays embebidos ni mediante `users.roles`.
 
-group {
-  nombre
-  descripcion
-  creadoPor
-  activo: boolean
-  partidosTotales: number
-  visibility: "public" | "private"
-  joinApproval: boolean
-  memberIds: string[]
-  adminIds: string[]
-  pendingRequestIds: string[]
-}
-Visibilidad
+Los documentos históricos de Grupo permanecen intactos y son sólo lectura para los consumidores deportivos E4 expresamente allowlisted. El catálogo público histórico expone una proyección mínima de Grupos públicos/activos y sus Partidos públicos; no ofrece ingreso ni administración.
 
-Public
-
-Visible en listado general
-
-Puede requerir aprobación (joinApproval)
-
-Private
-
-Solo visible para integrantes
-
-Admin agrega directamente
-
-Usuario recibe mail de aviso
-
-📄 Detalle del Grupo
-Public View (informativo)
-
-Info del grupo
-
-Admins
-
-Partidos creados
-
-Integrantes
-
-Protected View (requiere pertenecer)
-
-Editar info (solo owner gestiona admins)
-
-Crear matches
-
-Aceptar integrantes
-
-Agregar nuevos integrantes
+Las APIs, BFF, callables y páginas de autoridad organizativa legacy están retiradas. La creación vigente se realiza desde `/dashboard/groups/new` y la gestión canónica desde `/dashboard/groups`.
 
 📅 MATCH
 

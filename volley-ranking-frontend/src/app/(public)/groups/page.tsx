@@ -1,292 +1,50 @@
-
-// -------------------
-// Public Group View
-// -------------------
-
 "use client";
 
-import { useEffect, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/hooks/useAuth";
-import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
-import InformationPill from "@/components/ui/status/InformationPill";
+import { useEffect, useState } from "react";
 
-/* =====================
-   TYPES
-===================== */
-
-type PublicGroup = {
+type PublicLegacyGroup = {
   id: string;
   name: string;
   description: string;
-  visibility: "public" | "private";
-  joinApproval: boolean;
+  visibility: "public";
+  active: true;
   totalMatches: number;
-  membersCount: number;
-  membershipStatus: JoinState;
 };
 
-type JoinState = "none" | "member";
-
-/* =====================
-   SKELETON
-===================== */
-
-function GroupsSkeleton() {
-  return (
-    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-8">
-
-      {/* HEADER */}
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-40" />
-        <SkeletonSoft className="h-4 w-64" />
-      </div>
-
-      {/* GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div
-            key={i}
-            className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 flex flex-col h-full"
-          >
-            {/* HEADER */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-2 flex-1">
-                <Skeleton className="h-4 w-3/4" />
-                <SkeletonSoft className="h-3 w-full" />
-              </div>
-
-              <div className="flex flex-col gap-2 items-end">
-                <SkeletonSoft className="h-5 w-16 rounded-full" />
-                <SkeletonSoft className="h-5 w-24 rounded-full" />
-              </div>
-            </div>
-
-            {/* 👇 BLOQUE INFERIOR (como en la card real) */}
-            <div className="mt-auto pt-4 space-y-4">
-
-              {/* Stats */}
-              <div className="flex gap-4">
-                <SkeletonSoft className="h-3 w-20" />
-                <SkeletonSoft className="h-3 w-24" />
-              </div>
-
-              {/* Owner */}
-              <div className="flex items-center gap-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
-                <Skeleton className="h-9 w-9 rounded-full" />
-                <div className="space-y-2 w-32">
-                  <Skeleton className="h-3 w-24" />
-                  <SkeletonSoft className="h-3 w-20" />
-                </div>
-              </div>
-
-              {/* Buttons */}
-              <div className="flex items-center justify-between pt-2">
-                <Skeleton className="h-8 w-28 rounded-lg" />
-                <SkeletonSoft className="h-4 w-20" />
-              </div>
-
-            </div>
-          </div>
-        ))}
-
-      </div>
-    </main>
-  );
-}
-
-/* =====================
-   PAGE
-===================== */
-
-export default function GruposPage() {
-  const { firebaseUser } = useAuth();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [groups, setGroups] = useState<PublicGroup[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchInput, setSearchInput] = useState(searchParams.get("q") ?? "");
-
-  const endpoint = "/api/groups/public";
+export default function PublicLegacyGroupsPage() {
+  const [groups, setGroups] = useState<PublicLegacyGroup[]>([]);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        let token: string | null = null;
-        if (firebaseUser) token = await firebaseUser.getIdToken();
-
-        const res = await fetch(endpoint, {
-          method: "GET",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-
-        if (!res.ok) throw new Error("No se pudieron cargar los grupos");
-
-        const json = await res.json();
-        setGroups(json.groups || []);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "No se pudieron cargar los grupos");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
-  }, [firebaseUser]);
-
-  const availableGroups = groups.filter((group) => {
-    if (group.visibility !== "public") return false;
-    if (!firebaseUser?.uid) return true;
-    return group.membershipStatus !== "member";
-  });
-
-  const searchTerm = (searchParams.get("q") ?? "").trim();
-  const filteredGroups = availableGroups.filter((group) =>
-    group.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const applySearch = (rawTerm: string) => {
-    const nextParams = new URLSearchParams(searchParams.toString());
-    const term = rawTerm.trim();
-    if (term) {
-      nextParams.set("q", term);
-    } else {
-      nextParams.delete("q");
-    }
-    const queryString = nextParams.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname);
-  };
-
-  if (loading) return <GroupsSkeleton />;
+    let active = true;
+    void fetch("/api/groups/public").then(async (response) => {
+      if (!response.ok) throw new Error("No se pudieron cargar los grupos");
+      return response.json() as Promise<{ groups?: PublicLegacyGroup[] }>;
+    }).then((payload) => {
+      if (!active) return;
+      setGroups(payload.groups || []);
+      setStatus("ready");
+    }).catch(() => { if (active) setStatus("error"); });
+    return () => { active = false; };
+  }, []);
 
   return (
-    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-4 md:px-0 pb-12 space-y-8">
-
-      {/* HEADER */}
-      <div className="space-y-1">
-        <h1 className="text-3xl font-bold text-neutral-800 dark:text-[var(--foreground)]">
-          Grupos
-        </h1>
-        <p className="text-sm text-neutral-500">
-          Explora y únete a grupos públicos
-        </p>
-        <form
-          className="pt-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            applySearch(searchInput);
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <input
-              type="search"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Buscar por nombre de grupo"
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-500"
-            />
-            <button
-              type="submit"
-              className="inline-flex h-10 items-center justify-center rounded-full bg-gray-800 px-4 text-sm font-medium text-white transition-all hover:bg-gray-900"
-            >
-              Buscar
-            </button>
-          </div>
-        </form>
-        {searchTerm && (
-          <div className="pt-2">
-            <span className="inline-flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-700">
-              {searchTerm}
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchInput("");
-                  applySearch("");
-                }}
-                className="text-neutral-500 hover:text-neutral-800"
-                aria-label="Limpiar búsqueda"
-              >
-                ×
-              </button>
-            </span>
-          </div>
-        )}
-      </div>
-
-      {error && <p className="text-red-500">{error}</p>}
-
-      {filteredGroups.length === 0 && (
-        <p className="text-gray-500">No hay grupos disponibles.</p>
-      )}
-      {filteredGroups.length > 0 && (
-        <section className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredGroups.map((group) => {
-              return (
-                <div key={group.id} className="rounded-md border border-neutral-200 bg-white p-4 flex flex-col h-full">
-                  {/* HEADER (crece libremente) */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <h2 className="text-base font-semibold text-neutral-900">
-                        {group.name}
-                      </h2>
-                      <p className="text-sm text-neutral-600">
-                        {group.description || "Sin descripción"}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-2">
-                      <InformationPill
-                        label={group.visibility === "public" ? "Público" : "Privado"}
-                        variant={group.visibility === "public" ? "info" : "neutral"}
-                        inline
-                      />
-                      {group.joinApproval && (
-                        <InformationPill
-                          label="Requiere aprobación"
-                          variant="warning"
-                          inline
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 👇 TODO ESTO SE PEGA AL FONDO */}
-                  <div className="mt-auto pt-4 space-y-4">
-
-                    <div className="flex gap-4 text-xs text-neutral-500">
-                      <span>
-                        Partidos: <b>{group.totalMatches}</b>
-                      </span>
-                      <span>
-                        Integrantes: <b>{group.membersCount}</b>
-                      </span>
-                    </div>
-
-                    <div className="pt-2">
-                      {group.membershipStatus === "member" ? (
-                        <p className="text-sm text-neutral-600">Ya integrás este Grupo. Gestioná tu Membresía desde Mis grupos.</p>
-                      ) : (
-                        <Link
-                          href={`/join/groups/${encodeURIComponent(group.id)}`}
-                          className="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900"
-                        >
-                          Solicitar ingreso →
-                        </Link>
-                      )}
-                    </div>
-
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+    <main className="mx-auto max-w-5xl space-y-6 px-4 py-10">
+      <header><h1 className="text-3xl font-bold">Grupos históricos públicos</h1><p className="mt-2 text-sm text-[var(--text-muted)]">Consulta temporal de partidos públicos asociados.</p></header>
+      {status === "loading" ? <p role="status">Cargando…</p> : null}
+      {status === "error" ? <p role="alert" className="text-red-600">No se pudieron cargar los grupos.</p> : null}
+      {status === "ready" && groups.length === 0 ? <p>No hay grupos públicos disponibles.</p> : null}
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {groups.map((group) => (
+          <article key={group.id} className="rounded-lg border border-[var(--border)] p-4">
+            <h2 className="font-semibold">{group.name}</h2>
+            <p className="mt-2 text-sm text-[var(--text-muted)]">{group.description || "Sin descripción"}</p>
+            <p className="mt-3 text-xs">Partidos públicos: {group.totalMatches}</p>
+            <Link className="mt-4 inline-flex text-sm font-medium text-blue-700" href={`/groups/${encodeURIComponent(group.id)}`}>Ver partidos →</Link>
+          </article>
+        ))}
+      </section>
     </main>
   );
 }

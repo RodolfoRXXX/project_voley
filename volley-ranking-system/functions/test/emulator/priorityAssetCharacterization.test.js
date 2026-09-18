@@ -199,7 +199,7 @@ test("caracteriza activos prioritarios sin convertir legados en contratos", asyn
 
     await db.collection("users").doc(adminActor.uid).update({ roles: "admin" });
 
-    await t.test("[B] un admin global sintético crea Grupos por la escritura directa legada", async () => {
+    await t.test("[B] Rules niega creación legacy incluso a admin global; fixtures usan Admin SDK", async () => {
       const groupA = await createGroupFromClient({
         host: firestoreHost,
         projectId,
@@ -214,8 +214,8 @@ test("caracteriza activos prioritarios sin convertir legados en contratos", asyn
         actor: adminActor,
         memberIds: [adminActor.uid, playerB.uid],
       });
-      assert.equal(groupA.status, 200, JSON.stringify(groupA.body));
-      assert.equal(groupB.status, 200, JSON.stringify(groupB.body));
+      assert.equal(groupA.status, 403, JSON.stringify(groupA.body));
+      assert.equal(groupB.status, 403, JSON.stringify(groupB.body));
 
       const denied = await createGroupFromClient({
         host: firestoreHost,
@@ -226,6 +226,10 @@ test("caracteriza activos prioritarios sin convertir legados en contratos", asyn
       });
       assert.equal(denied.status, 403, JSON.stringify(denied.body));
       assert.equal((await db.collection("groups").doc("e0-05-forbidden-group").get()).exists, false);
+      await Promise.all([
+        db.collection("groups").doc(groupIds[0]).set({ nombre: `Grupo sintético ${groupIds[0]}`, descripcion: "Caracterización E0-05", activo: true, memberIds: [adminActor.uid, playerA.uid], admins: [{ userId: adminActor.uid, role: "owner", order: 0 }], ownerId: adminActor.uid, adminIds: [adminActor.uid], visibility: "private", joinApproval: true, partidosTotales: 0 }),
+        db.collection("groups").doc(groupIds[1]).set({ nombre: `Grupo sintético ${groupIds[1]}`, descripcion: "Caracterización E0-05", activo: true, memberIds: [adminActor.uid, playerB.uid], admins: [{ userId: adminActor.uid, role: "owner", order: 0 }], ownerId: adminActor.uid, adminIds: [adminActor.uid], visibility: "private", joinApproval: true, partidosTotales: 0 }),
+      ]);
     });
 
     await t.test("[B/C] Partido crea participación determinista y conserva pago embebido legado", async () => {

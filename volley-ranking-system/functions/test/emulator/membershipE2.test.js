@@ -220,7 +220,10 @@ test("E2-03 crea y consulta Membresía propia del Owner con unicidad transaccion
     });
 
     await t.test("Firestore Emulator expone ABORTED estructurado al agotar la contención", async (diagnosticTest) => {
-      const guardRef = db.collection("activeMembershipGuards").doc(activeMembershipGuardId(ids.ownerGroup, ids.person));
+      const ownerGuardRef = db.collection("activeMembershipGuards").doc(activeMembershipGuardId(ids.ownerGroup, ids.person));
+      const ownerGuardBefore = (await ownerGuardRef.get()).data();
+      const guardRef = fixtures.register(db.collection("activeMembershipGuards").doc("e2-03-contention-guard-diagnostic"));
+      await guardRef.set({ marker: "isolated-contention-diagnostic" });
       let arrivals = 0;
       let releaseBarrier;
       const barrier = new Promise((resolve) => { releaseBarrier = resolve; });
@@ -230,7 +233,7 @@ test("E2-03 crea y consulta Membresía propia del Owner con unicidad transaccion
           arrivals += 1;
           if (arrivals === 2) releaseBarrier();
           await barrier;
-          transaction.update(guardRef, { createdAt: admin.firestore.FieldValue.serverTimestamp() });
+          transaction.update(guardRef, { touchedAt: admin.firestore.FieldValue.serverTimestamp() });
         }, { maxAttempts: 1 });
       }
       const settled = await Promise.allSettled([contend(), contend()]);
@@ -291,6 +294,7 @@ test("E2-03 crea y consulta Membresía propia del Owner con unicidad transaccion
       assert.equal(isMembershipContention(createRejected[0].reason), true);
       assert.equal(createRejected[0].reason.code, 6);
       assert.equal(typeof createRejected[0].reason.code, "number");
+      assert.deepEqual((await ownerGuardRef.get()).data(), ownerGuardBefore);
     });
 
     await t.test("respuesta perdida/retry recupera exactamente la misma Membresía y otra clave se rechaza", async () => {

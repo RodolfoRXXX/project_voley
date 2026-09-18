@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readJsonSafely } from "@/lib/http/readJsonSafely";
 
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ groupId: string }> }
 ) {
   const base = process.env.NEXT_PUBLIC_FUNCTIONS_BASE_URL?.replace(/\/$/, "");
@@ -19,9 +19,6 @@ export async function GET(
 
   const upstream = await fetch(`${base}/api/groups/${safeGroupId}/public`, {
     method: "GET",
-    headers: {
-      Authorization: req.headers.get("authorization") || "",
-    },
     cache: "no-store",
   });
 

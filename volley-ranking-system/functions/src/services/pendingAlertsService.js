@@ -120,34 +120,6 @@ async function dismissPendingAlert(userId, alertId) {
   return resolvePendingAlert(userId, alertId);
 }
 
-async function createGroupRemovalAlert({
-  userId,
-  groupId,
-  groupName,
-}) {
-  if (!userId || !groupId) return;
-
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-  await upsertPendingAlert({
-    userId,
-    alertId: `group_membership_result_${groupId}`,
-    kind: "group_membership_result",
-    severity: "info",
-    title: "Integrante eliminado del grupo",
-    message: `Fuiste eliminado de ${groupName || "el grupo"}.`,
-    link: null,
-    resource: {
-      groupId,
-    },
-    meta: {
-      groupName: groupName || "Grupo",
-      decision: "removed",
-    },
-    expiresAt,
-  });
-}
-
 function uniqueStringArray(items = []) {
   return Array.from(new Set((Array.isArray(items) ? items : []).map((item) => String(item || "")).filter(Boolean)));
 }
@@ -203,7 +175,6 @@ async function createGroupTournamentRejectionAlert({
 module.exports = {
   PENDING_ALERT_PRIORITIES,
   TOURNAMENT_GROUP_PENDING_ALERT_KINDS,
-  createGroupRemovalAlert,
   createGroupTournamentRejectionAlert,
   isTournamentPendingAlertKind,
   resolvePendingAlert,

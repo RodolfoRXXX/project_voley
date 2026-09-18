@@ -11,7 +11,13 @@ import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 import ThemeSwitch from "@/components/layout/ThemeSwitch";
 import { useThemeMode } from "@/hooks/useThemeMode";
 import SportexaLogo from "./SportexaLogo";
+import { getActiveNavigationHref } from "@/lib/navigation/activeRoute.mjs";
 
+type NavItem = {
+  label: string;
+  href?: string;
+  children?: Array<{ label: string; href: string }>;
+};
 
 export default function Navbar() {
   const {
@@ -67,8 +73,9 @@ export default function Navbar() {
     }
   };
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { label: "Inicio", href: "/dashboard" },
+    { label: "Mis grupos", href: "/dashboard/groups" },
     { label: "Grupos", href: "/groups" },
     { label: "Torneos", href: "/tournaments" },
 
@@ -76,7 +83,6 @@ export default function Navbar() {
       label: "Mi perfil",
       children: [
         { label: "Ficha personal", href: "/profile/person" },
-        { label: "Mis grupos", href: "/profile/groups" },
         { label: "Mis torneos", href: "/profile/tournaments" },
       ],
     },
@@ -86,11 +92,15 @@ export default function Navbar() {
     navItems.push({
       label: "Mi gestión",
       children: [
-        { label: "Grupos", href: "/admin/groups" },
         { label: "Torneos", href: "/admin/tournaments" },
       ],
     });
   }
+
+  const activeHref = getActiveNavigationHref(
+    pathname,
+    navItems.flatMap((item) => item.href ? [item.href] : item.children?.map((child) => child.href) ?? [])
+  );
 
   const toggleMenu = (label: string) => {
     setOpenMenus((prev) => ({
@@ -229,8 +239,8 @@ export default function Navbar() {
               {navItems.map((item) => {
 
                 // ITEM SIMPLE
-                if (!item.children) {
-                  const isActive = pathname.startsWith(item.href);
+                if (item.href) {
+                  const isActive = activeHref === item.href;
 
                   return (
                     <Link
@@ -265,8 +275,8 @@ export default function Navbar() {
 
                     {isOpen && (
                       <div className="ml-4 mt-1 space-y-1">
-                        {item.children.map((sub) => {
-                          const isActive = pathname.startsWith(sub.href);
+                        {item.children?.map((sub) => {
+                          const isActive = activeHref === sub.href;
 
                           return (
                             <Link

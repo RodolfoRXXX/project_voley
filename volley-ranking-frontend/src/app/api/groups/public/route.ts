@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { readJsonSafely } from "@/lib/http/readJsonSafely";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const base = process.env.NEXT_PUBLIC_FUNCTIONS_BASE_URL?.replace(/\/$/, "");
 
   if (!base) {
@@ -15,9 +15,6 @@ export async function GET(req: NextRequest) {
 
   const upstream = await fetch(`${base}/api/groups/public`, {
     method: "GET",
-    headers: {
-      Authorization: req.headers.get("authorization") || "",
-    },
     next: { revalidate: 30 },
   });
   const upstreamDurationMs = Date.now() - startedAt;

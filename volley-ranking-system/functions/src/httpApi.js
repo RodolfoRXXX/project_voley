@@ -1,67 +1,48 @@
+"use strict";
+
 const functions = require("firebase-functions/v1");
 const { admin, db } = require("./firebase");
-const { isCanonicalGroup, normalizeGroupAdmins } = require("./services/groupAdminsService");
-const { sendEmail, getWebAppUrl } = require("./services/emailService");
-const { FieldValue, Timestamp } = require("firebase-admin/firestore");
-const { emitDomainEvent } = require("./events/domainEventBus");
-const { DOMAIN_EVENTS } = require("./events/domainEvents");
+const { FieldValue } = require("firebase-admin/firestore");
 const { getPublicVapidKey } = require("./services/pushService");
 const { MAIL_AND_PUSH_SECRETS } = require("./config/functionSecrets");
-const { createGroupRemovalAlert } = require("./services/pendingAlertsService");
 
-
-const DEFAULT_ALLOWED_CORS_ORIGINS = [
-  "https://sportexa.site",
-  "https://www.sportexa.site",
-];
-
+const LEGACY_GROUP_CAPABILITY_RETIRED = "LEGACY_GROUP_CAPABILITY_RETIRED";
+const LEGACY_GROUP_CAPABILITY_RETIRED_MESSAGE = "Esta capacidad ya no está disponible.";
+const DEFAULT_ALLOWED_CORS_ORIGINS = ["https://sportexa.site", "https://www.sportexa.site"];
 const LOCAL_ALLOWED_CORS_ORIGINS = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
   "http://localhost:3001",
   "http://127.0.0.1:3001",
 ];
+const RETIRED_LEGACY_GROUP_ROUTES = [
+  ["POST", /^\/groups\/[^/]+\/members\/[^/]+\/add$/],
+  ["POST", /^\/groups\/[^/]+\/members\/[^/]+\/remove$/],
+  ["GET", /^\/groups\/[^/]+\/members\/search$/],
+  ["POST", /^\/groups\/[^/]+\/admin-request$/],
+  ["POST", /^\/groups\/[^/]+\/admin-requests\/[^/]+\/approve$/],
+  ["POST", /^\/groups\/[^/]+\/admin-requests\/[^/]+\/reject$/],
+  ["POST", /^\/groups\/[^/]+\/admins\/[^/]+\/add$/],
+  ["POST", /^\/groups\/[^/]+\/admins\/[^/]+\/remove$/],
+];
 
 function normalizeOrigin(value) {
   if (!value) return null;
-
-  try {
-    return new URL(String(value).trim()).origin;
-  } catch (_err) {
-    return null;
-  }
+  try { return new URL(String(value).trim()).origin; } catch (_error) { return null; }
 }
 
 function getAllowedCorsOrigins() {
-  const configuredOrigins = String(process.env.HTTP_API_ALLOWED_ORIGINS || "")
-    .split(",")
-    .map(normalizeOrigin)
-    .filter(Boolean);
+  const configuredOrigins = String(process.env.HTTP_API_ALLOWED_ORIGINS || "").split(",").map(normalizeOrigin).filter(Boolean);
   const webAppOrigin = normalizeOrigin(process.env.WEB_APP_URL);
-  const environmentDefaults = process.env.FUNCTIONS_EMULATOR === "true" ? LOCAL_ALLOWED_CORS_ORIGINS : [];
-
-  return new Set([
-    ...DEFAULT_ALLOWED_CORS_ORIGINS,
-    ...environmentDefaults,
-    ...configuredOrigins,
-    ...(webAppOrigin ? [webAppOrigin] : []),
-  ]);
+  const localOrigins = process.env.FUNCTIONS_EMULATOR === "true" ? LOCAL_ALLOWED_CORS_ORIGINS : [];
+  return new Set([...DEFAULT_ALLOWED_CORS_ORIGINS, ...localOrigins, ...configuredOrigins, ...(webAppOrigin ? [webAppOrigin] : [])]);
 }
 
 function applyCors(req, res) {
   const rawOrigin = req.headers.origin;
-
-  if (!rawOrigin) {
-    return true;
-  }
-
+  if (!rawOrigin) return true;
   const requestOrigin = normalizeOrigin(rawOrigin);
-
-  if (!requestOrigin || !getAllowedCorsOrigins().has(requestOrigin)) {
-    console.warn("[httpApi] Rejected CORS origin", { origin: rawOrigin, path: req.path });
-    return false;
-  }
-
+  if (!requestOrigin || !getAllowedCorsOrigins().has(requestOrigin)) return false;
   res.set("Access-Control-Allow-Origin", requestOrigin);
   res.set("Vary", "Origin");
   res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -70,855 +51,145 @@ function applyCors(req, res) {
   return true;
 }
 
+function matchRetiredLegacyGroupCapability(method, requestPath) {
+  return RETIRED_LEGACY_GROUP_ROUTES.some(([expectedMethod, pattern]) => expectedMethod === method && pattern.test(requestPath));
+}
+
+function sendRetiredLegacyGroupCapability(res) {
+  res.status(410).type("application/json").json({
+    error: { code: LEGACY_GROUP_CAPABILITY_RETIRED, message: LEGACY_GROUP_CAPABILITY_RETIRED_MESSAGE },
+  });
+}
+
+function isLegacyPublicActiveGroup(group) {
+  return group?.schemaVersion !== 1 && group?.visibility === "public" && group?.activo === true;
+}
+
+async function countPublicMatches(groupId) {
+  const snapshot = await db.collection("matches").where("groupId", "==", groupId).get();
+  return snapshot.docs.filter((document) => document.data()?.visibility === "public").length;
+}
+
+async function handleListPublicGroups(_req, res) {
+  const snapshot = await db.collection("groups").where("visibility", "==", "public").get();
+  const groups = await Promise.all(snapshot.docs.filter((document) => isLegacyPublicActiveGroup(document.data())).map(async (document) => {
+    const group = document.data();
+    return {
+      id: document.id,
+      name: typeof group.nombre === "string" ? group.nombre : "",
+      description: typeof group.descripcion === "string" ? group.descripcion : "",
+      visibility: "public",
+      active: true,
+      totalMatches: await countPublicMatches(document.id),
+    };
+  }));
+  res.status(200).json({ groups });
+}
+
+async function handleGroupDetail(_req, res, groupId) {
+  const snapshot = await db.collection("groups").doc(groupId).get();
+  if (!snapshot.exists || !isLegacyPublicActiveGroup(snapshot.data())) {
+    res.status(404).json({ error: "Grupo no encontrado" });
+    return;
+  }
+  const group = snapshot.data();
+  const matchesSnapshot = await db.collection("matches").where("groupId", "==", groupId).get();
+  const matches = matchesSnapshot.docs.filter((document) => document.data()?.visibility === "public").map((document) => {
+    const match = document.data();
+    return {
+      id: document.id,
+      title: typeof match.titulo === "string" ? match.titulo : "Partido",
+      visibility: "public",
+      startsAt: match.horaInicio?.toDate?.()?.toISOString?.() || null,
+      status: typeof match.estado === "string" ? match.estado : null,
+    };
+  });
+  res.status(200).json({
+    group: {
+      id: snapshot.id,
+      name: typeof group.nombre === "string" ? group.nombre : "",
+      description: typeof group.descripcion === "string" ? group.descripcion : "",
+      visibility: "public",
+      active: true,
+    },
+    matches,
+  });
+}
 
 function getBearerToken(authHeader = "") {
   if (!authHeader.startsWith("Bearer ")) return null;
   return authHeader.slice(7).trim() || null;
 }
 
-async function getAuthContext(req) {
+async function getPushSubscriberUid(req) {
   const token = getBearerToken(req.headers.authorization || "");
-  if (!token) {
-    return { uid: null, isSystemAdmin: false };
-  }
-
-  try {
-    const decoded = await admin.auth().verifyIdToken(token);
-    const userSnap = await db.collection("users").doc(decoded.uid).get();
-    const isSystemAdmin = userSnap.exists && userSnap.data()?.roles === "admin";
-    return { uid: decoded.uid, isSystemAdmin };
-  } catch (_err) {
-    return { uid: null, isSystemAdmin: false };
-  }
+  if (!token) return null;
+  try { return (await admin.auth().verifyIdToken(token)).uid || null; } catch (_error) { return null; }
 }
-
-async function mapUsersByIds(userIds = []) {
-  const normalizedIds = cleanStringArray(userIds);
-  if (normalizedIds.length === 0) return new Map();
-
-  const refs = normalizedIds.map((id) => db.collection("users").doc(id));
-  const snaps = await db.getAll(...refs);
-  const usersMap = new Map();
-
-  snaps.forEach((snap, index) => {
-    if (!snap.exists) return;
-    const userId = normalizedIds[index];
-    const user = snap.data();
-
-    usersMap.set(userId, {
-      id: userId,
-      name: user?.nombre || "Sin nombre",
-      email: user?.email || null,
-      photoURL: user?.photoURL || null,
-      positions: Array.isArray(user?.posicionesPreferidas) ? user.posicionesPreferidas : [],
-    });
-  });
-
-  return usersMap;
-}
-
-function sortMembersByName(members = []) {
-  return [...members].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
-}
-
-function cleanStringArray(value) {
-  if (!Array.isArray(value)) return [];
-  return Array.from(new Set(value.map((item) => String(item))));
-}
-
-function getGroupAdminIds(group = {}) {
-  if (isCanonicalGroup(group)) return [];
-  const normalizedAdminIds = cleanStringArray(group.adminIds);
-  const adminIdsFromList = cleanStringArray(group.admins?.map((admin) => admin?.userId));
-  const ownerFallbackIds = cleanStringArray([group.ownerId]);
-
-  return Array.from(new Set([...normalizedAdminIds, ...adminIdsFromList, ...ownerFallbackIds]));
-}
-
-function canManageGroup(group = {}, authContext) {
-  if (!authContext?.uid) return false;
-  return getGroupAdminIds(group).includes(authContext.uid);
-}
-
-function canManageGroupAsOwner(group = {}, authContext) {
-  if (!authContext?.uid) return false;
-  return normalizeGroupAdmins(group).ownerId === String(authContext.uid);
-}
-
-async function buildGroupPayload(groupDoc, authContext) {
-  const group = groupDoc.data();
-  const memberIds = cleanStringArray(group?.memberIds);
-  const adminIds = getGroupAdminIds(group);
-  const uid = authContext?.uid ? String(authContext.uid) : null;
-  const membershipStatus = !uid
-    ? "none"
-    : memberIds.includes(uid) || adminIds.includes(uid)
-      ? "member"
-      : "none";
-
-  const matchesSnap = await db
-    .collection("matches")
-    .where("groupId", "==", groupDoc.id)
-    .get();
-  const publicMatchesCount = matchesSnap.docs.filter(
-    (matchDoc) => matchDoc.data()?.visibility === "public"
-  ).length;
-
-  return {
-    id: groupDoc.id,
-    name: group?.nombre || "",
-    description: group?.descripcion || "",
-    visibility: group?.visibility === "public" ? "public" : "private",
-    joinApproval: group?.joinApproval ?? true,
-    active: group?.activo !== false,
-    totalMatches: publicMatchesCount,
-    membersCount: memberIds.length,
-    membershipStatus,
-  };
-}
-
-async function getGroupVisibleToAuthContext(groupId, authContext) {
-  const groupSnap = await db.collection("groups").doc(groupId).get();
-  if (!groupSnap.exists) return null;
-
-  const group = groupSnap.data();
-  if (isCanonicalGroup(group)) return null;
-  const memberIds = cleanStringArray(group.memberIds);
-  const adminIds = getGroupAdminIds(group);
-  const uid = authContext?.uid ? String(authContext.uid) : null;
-  const canSee =
-    authContext?.isSystemAdmin ||
-    group?.visibility === "public" ||
-    (!!uid && (memberIds.includes(uid) || adminIds.includes(uid)));
-
-  if (!canSee) return null;
-
-  return { id: groupSnap.id, ...group };
-}
-
-async function handleListPublicGroups(req, res, authContext) {
-  const groupsRef = db.collection("groups");
-  const snap = await groupsRef
-    .where("visibility", "==", "public")
-    .get();
-
-  const groups = await Promise.all(
-    snap.docs
-      .filter((groupDoc) => groupDoc.data()?.activo === true)
-      .map((groupDoc) => buildGroupPayload(groupDoc, authContext))
-  );
-  res.status(200).json({ groups });
-}
-
-async function handleGroupDetail(req, res, authContext, groupId) {
-  const group = await getGroupVisibleToAuthContext(groupId, authContext);
-
-  if (!group) {
-    res.status(404).json({ error: "Grupo no encontrado" });
-    return;
-  }
-
-  const memberIds = cleanStringArray(group.memberIds);
-  const adminIds = getGroupAdminIds(group);
-  const isGroupMember =
-    !!authContext.uid && (memberIds.includes(authContext.uid) || adminIds.includes(authContext.uid));
-
-  if (!authContext.isSystemAdmin && !isGroupMember) {
-    res.status(403).json({ error: "Debes ser integrante del grupo para ver el detalle" });
-    return;
-  }
-
-  const pendingAdminRequestIds = cleanStringArray(group.pendingAdminRequestIds).filter(
-    (id) => !adminIds.includes(id)
-  );
-
-  const usersMap = await mapUsersByIds([
-    ...memberIds,
-    ...pendingAdminRequestIds,
-  ]);
-
-  const members = memberIds
-    .map((id) => usersMap.get(String(id)))
-    .filter(Boolean)
-    .map((member) => ({ ...member, isAdmin: adminIds.includes(member.id) }));
-
-  const admins = sortMembersByName(members.filter((member) => member.isAdmin));
-  const players = sortMembersByName(members.filter((member) => !member.isAdmin));
-
-  const pendingAdminRequests = sortMembersByName(
-    pendingAdminRequestIds.map((id) => usersMap.get(String(id))).filter(Boolean)
-  );
-
-  const canManageMembers = canManageGroup(group, authContext);
-  const isGroupAdmin = !!authContext.uid && adminIds.includes(authContext.uid);
-  const isGroupOwner = canManageGroupAsOwner(group, authContext);
-  const canRequestAdminRole =
-    !!authContext.uid && authContext.isSystemAdmin && isGroupMember && !isGroupAdmin;
-
-  const matchesSnap = await db
-    .collection("matches")
-    .where("groupId", "==", groupId)
-    .orderBy("horaInicio", "desc")
-    .get();
-
-  const matches = matchesSnap.docs.map((doc) => {
-    const match = doc.data();
-
-    return {
-      id: doc.id,
-      title: match?.titulo || "Partido",
-      visibility: match?.visibility || "group_only",
-      startsAt: match?.horaInicio?.toDate?.()?.toISOString?.() || null,
-      status: match?.estado || null,
-    };
-  });
-
-  res.status(200).json({
-    group: {
-      id: groupId,
-      name: group?.nombre || "",
-      description: group?.descripcion || "",
-      visibility: group?.visibility === "public" ? "public" : "private",
-      joinApproval: group?.joinApproval ?? true,
-      members: [...admins, ...players],
-      memberIds,
-      adminIds,
-      ownerId: normalizeGroupAdmins(group).ownerId,
-      pendingAdminRequestIds,
-      canManageMembers,
-      canManageAdmins: isGroupOwner,
-      canRequestAdminRole,
-      pendingAdminRequests,
-    },
-    matches,
-  });
-}
-
-async function handleGroupMemberRemoval(req, res, authContext, groupId, userId) {
-  const group = await getGroupVisibleToAuthContext(groupId, authContext);
-  if (!group) {
-    res.status(404).json({ error: "Grupo no encontrado" });
-    return;
-  }
-
-  if (!canManageGroup(group, authContext)) {
-    res.status(403).json({ error: "No tienes permisos para gestionar integrantes" });
-    return;
-  }
-
-  const normalizedUserId = String(userId);
-  const currentMemberIds = cleanStringArray(group.memberIds);
-  const wasMember = currentMemberIds.includes(normalizedUserId);
-  const memberIds = currentMemberIds.filter((id) => id !== normalizedUserId);
-
-  await db.collection("groups").doc(groupId).update({ memberIds });
-
-  if (wasMember) {
-    await createGroupRemovalAlert({
-      userId: normalizedUserId,
-      groupId,
-      groupName: group?.nombre || group?.name || "Grupo",
-    });
-
-    emitDomainEvent(DOMAIN_EVENTS.GROUP_USER_REMOVED, {
-      userId: normalizedUserId,
-      groupId,
-      groupName: group?.nombre || "Grupo",
-    });
-  }
-
-  res.status(200).json({ ok: true, memberIds });
-}
-
-async function handleGroupMemberSearch(req, res, authContext, groupId) {
-  const group = await getGroupVisibleToAuthContext(groupId, authContext);
-  if (!group) {
-    res.status(404).json({ error: "Grupo no encontrado" });
-    return;
-  }
-
-  if (!canManageGroup(group, authContext)) {
-    res.status(403).json({ error: "No tienes permisos para gestionar integrantes" });
-    return;
-  }
-
-  const rawQuery = String(req.query?.q || "").trim();
-  if (rawQuery.length < 2) {
-    res.status(200).json({ users: [] });
-    return;
-  }
-
-  const queryVariants = Array.from(new Set([
-    rawQuery,
-    rawQuery.toLowerCase(),
-    rawQuery.charAt(0).toUpperCase() + rawQuery.slice(1).toLowerCase(),
-  ]));
-
-  const currentMemberIds = new Set(cleanStringArray(group.memberIds));
-  const usersMap = new Map();
-
-  for (const term of queryVariants) {
-    if (!term) continue;
-
-    const usersSnap = await db
-      .collection("users")
-      .orderBy("nombre")
-      .startAt(term)
-      .endAt(`${term}\uf8ff`)
-      .limit(12)
-      .get();
-
-    usersSnap.docs.forEach((userDoc) => {
-      if (currentMemberIds.has(userDoc.id)) return;
-
-      const user = userDoc.data();
-      usersMap.set(userDoc.id, {
-        id: userDoc.id,
-        name: user?.nombre || "Sin nombre",
-        email: user?.email || null,
-        photoURL: user?.photoURL || null,
-        positions: Array.isArray(user?.posicionesPreferidas) ? user.posicionesPreferidas : [],
-      });
-    });
-  }
-
-  const users = sortMembersByName(Array.from(usersMap.values())).slice(0, 12);
-  res.status(200).json({ users });
-}
-
-async function handleGroupMemberAdd(req, res, authContext, groupId, userId) {
-  const group = await getGroupVisibleToAuthContext(groupId, authContext);
-  if (!group) {
-    res.status(404).json({ error: "Grupo no encontrado" });
-    return;
-  }
-
-  if (!canManageGroup(group, authContext)) {
-    res.status(403).json({ error: "No tienes permisos para gestionar integrantes" });
-    return;
-  }
-
-  const userSnap = await db.collection("users").doc(String(userId)).get();
-  if (!userSnap.exists) {
-    res.status(404).json({ error: "Usuario no encontrado" });
-    return;
-  }
-
-  const memberIds = cleanStringArray(group.memberIds);
-  const isNewMember = !memberIds.includes(String(userId));
-
-  if (isNewMember) {
-    memberIds.push(String(userId));
-  }
-
-  const pendingRequestIds = cleanStringArray(group.pendingRequestIds).filter(
-    (id) => id !== String(userId)
-  );
-
-  await db.collection("groups").doc(groupId).update({
-    memberIds: Array.from(new Set(memberIds)),
-    pendingRequestIds: Array.from(new Set(pendingRequestIds)),
-  });
-
-  if (isNewMember) {
-    emitDomainEvent(DOMAIN_EVENTS.GROUP_USER_ADDED, {
-      userId: String(userId),
-      groupId,
-      groupName: group?.nombre || "Grupo",
-    });
-  }
-
-  if (isNewMember) {
-    const invitedUser = userSnap.data();
-    if (invitedUser?.email) {
-      const groupName = group?.nombre || "tu grupo";
-      const webAppUrl = getWebAppUrl();
-      const groupUrl = `${webAppUrl}/grupos/${groupId}`;
-
-      await sendEmail({
-        to: invitedUser.email,
-        subject: `Fuiste agregado a ${groupName}`,
-        text: `Te agregaron al grupo ${groupName}. Ingresá desde aquí: ${groupUrl}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; background:#f4f6f8; padding:30px;">
-            <div style="max-width:600px; margin:0 auto; background:white; border-radius:10px; padding:30px;">
-              <h2 style="color:#1e3a8a; margin-bottom:10px;">🎉 ¡Ahora sos parte de un grupo!</h2>
-
-              <p style="font-size:16px; color:#333;">
-                Un administrador te agregó al grupo <strong>${groupName}</strong>.
-              </p>
-
-              <div style="text-align:center; margin:30px 0;">
-                <a href="${groupUrl}"
-                  style="
-                    background:#2563eb;
-                    color:white;
-                    padding:12px 24px;
-                    text-decoration:none;
-                    border-radius:6px;
-                    font-weight:bold;
-                    display:inline-block;
-                  ">
-                  Ir al grupo
-                </a>
-              </div>
-
-              <hr style="border:none; border-top:1px solid #eee; margin:30px 0;" />
-              <p style="font-size:12px; color:#888; text-align:center;">
-                Este es un mensaje automático de Sportexa.
-              </p>
-            </div>
-          </div>
-        `,
-      });
-    }
-  }
-
-  res.status(200).json({ ok: true, memberIds: Array.from(new Set(memberIds)) });
-}
-
-async function handleAdminApplication(req, res, authContext, groupId) {
-  if (!authContext.uid || !authContext.isSystemAdmin) {
-    res.status(403).json({ error: "Solo un admin puede postularse como admin del grupo" });
-    return;
-  }
-
-  const group = await getGroupVisibleToAuthContext(groupId, authContext);
-  if (!group) {
-    res.status(404).json({ error: "Grupo no encontrado" });
-    return;
-  }
-
-  const adminIds = getGroupAdminIds(group);
-  const memberIds = cleanStringArray(group.memberIds);
-  if (adminIds.includes(authContext.uid)) {
-    res.status(400).json({ error: "Ya eres admin de este grupo" });
-    return;
-  }
-
-  if (!memberIds.includes(authContext.uid)) {
-    res.status(403).json({ error: "Debes ser integrante del grupo para postularte como admin" });
-    return;
-  }
-
-  const pendingAdminRequestIds = cleanStringArray(group.pendingAdminRequestIds);
-  const isPending = pendingAdminRequestIds.includes(authContext.uid);
-
-  if (isPending) {
-    const nextPendingAdminRequestIds = pendingAdminRequestIds.filter((id) => id !== authContext.uid);
-
-    await db.collection("groups").doc(groupId).update({
-      pendingAdminRequestIds: Array.from(new Set(nextPendingAdminRequestIds)),
-    });
-
-    res.status(200).json({
-      ok: true,
-      status: "removed",
-      pendingAdminRequestIds: Array.from(new Set(nextPendingAdminRequestIds)),
-    });
-    return;
-  }
-
-  if (!isPending) {
-    pendingAdminRequestIds.push(authContext.uid);
-  }
-
-  await db.collection("groups").doc(groupId).update({
-    pendingAdminRequestIds: Array.from(new Set(pendingAdminRequestIds)),
-  });
-
-  res.status(200).json({
-    ok: true,
-    status: "pending",
-    pendingAdminRequestIds: Array.from(new Set(pendingAdminRequestIds)),
-  });
-}
-
-async function handleAdminRequestAction(req, res, authContext, groupId, userId, action) {
-  const groupRef = db.collection("groups").doc(groupId);
-
-  await db.runTransaction(async (tx) => {
-    const groupSnap = await tx.get(groupRef);
-    if (!groupSnap.exists) {
-      throw new Error("not-found");
-    }
-
-    const group = groupSnap.data();
-
-    if (!canManageGroupAsOwner(group, authContext)) {
-      throw new Error("forbidden");
-    }
-
-    const normalized = normalizeGroupAdmins(group);
-    const pendingAdminRequestIds = cleanStringArray(group.pendingAdminRequestIds).filter(
-      (id) => id !== String(userId)
-    );
-
-    const nextAdmins = [...normalized.admins];
-
-    if (action === "approve" && !normalized.adminIds.includes(String(userId))) {
-      nextAdmins.push({
-        userId: String(userId),
-        role: "admin",
-        order: nextAdmins.length,
-      });
-    }
-
-    const admins = nextAdmins.map((item, index) => ({
-      ...item,
-      role: index === 0 ? "owner" : "admin",
-      order: index,
-    }));
-
-    tx.update(groupRef, {
-      admins,
-      ownerId: admins[0]?.userId || null,
-      adminIds: admins.map((a) => a.userId),
-      pendingAdminRequestIds,
-    });
-  }).catch((err) => {
-    if (err.message === "not-found") {
-      res.status(404).json({ error: "Grupo no encontrado" });
-      return;
-    }
-    if (err.message === "forbidden") {
-      res.status(403).json({ error: "Solo el owner puede gestionar solicitudes de administrador" });
-      return;
-    }
-    throw err;
-  });
-
-  if (!res.headersSent) {
-    if (action === "approve") {
-      emitDomainEvent(DOMAIN_EVENTS.GROUP_ADMIN_ADDED, {
-        userId: String(userId),
-        groupId,
-      });
-    }
-    res.status(200).json({ ok: true });
-  }
-}
-
-async function handleAdminRemoval(req, res, authContext, groupId, userId) {
-  const groupRef = db.collection("groups").doc(groupId);
-
-  await db.runTransaction(async (tx) => {
-    const groupSnap = await tx.get(groupRef);
-    if (!groupSnap.exists) {
-      throw new Error("not-found");
-    }
-
-    const group = groupSnap.data();
-    if (!canManageGroupAsOwner(group, authContext)) {
-      throw new Error("forbidden");
-    }
-
-    const normalized = normalizeGroupAdmins(group);
-    if (!normalized.adminIds.includes(String(userId))) {
-      throw new Error("not-admin");
-    }
-
-    const filtered = normalized.admins.filter((item) => item.userId !== String(userId));
-
-    if (filtered.length === 0) {
-      throw new Error("last-owner");
-    }
-
-    const admins = filtered.map((item, index) => ({
-      ...item,
-      role: index === 0 ? "owner" : "admin",
-      order: index,
-    }));
-
-    tx.update(groupRef, {
-      admins,
-      ownerId: admins[0].userId,
-      adminIds: admins.map((a) => a.userId),
-      pendingAdminRequestIds: cleanStringArray(group.pendingAdminRequestIds).filter(
-        (id) => id !== String(userId)
-      ),
-    });
-  }).catch((err) => {
-    if (err.message === "not-found") {
-      res.status(404).json({ error: "Grupo no encontrado" });
-      return;
-    }
-    if (err.message === "forbidden") {
-      res.status(403).json({ error: "Solo el owner puede eliminar administradores" });
-      return;
-    }
-    if (err.message === "not-admin") {
-      res.status(404).json({ error: "El usuario no es admin del grupo" });
-      return;
-    }
-    if (err.message === "last-owner") {
-      res.status(400).json({ error: "No puedes eliminar al único admin del grupo" });
-      return;
-    }
-    throw err;
-  });
-
-  if (!res.headersSent) {
-    res.status(200).json({ ok: true });
-  }
-}
-
-async function handleAdminAdd(req, res, authContext, groupId, userId) {
-  const groupRef = db.collection("groups").doc(groupId);
-
-  await db.runTransaction(async (tx) => {
-    const groupSnap = await tx.get(groupRef);
-
-    if (!groupSnap.exists) {
-      throw new Error("not-found");
-    }
-
-    const group = groupSnap.data();
-    if (!canManageGroupAsOwner(group, authContext)) {
-      throw new Error("forbidden");
-    }
-
-    const memberIds = cleanStringArray(group.memberIds);
-    if (!memberIds.includes(String(userId))) {
-      throw new Error("not-member");
-    }
-
-    const normalized = normalizeGroupAdmins(group);
-    if (normalized.adminIds.includes(String(userId))) {
-      throw new Error("already-admin");
-    }
-
-    const admins = [
-      ...normalized.admins,
-      {
-        userId: String(userId),
-        role: "admin",
-        order: normalized.admins.length,
-        addedAt: Timestamp.now(),
-        addedBy: authContext.uid,
-      },
-    ];
-
-    tx.update(groupRef, {
-      admins,
-      ownerId: admins[0]?.userId || null,
-      adminIds: admins.map((item) => item.userId),
-      pendingAdminRequestIds: cleanStringArray(group.pendingAdminRequestIds).filter(
-        (id) => id !== String(userId)
-      ),
-    });
-  }).catch((err) => {
-    if (err.message === "not-found") {
-      res.status(404).json({ error: "Grupo no encontrado" });
-      return;
-    }
-    if (err.message === "forbidden") {
-      res.status(403).json({ error: "Solo el owner puede agregar administradores" });
-      return;
-    }
-    if (err.message === "not-member") {
-      res.status(400).json({ error: "El usuario debe ser integrante del grupo" });
-      return;
-    }
-    if (err.message === "already-admin") {
-      res.status(409).json({ error: "El usuario ya es admin del grupo" });
-      return;
-    }
-    throw err;
-  });
-
-  if (!res.headersSent) {
-    emitDomainEvent(DOMAIN_EVENTS.GROUP_ADMIN_ADDED, {
-      userId: String(userId),
-      groupId,
-    });
-    res.status(200).json({ ok: true });
-  }
-}
-
-
-
 
 function handleGetPushPublicKey(_req, res) {
   res.status(200).json({ ok: true, vapidPublicKey: getPublicVapidKey() });
 }
 
 function isValidPushSubscription(subscription) {
-  return !!(
-    subscription
-    && typeof subscription.endpoint === "string"
-    && subscription.endpoint
-    && subscription.keys
-    && typeof subscription.keys.p256dh === "string"
-    && typeof subscription.keys.auth === "string"
-  );
+  return !!(subscription && typeof subscription.endpoint === "string" && subscription.endpoint
+    && subscription.keys && typeof subscription.keys.p256dh === "string" && typeof subscription.keys.auth === "string");
 }
 
 const MAX_PUSH_SUBSCRIPTIONS_PER_USER = 5;
 const PUSH_SUBSCRIPTION_RETENTION_DAYS = 180;
 
 async function cleanupUserPushSubscriptions(userId) {
-  if (!userId) return;
-
-  const retentionCutoff = new Date(Date.now() - PUSH_SUBSCRIPTION_RETENTION_DAYS * 24 * 60 * 60 * 1000);
-  const userSubsSnap = await db
-    .collection("push_subscriptions")
-    .where("user_id", "==", String(userId))
-    .orderBy("created_at", "desc")
-    .get();
-
-  if (userSubsSnap.empty) return;
-
+  const cutoff = new Date(Date.now() - PUSH_SUBSCRIPTION_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  const snapshot = await db.collection("push_subscriptions").where("user_id", "==", String(userId)).orderBy("created_at", "desc").get();
   const batch = db.batch();
   let deleted = 0;
-
-  userSubsSnap.docs.forEach((docSnap, index) => {
-    const data = docSnap.data();
-    const createdAtDate = data?.created_at?.toDate?.();
-    const isExpired = createdAtDate instanceof Date && createdAtDate <= retentionCutoff;
-    const isOverLimit = index >= MAX_PUSH_SUBSCRIPTIONS_PER_USER;
-
-    if (isExpired || isOverLimit) {
-      batch.delete(docSnap.ref);
+  snapshot.docs.forEach((document, index) => {
+    const createdAt = document.data()?.created_at?.toDate?.();
+    if ((createdAt instanceof Date && createdAt <= cutoff) || index >= MAX_PUSH_SUBSCRIPTIONS_PER_USER) {
+      batch.delete(document.ref);
       deleted += 1;
     }
   });
-
-  if (deleted > 0) {
-    await batch.commit();
-  }
+  if (deleted) await batch.commit();
 }
 
-async function handlePushSubscribe(req, res, authContext) {
-  if (!authContext.uid) {
-    res.status(401).json({ error: "Debes iniciar sesión" });
-    return;
-  }
-
+async function handlePushSubscribe(req, res, uid) {
+  if (!uid) { res.status(401).json({ error: "Debes iniciar sesión" }); return; }
   const subscription = req.body?.subscription || req.body;
-  if (!isValidPushSubscription(subscription)) {
-    res.status(400).json({ error: "Subscription inválida" });
-    return;
-  }
-
-  const now = FieldValue.serverTimestamp();
+  if (!isValidPushSubscription(subscription)) { res.status(400).json({ error: "Subscription inválida" }); return; }
   const endpoint = String(subscription.endpoint);
-
-  const existingSnap = await db.collection("push_subscriptions").where("endpoint", "==", endpoint).limit(1).get();
-
-  if (existingSnap.empty) {
-    await db.collection("push_subscriptions").add({
-      user_id: authContext.uid,
-      endpoint,
-      p256dh_key: String(subscription.keys.p256dh),
-      auth_key: String(subscription.keys.auth),
-      user_agent: req.headers["user-agent"] || "",
-      created_at: now,
-      last_used_at: null,
-    });
-  } else {
-    await existingSnap.docs[0].ref.update({
-      user_id: authContext.uid,
-      p256dh_key: String(subscription.keys.p256dh),
-      auth_key: String(subscription.keys.auth),
-      user_agent: req.headers["user-agent"] || "",
-      last_used_at: now,
-    });
-  }
-
-  await cleanupUserPushSubscriptions(authContext.uid);
-
+  const existing = await db.collection("push_subscriptions").where("endpoint", "==", endpoint).limit(1).get();
+  const payload = {
+    user_id: uid,
+    p256dh_key: String(subscription.keys.p256dh),
+    auth_key: String(subscription.keys.auth),
+    user_agent: req.headers["user-agent"] || "",
+  };
+  if (existing.empty) await db.collection("push_subscriptions").add({ ...payload, endpoint, created_at: FieldValue.serverTimestamp(), last_used_at: null });
+  else await existing.docs[0].ref.update({ ...payload, last_used_at: FieldValue.serverTimestamp() });
+  await cleanupUserPushSubscriptions(uid);
   res.status(200).json({ ok: true, vapidPublicKey: getPublicVapidKey() });
 }
 
-module.exports = functions
-  .runWith({
-    secrets: MAIL_AND_PUSH_SECRETS,
-  })
-  .https.onRequest(async (req, res) => {
+module.exports = functions.runWith({ secrets: MAIL_AND_PUSH_SECRETS }).https.onRequest(async (req, res) => {
   const isAllowedCorsOrigin = applyCors(req, res);
-
-  if (req.method === "OPTIONS") {
-    res.status(isAllowedCorsOrigin ? 204 : 403).send("");
-    return;
-  }
-
-  if (!isAllowedCorsOrigin) {
-    res.status(403).json({ error: "Origen no permitido" });
-    return;
-  }
-
-  const authContext = await getAuthContext(req);
-
-  if (req.method === "GET" && req.path === "/groups/public") {
-    await handleListPublicGroups(req, res, authContext);
-    return;
-  }
-
+  if (req.method === "OPTIONS") { res.status(isAllowedCorsOrigin ? 204 : 403).send(""); return; }
+  if (!isAllowedCorsOrigin) { res.status(403).json({ error: "Origen no permitido" }); return; }
+  if (matchRetiredLegacyGroupCapability(req.method, req.path)) { sendRetiredLegacyGroupCapability(res); return; }
+  if (req.method === "GET" && req.path === "/groups/public") { await handleListPublicGroups(req, res); return; }
   const detailMatch = req.path.match(/^\/groups\/([^/]+)\/public$/);
-  if (req.method === "GET" && detailMatch) {
-    await handleGroupDetail(req, res, authContext, detailMatch[1]);
-    return;
-  }
-
-  const removeMemberMatch = req.path.match(/^\/groups\/([^/]+)\/members\/([^/]+)\/remove$/);
-  if (req.method === "POST" && removeMemberMatch) {
-    await handleGroupMemberRemoval(req, res, authContext, removeMemberMatch[1], removeMemberMatch[2]);
-    return;
-  }
-
-  const searchMembersMatch = req.path.match(/^\/groups\/([^/]+)\/members\/search$/);
-  if (req.method === "GET" && searchMembersMatch) {
-    await handleGroupMemberSearch(req, res, authContext, searchMembersMatch[1]);
-    return;
-  }
-
-  const addMemberMatch = req.path.match(/^\/groups\/([^/]+)\/members\/([^/]+)\/add$/);
-  if (req.method === "POST" && addMemberMatch) {
-    await handleGroupMemberAdd(req, res, authContext, addMemberMatch[1], addMemberMatch[2]);
-    return;
-  }
-
-  const adminApplicationMatch = req.path.match(/^\/groups\/([^/]+)\/admin-request$/);
-  if (req.method === "POST" && adminApplicationMatch) {
-    await handleAdminApplication(req, res, authContext, adminApplicationMatch[1]);
-    return;
-  }
-
-  const approveAdminRequestMatch = req.path.match(/^\/groups\/([^/]+)\/admin-requests\/([^/]+)\/approve$/);
-  if (req.method === "POST" && approveAdminRequestMatch) {
-    await handleAdminRequestAction(req, res, authContext, approveAdminRequestMatch[1], approveAdminRequestMatch[2], "approve");
-    return;
-  }
-
-  const rejectAdminRequestMatch = req.path.match(/^\/groups\/([^/]+)\/admin-requests\/([^/]+)\/reject$/);
-  if (req.method === "POST" && rejectAdminRequestMatch) {
-    await handleAdminRequestAction(req, res, authContext, rejectAdminRequestMatch[1], rejectAdminRequestMatch[2], "reject");
-    return;
-  }
-
-  const removeAdminMatch = req.path.match(/^\/groups\/([^/]+)\/admins\/([^/]+)\/remove$/);
-  if (req.method === "POST" && removeAdminMatch) {
-    await handleAdminRemoval(req, res, authContext, removeAdminMatch[1], removeAdminMatch[2]);
-    return;
-  }
-
-  const addAdminMatch = req.path.match(/^\/groups\/([^/]+)\/admins\/([^/]+)\/add$/);
-  if (req.method === "POST" && addAdminMatch) {
-    await handleAdminAdd(req, res, authContext, addAdminMatch[1], addAdminMatch[2]);
-    return;
-  }
-
-
-  if (req.method === "GET" && req.path === "/push/vapid-public-key") {
-    handleGetPushPublicKey(req, res);
-    return;
-  }
-
+  if (req.method === "GET" && detailMatch) { await handleGroupDetail(req, res, detailMatch[1]); return; }
+  if (req.method === "GET" && req.path === "/push/vapid-public-key") { handleGetPushPublicKey(req, res); return; }
   if (req.method === "POST" && req.path === "/push/subscribe") {
-    await handlePushSubscribe(req, res, authContext);
+    const uid = await getPushSubscriberUid(req);
+    await handlePushSubscribe(req, res, uid);
     return;
   }
-
   res.status(404).json({ error: "Not found" });
-  });
+});
+
+module.exports.__test = {
+  isLegacyPublicActiveGroup,
+  matchRetiredLegacyGroupCapability,
+};

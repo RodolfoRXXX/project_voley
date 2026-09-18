@@ -37,7 +37,6 @@ export default function ProfileMatches({
 
   const [participations, setParticipations] = useState<any[]>([]);
   const [matchesMap, setMatchesMap] = useState<Record<string, any>>({});
-  const [groupsMap, setGroupsMap] = useState<Record<string, any>>({});
 
   const targetUserId = userId || firebaseUser?.uid;
 
@@ -82,48 +81,17 @@ export default function ProfileMatches({
     return () => unsubs.forEach((u) => u());
   }, [participations]);
 
-  useEffect(() => {
-    const groupIds = Array.from(
-      new Set(
-        Object.values(matchesMap)
-          .map((m: any) => m.groupId)
-          .filter(Boolean)
-      )
-    );
-
-    if (groupIds.length === 0) {
-      setGroupsMap({});
-      return;
-    }
-
-    const unsubs = groupIds.map((groupId) =>
-      onSnapshot(doc(db, "groups", groupId), (snap) => {
-        if (!snap.exists()) return;
-
-        setGroupsMap((prev) => ({
-          ...prev,
-          [groupId]: snap.data(),
-        }));
-      })
-    );
-
-    return () => unsubs.forEach((u) => u());
-  }, [matchesMap]);
-
   const history = useMemo(() => {
     const rows = participations
       .map((p) => {
         const match = matchesMap[p.matchId];
         if (!match) return null;
 
-        const group = groupsMap[match.groupId];
-
         return {
           matchId: p.matchId,
           groupId: match.groupId,
 
-          groupNombre: group?.nombre ?? "Grupo",
-          groupDescripcion: group?.descripcion,
+          groupNombre: "Grupo histórico",
 
           horaInicio: match.horaInicio?.toDate
             ? match.horaInicio.toDate()
@@ -142,7 +110,7 @@ export default function ProfileMatches({
       });
 
     return typeof maxItems === "number" ? rows.slice(0, maxItems) : rows;
-  }, [participations, matchesMap, groupsMap, maxItems]);
+  }, [participations, matchesMap, maxItems]);
 
   const filtered = history.filter((h: any) => {
     if (filter === "todos") return true;

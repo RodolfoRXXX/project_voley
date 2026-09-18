@@ -19,11 +19,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePerson } from "@/hooks/usePerson";
 import PublicTournamentDetailModal from "@/components/tournaments/public/PublicTournamentDetailModal";
-import CreateMatchQuickActionModal from "@/components/dashboard/CreateMatchQuickActionModal";
 import AlertsPanel from "@/components/dashboard/AlertsPanel";
 import UpcomingActivitiesSection from "@/components/dashboard/UpcomingActivitiesSection";
 import type { PendingAlert } from "@/types/pendingAlerts";
-import { isRetiredLegacyGroupJoinAlert, pendingAlertPriority } from "@/types/pendingAlerts";
+import { isRetiredLegacyGroupAuthorityAlert, pendingAlertPriority } from "@/types/pendingAlerts";
 import { getOwnGroupsDashboard } from "@/services/groupsService";
 
 type TournamentDashboardMatch = {
@@ -89,9 +88,7 @@ export default function DashboardPage() {
     groupsCount: 0,
   });
   const [userStatsLoading, setUserStatsLoading] = useState(false);
-  const [showCreateMatchModal, setShowCreateMatchModal] = useState(false);
   const [showQuickActionsMenu, setShowQuickActionsMenu] = useState(false);
-  const [adminGroups, setAdminGroups] = useState<Array<{ id: string; nombre: string }>>([]);
   const [pendingAlerts, setPendingAlerts] = useState<PendingAlert[]>([]);
   const [pendingAlertsLoading, setPendingAlertsLoading] = useState(false);
   const [dismissPendingAlertLoadingId, setDismissPendingAlertLoadingId] = useState<string | null>(null);
@@ -137,12 +134,6 @@ export default function DashboardPage() {
   }, [showQuickActionsMenu]);
 
   const quickActions = [
-    {
-      title: "Crear partido",
-      desc: "Organizá uno nuevo",
-      icon: "➕",
-      onClick: () => setShowCreateMatchModal(true),
-    },
     {
       title: "Crear torneo",
       desc: "Configurá uno nuevo",
@@ -197,34 +188,6 @@ export default function DashboardPage() {
       active = false;
     };
   }, [firebaseUser?.uid]);
-
-  useEffect(() => {
-    if (!firebaseUser?.uid || userDoc?.roles !== "admin") {
-      setAdminGroups([]);
-      return;
-    }
-
-    let active = true;
-    const loadAdminGroups = async () => {
-      const adminGroupsSnap = await getDocs(
-        query(collection(db, "groups"), where("adminIds", "array-contains", firebaseUser.uid))
-      );
-
-      if (!active) return;
-
-      const groups = adminGroupsSnap.docs.map((groupDoc) => ({
-        id: groupDoc.id,
-        nombre: String((groupDoc.data() as { nombre?: string }).nombre || "Grupo"),
-      }));
-      setAdminGroups(groups);
-    };
-
-    loadAdminGroups();
-
-    return () => {
-      active = false;
-    };
-  }, [firebaseUser?.uid, userDoc?.roles]);
 
   useEffect(() => {
     const loadTournamentCards = async () => {
@@ -393,7 +356,7 @@ export default function DashboardPage() {
 
         return {
           id: docSnap.id,
-          kind: (data.kind || "group_membership_result") as PendingAlert["kind"],
+          kind: (typeof data.kind === "string" ? data.kind : "unknown") as PendingAlert["kind"],
           severity: (data.severity || "info") as PendingAlert["severity"],
           title: String(data.title || "Pendiente"),
           message: String(data.message || "Revisá esta acción pendiente."),
@@ -411,7 +374,7 @@ export default function DashboardPage() {
       });
 
       const normalized = loaded.filter(
-        (alert) => alert.kind !== "complete_profile" && !isRetiredLegacyGroupJoinAlert(alert)
+        (alert) => alert.kind !== "complete_profile" && !isRetiredLegacyGroupAuthorityAlert(alert)
       );
 
       const sorted = normalized.sort((a, b) => a.priority - b.priority || (b.updatedAt || 0) - (a.updatedAt || 0));
@@ -646,20 +609,6 @@ export default function DashboardPage() {
           router.push(`/tournaments/${tournamentId}`);
         }}
       />
-      <CreateMatchQuickActionModal
-        open={showCreateMatchModal}
-        groups={adminGroups}
-        onClose={() => setShowCreateMatchModal(false)}
-        onCreateGroup={() => {
-          setShowCreateMatchModal(false);
-          router.push("/admin/groups/new");
-        }}
-        onCreateMatch={(groupId) => {
-          setShowCreateMatchModal(false);
-          router.push(`/admin/groups/${groupId}/matches/new`);
-        }}
-      />
-
     </main>
   );
 }

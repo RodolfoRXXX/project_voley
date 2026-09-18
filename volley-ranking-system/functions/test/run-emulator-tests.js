@@ -187,7 +187,9 @@ const legacyJoinRetirementTestPath = path.join(
   "emulator",
   "legacyJoinRetirementE2.test.js"
 );
-const command = process.env.E2_12_FOCAL === "1"
+const command = process.env.E2_13_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${legacyJoinRetirementTestPath}"`
+  : process.env.E2_12_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${membershipAdministrativeFinalizationTestPath}"`
   : process.env.E2_07_CLEANUP_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${groupJoinRequestDecisionTestPath}" && node --test --test-concurrency=1 "${membershipTestPath}" && node --test --test-concurrency=1 "${seasonTestPath}"`

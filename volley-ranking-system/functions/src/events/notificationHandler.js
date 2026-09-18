@@ -32,22 +32,6 @@ async function getTournamentParticipantGroupAdminIds(tournamentId) {
 }
 
 function registerNotificationHandlers() {
-  onDomainEvent(DOMAIN_EVENTS.GROUP_USER_ADDED, async ({ userId, groupId, groupName }) => {
-    await sendToUser(userId, {
-      title: "🎉 ¡Tenés grupo nuevo en Sportexa!",
-      body: `Te sumaron a ${groupName || "un grupo"} en Sportexa. Entrá y fijate qué partidos se están armando 🏐`,
-      url: `/groups/${groupId}`,
-    });
-  });
-
-  onDomainEvent(DOMAIN_EVENTS.GROUP_USER_REMOVED, async ({ userId, groupId, groupName }) => {
-    await sendToUser(userId, {
-      title: "👋 Cambios en tus grupos de Sportexa",
-      body: `Ya no formás parte de ${groupName || "un grupo"} en Sportexa. Revisá tus grupos activos cuando puedas.`,
-      url: `/groups/${groupId}`,
-    });
-  });
-
   onDomainEvent(DOMAIN_EVENTS.MATCH_CREATED, async ({ groupId, groupName, memberIds = [] }) => {
     await sendToManyUsers(memberIds, {
       title: "🏐 ¡Nuevo partido en tu grupo!",
@@ -60,14 +44,6 @@ function registerNotificationHandlers() {
     await sendToManyUsers(memberIds, {
       title: "🛑 Partido cancelado",
       body: `Se canceló un partido de ${groupName || "tu grupo"} en Sportexa. Mirá el grupo para ver novedades.`,
-      url: `/groups/${groupId}`,
-    });
-  });
-
-  onDomainEvent(DOMAIN_EVENTS.GROUP_ADMIN_ADDED, async ({ userId, groupId, groupName }) => {
-    await sendToUser(userId, {
-      title: "👑 ¡Subiste de nivel: admin de grupo!",
-      body: `Ahora administrás ${groupName || "tu grupo"} en Sportexa. Te toca organizar la magia 💪`,
       url: `/groups/${groupId}`,
     });
   });

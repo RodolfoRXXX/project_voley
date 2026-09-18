@@ -298,8 +298,8 @@ test("aplica privado por defecto y acceso contextual mínimo", async (t) => {
       const group = visitor.body.groups[0];
       assert.equal(group.id, ids.publicGroup);
       assert.equal(group.visibility, "public");
-      assert.equal(group.membershipStatus, "none");
-      assert.equal(group.membersCount, 2);
+      assert.equal(group.active, true);
+      assert.equal(typeof group.totalMatches, "number");
       for (const forbidden of [
         "owner",
         "ownerId",
@@ -307,6 +307,9 @@ test("aplica privado por defecto y acceso contextual mínimo", async (t) => {
         "adminIds",
         "pendingRequestIds",
         "pendingAdminRequestIds",
+        "membersCount",
+        "membershipStatus",
+        "joinApproval",
       ]) {
         assert.equal(Object.hasOwn(group, forbidden), false, forbidden);
       }
@@ -317,7 +320,7 @@ test("aplica privado por defecto y acceso contextual mínimo", async (t) => {
         idToken: outsider.idToken,
       });
       assert.equal(authenticated.status, 200, JSON.stringify(authenticated.body));
-      assert.equal(authenticated.body.groups[0].membershipStatus, "none");
+      assert.equal(authenticated.body.groups[0].active, true);
       assert.equal(Object.hasOwn(authenticated.body.groups[0], "pendingRequestIds"), false);
     });
 

@@ -1,6 +1,9 @@
+import { isRetiredLegacyGroupAuthorityAlertValue } from "./pendingAlertRetirement.mjs";
+
 export type PendingAlertSeverity = "urgent" | "warning" | "info";
 
 export type PendingAlertKind =
+  | "unknown"
   | "complete_profile"
   | "group_membership_result"
   | "group_accepted_in_tournament"
@@ -66,10 +69,8 @@ export const pendingAlertPriority: Record<PendingAlertSeverity, number> = {
   info: 300,
 };
 
-export function isRetiredLegacyGroupJoinAlert(alert: Pick<PendingAlert, "kind" | "meta">): boolean {
-  return alert.kind === "group_join_requests_pending"
-    || (alert.kind === "group_membership_result"
-      && (alert.meta?.decision === "accepted" || alert.meta?.decision === "rejected"));
+export function isRetiredLegacyGroupAuthorityAlert(alert: Pick<PendingAlert, "kind" | "meta">): boolean {
+  return isRetiredLegacyGroupAuthorityAlertValue(alert);
 }
 
 export const pendingAlertSeverityLabel: Record<PendingAlertSeverity, string> = {

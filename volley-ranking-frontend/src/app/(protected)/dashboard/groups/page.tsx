@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { GroupCard } from "@/components/groups/GroupCard";
 import { GroupLoading } from "@/components/groups/GroupLoading";
@@ -11,6 +12,8 @@ import { getGroupErrorMessage, getGroupErrorReason, listOwnGroups } from "@/serv
 import type { OwnGroup } from "@/types/OwnGroup";
 
 export default function OwnGroupsPage() {
+  const searchParams = useSearchParams();
+  const showRetirementNotice = searchParams.get("notice") === "legacy-group-capability-retired";
   const [items, setItems] = useState<OwnGroup[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
@@ -44,6 +47,11 @@ export default function OwnGroupsPage() {
 
   return (
     <GroupPageShell title="Mis Grupos" description="Administrá los Grupos que te pertenecen por ownership, sin depender de roles globales.">
+      {showRetirementNotice ? (
+        <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          La vista anterior ya no está disponible. Usá los Grupos y Membresías vigentes.
+        </p>
+      ) : null}
       <section aria-labelledby="owned-groups-title" className="space-y-4">
       <div>
         <h2 id="owned-groups-title" className="text-2xl font-semibold">Grupos que administrás</h2>

@@ -13,9 +13,11 @@ const {
   MembershipGroupNotFoundError,
   MembershipIdempotencyConflictError,
   MembershipIncompatibleStateError,
+  MembershipOpenSeasonRequiredError,
   MembershipNotAuthorizedError,
   MembershipNotFoundError,
   MembershipReactivationRequiredError,
+  MembershipSeasonIncompatibleError,
 } = require("../application/membershipErrors");
 const { activeMembershipGuardId } = require("../application/membershipHashing");
 const { annotateMembershipError } = require("../application/membershipObservability");
@@ -203,7 +205,7 @@ async function resolveAfterContention({
   }
 }
 
-function createFirestoreActiveMembershipGuard({ db, groupRepository, now = () => Timestamp.now() }) {
+function createFirestoreActiveMembershipGuard({ db, groupRepository, seasonCapability, now = () => Timestamp.now() }) {
   if (!db || !groupRepository || typeof now !== "function") throw new TypeError("Active Membership guard dependencies are required");
 
   return {
@@ -215,6 +217,11 @@ function createFirestoreActiveMembershipGuard({ db, groupRepository, now = () =>
         return await db.runTransaction(async (transaction) => {
           transactionAttempt += 1;
           await requireOwnedGroup({ groupRepository, transaction, groupId: membership.groupId, userId });
+          if (seasonCapability) {
+            const season = await seasonCapability.assertOpenSeasonForMembership({ unitOfWork: transaction, groupId: membership.groupId, seasonId: membership.seasonId });
+            if (season?.status === "absent") throw new MembershipOpenSeasonRequiredError();
+            if (season?.status !== "open") throw new MembershipSeasonIncompatibleError();
+          }
           const snapshots = lifecycleRef
             ? await transaction.getAll(guardRef, lifecycleRef)
             : [await transaction.get(guardRef)];

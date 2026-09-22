@@ -10,14 +10,14 @@ const {
   SeasonUnauthenticatedError,
   SeasonValidationError,
 } = require("./seasonErrors");
-const { hashSeasonIdempotencyKey, hashSeasonRequest } = require("./seasonHashing");
+const { hashSeasonIdempotencyKey, hashSeasonOpeningRequest, hashSeasonRequest, legacySeasonOpeningReceiptId, seasonClosureReceiptId, seasonOpeningReceiptId, hashSeasonClosureRequest } = require("./seasonHashing");
 
 function requireSeasonActor(identity) {
   if (!identity || typeof identity.userId !== "string" || !identity.userId.trim()) throw new SeasonUnauthenticatedError();
   return identity.userId.trim();
 }
 
-function createSeasonService({ selfAccountReader, seasonRepository, openSeasonReader, openSeasonGuard }) {
+function createSeasonService({ selfAccountReader, seasonRepository, openSeasonReader, openSeasonGuard, seasonClosureStore }) {
   if (!selfAccountReader || !seasonRepository || !openSeasonReader || !openSeasonGuard) {
     throw new TypeError("Season service dependencies are required");
   }
@@ -62,15 +62,36 @@ function createSeasonService({ selfAccountReader, seasonRepository, openSeasonRe
       }
 
       try {
+        const legacyIdempotencyKeyHash = hashSeasonIdempotencyKey(season.groupId, input.idempotencyKey);
         const result = await openSeasonGuard.confirmOpenSeason({
           userId,
           season,
-          idempotencyKeyHash: hashSeasonIdempotencyKey(season.groupId, input.idempotencyKey),
-          requestHash: hashSeasonRequest(season),
+          receiptId: seasonOpeningReceiptId(userId, input.idempotencyKey),
+          legacyReceiptId: legacySeasonOpeningReceiptId(season.groupId, legacyIdempotencyKeyHash),
+          idempotencyKeyHash: seasonOpeningReceiptId(userId, input.idempotencyKey),
+          legacyIdempotencyKeyHash,
+          requestHash: hashSeasonOpeningRequest(userId, season),
+          legacyRequestHash: hashSeasonRequest(season),
           seasonRepository,
         });
         const persisted = result.season || await readConfirmedSeason(result.seasonId);
         return Object.freeze({ outcome: result.outcome, season: toSeasonDto(persisted) });
+      } catch (error) {
+        if (error instanceof SeasonError) throw error;
+        throw new SeasonInternalError({ cause: error });
+      }
+    },
+
+    async closeSeason(identity, input) {
+      const userId = requireSeasonActor(identity);
+      if (!seasonClosureStore) throw new SeasonDependencyUnavailableError();
+      try {
+        return await seasonClosureStore.close({
+          userId, groupId: input.groupId, seasonId: input.seasonId,
+          receiptId: seasonClosureReceiptId(userId, input.idempotencyKey),
+          idempotencyKeyHash: seasonClosureReceiptId(userId, input.idempotencyKey),
+          requestHash: hashSeasonClosureRequest(userId, input.groupId, input.seasonId),
+        });
       } catch (error) {
         if (error instanceof SeasonError) throw error;
         throw new SeasonInternalError({ cause: error });

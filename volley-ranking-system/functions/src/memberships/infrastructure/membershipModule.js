@@ -26,6 +26,7 @@ const { createGroupRosterContextCapability } = require("../../groups/public/grou
 const { createActiveGroupMemberPersonCapability } = require("../../persons/public/activeGroupMemberPersonCapability");
 const { createAdministrativeMembershipFinalizationContextCapability } = require("../../groups/public/administrativeMembershipFinalizationContextCapability");
 const { createAdministrativeMembershipFinalizationPersonCapability } = require("../../persons/public/administrativeMembershipFinalizationPersonCapability");
+const { createGroupJoinRequestSeasonCapability } = require("../../groups/public/groupJoinRequestSeasonCapability");
 
 const accountService = createAccountService({ userRepository: createFirestoreUserRepository({ db }) });
 const selfAccountReader = createFirestoreSelfAccountReader({ accountService });
@@ -34,7 +35,8 @@ const userPersonLinkRepository = createFirestoreUserPersonLinkRepository({ db })
 const groupRepository = createFirestoreGroupRepository({ db });
 const membershipRepository = createFirestoreMembershipRepository({ db });
 const seasonRepository = createFirestoreSeasonRepository({ db });
-const lifecycleGuard = createFirestoreMembershipLifecycleGuard({ db, groupRepository });
+const membershipSeasonCapability = createGroupJoinRequestSeasonCapability({ db });
+const lifecycleGuard = createFirestoreMembershipLifecycleGuard({ db, groupRepository, seasonCapability: membershipSeasonCapability });
 const selfExitStore = createFirestoreMembershipSelfExitStore({
   db,
   membershipRepository,
@@ -61,7 +63,7 @@ module.exports = createMembershipService({
   ownedGroupContext: createOwnedGroupContextAdapter({ groupService }),
   openSeasonContext: createOpenSeasonContextAdapter({ seasonService }),
   membershipRepository,
-  activeMembershipGuard: createFirestoreActiveMembershipGuard({ db, groupRepository }),
+  activeMembershipGuard: createFirestoreActiveMembershipGuard({ db, groupRepository, seasonCapability: membershipSeasonCapability }),
   lifecycleGuard,
   selfExitStore,
   administrativeFinalizationStore,

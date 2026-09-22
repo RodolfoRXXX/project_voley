@@ -56,6 +56,7 @@ export function ActiveGroupMembersSection({ groupId }: { groupId: string }) {
   }, [focusRegion, groupId]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => { const refresh = (event: Event) => { if ((event as CustomEvent<{ groupId?: string }>).detail?.groupId === groupId) void load(); }; window.addEventListener("season-context-changed", refresh); return () => window.removeEventListener("season-context-changed", refresh); }, [groupId, load]);
   useEffect(() => { if (phase === "confirmation") queueMicrotask(() => cancelRef.current?.focus()); }, [phase]);
 
   const closeIntent = useCallback((restoreFocus = true) => {
@@ -97,7 +98,7 @@ export function ActiveGroupMembersSection({ groupId }: { groupId: string }) {
     else if (!event.shiftKey && document.activeElement === confirmRef.current) { event.preventDefault(); cancelRef.current?.focus(); }
   }
 
-  return <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-7 lg:col-span-2" aria-labelledby="active-members-heading">
+  return <section id="active-members" tabIndex={-1} className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-7 lg:col-span-2" aria-labelledby="active-members-heading">
     <h2 id="active-members-heading" className="text-lg font-semibold">Integrantes</h2>
     <p className="mt-1 text-sm text-[var(--text-muted)]">Lista informativa de la Temporada abierta.</p>
     <div ref={region} tabIndex={-1} aria-live="polite" aria-busy={status === "loading" || loadingNext || phase === "preparing" || phase === "submitting"} className="mt-4 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4">

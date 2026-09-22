@@ -34,6 +34,7 @@ const inheritedNames = [
   "TMPDIR",
 ];
 const environment = {};
+const diagnosticOutput = process.env.E2_15_DIAGNOSTIC === "1";
 for (const name of inheritedNames) {
   if (process.env[name]) environment[name] = process.env[name];
 }
@@ -117,6 +118,13 @@ const seasonTestPath = path.join(
   "emulator",
   "seasonE2.test.js"
 );
+const seasonClosureTestPath = path.join(
+  systemRoot,
+  "functions",
+  "test",
+  "emulator",
+  "seasonClosureE2.test.js"
+);
 const membershipTestPath = path.join(
   systemRoot,
   "functions",
@@ -187,7 +195,11 @@ const legacyJoinRetirementTestPath = path.join(
   "emulator",
   "legacyJoinRetirementE2.test.js"
 );
-const command = process.env.E2_13_FOCAL === "1"
+const command = process.env.E2_15_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${seasonClosureTestPath}"`
+  : process.env.E2_15_SERIALIZATION_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${membershipTestPath}" "${groupJoinRequestDecisionTestPath}" "${membershipReactivationTestPath}" "${membershipSelfExitTestPath}" "${membershipAdministrativeFinalizationTestPath}"`
+  : process.env.E2_13_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${legacyJoinRetirementTestPath}"`
   : process.env.E2_12_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${membershipAdministrativeFinalizationTestPath}"`
@@ -213,7 +225,7 @@ const command = process.env.E2_13_FOCAL === "1"
       ? `node --test --test-concurrency=1 "${membershipTestPath}"`
       : process.env.E2_04_FOCAL === "1"
         ? `node --test --test-concurrency=1 "${membershipListTestPath}"`
-        : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${seasonTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${groupJoinRequestTestPath}" "${groupJoinRequestDecisionTestPath}" "${groupJoinRequestDecisionGapsTestPath}" "${membershipReactivationTestPath}" "${membershipSelfExitTestPath}" "${membershipOwnerRosterTestPath}" "${membershipAdministrativeFinalizationTestPath}" "${legacyJoinRetirementTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
+        : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${seasonTestPath}" "${seasonClosureTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${groupJoinRequestTestPath}" "${groupJoinRequestDecisionTestPath}" "${groupJoinRequestDecisionGapsTestPath}" "${membershipReactivationTestPath}" "${membershipSelfExitTestPath}" "${membershipOwnerRosterTestPath}" "${membershipAdministrativeFinalizationTestPath}" "${legacyJoinRetirementTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
 const args = [
   "emulators:exec",
   "--project",
@@ -272,8 +284,32 @@ try {
   result = spawnFirebaseCli(args, {
     cwd: isolatedWorkspace,
     env: environment,
-    stdio: "inherit",
+    stdio: diagnosticOutput ? "pipe" : "inherit",
+    encoding: diagnosticOutput ? "utf8" : undefined,
+    maxBuffer: diagnosticOutput ? 128 * 1024 * 1024 : undefined,
   });
+
+  if (diagnosticOutput) {
+    const lines = `${result.stdout || ""}\n${result.stderr || ""}`.split(/\r?\n/);
+    const selected = new Set();
+    for (let index = 0; index < lines.length; index += 1) {
+      if (!/(?:not ok|AssertionError|failureType|ERR_|# fail [1-9]|^Error:)/i.test(lines[index])) {
+        continue;
+      }
+      for (
+        let contextIndex = Math.max(0, index - 12);
+        contextIndex <= Math.min(lines.length - 1, index + 20);
+        contextIndex += 1
+      ) {
+        selected.add(contextIndex);
+      }
+    }
+    for (const index of [...selected].sort((left, right) => left - right)) {
+      process.stdout.write(`${lines[index]}\n`);
+    }
+    process.stdout.write("--- diagnostic tail ---\n");
+    process.stdout.write(`${lines.slice(-80).join("\n")}\n`);
+  }
 } finally {
   if (isolatedConfigHome) {
     removeTemporaryDirectory(isolatedConfigHome);

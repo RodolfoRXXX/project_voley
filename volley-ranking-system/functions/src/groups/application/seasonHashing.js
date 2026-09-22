@@ -27,4 +27,10 @@ function hashSeasonRequest(season) {
   ]);
 }
 
-module.exports = { hashSeasonIdempotencyKey, hashSeasonRequest };
+function seasonOpeningReceiptId(actorUserId, key) { return sha256(["sportexa:E2-15:season-opening-receipt:v2", actorUserId, key]); }
+function hashSeasonOpeningRequest(actorUserId, season) { return sha256(["sportexa:E2-15:season-opening-request:v2", "contract-v2", actorUserId, season.groupId, season.nombre, season.fechaInicio]); }
+function legacySeasonOpeningReceiptId(groupId, idempotencyKeyHash) { return sha256(["sportexa:E2-15:season-opening-legacy-receipt:v1", groupId, idempotencyKeyHash]); }
+function seasonClosureReceiptId(actorUserId, key) { return sha256(["sportexa:E2-15:season-closure-receipt:v1", actorUserId, key]); }
+function hashSeasonClosureRequest(actorUserId, groupId, seasonId) { return sha256(["sportexa:E2-15:season-closure-request:v1", "contract-v1", actorUserId, groupId, seasonId]); }
+
+module.exports = { hashSeasonClosureRequest, hashSeasonIdempotencyKey, hashSeasonOpeningRequest, hashSeasonRequest, legacySeasonOpeningReceiptId, seasonClosureReceiptId, seasonOpeningReceiptId, sha256 };

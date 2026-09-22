@@ -9,6 +9,9 @@ const { createFirestoreOpenSeasonGuard } = require("./firestoreOpenSeasonGuard")
 const { createFirestoreOpenSeasonReader } = require("./firestoreOpenSeasonReader");
 const { createFirestoreSeasonRepository } = require("./firestoreSeasonRepository");
 const { createFirestoreSelfAccountReader } = require("./firestoreSelfAccountReader");
+const { createFirestoreSeasonClosureStore } = require("./firestoreSeasonClosureStore");
+const { createSeasonClosureMembershipCapability } = require("../../memberships/public/seasonClosureMembershipCapability");
+const { createSeasonClosureApprovalCapability } = require("../../groupJoinRequests/public/seasonClosureApprovalCapability");
 
 const userRepository = createFirestoreUserRepository({ db });
 const accountService = createAccountService({ userRepository });
@@ -20,4 +23,9 @@ module.exports = createSeasonService({
   seasonRepository,
   openSeasonReader: createFirestoreOpenSeasonReader({ db, groupRepository, seasonRepository }),
   openSeasonGuard: createFirestoreOpenSeasonGuard({ db, groupRepository }),
+  seasonClosureStore: createFirestoreSeasonClosureStore({
+    db, groupRepository, seasonRepository,
+    membershipCapability: createSeasonClosureMembershipCapability({ db }),
+    approvalCapability: createSeasonClosureApprovalCapability({ db }),
+  }),
 });

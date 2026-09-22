@@ -35,6 +35,17 @@ class OpenSeasonAlreadyExistsError extends SeasonError {
 class SeasonIncompatibleStateError extends SeasonError {
   constructor(message = "Season state is incompatible", options = {}) { super("INCOMPATIBLE_STATE", message, options); }
 }
+class SeasonNotOpenError extends SeasonError { constructor() { super("SEASON_NOT_OPEN", "Season is not open"); } }
+class SeasonAlreadyClosedError extends SeasonError { constructor() { super("SEASON_ALREADY_CLOSED", "Season is already closed"); } }
+class SeasonGuardMissingError extends SeasonError { constructor() { super("SEASON_GUARD_MISSING", "Open Season guard is missing"); } }
+class SeasonGuardIncompatibleError extends SeasonError { constructor(options = {}) { super("SEASON_GUARD_INCOMPATIBLE", "Open Season guard is incompatible", options); } }
+class SeasonActiveMembershipsExistError extends SeasonError { constructor() { super("ACTIVE_MEMBERSHIPS_EXIST", "Active Memberships must be finalized first"); } }
+class SeasonMembershipSeasonIncompatibleError extends SeasonError { constructor() { super("MEMBERSHIP_SEASON_INCOMPATIBLE", "An active Membership belongs to another Season"); } }
+class SeasonMembershipPeriodIncompatibleError extends SeasonError { constructor(options = {}) { super("MEMBERSHIP_PERIOD_INCOMPATIBLE", "An active Membership period is incompatible", options); } }
+class SeasonMembershipActiveGuardIncompatibleError extends SeasonError { constructor(options = {}) { super("MEMBERSHIP_ACTIVE_GUARD_INCOMPATIBLE", "An active Membership guard is incompatible", options); } }
+class SeasonApprovalInProgressError extends SeasonError { constructor() { super("APPROVAL_IN_PROGRESS", "A Membership approval is in progress"); } }
+class SeasonOwnershipChangedError extends SeasonError { constructor() { super("OWNERSHIP_CHANGED", "Group ownership changed before commit"); } }
+class SeasonDependencyNotConfiguredError extends SeasonError { constructor(options = {}) { super("DEPENDENCY_NOT_CONFIGURED", "A required dependency is not configured", options); } }
 class SeasonIdempotencyConflictError extends SeasonError {
   constructor(options = {}) { super("IDEMPOTENCY_CONFLICT", "Idempotency key was used with another request", options); }
 }
@@ -51,16 +62,27 @@ class SeasonInternalError extends SeasonError {
 module.exports = {
   OpenSeasonAlreadyExistsError,
   SeasonAccountRequiredError,
+  SeasonActiveMembershipsExistError,
+  SeasonAlreadyClosedError,
+  SeasonApprovalInProgressError,
   SeasonConflictError,
+  SeasonDependencyNotConfiguredError,
   SeasonDependencyUnavailableError,
   SeasonError,
+  SeasonGuardIncompatibleError,
+  SeasonGuardMissingError,
   SeasonGroupIncompatibleError,
   SeasonGroupNotFoundError,
   SeasonIdempotencyConflictError,
   SeasonIncompatibleStateError,
   SeasonInternalError,
+  SeasonMembershipActiveGuardIncompatibleError,
+  SeasonMembershipPeriodIncompatibleError,
+  SeasonMembershipSeasonIncompatibleError,
   SeasonNotAuthorizedError,
   SeasonNotFoundError,
+  SeasonNotOpenError,
+  SeasonOwnershipChangedError,
   SeasonUnauthenticatedError,
   SeasonValidationError,
 };

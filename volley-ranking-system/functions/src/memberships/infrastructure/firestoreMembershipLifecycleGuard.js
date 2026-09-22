@@ -39,7 +39,7 @@ function assertFinalizedMembershipCorrelated(membership, lifecycle, latestPeriod
 function hydrateQuery(repository, snapshot) { return snapshot.docs.map((document) => repository.fromSnapshot(document)); }
 function requireOnlyMembership(memberships, expectedId, label) { if (memberships.length !== 1 || memberships[0]?.membershipId !== expectedId) throw new MembershipIncompatibleStateError(label); }
 
-function createFirestoreMembershipLifecycleGuard({ db, groupRepository, now = () => Timestamp.now() }) {
+function createFirestoreMembershipLifecycleGuard({ db, groupRepository, seasonCapability, now = () => Timestamp.now() }) {
   if (!db || !groupRepository || typeof now !== "function") throw new TypeError("Membership lifecycle dependencies are required");
   function reference(guardId) { return db.collection("membershipLifecycleGuards").doc(guardId); }
 
@@ -76,8 +76,14 @@ function createFirestoreMembershipLifecycleGuard({ db, groupRepository, now = ()
           assertMembershipCorrelated(membership, activeGuard, periodState?.latestPeriod);
           requireOnlyMembership(hydrateQuery(membershipRepository, activeForPair), membership.membershipId, "Active Membership is not unique");
           if (!write) return { kind: "active-only", membership, activeGuard, ...periodState };
-          if (!openSeasonId) throw new MembershipOpenSeasonRequiredError();
-          if (membership.seasonId !== openSeasonId) throw new MembershipSeasonIncompatibleError();
+          if (seasonCapability) {
+            const season = await seasonCapability.assertOpenSeasonForMembership({ unitOfWork: transaction, groupId, seasonId: membership.seasonId });
+            if (season?.status === "absent") throw new MembershipOpenSeasonRequiredError();
+            if (season?.status !== "open") throw new MembershipSeasonIncompatibleError();
+          } else {
+            if (!openSeasonId) throw new MembershipOpenSeasonRequiredError();
+            if (membership.seasonId !== openSeasonId) throw new MembershipSeasonIncompatibleError();
+          }
           const finalizedAt = now();
           const transition = finalizeMembership({ membership, finalizedAt, firstPeriodId: membershipValidityPeriodId(membership.membershipId, 1), firstPeriod: periodState.firstPeriod, latestPeriod: periodState.latestPeriod });
           membershipRepository.persistTransition(transaction, transition);

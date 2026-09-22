@@ -6,6 +6,7 @@ const {
   InvalidSeasonStateError,
   SEASON_FIELDS,
   buildSeason,
+  closeSeason,
   hydrateSeason,
   normalizeSeasonName,
   normalizeStartDate,
@@ -64,4 +65,14 @@ test("rehidratación exige documento schema v1 cerrado y no corrige incompatible
 test("DTO de Temporada es cerrado y omite schema, guard y tipos Firebase", () => {
   const dto = toSeasonDto(hydrateSeason("season-1", { groupId: "group-1", nombre: "Temporada", fechaInicio: "2026-01-01", estado: "abierta", createdAt: timestamp, schemaVersion: 1 }));
   assert.deepEqual(dto, { id: "season-1", groupId: "group-1", nombre: "Temporada", estado: "abierta", fechaInicio: "2026-01-01", createdAt: "2026-08-26T12:00:00.000Z" });
+});
+
+test("cierre evoluciona v1 a v2 una sola vez, preserva identidad y usa actor/timestamp autoritativos", () => {
+  const opened = hydrateSeason("season-1", { groupId: "group-1", nombre: "Temporada", fechaInicio: "2026-01-01", estado: "abierta", createdAt: timestamp, schemaVersion: 1 });
+  const closedAt = { toDate: () => new Date("2026-09-01T10:00:00.000Z") };
+  const closed = closeSeason(opened, { closedAt, closedBy: "owner-1" });
+  assert.deepEqual(hydrateSeason("season-1", { groupId: closed.groupId, nombre: closed.nombre, fechaInicio: closed.fechaInicio, estado: closed.estado, createdAt: closed.createdAt, closedAt, closedBy: closed.closedBy, schemaVersion: closed.schemaVersion }), closed);
+  assert.equal(closed.schemaVersion, 2); assert.equal(closed.estado, "cerrada");
+  assert.throws(() => closeSeason(closed, { closedAt, closedBy: "owner-1" }), InvalidSeasonStateError);
+  assert.throws(() => hydrateSeason("season-1", { ...closed, seasonId: undefined }), InvalidSeasonStateError);
 });

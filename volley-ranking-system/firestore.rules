@@ -122,6 +122,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /seasonOpeningReceipts/{receiptId} {
+      allow read, write: if false;
+    }
+
+    match /seasonClosureReceipts/{receiptId} {
+      allow read, write: if false;
+    }
+
     match /memberships/{membershipId} {
       allow read, write: if false;
 

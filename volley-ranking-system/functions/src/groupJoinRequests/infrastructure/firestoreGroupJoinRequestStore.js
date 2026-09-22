@@ -197,7 +197,41 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
         throw new GroupJoinRequestIncompatibleStateError();
       }
       if (coordination) {
-        await readCoordinationIntent(transaction, request, coordination);
+        const intent = await readCoordinationIntent(transaction, request, coordination);
+        const activation = await membershipCapability.getActivationContext({
+          unitOfWork: transaction,
+          personId: request.personId,
+          groupId,
+          seasonId: coordination.seasonId,
+          membershipId: coordination.membershipId,
+          expectedActivationOrdinal: coordination.expectedActivationOrdinal,
+        });
+        if (!["activation-absent", "activation-open", "activation-closed"].includes(activation?.status)) {
+          throw new GroupJoinRequestIncompatibleStateError();
+        }
+        if (activation.status !== "activation-absent") {
+          observe({ stage: "claim", classification: "recovery" });
+          return { terminal: false, request, coordination };
+        }
+        const season = await seasonCapability.assertOpenSeasonForMembership({ unitOfWork: transaction, groupId, seasonId: coordination.seasonId });
+        if (season?.status === "absent") {
+          if (coordination.approvalEffect === "REACTIVATE_MEMBERSHIP") {
+            consumeDecisionIntent(transaction, aliasRef, intent, "MEMBERSHIP_SEASON_NOT_REACTIVATABLE", Timestamp.now());
+            transaction.delete(cRef);
+            return { terminal: false, failure: "MEMBERSHIP_SEASON_NOT_REACTIVATABLE" };
+          }
+          transaction.delete(cRef);
+          return { terminal: false, failure: "OPEN_SEASON_REQUIRED" };
+        }
+        if (season?.status !== "open") {
+          if (coordination.approvalEffect === "REACTIVATE_MEMBERSHIP") {
+            consumeDecisionIntent(transaction, aliasRef, intent, "MEMBERSHIP_SEASON_NOT_REACTIVATABLE", Timestamp.now());
+            transaction.delete(cRef);
+            return { terminal: false, failure: "MEMBERSHIP_SEASON_NOT_REACTIVATABLE" };
+          }
+          transaction.delete(cRef);
+          return { terminal: false, failure: "SEASON_INCOMPATIBLE" };
+        }
         observe({ stage: "claim", classification: "recovery" });
         return { terminal: false, request, coordination };
       }
@@ -211,6 +245,21 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
         if (season?.status !== "open") throw new GroupJoinRequestSeasonIncompatibleError();
         seasonId = season.seasonId; approvalEffect = "CREATE_MEMBERSHIP";
       } else {
+        const season = await seasonCapability.assertOpenSeasonForMembership({ unitOfWork: transaction, groupId, seasonId: membership.seasonId });
+        if (season?.status !== "open") {
+          const consumedAt = Timestamp.now();
+          const intent = alias || {
+            requestId: request.requestId,
+            personId: request.personId,
+            groupId: request.groupId,
+            action: "approve",
+            requestedBy: userId,
+            requestHash: groupJoinRequestDecisionHash(request.requestId, request.personId, request.groupId, "approve"),
+            createdAt: consumedAt,
+          };
+          consumeDecisionIntent(transaction, aliasRef, intent, "MEMBERSHIP_SEASON_NOT_REACTIVATABLE", consumedAt);
+          return { terminal: false, failure: "MEMBERSHIP_SEASON_NOT_REACTIVATABLE" };
+        }
         seasonId = membership.seasonId; approvalEffect = "REACTIVATE_MEMBERSHIP";
       }
       const createdAt = Timestamp.now();
@@ -371,7 +420,13 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
     async approve(args) {
       const observe = args.observe || (() => {});
       let claimed;
-      try { claimed = await phaseA({ ...args, observe }); if (claimed.terminal) return claimed; }
+      try {
+        claimed = await phaseA({ ...args, observe });
+        if (claimed.terminal) return claimed;
+        if (claimed.failure === "MEMBERSHIP_SEASON_NOT_REACTIVATABLE") throw new GroupJoinRequestMembershipSeasonNotReactivatableError();
+        if (claimed.failure === "OPEN_SEASON_REQUIRED") throw new GroupJoinRequestOpenSeasonRequiredError();
+        if (claimed.failure === "SEASON_INCOMPATIBLE") throw new GroupJoinRequestSeasonIncompatibleError();
+      }
       catch (error) { throw mapFailure(error); }
       let receipt;
       try { receipt = await membershipCapability.createOrRecoverForGroupJoinRequest(membershipInput(claimed.request, claimed.coordination)); observe({ stage: "membership", classification: receipt.outcome === "RECOVERED_ACTIVE" ? "recovery" : "first-attempt" }); }

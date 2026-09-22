@@ -1,8 +1,10 @@
 "use strict";
 
-const SEASON_SCHEMA_VERSION = 1;
+const SEASON_OPEN_SCHEMA_VERSION = 1;
+const SEASON_SCHEMA_VERSION = 2;
 const SEASON_OPEN_STATE = "abierta";
-const SEASON_FIELDS = Object.freeze([
+const SEASON_CLOSED_STATE = "cerrada";
+const OPEN_SEASON_FIELDS = Object.freeze([
   "groupId",
   "nombre",
   "fechaInicio",
@@ -10,6 +12,8 @@ const SEASON_FIELDS = Object.freeze([
   "createdAt",
   "schemaVersion",
 ]);
+const CLOSED_SEASON_FIELDS = Object.freeze([...OPEN_SEASON_FIELDS.slice(0, -1), "closedAt", "closedBy", "schemaVersion"]);
+const SEASON_FIELDS = OPEN_SEASON_FIELDS;
 
 class InvalidSeasonStateError extends Error {
   constructor(message) {
@@ -71,30 +75,55 @@ function buildSeason({ seasonId, groupId, nombre, fechaInicio }) {
     nombre: normalizeSeasonName(nombre),
     fechaInicio: normalizeStartDate(fechaInicio),
     estado: SEASON_OPEN_STATE,
-    schemaVersion: SEASON_SCHEMA_VERSION,
+    schemaVersion: SEASON_OPEN_SCHEMA_VERSION,
   });
 }
 
 function hydrateSeason(seasonId, data) {
   requireId(seasonId, "Season id");
-  assertExactKeys(data, SEASON_FIELDS, "Season document");
+  const open = data?.estado === SEASON_OPEN_STATE && data?.schemaVersion === SEASON_OPEN_SCHEMA_VERSION;
+  const closed = data?.estado === SEASON_CLOSED_STATE && data?.schemaVersion === SEASON_SCHEMA_VERSION;
+  if (!open && !closed) throw new InvalidSeasonStateError("Season state and schema version are incompatible");
+  assertExactKeys(data, open ? OPEN_SEASON_FIELDS : CLOSED_SEASON_FIELDS, "Season document");
   requireId(data.groupId, "Group id");
   if (data.nombre !== normalizeSeasonName(data.nombre)) throw new InvalidSeasonStateError("Season name is not normalized");
   if (data.fechaInicio !== normalizeStartDate(data.fechaInicio)) throw new InvalidSeasonStateError("Season start date is not canonical");
-  if (data.estado !== SEASON_OPEN_STATE) throw new InvalidSeasonStateError("Season state is invalid");
-  if (data.schemaVersion !== SEASON_SCHEMA_VERSION) throw new InvalidSeasonStateError("Season schema version is invalid");
   if (!data.createdAt || typeof data.createdAt.toDate !== "function" || Number.isNaN(data.createdAt.toDate().getTime())) {
     throw new InvalidSeasonStateError("Season creation timestamp is invalid");
+  }
+  if (closed) {
+    requireId(data.closedBy, "Season closing actor");
+    if (!data.closedAt || typeof data.closedAt.toDate !== "function" || Number.isNaN(data.closedAt.toDate().getTime())
+      || data.closedAt.toDate().getTime() < data.createdAt.toDate().getTime()) {
+      throw new InvalidSeasonStateError("Season closing timestamp is invalid");
+    }
   }
   return Object.freeze({ seasonId, ...data });
 }
 
+function closeSeason(season, { closedAt, closedBy }) {
+  if (!season || season.estado !== SEASON_OPEN_STATE || season.schemaVersion !== SEASON_OPEN_SCHEMA_VERSION) {
+    throw new InvalidSeasonStateError("Season cannot be closed from its current state");
+  }
+  requireId(closedBy, "Season closing actor");
+  if (!closedAt || typeof closedAt.toDate !== "function" || Number.isNaN(closedAt.toDate().getTime())
+    || closedAt.toDate().getTime() < season.createdAt.toDate().getTime()) {
+    throw new InvalidSeasonStateError("Season closing timestamp is invalid");
+  }
+  return Object.freeze({ ...season, estado: SEASON_CLOSED_STATE, closedAt, closedBy, schemaVersion: SEASON_SCHEMA_VERSION });
+}
+
 module.exports = {
+  CLOSED_SEASON_FIELDS,
   InvalidSeasonStateError,
+  OPEN_SEASON_FIELDS,
+  SEASON_CLOSED_STATE,
   SEASON_FIELDS,
   SEASON_OPEN_STATE,
+  SEASON_OPEN_SCHEMA_VERSION,
   SEASON_SCHEMA_VERSION,
   buildSeason,
+  closeSeason,
   hydrateSeason,
   normalizeSeasonName,
   normalizeStartDate,

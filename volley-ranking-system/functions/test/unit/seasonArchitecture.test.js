@@ -28,7 +28,7 @@ test("repositorios de Grupo y Temporada permanecen separados y Grupo no se escri
   const seasonRepository = read("volley-ranking-system/functions/src/groups/infrastructure/firestoreSeasonRepository.js");
   const guard = read("volley-ranking-system/functions/src/groups/infrastructure/firestoreOpenSeasonGuard.js");
   assert.doesNotMatch(seasonRepository, /collection\("groups"\)|ownerId/);
-  assert.doesNotMatch(guard, /groupRepository\.create|transaction\.(create|set|update)\([^\n]*group/i);
+  assert.doesNotMatch(guard, /groupRepository\.(create|set|update)|transaction\.(create|set|update)\(groupRepository/i);
   assert.doesNotMatch(read("volley-ranking-system/functions/src/groups/infrastructure/seasonModule.js"), /groupCreationGuards|ownGroupsReader/);
 });
 
@@ -79,4 +79,18 @@ test("E2-03 dispone sólo del contrato público contextual y no de internals", (
   const dto = read("volley-ranking-system/functions/src/groups/application/seasonDto.js");
   assert.doesNotMatch(dto, /schemaVersion|guard|hash|DocumentSnapshot/);
   assert.doesNotMatch(read("volley-ranking-frontend/src/types/OwnSeason.ts"), /schemaVersion|ownerUid|fechaCierre/);
+});
+
+test("CU-018 mantiene backend único escritor, consultas acotadas y exclusiones arquitectónicas", () => {
+  const store = [
+    read("volley-ranking-system/functions/src/groups/infrastructure/firestoreSeasonClosureStore.js"),
+    read("volley-ranking-system/functions/src/memberships/public/seasonClosureMembershipCapability.js"),
+    read("volley-ranking-system/functions/src/groupJoinRequests/public/seasonClosureApprovalCapability.js"),
+  ].join("\n");
+  const frontend = read("volley-ranking-frontend/src/components/seasons/OpenSeasonSection.tsx");
+  assert.match(store, /limit\(1\)/); assert.match(store, /limit\(2\)/);
+  assert.doesNotMatch(store, /collectionGroup|participations|matches|tournaments|periodCount\s*[:+]/);
+  assert.doesNotMatch(frontend, /firebase\/firestore|reabrir|historial paginado/i);
+  for (const collection of ["seasonOpeningReceipts", "seasonClosureReceipts"]) assert.match(read("volley-ranking-system/firestore.rules"), new RegExp(collection));
+  assert.match(read("volley-ranking-system/functions/index.js"), /exports\.closeSeason/);
 });

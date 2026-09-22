@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { OPEN_SEASON_GUARD_FIELDS, createFirestoreOpenSeasonGuard, hydrateOpenSeasonGuard } = require("../../src/groups/infrastructure/firestoreOpenSeasonGuard");
+const { OPEN_SEASON_GUARD_FIELDS, OPEN_SEASON_GUARD_V1_FIELDS, createFirestoreOpenSeasonGuard, hydrateOpenSeasonGuard } = require("../../src/groups/infrastructure/firestoreOpenSeasonGuard");
 const { hashSeasonIdempotencyKey, hashSeasonRequest } = require("../../src/groups/application/seasonHashing");
 const {
   OpenSeasonAlreadyExistsError,
@@ -14,14 +14,16 @@ function snapshot(data, id = "group-1") { return { exists: true, id, data: () =>
 
 test("guard abierto acepta únicamente el esquema técnico exacto", () => {
   const data = { seasonId: "season-1", idempotencyKeyHash: "a".repeat(64), requestHash: "b".repeat(64), createdAt: timestamp, guardVersion: 1 };
-  assert.deepEqual(Object.keys(hydrateOpenSeasonGuard(snapshot(data), "group-1")).sort(), [...OPEN_SEASON_GUARD_FIELDS].sort());
+  const v2 = { seasonId: "season-1", openedAt: timestamp, guardVersion: 2 };
+  assert.deepEqual(Object.keys(hydrateOpenSeasonGuard(snapshot(data), "group-1")).sort(), [...OPEN_SEASON_GUARD_V1_FIELDS].sort());
+  assert.deepEqual(Object.keys(hydrateOpenSeasonGuard(snapshot(v2), "group-1")).sort(), [...OPEN_SEASON_GUARD_FIELDS].sort());
   for (const invalid of [
     { ...data, rawKey: "secret" },
     { ...data, seasonId: "" },
     { ...data, idempotencyKeyHash: "raw" },
     { ...data, requestHash: "x" },
     { ...data, createdAt: null },
-    { ...data, guardVersion: 2 },
+    { ...v2, requestHash: "x" },
   ]) assert.throws(() => hydrateOpenSeasonGuard(snapshot(invalid), "group-1"), SeasonIncompatibleStateError);
   assert.throws(() => hydrateOpenSeasonGuard(snapshot(data, "other"), "group-1"), SeasonIncompatibleStateError);
 });
@@ -89,9 +91,12 @@ function code3Setup({
       return effectiveGuard ? snapshot(effectiveGuard) : absent();
     },
   };
+  const receiptRef = { id: "receipt", async get() { authoritativeReads += 1; if (rereadError) throw rereadError; return absent("receipt"); } };
+  const legacyReceiptRef = { id: "legacy-receipt", async get() { authoritativeReads += 1; if (rereadError) throw rereadError; return absent("legacy-receipt"); } };
   const db = {
     collection(name) {
       if (name === "openSeasonGuards") return { doc() { return guardRef; } };
+      if (name === "seasonOpeningReceipts") return { doc(id) { return id === "receipt" ? receiptRef : legacyReceiptRef; } };
       assert.equal(name, "seasons");
       const query = {
         where() { return query; },
@@ -129,8 +134,12 @@ function code3Setup({
       return guard.confirmOpenSeason({
         userId: "uid",
         season,
+        receiptId: "receipt",
+        legacyReceiptId: "legacy-receipt",
         idempotencyKeyHash: keyHash,
+        legacyIdempotencyKeyHash: keyHash,
         requestHash,
+        legacyRequestHash: requestHash,
         seasonRepository,
         ...overrides,
       });
@@ -145,7 +154,7 @@ test("code 3 en el límite y respuesta perdida recuperan la misma intención con
     seasonId: setup.stored.seasonId,
     season: setup.stored,
   });
-  assert.equal(setup.authoritativeReads, 3);
+  assert.equal(setup.authoritativeReads, 5);
 });
 
 test("code 3 con otra intención íntegra devuelve OPEN_SEASON_ALREADY_EXISTS", async () => {
@@ -157,7 +166,7 @@ test("code 3 con otra intención íntegra devuelve OPEN_SEASON_ALREADY_EXISTS", 
     guardVersion: 1,
   } });
   await assert.rejects(() => setup.confirm(), OpenSeasonAlreadyExistsError);
-  assert.equal(setup.authoritativeReads, 3);
+  assert.equal(setup.authoritativeReads, 5);
 });
 
 test("code 3 conserva el error original ante ausencia, parcial, guard incorrecto o duplicados", async () => {
@@ -185,7 +194,7 @@ test("code 3 conserva el error original ante ausencia, parcial, guard incorrecto
 
 test("code 3 con la misma clave y hash de solicitud distinto conserva conflicto idempotente", async () => {
   const setup = code3Setup();
-  await assert.rejects(() => setup.confirm({ requestHash: "c".repeat(64) }), { reason: "IDEMPOTENCY_CONFLICT" });
+  await assert.rejects(() => setup.confirm({ legacyRequestHash: "c".repeat(64) }), { reason: "IDEMPOTENCY_CONFLICT" });
 });
 
 test("código distinto y fallo de otra operación no activan la relectura", async () => {

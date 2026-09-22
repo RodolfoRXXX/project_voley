@@ -49,7 +49,7 @@ function createFirestoreOpenSeasonReader({ db, groupRepository, seasonRepository
         await requireOwnedGroup(transaction, groupId, userId);
         const guard = hydrateOpenSeasonGuard(await transaction.get(db.collection("openSeasonGuards").doc(groupId)), groupId);
         if (!guard) {
-          const existing = await transaction.get(db.collection("seasons").where("groupId", "==", groupId).limit(1));
+          const existing = await transaction.get(db.collection("seasons").where("groupId", "==", groupId).where("estado", "==", "abierta").limit(1));
           if (!existing.empty) throw new SeasonIncompatibleStateError("Season exists without its open guard");
           return null;
         }

@@ -40,6 +40,7 @@ exports.listOwnGroups = require("./callables/listOwnGroups");
 exports.getOwnGroup = require("./callables/getOwnGroup");
 exports.getOwnGroupsDashboard = require("./callables/getOwnGroupsDashboard");
 exports.createAndOpenSeason = require("./callables/createAndOpenSeason");
+exports.closeSeason = require("./callables/closeSeason");
 exports.getOpenSeasonContext = require("./callables/getOpenSeasonContext");
 exports.getOwnSeason = require("./callables/getOwnSeason");
 exports.createMyMembershipForOwnedGroup = require("./callables/createMyMembershipForOwnedGroup");

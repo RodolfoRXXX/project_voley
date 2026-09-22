@@ -25,6 +25,7 @@ function setup(overrides = {}) {
       async getByIdForOwner({ seasonId }) { calls.push("byId"); return persisted({ seasonId }); },
     },
     openSeasonGuard: { async confirmOpenSeason(input) { calls.push("guard"); return { outcome: "CREATED_OPEN", seasonId: input.season.seasonId }; } },
+    seasonClosureStore: { async close(input) { calls.push("close"); return { outcome: "CLOSED", season: { id: input.seasonId, groupId: input.groupId, estado: "cerrada" } }; } },
     ...overrides,
   };
   return { service: createSeasonService(dependencies), calls };
@@ -39,6 +40,12 @@ test("creación valida cuenta antes del Agregado y confirma DTO persistido", asy
   assert.equal(result.outcome, "CREATED_OPEN");
   assert.equal(result.season.nombre, "Temporada");
   assert.equal(result.season.estado, "abierta");
+});
+
+test("cierre deriva actor y hashes sin exigir Persona y delega una única operación confirmatoria", async () => {
+  const { service, calls } = setup();
+  const result = await service.closeSeason({ userId: "uid" }, { groupId: "group-1", seasonId: "season-1", idempotencyKey: "season-close-1234567890" });
+  assert.equal(result.outcome, "CLOSED"); assert.deepEqual(calls, ["close"]);
 });
 
 test("retry idempotente usa la Temporada persistida provista por el guard", async () => {

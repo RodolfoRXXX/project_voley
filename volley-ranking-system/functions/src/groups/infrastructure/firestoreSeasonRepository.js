@@ -18,15 +18,19 @@ function createFirestoreSeasonRepository({ db }) {
       const snapshot = transaction ? await transaction.get(ref) : await ref.get();
       return fromSnapshot(snapshot);
     },
-    createInitial(transaction, season) {
+    createInitial(transaction, season, createdAt = FieldValue.serverTimestamp()) {
       transaction.create(reference(season.seasonId), {
         groupId: season.groupId,
         nombre: season.nombre,
         fechaInicio: season.fechaInicio,
         estado: season.estado,
-        createdAt: FieldValue.serverTimestamp(),
+        createdAt,
         schemaVersion: season.schemaVersion,
       });
+    },
+    persistClosed(transaction, season) {
+      const { seasonId, ...data } = season;
+      transaction.set(reference(seasonId), data);
     },
   };
 }

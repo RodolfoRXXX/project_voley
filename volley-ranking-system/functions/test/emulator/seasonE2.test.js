@@ -134,7 +134,7 @@ test("E2-02 crea y consulta una Temporada abierta independiente y owner-scoped",
     });
 
     let ownerSeason;
-    await t.test("crea atómicamente schema v1 y guard exactos sin modificar Grupo ni otros Agregados", async () => {
+    await t.test("crea atómicamente schema v1, slot v2 y receipt durable sin modificar Grupo ni otros Agregados", async () => {
       const before = (await db.collection("groups").doc(groupIds.owner).get()).data();
       const result = await callFunction(functionsHost, projectId, "createAndOpenSeason", validPayload(groupIds.owner, "e2-02-owner-idempotency-0001"), owner.idToken);
       assert.equal(result.status, 200, JSON.stringify(result.body));
@@ -152,10 +152,11 @@ test("E2-02 crea y consulta una Temporada abierta independiente y owner-scoped",
       assert.equal(Object.hasOwn(season, "fechaCierre"), false);
 
       const guard = (await db.collection("openSeasonGuards").doc(groupIds.owner).get()).data();
-      assert.deepEqual(Object.keys(guard).sort(), ["createdAt", "guardVersion", "idempotencyKeyHash", "requestHash", "seasonId"]);
+      assert.deepEqual(Object.keys(guard).sort(), ["guardVersion", "openedAt", "seasonId"]);
       assert.equal(guard.seasonId, ownerSeason.id);
-      assert.match(guard.idempotencyKeyHash, /^[a-f0-9]{64}$/);
-      assert.notEqual(guard.idempotencyKeyHash, "e2-02-owner-idempotency-0001");
+      assert.equal(guard.guardVersion, 2);
+      const receipts = await db.collection("seasonOpeningReceipts").where("seasonId", "==", ownerSeason.id).get();
+      assert.equal(receipts.size, 1); assert.equal(receipts.docs[0].data().receiptVersion, 2);
       assert.deepEqual((await db.collection("groups").doc(groupIds.owner).get()).data(), before);
       for (const collection of ["personas", "memberships", "requests", "plans", "subscriptions", "activities", "dashboards"]) {
         assert.equal((await db.collection(collection).get()).size, 0, collection);
@@ -237,13 +238,15 @@ test("E2-02 crea y consulta una Temporada abierta independiente y owner-scoped",
       assert.equal((await db.collection("openSeasonGuards").doc(groupIds.orphan).get()).exists, false);
     });
 
-    await t.test("reglas niegan toda lectura/escritura cliente de Temporada y guard", async () => {
+    await t.test("reglas niegan toda lectura/escritura cliente de Temporada, slot y receipts", async () => {
       for (const actor of [null, owner, noAccount, globalAdmin]) {
         const idToken = actor?.idToken;
         const seasonRead = await firestoreRequest({ host: firestoreHost, projectId, path: `seasons/${ownerSeason.id}`, idToken });
         const guardRead = await firestoreRequest({ host: firestoreHost, projectId, path: `openSeasonGuards/${groupIds.owner}`, idToken });
+        const receiptRead = await firestoreRequest({ host: firestoreHost, projectId, path: "seasonOpeningReceipts/non-public", idToken });
         assert.equal(seasonRead.status, 403, JSON.stringify(seasonRead.body));
         assert.equal(guardRead.status, 403, JSON.stringify(guardRead.body));
+        assert.equal(receiptRead.status, 403, JSON.stringify(receiptRead.body));
       }
       const seasonList = await firestoreRequest({ host: firestoreHost, projectId, path: "seasons", idToken: owner.idToken });
       const guardList = await firestoreRequest({ host: firestoreHost, projectId, path: "openSeasonGuards", idToken: globalAdmin.idToken });
@@ -273,7 +276,7 @@ test("E2-02 crea y consulta una Temporada abierta independiente y owner-scoped",
       assert.equal(guardDelete.status, 403);
     });
   } finally {
-    const collections = ["seasons", "openSeasonGuards", "groups"];
+    const collections = ["seasons", "openSeasonGuards", "seasonOpeningReceipts", "groups"];
     for (const collection of collections) {
       const snapshot = await db.collection(collection).get();
       const batch = db.batch();

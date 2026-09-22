@@ -1,4 +1,4 @@
-export type SeasonState = "abierta";
+export type SeasonState = "abierta" | "cerrada";
 
 export interface OwnSeason {
   id: string;
@@ -7,6 +7,7 @@ export interface OwnSeason {
   estado: SeasonState;
   fechaInicio: string;
   createdAt: string;
+  closedAt?: string;
 }
 
 export type SeasonErrorReason =
@@ -18,8 +19,19 @@ export type SeasonErrorReason =
   | "SEASON_NOT_FOUND"
   | "VALIDATION_FAILED"
   | "OPEN_SEASON_ALREADY_EXISTS"
+  | "SEASON_NOT_OPEN"
+  | "SEASON_ALREADY_CLOSED"
+  | "SEASON_GUARD_MISSING"
+  | "SEASON_GUARD_INCOMPATIBLE"
+  | "ACTIVE_MEMBERSHIPS_EXIST"
+  | "MEMBERSHIP_SEASON_INCOMPATIBLE"
+  | "MEMBERSHIP_PERIOD_INCOMPATIBLE"
+  | "MEMBERSHIP_ACTIVE_GUARD_INCOMPATIBLE"
+  | "APPROVAL_IN_PROGRESS"
+  | "OWNERSHIP_CHANGED"
   | "INCOMPATIBLE_STATE"
   | "IDEMPOTENCY_CONFLICT"
   | "CONFLICT"
+  | "DEPENDENCY_NOT_CONFIGURED"
   | "DEPENDENCY_UNAVAILABLE"
   | "INTERNAL_ERROR";

@@ -3,6 +3,7 @@
 const { SeasonValidationError } = require("./seasonErrors");
 
 const CREATE_SEASON_KEYS = Object.freeze(["groupId", "nombre", "fechaInicio", "idempotencyKey"]);
+const CLOSE_SEASON_KEYS = Object.freeze(["groupId", "seasonId", "idempotencyKey"]);
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{16,128}$/;
 
 function assertExactObject(data, expectedKeys) {
@@ -30,6 +31,16 @@ function validateCreateSeasonPayload(data) {
   return data;
 }
 
+function validateCloseSeasonPayload(data) {
+  assertExactObject(data, CLOSE_SEASON_KEYS);
+  assertOpaqueId(data.groupId, "Group id");
+  assertOpaqueId(data.seasonId, "Season id");
+  if (typeof data.idempotencyKey !== "string" || !IDEMPOTENCY_KEY_PATTERN.test(data.idempotencyKey)) {
+    throw new SeasonValidationError("Idempotency key is invalid");
+  }
+  return data;
+}
+
 function validateOpenSeasonContextPayload(data) {
   assertExactObject(data, ["groupId"]);
   assertOpaqueId(data.groupId, "Group id");
@@ -44,9 +55,11 @@ function validateOwnSeasonPayload(data) {
 }
 
 module.exports = {
+  CLOSE_SEASON_KEYS,
   CREATE_SEASON_KEYS,
   IDEMPOTENCY_KEY_PATTERN,
   assertExactObject,
+  validateCloseSeasonPayload,
   validateCreateSeasonPayload,
   validateOpenSeasonContextPayload,
   validateOwnSeasonPayload,

@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { validateCreateSeasonPayload, validateOpenSeasonContextPayload, validateOwnSeasonPayload } = require("../../src/groups/application/seasonContract");
+const { validateCloseSeasonPayload, validateCreateSeasonPayload, validateOpenSeasonContextPayload, validateOwnSeasonPayload } = require("../../src/groups/application/seasonContract");
 const { SeasonValidationError } = require("../../src/groups/application/seasonErrors");
 const { seasonIdentityFromCallableContext, toSeasonHttpsError } = require("../../src/groups/infrastructure/seasonCallable");
 
@@ -37,4 +37,11 @@ test("identidad usa sólo token y errores callable no exponen detalles internos"
   assert.equal(httpsError.code, "invalid-argument");
   assert.deepEqual(httpsError.details, { reason: "VALIDATION_FAILED" });
   assert.equal(JSON.stringify(httpsError).includes("secret stack"), false);
+});
+
+test("closeSeason acepta sólo Grupo, Temporada exacta y clave; prohíbe actor, estado y timestamps", () => {
+  const command = { groupId: "group-1", seasonId: "season-1", idempotencyKey: "season-close-1234567890" };
+  assert.equal(validateCloseSeasonPayload(command), command);
+  for (const field of ["uid", "ownerId", "personaId", "membershipId", "estado", "closedAt", "closedBy", "createdAt", "reason"]) assert.throws(() => validateCloseSeasonPayload({ ...command, [field]: "x" }), SeasonValidationError);
+  assert.throws(() => validateCloseSeasonPayload({ ...command, seasonId: "season/1" }), SeasonValidationError);
 });

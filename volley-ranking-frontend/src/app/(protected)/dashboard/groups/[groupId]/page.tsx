@@ -8,7 +8,7 @@ import { GroupPageShell } from "@/components/groups/GroupPageShell";
 import { OwnMembershipSection } from "@/components/memberships/OwnMembershipSection";
 import { ActiveGroupMembersSection } from "@/components/memberships/ActiveGroupMembersSection";
 import { PendingGroupJoinRequestsSection } from "@/components/groupJoinRequests/PendingGroupJoinRequestsSection";
-import { OpenSeasonSection } from "@/components/seasons/OpenSeasonSection";
+import { SeasonHistorySection } from "@/components/seasons/SeasonHistorySection";
 import { getGroupErrorMessage, getGroupErrorReason, getOwnGroup } from "@/services/groupsService";
 import type { OwnGroup } from "@/types/OwnGroup";
 
@@ -60,7 +60,7 @@ export default function OwnGroupDetailPage() {
             <h2 className="font-semibold">Tu acceso</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Podés administrar este Grupo como Owner. Las funciones que requieren integrantes estarán disponibles cuando se incorporen Membresías.</p>
           </aside>
-          <OpenSeasonSection groupId={group.id} />
+          <SeasonHistorySection groupId={group.id} />
           <OwnMembershipSection groupId={group.id} />
           <ActiveGroupMembersSection groupId={group.id} />
           <PendingGroupJoinRequestsSection groupId={group.id} />

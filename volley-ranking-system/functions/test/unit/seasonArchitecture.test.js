@@ -49,6 +49,8 @@ test("frontend de Temporada usa callables, estados accesibles y no Firestore dir
 test("frontend cubre vacío, formulario, validación, retry estable, confirmación y límites owner-scoped", () => {
   const form = read("volley-ranking-frontend/src/components/seasons/OpenSeasonForm.tsx");
   const section = read("volley-ranking-frontend/src/components/seasons/OpenSeasonSection.tsx");
+  const history = read("volley-ranking-frontend/src/components/seasons/SeasonHistorySection.tsx");
+  const seasonUi = `${form}\n${section}\n${history}`;
   const detail = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/page.tsx");
   for (const pattern of [
     /estado válido/i,
@@ -66,7 +68,7 @@ test("frontend cubre vacío, formulario, validación, retry estable, confirmaci�
     /queueMicrotask.*focus/,
     /min-h-11/,
     /sm:/,
-  ]) assert.match(`${form}\n${section}`, pattern);
+  ]) assert.match(seasonUi, pattern);
   assert.match(form, /intentSignature/);
   assert.match(form, /attemptedPayload !== intentSignature/);
   assert.match(form, /Owner.*Persona.*Membresía/);

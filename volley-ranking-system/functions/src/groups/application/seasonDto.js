@@ -19,4 +19,25 @@ function toClosedSeasonDto(season) {
   return Object.freeze({ id: season.seasonId, groupId: season.groupId, nombre: season.nombre, fechaInicio: season.fechaInicio, estado: "cerrada", closedAt: season.closedAt.toDate().toISOString() });
 }
 
-module.exports = { SEASON_DTO_KEYS, toClosedSeasonDto, toSeasonDto };
+function toOpenSeasonHistoryDto(season) {
+  return Object.freeze({
+    id: season.seasonId,
+    nombre: season.nombre,
+    fechaInicio: season.fechaInicio,
+    estado: "abierta",
+    isCurrent: true,
+  });
+}
+
+function toClosedSeasonHistoryDto(season) {
+  return Object.freeze({
+    id: season.seasonId,
+    nombre: season.nombre,
+    fechaInicio: season.fechaInicio,
+    estado: "cerrada",
+    closedAt: season.closedAt.toDate().toISOString(),
+    isCurrent: false,
+  });
+}
+
+module.exports = { SEASON_DTO_KEYS, toClosedSeasonDto, toClosedSeasonHistoryDto, toOpenSeasonHistoryDto, toSeasonDto };

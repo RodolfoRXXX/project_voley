@@ -46,6 +46,8 @@ class SeasonIncompatibleStateError extends SeasonError {
 }
 class SeasonNotOpenError extends SeasonError { constructor() { super("SEASON_NOT_OPEN", "Season is not open"); } }
 class SeasonAlreadyClosedError extends SeasonError { constructor() { super("SEASON_ALREADY_CLOSED", "Season is already closed"); } }
+class SeasonNotAccessibleError extends SeasonError { constructor() { super("SEASON_NOT_ACCESSIBLE", "Season is not accessible"); } }
+class SeasonStaleUpdateError extends SeasonError { constructor() { super("STALE_UPDATE", "Season changed since it was read"); } }
 class SeasonGuardMissingError extends SeasonError { constructor() { super("SEASON_GUARD_MISSING", "Open Season guard is missing"); } }
 class SeasonGuardIncompatibleError extends SeasonError { constructor(options = {}) { super("SEASON_GUARD_INCOMPATIBLE", "Open Season guard is incompatible", options); } }
 class SeasonActiveMembershipsExistError extends SeasonError { constructor() { super("ACTIVE_MEMBERSHIPS_EXIST", "Active Memberships must be finalized first"); } }
@@ -73,6 +75,7 @@ module.exports = {
   SeasonAccountRequiredError,
   SeasonActiveMembershipsExistError,
   SeasonAlreadyClosedError,
+  SeasonNotAccessibleError,
   SeasonApprovalInProgressError,
   SeasonConflictError,
   SeasonDependencyNotConfiguredError,
@@ -94,6 +97,7 @@ module.exports = {
   SeasonNotAuthorizedError,
   SeasonNotFoundError,
   SeasonNotOpenError,
+  SeasonStaleUpdateError,
   SeasonOwnershipChangedError,
   SeasonUnauthenticatedError,
   SeasonValidationError,

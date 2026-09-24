@@ -1,6 +1,6 @@
 "use strict";
 
-const { InvalidSeasonStateError, buildSeason } = require("../domain/season");
+const { InvalidSeasonStateError, buildSeason, normalizeSeasonName } = require("../domain/season");
 const { toClosedSeasonHistoryDto, toOpenSeasonHistoryDto, toSeasonDto } = require("./seasonDto");
 const { decodeSeasonHistoryCursor, encodeSeasonHistoryCursor } = require("./seasonHistoryCursor");
 const {
@@ -11,14 +11,16 @@ const {
   SeasonUnauthenticatedError,
   SeasonValidationError,
 } = require("./seasonErrors");
-const { hashSeasonIdempotencyKey, hashSeasonOpeningRequest, hashSeasonRequest, legacySeasonOpeningReceiptId, seasonClosureReceiptId, seasonOpeningReceiptId, hashSeasonClosureRequest } = require("./seasonHashing");
+const { hashSeasonIdempotencyKey, hashSeasonOpeningRequest, hashSeasonRequest, legacySeasonOpeningReceiptId,
+  seasonClosureReceiptId, seasonOpeningReceiptId, hashSeasonClosureRequest, hashSeasonUpdateRequest,
+  seasonEditToken, seasonUpdateReceiptId } = require("./seasonHashing");
 
 function requireSeasonActor(identity) {
   if (!identity || typeof identity.userId !== "string" || !identity.userId.trim()) throw new SeasonUnauthenticatedError();
   return identity.userId.trim();
 }
 
-function createSeasonService({ selfAccountReader, seasonRepository, openSeasonReader, openSeasonGuard, seasonClosureStore, seasonHistoryReader }) {
+function createSeasonService({ selfAccountReader, seasonRepository, openSeasonReader, openSeasonGuard, seasonClosureStore, seasonHistoryReader, seasonUpdateStore }) {
   if (!selfAccountReader || !seasonRepository || !openSeasonReader || !openSeasonGuard) {
     throw new TypeError("Season service dependencies are required");
   }
@@ -117,10 +119,30 @@ function createSeasonService({ selfAccountReader, seasonRepository, openSeasonRe
       await requireAccount(userId);
       try {
         const season = await openSeasonReader.getByIdForOwner({ userId, groupId, seasonId });
-        return Object.freeze({ season: toSeasonDto(season) });
+        return Object.freeze({ season: toSeasonDto(season), editToken: season.estado === "abierta" ? seasonEditToken(season) : null });
       } catch (error) {
         if (error instanceof SeasonError) throw error;
         throw new SeasonDependencyUnavailableError({ cause: error });
+      }
+    },
+
+    async updateSeason(identity, input) {
+      const userId = requireSeasonActor(identity);
+      if (!seasonUpdateStore) throw new SeasonDependencyUnavailableError();
+      let nombre;
+      try { nombre = normalizeSeasonName(input.nombre); }
+      catch (error) {
+        if (error instanceof InvalidSeasonStateError) throw new SeasonValidationError(error.message, { cause: error });
+        throw error;
+      }
+      const command = Object.freeze({ userId, groupId: input.groupId, seasonId: input.seasonId, nombre,
+        expectedEditToken: input.expectedEditToken,
+        receiptId: seasonUpdateReceiptId(userId, input.idempotencyKey) });
+      try {
+        return await seasonUpdateStore.update(Object.freeze({ ...command, requestHash: hashSeasonUpdateRequest(userId, command) }));
+      } catch (error) {
+        if (error instanceof SeasonError) throw error;
+        throw new SeasonInternalError({ cause: error });
       }
     },
 

@@ -43,6 +43,7 @@ exports.createAndOpenSeason = require("./callables/createAndOpenSeason");
 exports.closeSeason = require("./callables/closeSeason");
 exports.getOpenSeasonContext = require("./callables/getOpenSeasonContext");
 exports.getOwnSeason = require("./callables/getOwnSeason");
+exports.updateSeason = require("./callables/updateSeason");
 exports.listSeasonsForOwnedGroup = require("./callables/listSeasonsForOwnedGroup");
 exports.createMyMembershipForOwnedGroup = require("./callables/createMyMembershipForOwnedGroup");
 exports.getMyMembershipForOwnedGroup = require("./callables/getMyMembershipForOwnedGroup");

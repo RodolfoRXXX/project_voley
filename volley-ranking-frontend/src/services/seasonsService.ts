@@ -19,11 +19,20 @@ export interface CreateAndOpenSeasonResult {
 export interface CloseSeasonInput { groupId: string; seasonId: string; idempotencyKey: string }
 export interface ClosedSeason extends Omit<OwnSeason, "estado" | "createdAt"> { estado: "cerrada"; closedAt: string }
 export interface CloseSeasonResult { outcome: "CLOSED" | "EXISTING_IDEMPOTENT"; season: ClosedSeason }
+export interface UpdateSeasonInput { groupId: string; seasonId: string; nombre: string; expectedEditToken: string; idempotencyKey: string }
+export interface SeasonAppliedEffect { outcome: "UPDATED"; nombre: string; editToken: string; confirmedAt: string }
+export interface UpdateSeasonResult {
+  outcome: "UPDATED" | "NO_CHANGES" | "EXISTING_IDEMPOTENT";
+  appliedEffect: SeasonAppliedEffect | null;
+  currentSeason: OwnSeason;
+  currentEditToken: string | null;
+}
 
 const createCallable = httpsCallable<CreateAndOpenSeasonInput, CreateAndOpenSeasonResult>(functions, "createAndOpenSeason");
 const contextCallable = httpsCallable<{ groupId: string }, { openSeason: OwnSeason | null }>(functions, "getOpenSeasonContext");
-const getCallable = httpsCallable<{ groupId: string; seasonId: string }, { season: OwnSeason }>(functions, "getOwnSeason");
+const getCallable = httpsCallable<{ groupId: string; seasonId: string }, { season: OwnSeason; editToken: string | null }>(functions, "getOwnSeason");
 const closeCallable = httpsCallable<CloseSeasonInput, CloseSeasonResult>(functions, "closeSeason");
+const updateCallable = httpsCallable<UpdateSeasonInput, UpdateSeasonResult>(functions, "updateSeason");
 const historyCallable = httpsCallable<{ groupId: string; pageSize?: number; cursor?: string }, SeasonHistoryPage>(functions, "listSeasonsForOwnedGroup");
 
 export async function createAndOpenSeason(input: CreateAndOpenSeasonInput): Promise<CreateAndOpenSeasonResult> {
@@ -34,11 +43,12 @@ export async function getOpenSeasonContext(groupId: string): Promise<{ openSeaso
   return (await contextCallable({ groupId })).data;
 }
 
-export async function getOwnSeason(groupId: string, seasonId: string): Promise<{ season: OwnSeason }> {
+export async function getOwnSeason(groupId: string, seasonId: string): Promise<{ season: OwnSeason; editToken: string | null }> {
   return (await getCallable({ groupId, seasonId })).data;
 }
 
 export async function closeSeason(input: CloseSeasonInput): Promise<CloseSeasonResult> { return (await closeCallable(input)).data; }
+export async function updateSeason(input: UpdateSeasonInput): Promise<UpdateSeasonResult> { return (await updateCallable(input)).data; }
 
 export async function listSeasonsForOwnedGroup(groupId: string, cursor?: string): Promise<SeasonHistoryPage> {
   return (await historyCallable(cursor ? { groupId, pageSize: 20, cursor } : { groupId, pageSize: 20 })).data;
@@ -51,8 +61,8 @@ export function getSeasonErrorReason(error: unknown): SeasonErrorReason {
       const reason = String((details as { reason?: unknown }).reason);
       const known: SeasonErrorReason[] = [
         "UNAUTHENTICATED", "ACCOUNT_REQUIRED", "GROUP_NOT_FOUND", "GROUP_INCOMPATIBLE", "GROUP_NOT_ACCESSIBLE",
-        "NOT_AUTHORIZED", "SEASON_NOT_FOUND", "VALIDATION_FAILED", "OPEN_SEASON_ALREADY_EXISTS",
-        "SEASON_NOT_OPEN", "SEASON_ALREADY_CLOSED", "SEASON_GUARD_MISSING", "SEASON_GUARD_INCOMPATIBLE",
+        "NOT_AUTHORIZED", "SEASON_NOT_FOUND", "SEASON_NOT_ACCESSIBLE", "VALIDATION_FAILED", "OPEN_SEASON_ALREADY_EXISTS",
+        "SEASON_NOT_OPEN", "SEASON_ALREADY_CLOSED", "STALE_UPDATE", "SEASON_GUARD_MISSING", "SEASON_GUARD_INCOMPATIBLE",
         "ACTIVE_MEMBERSHIPS_EXIST", "MEMBERSHIP_SEASON_INCOMPATIBLE", "MEMBERSHIP_PERIOD_INCOMPATIBLE",
         "MEMBERSHIP_ACTIVE_GUARD_INCOMPATIBLE", "APPROVAL_IN_PROGRESS", "OWNERSHIP_CHANGED",
         "INCOMPATIBLE_STATE", "CURSOR_INVALID", "CURSOR_STALE", "IDEMPOTENCY_CONFLICT", "CONFLICT", "DEPENDENCY_NOT_CONFIGURED", "DEPENDENCY_UNAVAILABLE", "INTERNAL_ERROR",
@@ -72,12 +82,14 @@ export function getSeasonErrorMessage(reason: SeasonErrorReason): string {
     GROUP_NOT_ACCESSIBLE: "Ya no tenés acceso al historial de este Grupo.",
     NOT_AUTHORIZED: "No tenés autorización para administrar la Temporada de este Grupo.",
     SEASON_NOT_FOUND: "No encontramos la Temporada solicitada.",
-    VALIDATION_FAILED: "Revisá el nombre y la fecha de inicio.",
+    SEASON_NOT_ACCESSIBLE: "La Temporada no está disponible para este Grupo.",
+    VALIDATION_FAILED: "Revisá el nombre de la Temporada.",
     CURSOR_INVALID: "La continuación del historial no es válida. Volvé a cargarlo desde el inicio.",
     CURSOR_STALE: "El historial se actualizó. Volvé a cargarlo desde el inicio.",
     OPEN_SEASON_ALREADY_EXISTS: "El Grupo ya tiene una Temporada abierta.",
     SEASON_NOT_OPEN: "La Temporada ya no está abierta.",
     SEASON_ALREADY_CLOSED: "La Temporada ya fue cerrada por otra intención.",
+    STALE_UPDATE: "La Temporada cambió desde que la abriste. Revisá el nombre actual antes de guardar nuevamente.",
     SEASON_GUARD_MISSING: "No se puede cerrar por una inconsistencia; contactá soporte.",
     SEASON_GUARD_INCOMPATIBLE: "No se puede cerrar por una inconsistencia; contactá soporte.",
     ACTIVE_MEMBERSHIPS_EXIST: "Todavía hay integrantes activos. Cada Membresía debe finalizarse explícitamente antes del cierre.",

@@ -77,12 +77,12 @@ function removeTemporaryDirectory(directory) {
 
   // Windows can keep the Functions emulator workspace locked briefly after the
   // child reports exit while its process tree finishes releasing handles.
-  for (let attempt = 0; attempt <= 180; attempt += 1) {
+  for (let attempt = 0; attempt <= 240; attempt += 1) {
     try {
       fs.rmSync(directory, { recursive: true, force: true });
       return;
     } catch (error) {
-      if (!retryableCodes.has(error.code) || attempt === 180) throw error;
+      if (!retryableCodes.has(error.code) || attempt === 240) throw error;
       Atomics.wait(waitBuffer, 0, 0, 250);
     }
   }

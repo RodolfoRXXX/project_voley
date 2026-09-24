@@ -1,7 +1,8 @@
 "use strict";
 
 const { InvalidSeasonStateError, buildSeason } = require("../domain/season");
-const { toSeasonDto } = require("./seasonDto");
+const { toClosedSeasonHistoryDto, toOpenSeasonHistoryDto, toSeasonDto } = require("./seasonDto");
+const { decodeSeasonHistoryCursor, encodeSeasonHistoryCursor } = require("./seasonHistoryCursor");
 const {
   SeasonAccountRequiredError,
   SeasonDependencyUnavailableError,
@@ -17,7 +18,7 @@ function requireSeasonActor(identity) {
   return identity.userId.trim();
 }
 
-function createSeasonService({ selfAccountReader, seasonRepository, openSeasonReader, openSeasonGuard, seasonClosureStore }) {
+function createSeasonService({ selfAccountReader, seasonRepository, openSeasonReader, openSeasonGuard, seasonClosureStore, seasonHistoryReader }) {
   if (!selfAccountReader || !seasonRepository || !openSeasonReader || !openSeasonGuard) {
     throw new TypeError("Season service dependencies are required");
   }
@@ -27,6 +28,7 @@ function createSeasonService({ selfAccountReader, seasonRepository, openSeasonRe
       const account = await selfAccountReader.getByUserId(userId);
       if (!account) throw new SeasonAccountRequiredError();
       if (account.userId !== userId) throw new SeasonDependencyUnavailableError();
+      return account;
     } catch (error) {
       if (error instanceof SeasonError) throw error;
       throw new SeasonDependencyUnavailableError({ cause: error });
@@ -119,6 +121,43 @@ function createSeasonService({ selfAccountReader, seasonRepository, openSeasonRe
       } catch (error) {
         if (error instanceof SeasonError) throw error;
         throw new SeasonDependencyUnavailableError({ cause: error });
+      }
+    },
+
+    async listSeasonsForOwnedGroup(identity, input) {
+      const userId = requireSeasonActor(identity);
+      const account = await requireAccount(userId);
+      if (typeof account.displayName !== "string" || typeof account.accessEmail !== "string" || !account.accessEmail
+        || !(account.accountPhotoUrl === null || typeof account.accountPhotoUrl === "string")) {
+        throw new SeasonAccountRequiredError();
+      }
+      if (!seasonHistoryReader) throw new SeasonDependencyUnavailableError();
+      const position = input.cursor
+        ? decodeSeasonHistoryCursor(input.cursor, { groupId: input.groupId, userId })
+        : null;
+      try {
+        const page = await seasonHistoryReader.listPage({
+          userId,
+          groupId: input.groupId,
+          pageSize: input.pageSize,
+          position,
+        });
+        const nextCursor = page.hasMore && page.last
+          ? encodeSeasonHistoryCursor({
+            groupId: input.groupId,
+            userId,
+            currentSeasonId: page.currentSeason?.seasonId || null,
+            last: page.last,
+          }) : null;
+        return Object.freeze({
+          currentSeason: page.currentSeason ? toOpenSeasonHistoryDto(page.currentSeason) : null,
+          closedSeasons: Object.freeze(page.closedSeasons.map(toClosedSeasonHistoryDto)),
+          nextCursor,
+          hasMore: page.hasMore,
+        });
+      } catch (error) {
+        if (error instanceof SeasonError) throw error;
+        throw new SeasonInternalError({ cause: error });
       }
     },
   };

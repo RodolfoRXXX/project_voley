@@ -20,6 +20,15 @@ class SeasonGroupNotFoundError extends SeasonError {
 class SeasonGroupIncompatibleError extends SeasonError {
   constructor(options = {}) { super("GROUP_INCOMPATIBLE", "Group is incompatible", options); }
 }
+class SeasonGroupNotAccessibleError extends SeasonError {
+  constructor() { super("GROUP_NOT_ACCESSIBLE", "Group is not accessible"); }
+}
+class SeasonCursorInvalidError extends SeasonError {
+  constructor(message = "Season history cursor is invalid", options = {}) { super("CURSOR_INVALID", message, options); }
+}
+class SeasonCursorStaleError extends SeasonError {
+  constructor(options = {}) { super("CURSOR_STALE", "Season history changed; restart pagination", options); }
+}
 class SeasonNotAuthorizedError extends SeasonError {
   constructor() { super("NOT_AUTHORIZED", "The actor does not own this group"); }
 }
@@ -72,10 +81,13 @@ module.exports = {
   SeasonGuardIncompatibleError,
   SeasonGuardMissingError,
   SeasonGroupIncompatibleError,
+  SeasonGroupNotAccessibleError,
   SeasonGroupNotFoundError,
   SeasonIdempotencyConflictError,
   SeasonIncompatibleStateError,
   SeasonInternalError,
+  SeasonCursorInvalidError,
+  SeasonCursorStaleError,
   SeasonMembershipActiveGuardIncompatibleError,
   SeasonMembershipPeriodIncompatibleError,
   SeasonMembershipSeasonIncompatibleError,

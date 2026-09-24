@@ -32,6 +32,9 @@ function createFirestoreSeasonRepository({ db }) {
       const { seasonId, ...data } = season;
       transaction.set(reference(seasonId), data);
     },
+    updateName(transaction, seasonId, nombre) {
+      transaction.update(reference(seasonId), { nombre });
+    },
   };
 }
 

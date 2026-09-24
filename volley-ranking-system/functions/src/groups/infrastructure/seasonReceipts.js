@@ -4,6 +4,7 @@ const HASH = /^[a-f0-9]{64}$/;
 const OPENING_V1_FIELDS = Object.freeze(["action", "groupId", "seasonId", "idempotencyKeyHash", "requestHash", "outcome", "openedAt", "confirmedAt", "receiptVersion"]);
 const OPENING_V2_FIELDS = Object.freeze(["action", "actorUserId", "groupId", "seasonId", "idempotencyKeyHash", "requestHash", "outcome", "openedAt", "confirmedAt", "receiptVersion"]);
 const CLOSURE_FIELDS = Object.freeze(["action", "actorUserId", "groupId", "seasonId", "idempotencyKeyHash", "requestHash", "outcome", "closedAt", "confirmedAt", "receiptVersion"]);
+const UPDATE_FIELDS = Object.freeze(["action", "actorUserId", "groupId", "seasonId", "requestHash", "expectedEditToken", "resultEditToken", "outcome", "confirmedAt", "receiptVersion"]);
 
 function exact(data, fields) { if (!data || typeof data !== "object" || Array.isArray(data)) return false; const keys = Object.keys(data).sort(); const expected = [...fields].sort(); return keys.length === expected.length && !keys.some((key, index) => key !== expected[index]); }
 function validId(value) { return typeof value === "string" && value.trim() === value && value.length > 0 && !value.includes("/"); }
@@ -30,4 +31,16 @@ function hydrateClosureReceipt(snapshot, expectedId) {
   return Object.freeze(data);
 }
 
-module.exports = { CLOSURE_FIELDS, OPENING_V1_FIELDS, OPENING_V2_FIELDS, hydrateClosureReceipt, hydrateOpeningReceipt, sameTimestamp };
+function hydrateUpdateReceipt(snapshot, expectedId) {
+  if (!snapshot.exists) return null;
+  const data = snapshot.data();
+  const valid = snapshot.id === expectedId && exact(data, UPDATE_FIELDS) && data.action === "UPDATE_SEASON"
+    && data.outcome === "UPDATED" && data.receiptVersion === 1 && validId(data.actorUserId)
+    && validId(data.groupId) && validId(data.seasonId) && HASH.test(data.requestHash || "")
+    && HASH.test(data.expectedEditToken || "") && HASH.test(data.resultEditToken || "") && validTimestamp(data.confirmedAt);
+  if (!valid) throw new Error("UPDATE_RECEIPT_INCOMPATIBLE");
+  return Object.freeze(data);
+}
+
+module.exports = { CLOSURE_FIELDS, OPENING_V1_FIELDS, OPENING_V2_FIELDS, UPDATE_FIELDS, hydrateClosureReceipt,
+  hydrateOpeningReceipt, hydrateUpdateReceipt, sameTimestamp };

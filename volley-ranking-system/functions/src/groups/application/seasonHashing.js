@@ -33,4 +33,23 @@ function legacySeasonOpeningReceiptId(groupId, idempotencyKeyHash) { return sha2
 function seasonClosureReceiptId(actorUserId, key) { return sha256(["sportexa:E2-15:season-closure-receipt:v1", actorUserId, key]); }
 function hashSeasonClosureRequest(actorUserId, groupId, seasonId) { return sha256(["sportexa:E2-15:season-closure-request:v1", "contract-v1", actorUserId, groupId, seasonId]); }
 
-module.exports = { hashSeasonClosureRequest, hashSeasonIdempotencyKey, hashSeasonOpeningRequest, hashSeasonRequest, legacySeasonOpeningReceiptId, seasonClosureReceiptId, seasonOpeningReceiptId, sha256 };
+function canonicalTimestamp(timestamp) {
+  if (!timestamp || typeof timestamp.toDate !== "function") throw new TypeError("Timestamp is required");
+  const seconds = Number.isInteger(timestamp.seconds) ? timestamp.seconds : Math.floor(timestamp.toDate().getTime() / 1000);
+  const nanoseconds = Number.isInteger(timestamp.nanoseconds) ? timestamp.nanoseconds : (timestamp.toDate().getTime() % 1000) * 1000000;
+  return `${seconds}:${nanoseconds}`;
+}
+
+function seasonEditToken(season) {
+  return sha256(["sportexa:E2-17:season-edit-token:v1", "contract-v1", season.groupId, season.seasonId,
+    season.schemaVersion, season.estado, season.nombre, season.fechaInicio, canonicalTimestamp(season.createdAt)]);
+}
+function seasonUpdateReceiptId(actorUserId, key) { return sha256(["sportexa:E2-17:season-update-receipt:v1", actorUserId, key]); }
+function hashSeasonUpdateRequest(actorUserId, input) {
+  return sha256(["sportexa:E2-17:season-update-request:v1", "contract-v1", actorUserId, input.groupId,
+    input.seasonId, input.nombre, input.expectedEditToken]);
+}
+
+module.exports = { canonicalTimestamp, hashSeasonClosureRequest, hashSeasonIdempotencyKey, hashSeasonOpeningRequest,
+  hashSeasonRequest, hashSeasonUpdateRequest, legacySeasonOpeningReceiptId, seasonClosureReceiptId, seasonEditToken,
+  seasonOpeningReceiptId, seasonUpdateReceiptId, sha256 };

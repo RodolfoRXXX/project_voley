@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getSeasonErrorReason, getSeasonHistoryErrorMessage, listSeasonsForOwnedGroup } from "@/services/seasonsService";
 import type { ClosedSeasonHistory, OpenSeasonHistory } from "@/types/SeasonHistory";
 import { OpenSeasonSection } from "./OpenSeasonSection";
+import { EditSeasonSection } from "./EditSeasonSection";
 
 const resetReasons = new Set(["CURSOR_STALE", "CURSOR_INVALID"]);
 const accessReasons = new Set(["GROUP_NOT_ACCESSIBLE", "GROUP_NOT_FOUND", "NOT_AUTHORIZED"]);
@@ -80,7 +81,7 @@ export function SeasonHistorySection({ groupId }: { groupId: string }) {
     {status === "ready" ? <div className="mt-5 grid min-w-0 gap-7">
       <section aria-labelledby="current-season-heading">
         <h3 id="current-season-heading" className="font-semibold">Actual</h3>
-        {!current ? <div className="mt-3 space-y-4"><p className="text-sm text-[var(--text-muted)]">No hay una Temporada actual. Es un estado válido.</p><Link href={`/dashboard/groups/${groupId}/seasons/new`} className="inline-flex min-h-11 items-center rounded-lg bg-orange-600 px-5 py-2 font-semibold text-white">Crear y abrir temporada</Link></div> : <article className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Abierta · actual</p><h4 className="mt-1 text-lg font-semibold text-emerald-950">{current.nombre}</h4><p className="mt-2 text-sm text-emerald-900">Fecha de inicio: <time dateTime={current.fechaInicio}>{current.fechaInicio}</time></p><OpenSeasonSection groupId={groupId} season={current} onClosed={() => { generation.current += 1; inFlight.current = false; void load("reset", "Temporada cerrada. Historial actualizado."); }} /></article>}
+        {!current ? <div className="mt-3 space-y-4"><p className="text-sm text-[var(--text-muted)]">No hay una Temporada actual. Es un estado válido.</p><Link href={`/dashboard/groups/${groupId}/seasons/new`} className="inline-flex min-h-11 items-center rounded-lg bg-orange-600 px-5 py-2 font-semibold text-white">Crear y abrir temporada</Link></div> : <article className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Abierta · actual</p><h4 className="mt-1 text-lg font-semibold text-emerald-950">{current.nombre}</h4><p className="mt-2 text-sm text-emerald-900">Fecha de inicio: <time dateTime={current.fechaInicio}>{current.fechaInicio}</time></p><div className="flex flex-wrap gap-3"><EditSeasonSection groupId={groupId} season={current} onUpdated={(message) => { generation.current += 1; inFlight.current = false; void load("reset", message); }} /><OpenSeasonSection groupId={groupId} season={current} onClosed={() => { generation.current += 1; inFlight.current = false; void load("reset", "Temporada cerrada. Historial actualizado."); }} /></div></article>}
       </section>
       <section aria-labelledby="previous-seasons-heading">
         <h3 ref={appendedHeading} tabIndex={-1} id="previous-seasons-heading" className="font-semibold focus:outline-none">Anteriores</h3>

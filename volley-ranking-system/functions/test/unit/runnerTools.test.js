@@ -19,7 +19,7 @@ function withTemporaryDirectory(prefix, callback) {
   try {
     return callback(directory);
   } finally {
-    fs.rmSync(directory, { recursive: true, force: true });
+    removeTemporaryDirectory(directory);
   }
 }
 

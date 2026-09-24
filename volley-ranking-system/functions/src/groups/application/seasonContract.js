@@ -4,7 +4,9 @@ const { SeasonCursorInvalidError, SeasonValidationError } = require("./seasonErr
 
 const CREATE_SEASON_KEYS = Object.freeze(["groupId", "nombre", "fechaInicio", "idempotencyKey"]);
 const CLOSE_SEASON_KEYS = Object.freeze(["groupId", "seasonId", "idempotencyKey"]);
+const UPDATE_SEASON_KEYS = Object.freeze(["groupId", "seasonId", "nombre", "expectedEditToken", "idempotencyKey"]);
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{16,128}$/;
+const EDIT_TOKEN_PATTERN = /^[a-f0-9]{64}$/;
 const SEASON_HISTORY_DEFAULT_PAGE_SIZE = 20;
 const SEASON_HISTORY_MAX_PAGE_SIZE = 20;
 const SEASON_HISTORY_MAX_CURSOR_LENGTH = 2048;
@@ -38,6 +40,20 @@ function validateCloseSeasonPayload(data) {
   assertExactObject(data, CLOSE_SEASON_KEYS);
   assertOpaqueId(data.groupId, "Group id");
   assertOpaqueId(data.seasonId, "Season id");
+  if (typeof data.idempotencyKey !== "string" || !IDEMPOTENCY_KEY_PATTERN.test(data.idempotencyKey)) {
+    throw new SeasonValidationError("Idempotency key is invalid");
+  }
+  return data;
+}
+
+function validateUpdateSeasonPayload(data) {
+  assertExactObject(data, UPDATE_SEASON_KEYS);
+  assertOpaqueId(data.groupId, "Group id");
+  assertOpaqueId(data.seasonId, "Season id");
+  if (typeof data.nombre !== "string") throw new SeasonValidationError("Season name is invalid");
+  if (typeof data.expectedEditToken !== "string" || !EDIT_TOKEN_PATTERN.test(data.expectedEditToken)) {
+    throw new SeasonValidationError("Edit token is invalid");
+  }
   if (typeof data.idempotencyKey !== "string" || !IDEMPOTENCY_KEY_PATTERN.test(data.idempotencyKey)) {
     throw new SeasonValidationError("Idempotency key is invalid");
   }
@@ -83,14 +99,17 @@ function validateListSeasonsForOwnedGroupPayload(data) {
 module.exports = {
   CLOSE_SEASON_KEYS,
   CREATE_SEASON_KEYS,
+  EDIT_TOKEN_PATTERN,
   IDEMPOTENCY_KEY_PATTERN,
   SEASON_HISTORY_DEFAULT_PAGE_SIZE,
   SEASON_HISTORY_MAX_CURSOR_LENGTH,
   SEASON_HISTORY_MAX_PAGE_SIZE,
+  UPDATE_SEASON_KEYS,
   assertExactObject,
   validateCloseSeasonPayload,
   validateCreateSeasonPayload,
   validateOpenSeasonContextPayload,
   validateOwnSeasonPayload,
+  validateUpdateSeasonPayload,
   validateListSeasonsForOwnedGroupPayload,
 };

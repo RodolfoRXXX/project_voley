@@ -19,7 +19,7 @@ function createFirestoreMembershipRepository({ db }) {
   async function requirePeriodIntegrity({ transaction, membership }) {
     if (!membership) throw new InvalidMembershipStateError("Membership is required");
     const firstId = membershipValidityPeriodId(membership.membershipId, 1);
-    if (membership.schemaVersion !== 3) {
+    if (![3, 4].includes(membership.schemaVersion)) {
       const [firstSnapshot, openSnapshot] = await Promise.all([
         transaction.get(periodReference(membership.membershipId, firstId)),
         transaction.get(openPeriodsQuery(membership.membershipId)),
@@ -73,6 +73,7 @@ function createFirestoreMembershipRepository({ db }) {
     requirePeriodIntegrity,
     activePairQuery({ personId, groupId }) { return db.collection("memberships").where("personId", "==", personId).where("groupId", "==", groupId).where("estado", "==", "activa").limit(2); },
     finalizedPairQuery({ personId, groupId }) { return db.collection("memberships").where("personId", "==", personId).where("groupId", "==", groupId).where("estado", "==", "finalizada").limit(2); },
+    successorQuery(previousMembershipId) { return db.collection("memberships").where("previousMembershipId", "==", previousMembershipId).limit(2); },
     createInitial(transaction, membership, activatedAt) {
       const aggregate = createInitialMembership(membership, activatedAt, membershipValidityPeriodId(membership.membershipId, 1));
       transaction.create(reference(membership.membershipId), rootData(aggregate.membership));

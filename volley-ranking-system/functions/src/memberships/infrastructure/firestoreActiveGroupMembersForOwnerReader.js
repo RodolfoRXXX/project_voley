@@ -2,7 +2,7 @@
 
 const { FieldPath, Timestamp } = require("firebase-admin/firestore");
 const { InvalidMembershipStateError, hydrateMembership } = require("../domain/membership");
-const { activeMembershipGuardId } = require("../application/membershipHashing");
+const { activeMembershipGuardId, membershipLifecycleGuardId } = require("../application/membershipHashing");
 const {
   MembershipAccountRequiredError,
   MembershipDependencyUnavailableError,
@@ -14,6 +14,7 @@ const {
 } = require("../application/membershipErrors");
 const { isTransientDependencyError } = require("../../shared/application/transientDependencyError");
 const { assertMembershipCorrelated, hydrateActiveMembershipGuard } = require("./firestoreActiveMembershipGuard");
+const { assertActiveLifecycleCorrelated, hydrateMembershipLifecycleGuard } = require("./firestoreMembershipLifecycleGuard");
 
 function createFirestoreActiveGroupMembersForOwnerReader({ db, membershipRepository, groupCapability, personCapability }) {
   if (!db || !membershipRepository || !groupCapability || !personCapability) {
@@ -50,6 +51,11 @@ function createFirestoreActiveGroupMembersForOwnerReader({ db, membershipReposit
     if (!guard) throw new MembershipIncompatibleStateError("Active Membership guard is absent");
     const periods = await membershipRepository.requirePeriodIntegrity({ transaction, membership: active[0] });
     assertMembershipCorrelated(active[0], guard, periods.latestPeriod);
+    if (active[0].schemaVersion === 4) {
+      const lifecycleId = membershipLifecycleGuardId(groupId, candidate.personId);
+      const lifecycle = hydrateMembershipLifecycleGuard(await transaction.get(db.collection("membershipLifecycleGuards").doc(lifecycleId)), { guardId: lifecycleId, personId: candidate.personId, groupId });
+      assertActiveLifecycleCorrelated(active[0], lifecycle, guard, periods.latestPeriod);
+    }
     return active[0];
   }
 

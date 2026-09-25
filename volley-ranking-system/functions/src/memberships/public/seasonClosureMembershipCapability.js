@@ -1,9 +1,10 @@
 "use strict";
 
 const { InvalidMembershipStateError } = require("../domain/membership");
-const { activeMembershipGuardId } = require("../application/membershipHashing");
+const { activeMembershipGuardId, membershipLifecycleGuardId } = require("../application/membershipHashing");
 const { createFirestoreMembershipRepository } = require("../infrastructure/firestoreMembershipRepository");
 const { assertMembershipCorrelated, hydrateActiveMembershipGuard } = require("../infrastructure/firestoreActiveMembershipGuard");
+const { assertActiveLifecycleCorrelated, hydrateMembershipLifecycleGuard } = require("../infrastructure/firestoreMembershipLifecycleGuard");
 
 function createSeasonClosureMembershipCapability({ db }) {
   if (!db) throw new TypeError("db is required");
@@ -24,6 +25,11 @@ function createSeasonClosureMembershipCapability({ db }) {
       try {
         const periods = await repository.requirePeriodIntegrity({ transaction: unitOfWork, membership });
         assertMembershipCorrelated(membership, guard, periods.latestPeriod);
+        if (membership.schemaVersion === 4) {
+          const lifecycleId = membershipLifecycleGuardId(groupId, membership.personId);
+          const lifecycle = hydrateMembershipLifecycleGuard(await unitOfWork.get(db.collection("membershipLifecycleGuards").doc(lifecycleId)), { guardId: lifecycleId, personId: membership.personId, groupId });
+          assertActiveLifecycleCorrelated(membership, lifecycle, guard, periods.latestPeriod);
+        }
       } catch (error) {
         if (error instanceof InvalidMembershipStateError) return Object.freeze({ status: "period-incompatible" });
         return Object.freeze({ status: "guard-incompatible" });

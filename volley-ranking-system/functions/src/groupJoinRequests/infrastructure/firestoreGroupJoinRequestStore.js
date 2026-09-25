@@ -9,6 +9,7 @@ const {
   groupJoinRequestDecisionHash, groupJoinRequestDecisionIntentId, groupJoinRequestHash,
   groupJoinRequestIntentId, groupJoinRequestActivationIdempotencyHash,
   groupJoinRequestReactivationHash, pendingGroupJoinRequestGuardId,
+  groupJoinRequestRenewalHash,
 } = require("../application/groupJoinRequestHashing");
 
 const {
@@ -31,6 +32,7 @@ const DECISION_INTENT_V1_FIELDS = Object.freeze(["requestId", "personId", "group
 const DECISION_INTENT_FIELDS = Object.freeze([...DECISION_INTENT_V1_FIELDS, "intentStatus"]);
 const CONSUMED_DECISION_INTENT_FIELDS = Object.freeze([...DECISION_INTENT_FIELDS, "outcome", "consumedAt"]);
 const COORDINATION_FIELDS = Object.freeze(["requestId", "personId", "groupId", "seasonId", "decisionIntentId", "requestedBy", "approvalEffect", "membershipId", "expectedActivationOrdinal", "createdAt", "coordinationVersion"]);
+const RENEWAL_COORDINATION_FIELDS = Object.freeze([...COORDINATION_FIELDS.slice(0, -1), "previousMembershipId", "coordinationVersion"]);
 const HASH = /^[a-f0-9]{64}$/;
 function exact(data, expected) { if (!data || typeof data !== "object" || Array.isArray(data)) return false; const a = Object.keys(data).sort(); const b = [...expected].sort(); return a.length === b.length && !a.some((key, i) => key !== b[i]); }
 function validId(value) { return typeof value === "string" && value && value.trim() === value && !value.includes("/") && Buffer.byteLength(value, "utf8") <= 1500; }
@@ -55,15 +57,19 @@ function hydrateDecisionIntent(snapshot) {
   const v1 = data?.intentVersion === 1 && exact(data, DECISION_INTENT_V1_FIELDS);
   const pendingV2 = data?.intentVersion === 2 && data?.intentStatus === "pending" && exact(data, DECISION_INTENT_FIELDS);
   const consumedV2 = data?.intentVersion === 2 && data?.intentStatus === "consumed" && exact(data, CONSUMED_DECISION_INTENT_FIELDS);
-  if ((!v1 && !pendingV2 && !consumedV2) || !validId(data.requestId) || !validId(data.personId) || !validId(data.groupId) || !["approve", "reject"].includes(data.action) || !validId(data.requestedBy) || !HASH.test(data.requestHash || "") || !validTimestamp(data.createdAt)
-    || ((pendingV2 || consumedV2) && data.action !== "approve")
-    || (consumedV2 && (!["APPROVED", "MEMBERSHIP_SEASON_NOT_REACTIVATABLE", "MEMBERSHIP_REACTIVATION_SUPERSEDED"].includes(data.outcome) || !validTimestamp(data.consumedAt) || data.consumedAt.toDate().getTime() < data.createdAt.toDate().getTime()))) throw new GroupJoinRequestIncompatibleStateError();
+  const pendingV3 = data?.intentVersion === 3 && data?.intentStatus === "pending" && exact(data, DECISION_INTENT_FIELDS);
+  const consumedV3 = data?.intentVersion === 3 && data?.intentStatus === "consumed" && exact(data, CONSUMED_DECISION_INTENT_FIELDS);
+  if ((!v1 && !pendingV2 && !consumedV2 && !pendingV3 && !consumedV3) || !validId(data.requestId) || !validId(data.personId) || !validId(data.groupId) || !["approve", "reject"].includes(data.action) || !validId(data.requestedBy) || !HASH.test(data.requestHash || "") || !validTimestamp(data.createdAt)
+    || ((pendingV2 || consumedV2 || pendingV3 || consumedV3) && data.action !== "approve")
+    || ((consumedV2 || consumedV3) && (!["APPROVED", "MEMBERSHIP_SEASON_NOT_REACTIVATABLE", "MEMBERSHIP_REACTIVATION_SUPERSEDED", "MEMBERSHIP_RENEWAL_SUPERSEDED"].includes(data.outcome) || !validTimestamp(data.consumedAt) || data.consumedAt.toDate().getTime() < data.createdAt.toDate().getTime()))) throw new GroupJoinRequestIncompatibleStateError();
   return Object.freeze(data);
 }
 function hydrateCoordination(snapshot) {
   if (!snapshot.exists) return null;
   const data = snapshot.data();
-  if (!exact(data, COORDINATION_FIELDS) || snapshot.id !== data.requestId || !validId(data.requestId) || !validId(data.personId) || !validId(data.groupId) || !validId(data.seasonId) || !validId(data.decisionIntentId) || !validId(data.requestedBy) || !validId(data.membershipId) || !["CREATE_MEMBERSHIP", "REACTIVATE_MEMBERSHIP"].includes(data.approvalEffect) || !Number.isSafeInteger(data.expectedActivationOrdinal) || data.expectedActivationOrdinal < 1 || (data.approvalEffect === "CREATE_MEMBERSHIP" && data.expectedActivationOrdinal !== 1) || !validTimestamp(data.createdAt) || data.coordinationVersion !== 2) throw new GroupJoinRequestIncompatibleStateError();
+  const legacy = data?.coordinationVersion === 2 && exact(data, COORDINATION_FIELDS) && ["CREATE_MEMBERSHIP", "REACTIVATE_MEMBERSHIP"].includes(data.approvalEffect);
+  const renewal = data?.coordinationVersion === 3 && exact(data, RENEWAL_COORDINATION_FIELDS) && data.approvalEffect === "RENEW_MEMBERSHIP" && validId(data.previousMembershipId) && data.previousMembershipId !== data.membershipId;
+  if ((!legacy && !renewal) || snapshot.id !== data.requestId || !validId(data.requestId) || !validId(data.personId) || !validId(data.groupId) || !validId(data.seasonId) || !validId(data.decisionIntentId) || !validId(data.requestedBy) || !validId(data.membershipId) || !Number.isSafeInteger(data.expectedActivationOrdinal) || data.expectedActivationOrdinal < 1 || (["CREATE_MEMBERSHIP", "RENEW_MEMBERSHIP"].includes(data.approvalEffect) && data.expectedActivationOrdinal !== 1) || !validTimestamp(data.createdAt)) throw new GroupJoinRequestIncompatibleStateError();
   return Object.freeze(data);
 }
 function resolvePending(snapshot, guard, context) {
@@ -77,7 +83,7 @@ function assertDecisionIntent(intent, id, request, action, requestedBy) {
   if (!intent || !id || intent.requestId !== request.requestId || intent.personId !== request.personId || intent.groupId !== request.groupId || intent.action !== action || (requestedBy && intent.requestedBy !== requestedBy) || intent.requestHash !== groupJoinRequestDecisionHash(request.requestId, request.personId, request.groupId, action)) throw new GroupJoinRequestIncompatibleStateError();
 }
 function assertCoordination(coordination, request, intent, intentId) {
-  if (!coordination || coordination.requestId !== request.requestId || coordination.personId !== request.personId || coordination.groupId !== request.groupId || coordination.decisionIntentId !== intentId || coordination.requestedBy !== intent.requestedBy || intent.intentVersion !== 2 || intent.intentStatus !== "pending" || coordination.createdAt.toDate().getTime() < intent.createdAt.toDate().getTime()) throw new GroupJoinRequestIncompatibleStateError();
+  if (!coordination || coordination.requestId !== request.requestId || coordination.personId !== request.personId || coordination.groupId !== request.groupId || coordination.decisionIntentId !== intentId || coordination.requestedBy !== intent.requestedBy || ![2, 3].includes(intent.intentVersion) || intent.intentVersion !== coordination.coordinationVersion || intent.intentStatus !== "pending" || coordination.createdAt.toDate().getTime() < intent.createdAt.toDate().getTime()) throw new GroupJoinRequestIncompatibleStateError();
 }
 function assertAlias(intent, request, action, userId) {
   if (!intent) return;
@@ -91,10 +97,13 @@ function mapFailure(error) {
   if (reason === "MEMBERSHIP_REACTIVATION_REQUIRED") return new GroupJoinRequestMembershipReactivationRequiredError({ cause: error });
   if (reason === "MEMBERSHIP_SEASON_NOT_REACTIVATABLE") return new GroupJoinRequestMembershipSeasonNotReactivatableError({ cause: error });
   if (reason === "MEMBERSHIP_REACTIVATION_SUPERSEDED") return new GroupJoinRequestMembershipReactivationSupersededError({ cause: error });
+  if (reason === "MEMBERSHIP_RENEWAL_SUPERSEDED") return new errors.GroupJoinRequestMembershipRenewalSupersededError({ cause: error });
+  if (reason === "MEMBERSHIP_PREDECESSOR_INCOMPATIBLE") return new errors.GroupJoinRequestMembershipPredecessorIncompatibleError({ cause: error });
   if (reason === "OPEN_SEASON_REQUIRED") return new GroupJoinRequestOpenSeasonRequiredError({ cause: error });
   if (reason === "SEASON_INCOMPATIBLE") return new GroupJoinRequestSeasonIncompatibleError({ cause: error });
   if (reason === "GROUP_INCOMPATIBLE" || reason === "GROUP_NOT_FOUND") return new GroupJoinRequestGroupIncompatibleError({ cause: error });
-  if (reason === "INCOMPATIBLE_STATE") return new GroupJoinRequestIncompatibleStateError({ cause: error });
+  if (reason === "NOT_AUTHORIZED") return new errors.GroupJoinRequestGroupNotAccessibleError({ cause: error });
+  if (reason === "INCOMPATIBLE_STATE") return new errors.GroupJoinRequestMembershipIncompatibleStateError({ cause: error });
   if (reason === "CONFLICT") return new GroupJoinRequestConflictError({ cause: error });
   if (reason === "DEPENDENCY_UNAVAILABLE" || isTransientDependencyError(error)) return new GroupJoinRequestDependencyUnavailableError({ cause: error });
   if ([10, "10", "aborted", "ABORTED"].includes(error?.code)) return new GroupJoinRequestConflictError({ cause: error });
@@ -107,17 +116,21 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
   const intentRef = (userId, key) => db.collection("groupJoinRequestIntents").doc(groupJoinRequestIntentId(userId, key));
   const decisionIntentRef = (userId, key) => db.collection("groupJoinRequestDecisionIntents").doc(groupJoinRequestDecisionIntentId(userId, key));
   const coordinationRef = (requestId) => db.collection("groupJoinRequestApprovalCoordinations").doc(requestId);
-  const membershipInput = (request, coordination) => ({
-    requestId: request.requestId, decisionIntentId: coordination.decisionIntentId,
+  const membershipInput = (request, coordination, authorizedBy) => ({
+    requestId: request.requestId, decisionIntentId: coordination.decisionIntentId, authorizedBy,
     personId: request.personId, groupId: request.groupId, seasonId: coordination.seasonId,
     membershipId: coordination.membershipId, expectedActivationOrdinal: coordination.expectedActivationOrdinal,
     idempotencyKeyHash: groupJoinRequestActivationIdempotencyHash(coordination.decisionIntentId, coordination.membershipId, coordination.expectedActivationOrdinal),
-    requestHash: groupJoinRequestReactivationHash(request.requestId, request.personId, request.groupId, coordination.seasonId, coordination.membershipId, coordination.expectedActivationOrdinal),
+    approvalEffect: coordination.approvalEffect,
+    requestHash: coordination.approvalEffect === "RENEW_MEMBERSHIP"
+      ? groupJoinRequestRenewalHash(request.requestId, request.personId, request.groupId, coordination.seasonId, coordination.membershipId, coordination.previousMembershipId, coordination.expectedActivationOrdinal)
+      : groupJoinRequestReactivationHash(request.requestId, request.personId, request.groupId, coordination.seasonId, coordination.membershipId, coordination.expectedActivationOrdinal),
+    ...(coordination.approvalEffect === "RENEW_MEMBERSHIP" ? { previousMembershipId: coordination.previousMembershipId } : {}),
   });
-  const createDecisionIntent = (transaction, ref, request, action, userId, createdAt) => transaction.create(ref, action === "approve"
-    ? { requestId: request.requestId, personId: request.personId, groupId: request.groupId, action, requestedBy: userId, requestHash: groupJoinRequestDecisionHash(request.requestId, request.personId, request.groupId, action), createdAt, intentStatus: "pending", intentVersion: 2 }
+  const createDecisionIntent = (transaction, ref, request, action, userId, createdAt, intentVersion = 2) => transaction.create(ref, action === "approve"
+    ? { requestId: request.requestId, personId: request.personId, groupId: request.groupId, action, requestedBy: userId, requestHash: groupJoinRequestDecisionHash(request.requestId, request.personId, request.groupId, action), createdAt, intentStatus: "pending", intentVersion }
     : { requestId: request.requestId, personId: request.personId, groupId: request.groupId, action, requestedBy: userId, requestHash: groupJoinRequestDecisionHash(request.requestId, request.personId, request.groupId, action), createdAt, intentVersion: 1 });
-  const consumeDecisionIntent = (transaction, ref, intent, outcome, consumedAt) => transaction.set(ref, { requestId: intent.requestId, personId: intent.personId, groupId: intent.groupId, action: "approve", requestedBy: intent.requestedBy, requestHash: intent.requestHash, createdAt: intent.createdAt, intentStatus: "consumed", outcome, consumedAt, intentVersion: 2 });
+  const consumeDecisionIntent = (transaction, ref, intent, outcome, consumedAt) => transaction.set(ref, { requestId: intent.requestId, personId: intent.personId, groupId: intent.groupId, action: "approve", requestedBy: intent.requestedBy, requestHash: intent.requestHash, createdAt: intent.createdAt, intentStatus: "consumed", outcome, consumedAt, intentVersion: intent.intentVersion || 2 });
 
   async function candidateGroup(unitOfWork, groupId, userId) {
     const context = await groupCapability.getCandidateContext({ unitOfWork, groupId, userId });
@@ -128,7 +141,7 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
   async function ownedGroup(unitOfWork, groupId, userId) {
     const context = await groupCapability.getOwnedContext({ unitOfWork, groupId, userId });
     if (context?.status === "incompatible") throw new GroupJoinRequestGroupIncompatibleError();
-    if (context?.status !== "owned") throw new GroupJoinRequestNotAuthorizedError();
+    if (context?.status !== "owned") throw new errors.GroupJoinRequestGroupNotAccessibleError();
   }
   async function assertNoActiveMembership(unitOfWork, personId, groupId) {
     const context = await membershipCapability.getActiveContext({ unitOfWork, personId, groupId });
@@ -141,14 +154,14 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
     const intent = hydrateDecisionIntent(await transaction.get(ref));
     assertDecisionIntent(intent, request.decisionIntentId, request, request.estado === "aprobada" ? "approve" : "reject", request.decidedBy);
     if (intent.createdAt.toDate().getTime() > request.decidedAt.toDate().getTime()) throw new GroupJoinRequestIncompatibleStateError();
-    if (request.estado === "aprobada" && request.schemaVersion === 3 && (intent.intentVersion !== 2 || intent.intentStatus !== "consumed" || intent.outcome !== "APPROVED" || intent.consumedAt.toDate().getTime() < request.decidedAt.toDate().getTime())) throw new GroupJoinRequestIncompatibleStateError();
+    if (request.estado === "aprobada" && [3, 4].includes(request.schemaVersion) && (![2, 3].includes(intent.intentVersion) || intent.intentStatus !== "consumed" || intent.outcome !== "APPROVED" || intent.consumedAt.toDate().getTime() < request.decidedAt.toDate().getTime())) throw new GroupJoinRequestIncompatibleStateError();
     return intent;
   }
   async function assertTerminal(transaction, request, guard, pending, coordination) {
     if (guard || pending || coordination) throw new GroupJoinRequestIncompatibleStateError();
     await readCanonicalIntent(transaction, request);
     if (request.estado === "aprobada") {
-      if (request.schemaVersion === 3) return Object.freeze({ membershipId: request.membershipId, seasonId: request.seasonId });
+      if ([3, 4].includes(request.schemaVersion)) return Object.freeze({ membershipId: request.membershipId, seasonId: request.seasonId });
       const member = await membershipCapability.getHistoricalMembershipContext({ unitOfWork: transaction, personId: request.personId, groupId: request.groupId, membershipId: request.membershipId });
       if (member?.status !== "found") throw new GroupJoinRequestIncompatibleStateError();
       return member;
@@ -179,9 +192,8 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
       const guard = hydrateGuard(guardSnapshot, { guardId: gRef.id, personId: request.personId, groupId });
       const pending = resolvePending(pendingSnapshot, guard, { repository, personId: request.personId, groupId });
       const coordination = hydrateCoordination(coordinationSnapshot);
-      assertAlias(alias, request, "approve", userId);
-
       if (request.estado !== "pendiente") {
+        if (alias) assertAlias(alias, request, "approve", userId);
         const membership = await assertTerminal(transaction, request, guard, pending, coordination);
         if (request.estado === "aprobada") {
           return { terminal: true, outcome: "ALREADY_APPROVED", request, membership };
@@ -189,11 +201,13 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
         if (request.estado === "rechazada") throw new GroupJoinRequestDecisionAlreadyRejectedError();
         throw new GroupJoinRequestRequestCancelledError();
       }
+      assertAlias(alias, request, "approve", userId);
       if (!pending || pending.requestId !== requestId || !guard) throw new GroupJoinRequestIncompatibleStateError();
       if (alias?.intentVersion === 2 && alias.intentStatus === "consumed") {
         if (coordination) throw new GroupJoinRequestIncompatibleStateError();
         if (alias.outcome === "MEMBERSHIP_SEASON_NOT_REACTIVATABLE") throw new GroupJoinRequestMembershipSeasonNotReactivatableError();
         if (alias.outcome === "MEMBERSHIP_REACTIVATION_SUPERSEDED") throw new GroupJoinRequestMembershipReactivationSupersededError();
+        if (alias.outcome === "MEMBERSHIP_RENEWAL_SUPERSEDED") throw new errors.GroupJoinRequestMembershipRenewalSupersededError();
         throw new GroupJoinRequestIncompatibleStateError();
       }
       if (coordination) {
@@ -205,6 +219,7 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
           seasonId: coordination.seasonId,
           membershipId: coordination.membershipId,
           expectedActivationOrdinal: coordination.expectedActivationOrdinal,
+          ...(coordination.approvalEffect === "RENEW_MEMBERSHIP" ? { previousMembershipId: coordination.previousMembershipId } : {}),
         });
         if (!["activation-absent", "activation-open", "activation-closed"].includes(activation?.status)) {
           throw new GroupJoinRequestIncompatibleStateError();
@@ -238,45 +253,42 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
       const membership = await membershipCapability.prepareForGroupJoinRequest({ unitOfWork: transaction, personId: request.personId, groupId });
       if (membership?.status === "active") throw new GroupJoinRequestActiveMembershipExistsError();
       if (!membership || !["absent", "finalized"].includes(membership.status)) throw new GroupJoinRequestIncompatibleStateError();
-      let seasonId; let approvalEffect;
+      let seasonId; let approvalEffect; let membershipId = membership.membershipId; let expectedActivationOrdinal = membership.nextActivationOrdinal; let previousMembershipId;
       if (membership.status === "absent") {
         const season = await seasonCapability.getOpenContextForOwnedGroup({ unitOfWork: transaction, groupId });
         if (season?.status === "absent") throw new GroupJoinRequestOpenSeasonRequiredError();
         if (season?.status !== "open") throw new GroupJoinRequestSeasonIncompatibleError();
         seasonId = season.seasonId; approvalEffect = "CREATE_MEMBERSHIP";
       } else {
-        const season = await seasonCapability.assertOpenSeasonForMembership({ unitOfWork: transaction, groupId, seasonId: membership.seasonId });
-        if (season?.status !== "open") {
-          const consumedAt = Timestamp.now();
-          const intent = alias || {
-            requestId: request.requestId,
-            personId: request.personId,
-            groupId: request.groupId,
-            action: "approve",
-            requestedBy: userId,
-            requestHash: groupJoinRequestDecisionHash(request.requestId, request.personId, request.groupId, "approve"),
-            createdAt: consumedAt,
-          };
-          consumeDecisionIntent(transaction, aliasRef, intent, "MEMBERSHIP_SEASON_NOT_REACTIVATABLE", consumedAt);
-          return { terminal: false, failure: "MEMBERSHIP_SEASON_NOT_REACTIVATABLE" };
+        const openSeason = await seasonCapability.getOpenContextForOwnedGroup({ unitOfWork: transaction, groupId });
+        if (openSeason?.status === "absent") throw new GroupJoinRequestOpenSeasonRequiredError();
+        if (openSeason?.status !== "open") throw new GroupJoinRequestSeasonIncompatibleError();
+        if (openSeason.seasonId === membership.seasonId) {
+          seasonId = membership.seasonId; approvalEffect = "REACTIVATE_MEMBERSHIP";
+        } else {
+          const predecessorSeason = await seasonCapability.getSeasonContext({ unitOfWork: transaction, groupId, seasonId: membership.seasonId });
+          if (predecessorSeason?.status !== "closed") throw new errors.GroupJoinRequestMembershipPredecessorIncompatibleError();
+          seasonId = openSeason.seasonId; approvalEffect = "RENEW_MEMBERSHIP"; previousMembershipId = membership.membershipId;
+          membershipId = membership.renewalMembershipId; expectedActivationOrdinal = 1;
         }
-        seasonId = membership.seasonId; approvalEffect = "REACTIVATE_MEMBERSHIP";
       }
       const createdAt = Timestamp.now();
-      if (!alias) createDecisionIntent(transaction, aliasRef, request, "approve", userId, createdAt);
-      else if (alias.intentVersion === 1) transaction.set(aliasRef, { ...alias, intentStatus: "pending", intentVersion: 2 });
-      const coordinationData = { requestId, personId: request.personId, groupId, seasonId, decisionIntentId: aliasRef.id, requestedBy: userId, approvalEffect, membershipId: membership.membershipId, expectedActivationOrdinal: membership.nextActivationOrdinal, createdAt, coordinationVersion: 2 };
+      const coordinationVersion = approvalEffect === "RENEW_MEMBERSHIP" ? 3 : 2;
+      if (!alias) createDecisionIntent(transaction, aliasRef, request, "approve", userId, createdAt, coordinationVersion);
+      else if (alias.intentVersion === 1) transaction.set(aliasRef, { ...alias, intentStatus: "pending", intentVersion: coordinationVersion });
+      const coordinationData = { requestId, personId: request.personId, groupId, seasonId, decisionIntentId: aliasRef.id, requestedBy: userId, approvalEffect, membershipId, expectedActivationOrdinal, createdAt, ...(previousMembershipId ? { previousMembershipId } : {}), coordinationVersion };
       transaction.create(cRef, coordinationData);
       observe({ stage: "claim", classification: alias ? "retry" : "first-attempt" });
       return { terminal: false, request, coordination: coordinationData };
     });
   }
 
-  async function phaseC({ requestId, receipt, observe }) {
+  async function phaseC({ userId, requestId, receipt, observe }) {
     return db.runTransaction(async (transaction) => {
       const requestSnapshot = await transaction.get(repository.reference(requestId));
       if (!requestSnapshot.exists) throw new GroupJoinRequestIncompatibleStateError();
       const request = repository.fromSnapshot(requestSnapshot);
+      await ownedGroup(transaction, request.groupId, userId);
       const gRef = guardRef(request.groupId, request.personId);
       const cRef = coordinationRef(requestId);
       const [guardSnapshot, coordinationSnapshot] = await transaction.getAll(gRef, cRef);
@@ -292,11 +304,12 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
       if (request.estado !== "pendiente" || !pending || !guard || !coordination) throw new GroupJoinRequestIncompatibleStateError();
       const intent = await readCoordinationIntent(transaction, request, coordination);
       if (receipt.membershipId !== coordination.membershipId || receipt.activationOrdinal !== coordination.expectedActivationOrdinal) throw new GroupJoinRequestIncompatibleStateError();
-      const activation = await membershipCapability.getActivationContext({ unitOfWork: transaction, personId: request.personId, groupId: request.groupId, seasonId: coordination.seasonId, membershipId: coordination.membershipId, expectedActivationOrdinal: coordination.expectedActivationOrdinal });
+      const activation = await membershipCapability.getActivationContext({ unitOfWork: transaction, personId: request.personId, groupId: request.groupId, seasonId: coordination.seasonId, membershipId: coordination.membershipId, expectedActivationOrdinal: coordination.expectedActivationOrdinal, ...(coordination.approvalEffect === "RENEW_MEMBERSHIP" ? { previousMembershipId: coordination.previousMembershipId } : {}) });
       if (receipt.outcome === "REACTIVATION_SUPERSEDED" || activation?.status === "activation-closed") {
-        const consumedAt = Timestamp.now(); consumeDecisionIntent(transaction, db.collection("groupJoinRequestDecisionIntents").doc(coordination.decisionIntentId), intent, "MEMBERSHIP_REACTIVATION_SUPERSEDED", consumedAt); transaction.delete(cRef);
+        const superseded = coordination.approvalEffect === "RENEW_MEMBERSHIP" ? "MEMBERSHIP_RENEWAL_SUPERSEDED" : "MEMBERSHIP_REACTIVATION_SUPERSEDED";
+        const consumedAt = Timestamp.now(); consumeDecisionIntent(transaction, db.collection("groupJoinRequestDecisionIntents").doc(coordination.decisionIntentId), intent, superseded, consumedAt); transaction.delete(cRef);
         observe({ stage: "release", classification: "recovery" });
-        return { failure: "MEMBERSHIP_REACTIVATION_SUPERSEDED" };
+        return { failure: superseded };
       }
       if (activation?.status !== "activation-open") throw new GroupJoinRequestIncompatibleStateError();
       const decidedAt = Timestamp.now();
@@ -310,11 +323,12 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
     });
   }
 
-  async function releaseClaim({ request, coordination, outcome, observe }) {
+  async function releaseClaim({ userId, request, coordination, outcome, observe }) {
     return db.runTransaction(async (transaction) => {
       const currentSnapshot = await transaction.get(repository.reference(request.requestId));
       if (!currentSnapshot.exists) throw new GroupJoinRequestIncompatibleStateError();
       const current = repository.fromSnapshot(currentSnapshot);
+      await ownedGroup(transaction, current.groupId, userId);
       const gRef = guardRef(current.groupId, current.personId);
       const cRef = coordinationRef(current.requestId);
       const [guardSnapshot, coordinationSnapshot] = await transaction.getAll(gRef, cRef);
@@ -324,7 +338,7 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
       const persistedCoordination = hydrateCoordination(coordinationSnapshot);
       if (current.estado !== "pendiente" || !pending || !guard || !persistedCoordination || persistedCoordination.decisionIntentId !== coordination.decisionIntentId) throw new GroupJoinRequestIncompatibleStateError();
       const intent = await readCoordinationIntent(transaction, current, persistedCoordination);
-      const membership = await membershipCapability.getActivationContext({ unitOfWork: transaction, personId: current.personId, groupId: current.groupId, seasonId: persistedCoordination.seasonId, membershipId: persistedCoordination.membershipId, expectedActivationOrdinal: persistedCoordination.expectedActivationOrdinal });
+      const membership = await membershipCapability.getActivationContext({ unitOfWork: transaction, personId: current.personId, groupId: current.groupId, seasonId: persistedCoordination.seasonId, membershipId: persistedCoordination.membershipId, expectedActivationOrdinal: persistedCoordination.expectedActivationOrdinal, ...(persistedCoordination.approvalEffect === "RENEW_MEMBERSHIP" ? { previousMembershipId: persistedCoordination.previousMembershipId } : {}) });
       if (membership?.status !== "activation-absent") throw new GroupJoinRequestIncompatibleStateError();
       if (outcome) consumeDecisionIntent(transaction, db.collection("groupJoinRequestDecisionIntents").doc(persistedCoordination.decisionIntentId), intent, outcome, Timestamp.now());
       transaction.delete(cRef);
@@ -429,17 +443,17 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
       }
       catch (error) { throw mapFailure(error); }
       let receipt;
-      try { receipt = await membershipCapability.createOrRecoverForGroupJoinRequest(membershipInput(claimed.request, claimed.coordination)); observe({ stage: "membership", classification: receipt.outcome === "RECOVERED_ACTIVE" ? "recovery" : "first-attempt" }); }
+      try { receipt = await membershipCapability.createOrRecoverForGroupJoinRequest(membershipInput(claimed.request, claimed.coordination, args.userId)); observe({ stage: "membership", classification: receipt.outcome === "RECOVERED_ACTIVE" ? "recovery" : "first-attempt" }); }
       catch (error) {
         const mapped = mapFailure(error);
         if (mapped.reason === "MEMBERSHIP_SEASON_NOT_REACTIVATABLE") {
-          try { await releaseClaim({ request: claimed.request, coordination: claimed.coordination, outcome: mapped.reason, observe }); } catch (releaseError) { throw mapFailure(releaseError); }
+          try { await releaseClaim({ userId: args.userId, request: claimed.request, coordination: claimed.coordination, outcome: mapped.reason, observe }); } catch (releaseError) { throw mapFailure(releaseError); }
         } else if (["ACTIVE_MEMBERSHIP_EXISTS", "OPEN_SEASON_REQUIRED", "SEASON_INCOMPATIBLE", "GROUP_INCOMPATIBLE"].includes(mapped.reason)) {
-          try { await releaseClaim({ request: claimed.request, coordination: claimed.coordination, observe }); } catch (releaseError) { throw mapFailure(releaseError); }
+          try { await releaseClaim({ userId: args.userId, request: claimed.request, coordination: claimed.coordination, observe }); } catch (releaseError) { throw mapFailure(releaseError); }
         }
         throw mapped;
       }
-      try { const result = await phaseC({ requestId: args.requestId, receipt, observe }); if (result.failure === "MEMBERSHIP_REACTIVATION_SUPERSEDED") throw new GroupJoinRequestMembershipReactivationSupersededError(); return result; }
+      try { const result = await phaseC({ userId: args.userId, requestId: args.requestId, receipt, observe }); if (result.failure === "MEMBERSHIP_REACTIVATION_SUPERSEDED") throw new GroupJoinRequestMembershipReactivationSupersededError(); if (result.failure === "MEMBERSHIP_RENEWAL_SUPERSEDED") throw new errors.GroupJoinRequestMembershipRenewalSupersededError(); return result; }
       catch (error) { throw mapFailure(error); }
     },
     async getDecisionResult({ userId, groupId, requestId, observe = () => {} }) {
@@ -456,7 +470,7 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
             if (!guard || !pending || pending.requestId !== requestId) throw new GroupJoinRequestIncompatibleStateError();
             if (!coordination) return { status: "PENDING", request };
             await readCoordinationIntent(transaction, request, coordination);
-            const membership = await membershipCapability.getActivationContext({ unitOfWork: transaction, personId: request.personId, groupId, seasonId: coordination.seasonId, membershipId: coordination.membershipId, expectedActivationOrdinal: coordination.expectedActivationOrdinal });
+            const membership = await membershipCapability.getActivationContext({ unitOfWork: transaction, personId: request.personId, groupId, seasonId: coordination.seasonId, membershipId: coordination.membershipId, expectedActivationOrdinal: coordination.expectedActivationOrdinal, ...(coordination.approvalEffect === "RENEW_MEMBERSHIP" ? { previousMembershipId: coordination.previousMembershipId } : {}) });
             if (!["activation-absent", "activation-open", "activation-closed"].includes(membership?.status)) throw new GroupJoinRequestIncompatibleStateError();
             observe({ stage: "authoritative-reread", classification: "recovery" }); return { status: "APPROVAL_IN_PROGRESS", request, coordination };
           }
@@ -481,7 +495,16 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
             else {
               const membership = await membershipCapability.prepareForGroupJoinRequest({ unitOfWork: transaction, personId: request.personId, groupId });
               if (membership?.status === "absent") approvalEffect = "CREATE_MEMBERSHIP";
-              else if (membership?.status === "finalized") approvalEffect = "REACTIVATE_MEMBERSHIP";
+              else if (membership?.status === "finalized") {
+                const openSeason = await seasonCapability.getOpenContextForOwnedGroup({ unitOfWork: transaction, groupId });
+                if (openSeason?.status !== "open") throw new GroupJoinRequestIncompatibleStateError();
+                if (openSeason.seasonId === membership.seasonId) approvalEffect = "REACTIVATE_MEMBERSHIP";
+                else {
+                  const predecessorSeason = await seasonCapability.getSeasonContext({ unitOfWork: transaction, groupId, seasonId: membership.seasonId });
+                  if (predecessorSeason?.status !== "closed") throw new GroupJoinRequestIncompatibleStateError();
+                  approvalEffect = "RENEW_MEMBERSHIP";
+                }
+              }
               else throw new GroupJoinRequestIncompatibleStateError();
             }
             composed.push({ request, person: personContext.person, decisionStatus: coordination ? "APPROVAL_IN_PROGRESS" : "PENDING", approvalEffect });

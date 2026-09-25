@@ -357,7 +357,7 @@ test("E2-03 crea y consulta Membresía propia del Owner con unicidad transaccion
           lifecycleGuardCount: lifecycle.exists ? 1 : 0,
           correlated: active.size === 1 && guard.exists && guard.data().membershipId === active.docs[0].id,
         };
-        assert.deepEqual(persisted, { activeCount: 1, activeGuardCount: 1, lifecycleGuardCount: 0, correlated: true }, JSON.stringify({ index, different, persisted }));
+        assert.deepEqual(persisted, { activeCount: 1, activeGuardCount: 1, lifecycleGuardCount: 1, correlated: true }, JSON.stringify({ index, different, persisted }));
         assert.equal(different.filter((item) => item.body?.result?.outcome === "CREATED_ACTIVE").length, 1, JSON.stringify({ index, different }));
         assert.equal(different.filter((item) => ["MEMBERSHIP_ALREADY_EXISTS", "CONFLICT"].includes(item.body?.error?.details?.reason)).length, 1, JSON.stringify({ index, different, persisted }));
         assert.equal(different.some((item) => item.body?.error?.details?.reason === "INTERNAL_ERROR"), false, JSON.stringify({ index, different, persisted }));
@@ -465,8 +465,9 @@ test("E2-03 crea y consulta Membresía propia del Owner con unicidad transaccion
       const activeId = activeMembershipGuardId(ids.finalizeGroup, ids.person);
       assert.equal((await db.collection("activeMembershipGuards").doc(activeId).get()).exists, false);
       const lifecycle = (await db.collection("membershipLifecycleGuards").doc(membershipLifecycleGuardId(ids.finalizeGroup, ids.person)).get()).data();
-      assert.deepEqual(Object.keys(lifecycle).sort(), ["finalizedAt", "groupId", "lastActivationOrdinal", "lifecycleGuardVersion", "membershipId", "personId", "seasonId"]);
-      assert.equal(lifecycle.lifecycleGuardVersion, 2);
+      assert.deepEqual(Object.keys(lifecycle).sort(), ["finalizedAt", "groupId", "lastActivationOrdinal", "lifecycleGuardVersion", "membershipId", "personId", "rootState", "seasonId"]);
+      assert.equal(lifecycle.lifecycleGuardVersion, 3);
+      assert.equal(lifecycle.rootState, "finalized");
       assert.equal(lifecycle.lastActivationOrdinal, 1);
       assert.equal(lifecycle.finalizedAt.isEqual(persisted.fechaEgreso), true);
       assert.equal(lifecycle.membershipId, createdForFinalize.body.result.membership.id);
@@ -547,7 +548,7 @@ test("E2-03 crea y consulta Membresía propia del Owner con unicidad transaccion
       assert.equal((await activeRef.get()).exists, true);
       await activeRef.delete();
       await lifecycleRef.update({ creationRequestHash: "corrupt" });
-      const corrupt = await callFunction(functionsHost, projectId, "getMyMembershipForOwnedGroup", { groupId: ids.finalizeGroup }, owner.idToken);
+      const corrupt = await callFunction(functionsHost, projectId, "createMyMembershipForOwnedGroup", command(ids.finalizeGroup, "e2-18-corrupt-lifecycle-key"), owner.idToken);
       assert.equal(corrupt.body?.error?.details?.reason, "INCOMPATIBLE_STATE");
       assert.equal((await lifecycleRef.get()).data().creationRequestHash, "corrupt");
       await lifecycleRef.set(lifecycleBefore);

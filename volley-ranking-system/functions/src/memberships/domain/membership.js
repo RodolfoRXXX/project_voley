@@ -5,12 +5,15 @@ const { InvalidMembershipValidityPeriodError, closeMembershipValidityPeriod, ope
 const MEMBERSHIP_ACTIVE_SCHEMA_VERSION = 1;
 const MEMBERSHIP_FINALIZED_SCHEMA_VERSION = 2;
 const MEMBERSHIP_SCHEMA_VERSION = 3;
+const MEMBERSHIP_RENEWED_SCHEMA_VERSION = 4;
 const MEMBERSHIP_ACTIVE_STATE = "activa";
 const MEMBERSHIP_FINALIZED_STATE = "finalizada";
 const ACTIVE_MEMBERSHIP_FIELDS = Object.freeze(["personId", "groupId", "seasonId", "estado", "fechaIngreso", "createdAt", "schemaVersion"]);
 const FINALIZED_MEMBERSHIP_FIELDS = Object.freeze(["personId", "groupId", "seasonId", "estado", "fechaIngreso", "fechaEgreso", "createdAt", "schemaVersion"]);
 const ACTIVE_MEMBERSHIP_V3_FIELDS = Object.freeze(["personId", "groupId", "seasonId", "estado", "fechaIngreso", "createdAt", "latestPeriodId", "periodCount", "schemaVersion"]);
 const FINALIZED_MEMBERSHIP_V3_FIELDS = Object.freeze([...ACTIVE_MEMBERSHIP_V3_FIELDS, "fechaEgreso"]);
+const ACTIVE_MEMBERSHIP_V4_FIELDS = Object.freeze([...ACTIVE_MEMBERSHIP_V3_FIELDS.slice(0, -1), "previousMembershipId", "schemaVersion"]);
+const FINALIZED_MEMBERSHIP_V4_FIELDS = Object.freeze([...ACTIVE_MEMBERSHIP_V4_FIELDS, "fechaEgreso"]);
 const MEMBERSHIP_FIELDS = ACTIVE_MEMBERSHIP_FIELDS;
 
 class InvalidMembershipStateError extends Error {
@@ -40,26 +43,36 @@ function buildMembership({ membershipId, personId, groupId, seasonId }) {
   return freezeMembership({ membershipId: requireId(membershipId, "Membership id"), personId: requireId(personId, "Person id"), groupId: requireId(groupId, "Group id"), seasonId: requireId(seasonId, "Season id"), estado: MEMBERSHIP_ACTIVE_STATE, schemaVersion: MEMBERSHIP_SCHEMA_VERSION });
 }
 
+function buildRenewedMembership({ membershipId, personId, groupId, seasonId, previousMembershipId }) {
+  const id = requireId(membershipId, "Membership id");
+  const previous = requireId(previousMembershipId, "Previous Membership id");
+  if (id === previous) throw new InvalidMembershipStateError("Previous Membership must differ from Membership");
+  return freezeMembership({ membershipId: id, personId: requireId(personId, "Person id"), groupId: requireId(groupId, "Group id"), seasonId: requireId(seasonId, "Season id"), estado: MEMBERSHIP_ACTIVE_STATE, previousMembershipId: previous, schemaVersion: MEMBERSHIP_RENEWED_SCHEMA_VERSION });
+}
+
 function hydrateMembership(membershipId, data) {
   requireId(membershipId, "Membership id");
   const activeV1 = data?.estado === MEMBERSHIP_ACTIVE_STATE && data?.schemaVersion === MEMBERSHIP_ACTIVE_SCHEMA_VERSION;
   const finalizedV2 = data?.estado === MEMBERSHIP_FINALIZED_STATE && data?.schemaVersion === MEMBERSHIP_FINALIZED_SCHEMA_VERSION;
   const activeV3 = data?.estado === MEMBERSHIP_ACTIVE_STATE && data?.schemaVersion === MEMBERSHIP_SCHEMA_VERSION;
   const finalizedV3 = data?.estado === MEMBERSHIP_FINALIZED_STATE && data?.schemaVersion === MEMBERSHIP_SCHEMA_VERSION;
-  if (!activeV1 && !finalizedV2 && !activeV3 && !finalizedV3) throw new InvalidMembershipStateError("Membership state and schema version are incompatible");
-  assertExactDocument(data, activeV1 ? ACTIVE_MEMBERSHIP_FIELDS : finalizedV2 ? FINALIZED_MEMBERSHIP_FIELDS : activeV3 ? ACTIVE_MEMBERSHIP_V3_FIELDS : FINALIZED_MEMBERSHIP_V3_FIELDS);
+  const activeV4 = data?.estado === MEMBERSHIP_ACTIVE_STATE && data?.schemaVersion === MEMBERSHIP_RENEWED_SCHEMA_VERSION;
+  const finalizedV4 = data?.estado === MEMBERSHIP_FINALIZED_STATE && data?.schemaVersion === MEMBERSHIP_RENEWED_SCHEMA_VERSION;
+  if (!activeV1 && !finalizedV2 && !activeV3 && !finalizedV3 && !activeV4 && !finalizedV4) throw new InvalidMembershipStateError("Membership state and schema version are incompatible");
+  assertExactDocument(data, activeV1 ? ACTIVE_MEMBERSHIP_FIELDS : finalizedV2 ? FINALIZED_MEMBERSHIP_FIELDS : activeV3 ? ACTIVE_MEMBERSHIP_V3_FIELDS : finalizedV3 ? FINALIZED_MEMBERSHIP_V3_FIELDS : activeV4 ? ACTIVE_MEMBERSHIP_V4_FIELDS : FINALIZED_MEMBERSHIP_V4_FIELDS);
   requireId(data.personId, "Person id"); requireId(data.groupId, "Group id"); requireId(data.seasonId, "Season id");
   timestampMillis(data.fechaIngreso, "Membership admission timestamp"); timestampMillis(data.createdAt, "Membership creation timestamp");
-  if ((finalizedV2 || finalizedV3) && timestampMillis(data.fechaEgreso, "Membership exit timestamp") < timestampMillis(data.fechaIngreso, "Membership admission timestamp")) throw new InvalidMembershipStateError("Membership exit timestamp precedes admission");
-  if (activeV3 || finalizedV3) {
+  if ((finalizedV2 || finalizedV3 || finalizedV4) && timestampMillis(data.fechaEgreso, "Membership exit timestamp") < timestampMillis(data.fechaIngreso, "Membership admission timestamp")) throw new InvalidMembershipStateError("Membership exit timestamp precedes admission");
+  if (activeV3 || finalizedV3 || activeV4 || finalizedV4) {
     requireId(data.latestPeriodId, "Latest validity period id");
     if (!Number.isSafeInteger(data.periodCount) || data.periodCount < 1) throw new InvalidMembershipStateError("Membership period count is invalid");
   }
+  if ((activeV4 || finalizedV4) && requireId(data.previousMembershipId, "Previous Membership id") === membershipId) throw new InvalidMembershipStateError("Membership lineage is cyclic");
   return freezeMembership({ membershipId, ...data });
 }
 
 function createInitialMembership(membership, activatedAt, firstPeriodId) {
-  if (!membership || membership.schemaVersion !== MEMBERSHIP_SCHEMA_VERSION || membership.fechaIngreso || membership.createdAt) throw new InvalidMembershipStateError("Membership creation candidate is invalid");
+  if (!membership || ![MEMBERSHIP_SCHEMA_VERSION, MEMBERSHIP_RENEWED_SCHEMA_VERSION].includes(membership.schemaVersion) || membership.fechaIngreso || membership.createdAt) throw new InvalidMembershipStateError("Membership creation candidate is invalid");
   requireTimestamp(activatedAt, "Membership activation timestamp");
   const period = openMembershipValidityPeriod({ periodId: requireId(firstPeriodId, "First validity period id"), ordinal: 1, startedAt: activatedAt });
   return Object.freeze({ membership: freezeMembership({ ...membership, fechaIngreso: activatedAt, createdAt: activatedAt, latestPeriodId: firstPeriodId, periodCount: 1 }), periods: Object.freeze([period]) });
@@ -83,7 +96,7 @@ function finalizeMembership({ membership, finalizedAt, firstPeriodId, firstPerio
       const closed = closeMembershipValidityPeriod(opened, finalizedAt);
       return Object.freeze({ membership: freezeMembership({ ...membership, estado: MEMBERSHIP_FINALIZED_STATE, fechaEgreso: finalizedAt, latestPeriodId: firstPeriodId, periodCount: 1, schemaVersion: MEMBERSHIP_SCHEMA_VERSION }), periods: Object.freeze([closed]) });
     }
-    if (membership.schemaVersion !== MEMBERSHIP_SCHEMA_VERSION) throw new InvalidMembershipStateError("Membership schema cannot be finalized");
+    if (![MEMBERSHIP_SCHEMA_VERSION, MEMBERSHIP_RENEWED_SCHEMA_VERSION].includes(membership.schemaVersion)) throw new InvalidMembershipStateError("Membership schema cannot be finalized");
     assertPeriodBoundary(membership, firstPeriod, latestPeriod);
     const closed = closeMembershipValidityPeriod(latestPeriod, finalizedAt);
     return Object.freeze({ membership: freezeMembership({ ...membership, estado: MEMBERSHIP_FINALIZED_STATE, fechaEgreso: finalizedAt }), periods: Object.freeze([closed]) });
@@ -101,7 +114,7 @@ function reactivateMembership({ membership, reactivatedAt, firstPeriodId, nextPe
       const { fechaEgreso: omitted, ...root } = membership;
       return Object.freeze({ membership: freezeMembership({ ...root, estado: MEMBERSHIP_ACTIVE_STATE, latestPeriodId: nextPeriodId, periodCount: 2, schemaVersion: MEMBERSHIP_SCHEMA_VERSION }), periods: Object.freeze([historical, current]) });
     }
-    if (membership.schemaVersion !== MEMBERSHIP_SCHEMA_VERSION) throw new InvalidMembershipStateError("Membership schema cannot be reactivated");
+    if (![MEMBERSHIP_SCHEMA_VERSION, MEMBERSHIP_RENEWED_SCHEMA_VERSION].includes(membership.schemaVersion)) throw new InvalidMembershipStateError("Membership schema cannot be reactivated");
     assertPeriodBoundary(membership, firstPeriod, latestPeriod);
     if (timestampMillis(reactivatedAt, "Membership reactivation timestamp") < timestampMillis(latestPeriod.endedAt, "Previous validity period end")) throw new InvalidMembershipStateError("Membership reactivation precedes previous exit");
     if (membership.periodCount === Number.MAX_SAFE_INTEGER) throw new InvalidMembershipStateError("Membership period count exhausted");
@@ -112,4 +125,4 @@ function reactivateMembership({ membership, reactivatedAt, firstPeriodId, nextPe
   } catch (error) { if (error instanceof InvalidMembershipValidityPeriodError) throw new InvalidMembershipStateError(error.message); throw error; }
 }
 
-module.exports = { ACTIVE_MEMBERSHIP_FIELDS, ACTIVE_MEMBERSHIP_V3_FIELDS, FINALIZED_MEMBERSHIP_FIELDS, FINALIZED_MEMBERSHIP_V3_FIELDS, InvalidMembershipStateError, MEMBERSHIP_ACTIVE_STATE, MEMBERSHIP_FIELDS, MEMBERSHIP_ACTIVE_SCHEMA_VERSION, MEMBERSHIP_FINALIZED_STATE, MEMBERSHIP_FINALIZED_SCHEMA_VERSION, MEMBERSHIP_SCHEMA_VERSION, assertPeriodBoundary, buildMembership, createInitialMembership, finalizeMembership, hydrateMembership, reactivateMembership, sameTimestamp };
+module.exports = { ACTIVE_MEMBERSHIP_FIELDS, ACTIVE_MEMBERSHIP_V3_FIELDS, ACTIVE_MEMBERSHIP_V4_FIELDS, FINALIZED_MEMBERSHIP_FIELDS, FINALIZED_MEMBERSHIP_V3_FIELDS, FINALIZED_MEMBERSHIP_V4_FIELDS, InvalidMembershipStateError, MEMBERSHIP_ACTIVE_STATE, MEMBERSHIP_FIELDS, MEMBERSHIP_ACTIVE_SCHEMA_VERSION, MEMBERSHIP_FINALIZED_STATE, MEMBERSHIP_FINALIZED_SCHEMA_VERSION, MEMBERSHIP_SCHEMA_VERSION, MEMBERSHIP_RENEWED_SCHEMA_VERSION, assertPeriodBoundary, buildMembership, buildRenewedMembership, createInitialMembership, finalizeMembership, hydrateMembership, reactivateMembership, sameTimestamp };

@@ -9,6 +9,8 @@ const { assertMembershipCorrelated, hydrateActiveMembershipGuard, isAmbiguousTra
 
 const MEMBERSHIP_LIFECYCLE_GUARD_V1_FIELDS = Object.freeze(["membershipId", "personId", "groupId", "seasonId", "creationIdempotencyKeyHash", "creationRequestHash", "finalizedAt", "lifecycleGuardVersion"]);
 const MEMBERSHIP_LIFECYCLE_GUARD_FIELDS = Object.freeze(["membershipId", "personId", "groupId", "seasonId", "lastActivationOrdinal", "finalizedAt", "lifecycleGuardVersion"]);
+const MEMBERSHIP_LIFECYCLE_GUARD_V3_ACTIVE_FIELDS = Object.freeze(["membershipId", "personId", "groupId", "seasonId", "rootState", "lastActivationOrdinal", "lifecycleGuardVersion"]);
+const MEMBERSHIP_LIFECYCLE_GUARD_V3_FINALIZED_FIELDS = Object.freeze([...MEMBERSHIP_LIFECYCLE_GUARD_V3_ACTIVE_FIELDS, "finalizedAt"]);
 const HASH_PATTERN = /^[a-f0-9]{64}$/;
 function validId(value) { return typeof value === "string" && value.trim() === value && value.length > 0 && !value.includes("/"); }
 function validTimestamp(value) { return value && typeof value.toDate === "function" && !Number.isNaN(value.toDate().getTime()); }
@@ -17,11 +19,12 @@ function sameTimestamp(left, right) { return validTimestamp(left) && validTimest
 function hydrateMembershipLifecycleGuard(snapshot, { guardId, personId, groupId }) {
   if (!snapshot.exists) return null;
   const data = snapshot.data(); const version = data?.lifecycleGuardVersion;
-  const expected = [...(version === 1 ? MEMBERSHIP_LIFECYCLE_GUARD_V1_FIELDS : MEMBERSHIP_LIFECYCLE_GUARD_FIELDS)].sort();
+  const expected = [...(version === 1 ? MEMBERSHIP_LIFECYCLE_GUARD_V1_FIELDS : version === 2 ? MEMBERSHIP_LIFECYCLE_GUARD_FIELDS : data?.rootState === "active" ? MEMBERSHIP_LIFECYCLE_GUARD_V3_ACTIVE_FIELDS : MEMBERSHIP_LIFECYCLE_GUARD_V3_FINALIZED_FIELDS)].sort();
   const keys = data && typeof data === "object" && !Array.isArray(data) ? Object.keys(data).sort() : [];
   const valid = keys.length === expected.length && !keys.some((key, index) => key !== expected[index])
     && validId(data.membershipId) && validId(data.personId) && validId(data.groupId) && validId(data.seasonId)
-    && validTimestamp(data.finalizedAt) && [1, 2].includes(version)
+    && [1, 2, 3].includes(version)
+    && (version < 3 ? validTimestamp(data.finalizedAt) : ["active", "finalized"].includes(data.rootState) && (data.rootState === "active" ? data.finalizedAt === undefined : validTimestamp(data.finalizedAt)))
     && (version === 1 ? HASH_PATTERN.test(data.creationIdempotencyKeyHash) && HASH_PATTERN.test(data.creationRequestHash) : Number.isSafeInteger(data.lastActivationOrdinal) && data.lastActivationOrdinal > 0)
     && snapshot.id === guardId && guardId === membershipLifecycleGuardId(groupId, personId) && data.personId === personId && data.groupId === groupId;
   if (!valid) throw new MembershipIncompatibleStateError("Membership lifecycle guard is invalid");
@@ -32,8 +35,18 @@ function assertFinalizedMembershipCorrelated(membership, lifecycle, latestPeriod
   if (!membership || membership.membershipId !== lifecycle.membershipId || membership.personId !== lifecycle.personId || membership.groupId !== lifecycle.groupId || membership.seasonId !== lifecycle.seasonId || membership.estado !== "finalizada" || !sameTimestamp(membership.fechaEgreso, lifecycle.finalizedAt)
     || (lifecycle.lifecycleGuardVersion === 1 && membership.schemaVersion !== 2)
     || (lifecycle.lifecycleGuardVersion === 2 && membership.schemaVersion !== 3)
-    || (lifecycle.lifecycleGuardVersion === 2 && latestPeriod && (membership.periodCount !== lifecycle.lastActivationOrdinal || latestPeriod.ordinal !== lifecycle.lastActivationOrdinal || latestPeriod.estado !== "cerrado" || !sameTimestamp(latestPeriod.endedAt, lifecycle.finalizedAt)))) {
+    || (lifecycle.lifecycleGuardVersion === 3 && (lifecycle.rootState !== "finalized" || ![3, 4].includes(membership.schemaVersion)))
+    || (lifecycle.lifecycleGuardVersion >= 2 && latestPeriod && (membership.periodCount !== lifecycle.lastActivationOrdinal || latestPeriod.ordinal !== lifecycle.lastActivationOrdinal || latestPeriod.estado !== "cerrado" || !sameTimestamp(latestPeriod.endedAt, lifecycle.finalizedAt)))) {
     throw new MembershipIncompatibleStateError("Finalized Membership lifecycle correlation is invalid");
+  }
+}
+function assertActiveLifecycleCorrelated(membership, lifecycle, activeGuard, latestPeriod) {
+  if (!membership || !activeGuard || lifecycle.lifecycleGuardVersion !== 3 || lifecycle.rootState !== "active"
+    || membership.membershipId !== lifecycle.membershipId || membership.personId !== lifecycle.personId || membership.groupId !== lifecycle.groupId || membership.seasonId !== lifecycle.seasonId
+    || membership.estado !== "activa" || ![3, 4].includes(membership.schemaVersion) || membership.periodCount !== lifecycle.lastActivationOrdinal
+    || activeGuard.membershipId !== lifecycle.membershipId || activeGuard.activationOrdinal !== lifecycle.lastActivationOrdinal
+    || !latestPeriod || latestPeriod.estado !== "abierto" || latestPeriod.ordinal !== lifecycle.lastActivationOrdinal) {
+    throw new MembershipIncompatibleStateError("Active Membership lifecycle correlation is invalid");
   }
 }
 function hydrateQuery(repository, snapshot) { return snapshot.docs.map((document) => repository.fromSnapshot(document)); }
@@ -46,11 +59,11 @@ function createFirestoreMembershipLifecycleGuard({ db, groupRepository, seasonCa
   async function requireFinalizedCurrent({ transaction, lifecycle, membershipRepository }) {
     const membership = await membershipRepository.getById(lifecycle.membershipId, transaction);
     const activeSnapshot = await transaction.get(membershipRepository.activePairQuery(lifecycle));
-    const finalizedSnapshot = await transaction.get(membershipRepository.finalizedPairQuery(lifecycle));
+    const finalizedSnapshot = lifecycle.lifecycleGuardVersion < 3 ? await transaction.get(membershipRepository.finalizedPairQuery(lifecycle)) : null;
     const periodState = membership ? (typeof membershipRepository.requirePeriodIntegrity === "function" ? await membershipRepository.requirePeriodIntegrity({ transaction, membership }) : { firstPeriod: null, latestPeriod: null, openPeriods: [] }) : null;
     assertFinalizedMembershipCorrelated(membership, lifecycle, periodState?.latestPeriod);
     if (!activeSnapshot.empty) throw new MembershipIncompatibleStateError("Finalized lifecycle coexists with an active Membership");
-    requireOnlyMembership(hydrateQuery(membershipRepository, finalizedSnapshot), membership.membershipId, "Finalized lifecycle is not current");
+    if (finalizedSnapshot) requireOnlyMembership(hydrateQuery(membershipRepository, finalizedSnapshot), membership.membershipId, "Finalized lifecycle is not current");
     return { membership, ...periodState };
   }
 
@@ -64,8 +77,8 @@ function createFirestoreMembershipLifecycleGuard({ db, groupRepository, seasonCa
         const [activeSnapshot, lifecycleSnapshot] = await transaction.getAll(activeRef, lifecycleRef);
         const activeGuard = hydrateActiveMembershipGuard(activeSnapshot, { guardId: activeGuardId, personId, groupId });
         const lifecycle = hydrateMembershipLifecycleGuard(lifecycleSnapshot, { guardId: lifecycleGuardId, personId, groupId });
-        if (activeGuard && lifecycle) throw new MembershipIncompatibleStateError("Active and lifecycle guards coexist");
-        if (lifecycle) {
+        if (lifecycle && activeGuard && (lifecycle.lifecycleGuardVersion < 3 || lifecycle.rootState === "finalized")) throw new MembershipIncompatibleStateError("Finalized lifecycle coexists with active guard");
+        if (lifecycle && lifecycle.lifecycleGuardVersion < 3 || lifecycle?.rootState === "finalized") {
           const aggregate = await requireFinalizedCurrent({ transaction, lifecycle, membershipRepository });
           return { kind: "lifecycle-only", outcome: "ALREADY_FINALIZED", membership: aggregate.membership, lifecycle, ...aggregate };
         }
@@ -74,6 +87,7 @@ function createFirestoreMembershipLifecycleGuard({ db, groupRepository, seasonCa
           const activeForPair = await transaction.get(membershipRepository.activePairQuery(activeGuard));
           const periodState = membership ? (typeof membershipRepository.requirePeriodIntegrity === "function" ? await membershipRepository.requirePeriodIntegrity({ transaction, membership }) : { firstPeriod: null, latestPeriod: null, openPeriods: [] }) : null;
           assertMembershipCorrelated(membership, activeGuard, periodState?.latestPeriod);
+          if (lifecycle) assertActiveLifecycleCorrelated(membership, lifecycle, activeGuard, periodState?.latestPeriod);
           requireOnlyMembership(hydrateQuery(membershipRepository, activeForPair), membership.membershipId, "Active Membership is not unique");
           if (!write) return { kind: "active-only", membership, activeGuard, ...periodState };
           if (seasonCapability) {
@@ -88,7 +102,9 @@ function createFirestoreMembershipLifecycleGuard({ db, groupRepository, seasonCa
           const transition = finalizeMembership({ membership, finalizedAt, firstPeriodId: membershipValidityPeriodId(membership.membershipId, 1), firstPeriod: periodState.firstPeriod, latestPeriod: periodState.latestPeriod });
           membershipRepository.persistTransition(transaction, transition);
           transaction.delete(activeRef);
-          transaction.create(lifecycleRef, { membershipId: membership.membershipId, personId, groupId, seasonId: membership.seasonId, lastActivationOrdinal: transition.membership.periodCount, finalizedAt, lifecycleGuardVersion: 2 });
+          const finalizedLifecycle = { membershipId: membership.membershipId, personId, groupId, seasonId: membership.seasonId, rootState: "finalized", lastActivationOrdinal: transition.membership.periodCount, finalizedAt, lifecycleGuardVersion: 3 };
+          if (lifecycle) transaction.set(lifecycleRef, finalizedLifecycle);
+          else transaction.create(lifecycleRef, finalizedLifecycle);
           return { kind: "active-only", outcome: "FINALIZED", membership: transition.membership };
         }
         const activeForPair = await transaction.get(membershipRepository.activePairQuery({ personId, groupId }));
@@ -118,4 +134,4 @@ function createFirestoreMembershipLifecycleGuard({ db, groupRepository, seasonCa
   };
 }
 
-module.exports = { MEMBERSHIP_LIFECYCLE_GUARD_FIELDS, MEMBERSHIP_LIFECYCLE_GUARD_V1_FIELDS, assertFinalizedMembershipCorrelated, createFirestoreMembershipLifecycleGuard, hydrateMembershipLifecycleGuard, sameTimestamp };
+module.exports = { MEMBERSHIP_LIFECYCLE_GUARD_FIELDS, MEMBERSHIP_LIFECYCLE_GUARD_V1_FIELDS, MEMBERSHIP_LIFECYCLE_GUARD_V3_ACTIVE_FIELDS, MEMBERSHIP_LIFECYCLE_GUARD_V3_FINALIZED_FIELDS, assertActiveLifecycleCorrelated, assertFinalizedMembershipCorrelated, createFirestoreMembershipLifecycleGuard, hydrateMembershipLifecycleGuard, sameTimestamp };

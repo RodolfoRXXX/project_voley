@@ -78,7 +78,7 @@ function assertMembershipCorrelated(membership, guard, currentPeriod) {
     || membership.seasonId !== guard.seasonId
     || membership.estado !== "activa"
     || (guard.guardVersion === 1 && membership.schemaVersion !== 1)
-    || (guard.guardVersion === 2 && membership.schemaVersion !== 3)
+    || (guard.guardVersion === 2 && ![3, 4].includes(membership.schemaVersion))
     || (guard.guardVersion === 2 && currentPeriod && (membership.periodCount !== guard.activationOrdinal || membership.latestPeriodId !== currentPeriod.periodId
       || currentPeriod?.estado !== "abierto" || currentPeriod.ordinal !== guard.activationOrdinal
       || currentPeriod.startedAt.toDate().getTime() !== guard.activatedAt.toDate().getTime()))) {
@@ -231,8 +231,8 @@ function createFirestoreActiveMembershipGuard({ db, groupRepository, seasonCapab
           const lifecycle = lifecycleRef ? lifecycleGuard.hydrate(snapshots[1], {
             guardId: lifecycleGuardId, personId: membership.personId, groupId: membership.groupId,
           }) : null;
-          if (guard && lifecycle) throw new MembershipIncompatibleStateError("Active and lifecycle guards coexist");
-          if (lifecycle) {
+          if (guard && lifecycle && !(lifecycle.lifecycleGuardVersion === 3 && lifecycle.rootState === "active")) throw new MembershipIncompatibleStateError("Active guard has incompatible lifecycle");
+          if (lifecycle && !(guard && lifecycle.lifecycleGuardVersion === 3 && lifecycle.rootState === "active")) {
             await lifecycleGuard.requireFinalizedCurrent({ transaction, lifecycle, membershipRepository });
             throw new MembershipReactivationRequiredError();
           }
@@ -240,6 +240,10 @@ function createFirestoreActiveMembershipGuard({ db, groupRepository, seasonCapab
             const persisted = await membershipRepository.getById(guard.membershipId, transaction);
             const periodState = persisted ? await membershipRepository.requirePeriodIntegrity({ transaction, membership: persisted }) : null;
             assertMembershipCorrelated(persisted, guard, periodState?.latestPeriod);
+            if (lifecycle) {
+              const { assertActiveLifecycleCorrelated } = require("./firestoreMembershipLifecycleGuard");
+              assertActiveLifecycleCorrelated(persisted, lifecycle, guard, periodState?.latestPeriod);
+            }
             if (guardIdempotencyHash(guard) === idempotencyKeyHash) {
               if (guardRequestHash(guard) !== requestHash) throw new MembershipIdempotencyConflictError();
               return { outcome: "EXISTING_IDEMPOTENT", membershipId: persisted.membershipId, membership: persisted };
@@ -266,6 +270,15 @@ function createFirestoreActiveMembershipGuard({ db, groupRepository, seasonCapab
             activationIdempotencyHash: idempotencyKeyHash,
             activationRequestHash: requestHash,
             guardVersion: 2,
+          });
+          if (lifecycleRef) transaction.create(lifecycleRef, {
+            membershipId: membership.membershipId,
+            personId: membership.personId,
+            groupId: membership.groupId,
+            seasonId: membership.seasonId,
+            rootState: "active",
+            lastActivationOrdinal: 1,
+            lifecycleGuardVersion: 3,
           });
           return { outcome: "CREATED_ACTIVE", membershipId: membership.membershipId };
         });

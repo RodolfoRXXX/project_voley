@@ -25,6 +25,8 @@ class MembershipReactivationRequiredError extends MembershipError { constructor(
 class MembershipSeasonNotReactivatableError extends MembershipError { constructor(options = {}) { super("MEMBERSHIP_SEASON_NOT_REACTIVATABLE", "Membership season is not reactivatable", options); } }
 class MembershipSeasonNotModifiableError extends MembershipError { constructor(options = {}) { super("MEMBERSHIP_SEASON_NOT_MODIFIABLE", "Membership season is not modifiable", options); } }
 class MembershipReactivationSupersededError extends MembershipError { constructor(options = {}) { super("MEMBERSHIP_REACTIVATION_SUPERSEDED", "Membership reactivation was superseded", options); } }
+class MembershipRenewalSupersededError extends MembershipError { constructor(options = {}) { super("MEMBERSHIP_RENEWAL_SUPERSEDED", "Membership renewal was superseded", options); } }
+class MembershipPredecessorIncompatibleError extends MembershipError { constructor(options = {}) { super("MEMBERSHIP_PREDECESSOR_INCOMPATIBLE", "Membership predecessor is incompatible", options); } }
 class MembershipIdempotencyConflictError extends MembershipError { constructor(options = {}) { super("IDEMPOTENCY_CONFLICT", "Idempotency key was used with another request", options); } }
 class MembershipIncompatibleStateError extends MembershipError { constructor(message = "Membership state is incompatible", options = {}) { super("INCOMPATIBLE_STATE", message, options); } }
 class MembershipConflictError extends MembershipError { constructor(options = {}) { super("CONFLICT", "Membership operation conflicted", options); } }
@@ -57,6 +59,8 @@ module.exports = {
   MembershipPersonRequiredError,
   MembershipReactivationRequiredError,
   MembershipReactivationSupersededError,
+  MembershipRenewalSupersededError,
+  MembershipPredecessorIncompatibleError,
   MembershipRosterContextChangedError,
   MembershipTargetNotAccessibleError,
   MembershipTargetIsSelfError,

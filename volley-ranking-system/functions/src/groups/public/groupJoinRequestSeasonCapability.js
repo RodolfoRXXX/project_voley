@@ -31,6 +31,18 @@ function createGroupJoinRequestSeasonCapability({ db }) {
       if (context.status !== "open") return context;
       return Object.freeze({ status: context.seasonId === seasonId ? "open" : "changed", seasonId: context.seasonId, groupId });
     },
+    async getSeasonContext({ unitOfWork, groupId, seasonId }) {
+      try {
+        const snapshot = await unitOfWork.get(db.collection("seasons").doc(seasonId));
+        if (!snapshot.exists) return Object.freeze({ status: "absent" });
+        const season = repository.fromSnapshot(snapshot);
+        if (!season || season.groupId !== groupId) return Object.freeze({ status: "incompatible" });
+        return Object.freeze({ status: season.estado === "cerrada" ? "closed" : season.estado === "abierta" ? "open" : "incompatible", seasonId, groupId });
+      } catch (error) {
+        if (error instanceof InvalidSeasonStateError || error?.reason === "INCOMPATIBLE_STATE") return Object.freeze({ status: "incompatible" });
+        throw error;
+      }
+    },
   });
 }
 

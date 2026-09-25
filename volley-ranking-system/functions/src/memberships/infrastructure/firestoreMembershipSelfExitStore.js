@@ -31,7 +31,7 @@ const {
   isMembershipContention,
   mapInfrastructureError,
 } = require("./firestoreActiveMembershipGuard");
-const { hydrateMembershipLifecycleGuard } = require("./firestoreMembershipLifecycleGuard");
+const { assertActiveLifecycleCorrelated, hydrateMembershipLifecycleGuard } = require("./firestoreMembershipLifecycleGuard");
 
 const INTENT_FIELDS = Object.freeze([
   "userId", "personId", "membershipId", "groupId", "seasonId", "activationOrdinal",
@@ -159,8 +159,8 @@ function createFirestoreMembershipSelfExitStore({
         const lifecycle = hydrateMembershipLifecycleGuard(lifecycleSnapshot, {
           guardId: lifecycleGuardId, personId: args.personId, groupId: args.groupId,
         });
-        if (activeGuard && lifecycle) throw new MembershipIncompatibleStateError("Active and lifecycle guards coexist");
-        if (lifecycle) {
+        if (activeGuard && lifecycle && !(lifecycle.lifecycleGuardVersion === 3 && lifecycle.rootState === "active")) throw new MembershipIncompatibleStateError("Active guard has incompatible lifecycle");
+        if (lifecycle && !activeGuard) {
           await lifecycleGuard.requireFinalizedCurrent({ transaction, lifecycle, membershipRepository });
           throw new MembershipNotActiveError();
         }
@@ -175,11 +175,10 @@ function createFirestoreMembershipSelfExitStore({
 
         const membership = await membershipRepository.getById(activeGuard.membershipId, transaction);
         const activeForPair = await transaction.get(membershipRepository.activePairQuery(activeGuard));
-        const finalizedForPair = await transaction.get(membershipRepository.finalizedPairQuery(activeGuard));
         const periods = membership ? await membershipRepository.requirePeriodIntegrity({ transaction, membership }) : null;
         assertMembershipCorrelated(membership, activeGuard, periods?.latestPeriod);
+        if (lifecycle) assertActiveLifecycleCorrelated(membership, lifecycle, activeGuard, periods?.latestPeriod);
         requireOnlyMembership(hydrateQuery(membershipRepository, activeForPair), membership.membershipId, "Active Membership is not unique");
-        if (!finalizedForPair.empty) throw new MembershipIncompatibleStateError("Active and finalized Memberships coexist");
 
         const group = await groupRepository.getById(args.groupId, transaction);
         if (!group) throw new MembershipGroupNotFoundError();
@@ -234,15 +233,18 @@ function createFirestoreMembershipSelfExitStore({
         });
         membershipRepository.persistTransition(transaction, transition);
         transaction.delete(activeRef);
-        transaction.create(lifecycleRef, {
+        const finalizedLifecycle = {
           membershipId: membership.membershipId,
           personId: args.personId,
           groupId: args.groupId,
           seasonId: membership.seasonId,
+          rootState: "finalized",
           lastActivationOrdinal: activationOrdinal,
           finalizedAt,
-          lifecycleGuardVersion: 2,
-        });
+          lifecycleGuardVersion: 3,
+        };
+        if (lifecycle) transaction.set(lifecycleRef, finalizedLifecycle);
+        else transaction.create(lifecycleRef, finalizedLifecycle);
         transaction.create(intentRef, intentData);
         return toResult(intentData);
       });

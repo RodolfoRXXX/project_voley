@@ -24,7 +24,7 @@ const {
 } = require("../application/membershipHashing");
 const { annotateMembershipError } = require("../application/membershipObservability");
 const { assertMembershipCorrelated, hydrateActiveMembershipGuard, isAmbiguousTransactionFailure, isMembershipContention } = require("./firestoreActiveMembershipGuard");
-const { assertFinalizedMembershipCorrelated, hydrateMembershipLifecycleGuard } = require("./firestoreMembershipLifecycleGuard");
+const { assertActiveLifecycleCorrelated, assertFinalizedMembershipCorrelated, hydrateMembershipLifecycleGuard } = require("./firestoreMembershipLifecycleGuard");
 
 const ACTION = "FINALIZE_ACTIVE_THIRD_PARTY_MEMBERSHIP";
 const SUCCESS = "MEMBERSHIP_FINALIZATION_CONFIRMED";
@@ -121,25 +121,24 @@ function createFirestoreMembershipAdministrativeFinalizationStore({
     const [activeSnapshot, lifecycleSnapshot] = await transaction.getAll(activeRef, lifecycleRef);
     const activeGuard = hydrateActiveMembershipGuard(activeSnapshot, { guardId: activeGuardId, personId: membership.personId, groupId: args.groupId });
     const lifecycle = hydrateMembershipLifecycleGuard(lifecycleSnapshot, { guardId: lifecycleGuardId, personId: membership.personId, groupId: args.groupId });
-    if (activeGuard && lifecycle) throw new MembershipIncompatibleStateError("Active and lifecycle guards coexist");
+    if (activeGuard && lifecycle && !(lifecycle.lifecycleGuardVersion === 3 && lifecycle.rootState === "active")) throw new MembershipIncompatibleStateError("Active guard has incompatible lifecycle");
 
     const periods = await membershipRepository.requirePeriodIntegrity({ transaction, membership });
     const activePair = await transaction.get(membershipRepository.activePairQuery({ personId: membership.personId, groupId: args.groupId }));
-    const finalizedPair = await transaction.get(membershipRepository.finalizedPairQuery({ personId: membership.personId, groupId: args.groupId }));
     const activeIds = activePair.docs.map((document) => document.id);
-    const finalizedIds = finalizedPair.docs.map((document) => document.id);
 
     if (membership.estado === "finalizada") {
-      if (activeGuard || !lifecycle || activeIds.length || finalizedIds.length !== 1 || finalizedIds[0] !== membership.membershipId) {
+      if (activeGuard || !lifecycle || activeIds.length) {
         throw new MembershipIncompatibleStateError("Finalized target coordination is incompatible");
       }
       assertFinalizedMembershipCorrelated(membership, lifecycle, periods.latestPeriod);
       return Object.freeze({ kind: "finalized", membership, targetPerson, periods, activeRef, lifecycleRef, lifecycle });
     }
-    if (!activeGuard || lifecycle || activeIds.length !== 1 || activeIds[0] !== membership.membershipId || finalizedIds.length) {
+    if (!activeGuard || activeIds.length !== 1 || activeIds[0] !== membership.membershipId) {
       throw new MembershipIncompatibleStateError("Active target coordination is incompatible");
     }
     assertMembershipCorrelated(membership, activeGuard, periods.latestPeriod);
+    if (lifecycle) assertActiveLifecycleCorrelated(membership, lifecycle, activeGuard, periods.latestPeriod);
     const activationOrdinal = membership.schemaVersion === 1 ? 1 : membership.periodCount;
     const periodId = membership.schemaVersion === 1 ? membershipValidityPeriodId(membership.membershipId, 1) : membership.latestPeriodId;
     const activationRef = membershipAdministrativeFinalizationActivationRef({
@@ -147,7 +146,7 @@ function createFirestoreMembershipAdministrativeFinalizationStore({
       membershipId: membership.membershipId, targetPersonId: membership.personId, seasonId: membership.seasonId,
       activationOrdinal, periodId, activeGuardVersion: activeGuard.guardVersion,
     });
-    return Object.freeze({ kind: "active", membership, targetPerson, periods, activeRef, lifecycleRef, activationOrdinal, activationRef });
+    return Object.freeze({ kind: "active", membership, targetPerson, periods, activeRef, lifecycleRef, lifecycle, activationOrdinal, activationRef });
   }
 
   async function requireExactOpenSeason(transaction, membership) {
@@ -223,11 +222,13 @@ function createFirestoreMembershipAdministrativeFinalizationStore({
         const consumed = intentData(args, actorPerson, target, SUCCESS, completedAt, true);
         membershipRepository.persistTransition(transaction, transition);
         transaction.delete(target.activeRef);
-        transaction.create(target.lifecycleRef, {
+        const finalizedLifecycle = {
           membershipId: target.membership.membershipId, personId: target.membership.personId,
           groupId: args.groupId, seasonId: target.membership.seasonId,
-          lastActivationOrdinal: target.activationOrdinal, finalizedAt: completedAt, lifecycleGuardVersion: 2,
-        });
+          rootState: "finalized", lastActivationOrdinal: target.activationOrdinal, finalizedAt: completedAt, lifecycleGuardVersion: 3,
+        };
+        if (target.lifecycle) transaction.set(target.lifecycleRef, finalizedLifecycle);
+        else transaction.create(target.lifecycleRef, finalizedLifecycle);
         transaction.create(intentRef, consumed);
         return Object.freeze({ intent: consumed });
       });

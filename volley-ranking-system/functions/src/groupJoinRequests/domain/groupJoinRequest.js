@@ -5,6 +5,7 @@ const CANCELLED_FIELDS = Object.freeze([...PENDING_FIELDS, "cancelledAt"]);
 const REJECTED_FIELDS = Object.freeze(["personId", "groupId", "estado", "createdAt", "decisionIntentId", "decidedBy", "decidedAt", "schemaVersion"]);
 const APPROVED_FIELDS = Object.freeze([...REJECTED_FIELDS, "membershipId"]);
 const APPROVED_V3_FIELDS = Object.freeze(["personId", "groupId", "estado", "createdAt", "decisionIntentId", "decidedBy", "decidedAt", "membershipId", "seasonId", "approvalEffect", "membershipActivationOrdinal", "schemaVersion"]);
+const APPROVED_V4_FIELDS = APPROVED_V3_FIELDS;
 
 class InvalidGroupJoinRequestStateError extends Error {
   constructor(message) { super(message); this.name = "InvalidGroupJoinRequestStateError"; }
@@ -73,9 +74,9 @@ function freezeRequest(data) {
         decidedBy: requireId(decidedBy, "Decision actor"), decidedAt: timestamp,
         membershipId: requireId(membershipId, "Membership id"),
         seasonId: requireId(seasonId, "Season id"),
-        approvalEffect: ["CREATE_MEMBERSHIP", "REACTIVATE_MEMBERSHIP"].includes(approvalEffect) ? approvalEffect : (() => { throw new InvalidGroupJoinRequestStateError("Approval effect is invalid"); })(),
+        approvalEffect: ["CREATE_MEMBERSHIP", "REACTIVATE_MEMBERSHIP", "RENEW_MEMBERSHIP"].includes(approvalEffect) ? approvalEffect : (() => { throw new InvalidGroupJoinRequestStateError("Approval effect is invalid"); })(),
         membershipActivationOrdinal: Number.isSafeInteger(membershipActivationOrdinal) && membershipActivationOrdinal > 0 ? membershipActivationOrdinal : (() => { throw new InvalidGroupJoinRequestStateError("Membership activation ordinal is invalid"); })(),
-        schemaVersion: 3,
+        schemaVersion: approvalEffect === "RENEW_MEMBERSHIP" ? 4 : 3,
       });
     },
   });
@@ -100,28 +101,30 @@ function hydrateGroupJoinRequest(requestId, data) {
   const rejected = data?.estado === "rechazada" && data?.schemaVersion === 2;
   const approved = data?.estado === "aprobada" && data?.schemaVersion === 2;
   const approvedV3 = data?.estado === "aprobada" && data?.schemaVersion === 3;
-  if (!pending && !cancelled && !rejected && !approved && !approvedV3) throw new InvalidGroupJoinRequestStateError("Request state is incompatible");
-  exactKeys(data, pending ? PENDING_FIELDS : cancelled ? CANCELLED_FIELDS : rejected ? REJECTED_FIELDS : approved ? APPROVED_FIELDS : APPROVED_V3_FIELDS);
+  const approvedV4 = data?.estado === "aprobada" && data?.schemaVersion === 4;
+  if (!pending && !cancelled && !rejected && !approved && !approvedV3 && !approvedV4) throw new InvalidGroupJoinRequestStateError("Request state is incompatible");
+  exactKeys(data, pending ? PENDING_FIELDS : cancelled ? CANCELLED_FIELDS : rejected ? REJECTED_FIELDS : approved ? APPROVED_FIELDS : approvedV3 ? APPROVED_V3_FIELDS : APPROVED_V4_FIELDS);
   requireId(data.personId, "Person id");
   requireId(data.groupId, "Group id");
   const createdAt = requireTimestamp(data.createdAt, "Creation timestamp");
   if (cancelled && requireTimestamp(data.cancelledAt, "Cancellation timestamp").toDate().getTime() < createdAt.toDate().getTime()) {
     throw new InvalidGroupJoinRequestStateError("Cancellation precedes creation");
   }
-  if (rejected || approved || approvedV3) {
+  if (rejected || approved || approvedV3 || approvedV4) {
     requireId(data.decisionIntentId, "Decision intent id");
     requireId(data.decidedBy, "Decision actor");
     if (requireTimestamp(data.decidedAt, "Decision timestamp").toDate().getTime() < createdAt.toDate().getTime()) {
       throw new InvalidGroupJoinRequestStateError("Decision precedes creation");
     }
   }
-  if (approved || approvedV3) requireId(data.membershipId, "Membership id");
-  if (approvedV3) {
+  if (approved || approvedV3 || approvedV4) requireId(data.membershipId, "Membership id");
+  if (approvedV3 || approvedV4) {
     requireId(data.seasonId, "Season id");
-    if (!["CREATE_MEMBERSHIP", "REACTIVATE_MEMBERSHIP"].includes(data.approvalEffect)) throw new InvalidGroupJoinRequestStateError("Approval effect is invalid");
-    if (!Number.isSafeInteger(data.membershipActivationOrdinal) || data.membershipActivationOrdinal < 1 || (data.approvalEffect === "CREATE_MEMBERSHIP" && data.membershipActivationOrdinal !== 1)) throw new InvalidGroupJoinRequestStateError("Membership activation ordinal is invalid");
+    const effects = approvedV4 ? ["RENEW_MEMBERSHIP"] : ["CREATE_MEMBERSHIP", "REACTIVATE_MEMBERSHIP"];
+    if (!effects.includes(data.approvalEffect)) throw new InvalidGroupJoinRequestStateError("Approval effect is invalid");
+    if (!Number.isSafeInteger(data.membershipActivationOrdinal) || data.membershipActivationOrdinal < 1 || (["CREATE_MEMBERSHIP", "RENEW_MEMBERSHIP"].includes(data.approvalEffect) && data.membershipActivationOrdinal !== 1)) throw new InvalidGroupJoinRequestStateError("Membership activation ordinal is invalid");
   }
   return freezeRequest({ requestId, ...data });
 }
 
-module.exports = { APPROVED_FIELDS, APPROVED_V3_FIELDS, CANCELLED_FIELDS, PENDING_FIELDS, REJECTED_FIELDS, InvalidGroupJoinRequestStateError, buildGroupJoinRequest, hydrateGroupJoinRequest };
+module.exports = { APPROVED_FIELDS, APPROVED_V3_FIELDS, APPROVED_V4_FIELDS, CANCELLED_FIELDS, PENDING_FIELDS, REJECTED_FIELDS, InvalidGroupJoinRequestStateError, buildGroupJoinRequest, hydrateGroupJoinRequest };

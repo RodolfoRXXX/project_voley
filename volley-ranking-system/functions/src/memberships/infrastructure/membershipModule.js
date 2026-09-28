@@ -21,12 +21,15 @@ const { createFirestoreMembershipAdministrativeFinalizationStore } = require("./
 const { createFirestoreMyMembershipReader } = require("./firestoreMyMembershipReader");
 const { createFirestoreMyCurrentGroupMembershipsReader } = require("./firestoreMyCurrentGroupMembershipsReader");
 const { createFirestoreActiveGroupMembersForOwnerReader } = require("./firestoreActiveGroupMembersForOwnerReader");
+const { createFirestoreOwnGroupMembershipHistoryReader } = require("./firestoreOwnGroupMembershipHistoryReader");
 const { createMemberGroupContextAdapter, createOpenSeasonContextAdapter, createOwnedGroupContextAdapter, createSelfPersonContextAdapter } = require("./membershipExternalContexts");
 const { createGroupRosterContextCapability } = require("../../groups/public/groupRosterContextCapability");
 const { createActiveGroupMemberPersonCapability } = require("../../persons/public/activeGroupMemberPersonCapability");
 const { createAdministrativeMembershipFinalizationContextCapability } = require("../../groups/public/administrativeMembershipFinalizationContextCapability");
 const { createAdministrativeMembershipFinalizationPersonCapability } = require("../../persons/public/administrativeMembershipFinalizationPersonCapability");
 const { createGroupJoinRequestSeasonCapability } = require("../../groups/public/groupJoinRequestSeasonCapability");
+const { createOwnMembershipHistoryContextCapability } = require("../../groups/public/ownMembershipHistoryContextCapability");
+const { createOwnMembershipHistoryPersonCapability } = require("../../persons/public/ownMembershipHistoryPersonCapability");
 
 const accountService = createAccountService({ userRepository: createFirestoreUserRepository({ db }) });
 const selfAccountReader = createFirestoreSelfAccountReader({ accountService });
@@ -69,6 +72,11 @@ module.exports = createMembershipService({
   administrativeFinalizationStore,
   myMembershipReader: createFirestoreMyMembershipReader({ db, groupRepository, membershipRepository }),
   myCurrentGroupMembershipsReader: createFirestoreMyCurrentGroupMembershipsReader({ db, membershipRepository }),
+  ownGroupMembershipHistoryReader: createFirestoreOwnGroupMembershipHistoryReader({
+    db,
+    personCapability: createOwnMembershipHistoryPersonCapability({ db }),
+    contextCapability: createOwnMembershipHistoryContextCapability({ db }),
+  }),
   memberGroupContext: createMemberGroupContextAdapter({ memberContext }),
   ownerActiveGroupMembersReader: createFirestoreActiveGroupMembersForOwnerReader({
     db,

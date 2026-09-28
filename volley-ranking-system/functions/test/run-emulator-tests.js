@@ -209,6 +209,13 @@ const membershipRenewalTestPath = path.join(
   "emulator",
   "membershipRenewalE2.test.js"
 );
+const ownGroupMembershipHistoryTestPath = path.join(
+  systemRoot,
+  "functions",
+  "test",
+  "emulator",
+  "ownGroupMembershipHistoryE2.test.js"
+);
 const legacyJoinRetirementTestPath = path.join(
   systemRoot,
   "functions",
@@ -216,7 +223,11 @@ const legacyJoinRetirementTestPath = path.join(
   "emulator",
   "legacyJoinRetirementE2.test.js"
 );
-const command = process.env.E2_18_FOCAL === "1"
+const command = process.env.E2_19_REGRESSIONS === "1"
+  ? `node --test --test-concurrency=1 "${membershipListTestPath}" "${membershipReactivationTestPath}" "${seasonHistoryTestPath}" "${membershipRenewalTestPath}"`
+  : process.env.E2_19_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${ownGroupMembershipHistoryTestPath}"`
+  : process.env.E2_18_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${membershipRenewalTestPath}"`
   : process.env.E2_17_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${seasonUpdateTestPath}"`
@@ -252,7 +263,7 @@ const command = process.env.E2_18_FOCAL === "1"
       ? `node --test --test-concurrency=1 "${membershipTestPath}"`
       : process.env.E2_04_FOCAL === "1"
         ? `node --test --test-concurrency=1 "${membershipListTestPath}"`
-        : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${seasonTestPath}" "${seasonClosureTestPath}" "${seasonHistoryTestPath}" "${seasonUpdateTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${groupJoinRequestTestPath}" "${groupJoinRequestDecisionTestPath}" "${groupJoinRequestDecisionGapsTestPath}" "${membershipReactivationTestPath}" "${membershipSelfExitTestPath}" "${membershipOwnerRosterTestPath}" "${membershipAdministrativeFinalizationTestPath}" "${membershipRenewalTestPath}" "${legacyJoinRetirementTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
+        : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${seasonTestPath}" "${seasonClosureTestPath}" "${seasonHistoryTestPath}" "${seasonUpdateTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${groupJoinRequestTestPath}" "${groupJoinRequestDecisionTestPath}" "${groupJoinRequestDecisionGapsTestPath}" "${membershipReactivationTestPath}" "${membershipSelfExitTestPath}" "${membershipOwnerRosterTestPath}" "${membershipAdministrativeFinalizationTestPath}" "${membershipRenewalTestPath}" "${ownGroupMembershipHistoryTestPath}" "${legacyJoinRetirementTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
 const args = [
   "emulators:exec",
   "--project",

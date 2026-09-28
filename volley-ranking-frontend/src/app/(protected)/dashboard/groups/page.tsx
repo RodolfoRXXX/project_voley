@@ -8,6 +8,7 @@ import { GroupCard } from "@/components/groups/GroupCard";
 import { GroupLoading } from "@/components/groups/GroupLoading";
 import { GroupPageShell } from "@/components/groups/GroupPageShell";
 import { MyCurrentGroupMembershipsSection } from "@/components/memberships/MyCurrentGroupMembershipsSection";
+import { OwnGroupMembershipHistorySection } from "@/components/memberships/OwnGroupMembershipHistorySection";
 import { getGroupErrorMessage, getGroupErrorReason, listOwnGroups } from "@/services/groupsService";
 import type { OwnGroup } from "@/types/OwnGroup";
 
@@ -74,6 +75,7 @@ export default function OwnGroupsPage() {
       {status === "ready" && items.length > 0 ? <div className="grid gap-4">{items.map((group) => <GroupCard key={group.id} group={group} />)}</div> : null}
       </section>
       <MyCurrentGroupMembershipsSection />
+      <OwnGroupMembershipHistorySection />
     </GroupPageShell>
   );
 }

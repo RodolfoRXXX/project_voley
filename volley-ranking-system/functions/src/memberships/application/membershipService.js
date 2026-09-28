@@ -1,9 +1,10 @@
 "use strict";
 
 const { buildMembership, InvalidMembershipStateError } = require("../domain/membership");
-const { toAdministrativeFinalizationPreparation, toAdministrativeFinalizationResult, toFinalizedMembershipDto, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem, toOwnerActiveGroupMemberItem } = require("./membershipDto");
+const { toAdministrativeFinalizationPreparation, toAdministrativeFinalizationResult, toFinalizedMembershipDto, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem, toOwnGroupMembershipHistoryItem, toOwnerActiveGroupMemberItem } = require("./membershipDto");
 const { decodeMyGroupsCursor, encodeMyGroupsCursor } = require("./membershipCursor");
 const { decodeOwnerGroupMembersCursor, encodeOwnerGroupMembersCursor } = require("./ownerGroupMembersCursor");
+const { encodeOwnGroupMembershipHistoryCursor } = require("./ownGroupMembershipHistoryCursor");
 const {
   MembershipAccountRequiredError,
   MembershipDependencyUnavailableError,
@@ -24,7 +25,7 @@ function requireActor(identity) {
   return identity.userId.trim();
 }
 
-function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, lifecycleGuard, selfExitStore, administrativeFinalizationStore, myMembershipReader, myCurrentGroupMembershipsReader, memberGroupContext, ownerActiveGroupMembersReader }) {
+function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, lifecycleGuard, selfExitStore, administrativeFinalizationStore, myMembershipReader, myCurrentGroupMembershipsReader, ownGroupMembershipHistoryReader, memberGroupContext, ownerActiveGroupMembersReader }) {
   if (!selfAccountReader || !selfPersonContext || !ownedGroupContext || !openSeasonContext || !membershipRepository || !activeMembershipGuard || !myMembershipReader) {
     throw new TypeError("Membership service dependencies are required");
   }
@@ -265,6 +266,30 @@ function createMembershipService({ selfAccountReader, selfPersonContext, ownedGr
         if (error instanceof MembershipError) throw error;
         if (isTransientDependencyError(error)) throw new MembershipDependencyUnavailableError({ cause: error });
         throw internalAt(error, operation, "roster-page");
+      }
+    },
+
+    async listMyGroupMembershipHistory(identity, input) {
+      const userId = requireActor(identity);
+      if (!ownGroupMembershipHistoryReader) throw new MembershipDependencyUnavailableError();
+      try {
+        const page = await ownGroupMembershipHistoryReader.listPage({
+          userId,
+          pageSize: input.pageSize,
+          cursor: input.cursor,
+        });
+        const items = Object.freeze(page.rows.map(toOwnGroupMembershipHistoryItem));
+        const nextCursor = page.hasMore && page.cursorAnchor
+          ? encodeOwnGroupMembershipHistoryCursor({
+            uid: userId,
+            personId: page.personId,
+            lastFechaIngreso: page.cursorAnchor.lastFechaIngreso,
+            membershipId: page.cursorAnchor.membershipId,
+          }) : null;
+        return Object.freeze({ items, nextCursor, hasMore: page.hasMore });
+      } catch (error) {
+        if (error instanceof MembershipError) throw error;
+        throw new MembershipInternalError({ cause: error });
       }
     },
 

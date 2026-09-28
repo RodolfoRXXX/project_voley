@@ -29,6 +29,9 @@ class MembershipRenewalSupersededError extends MembershipError { constructor(opt
 class MembershipPredecessorIncompatibleError extends MembershipError { constructor(options = {}) { super("MEMBERSHIP_PREDECESSOR_INCOMPATIBLE", "Membership predecessor is incompatible", options); } }
 class MembershipIdempotencyConflictError extends MembershipError { constructor(options = {}) { super("IDEMPOTENCY_CONFLICT", "Idempotency key was used with another request", options); } }
 class MembershipIncompatibleStateError extends MembershipError { constructor(message = "Membership state is incompatible", options = {}) { super("INCOMPATIBLE_STATE", message, options); } }
+class MembershipCursorInvalidError extends MembershipError { constructor(message = "History cursor is invalid", options = {}) { super("CURSOR_INVALID", message, options); } }
+class MembershipCursorStaleError extends MembershipError { constructor(options = {}) { super("CURSOR_STALE", "History cursor is stale", options); } }
+class MembershipDependencyNotConfiguredError extends MembershipError { constructor(options = {}) { super("DEPENDENCY_NOT_CONFIGURED", "A required dependency is not configured", options); } }
 class MembershipConflictError extends MembershipError { constructor(options = {}) { super("CONFLICT", "Membership operation conflicted", options); } }
 class MembershipDependencyUnavailableError extends MembershipError { constructor(options = {}) { super("DEPENDENCY_UNAVAILABLE", "A required dependency is unavailable", options); } }
 class MembershipInternalError extends MembershipError { constructor(options = {}) { super("INTERNAL_ERROR", "Membership operation failed", options); } }
@@ -43,6 +46,9 @@ module.exports = {
   MembershipAccountRequiredError,
   MembershipAlreadyExistsError,
   MembershipConflictError,
+  MembershipCursorInvalidError,
+  MembershipCursorStaleError,
+  MembershipDependencyNotConfiguredError,
   MembershipDependencyUnavailableError,
   MembershipError,
   MembershipGroupIncompatibleError,

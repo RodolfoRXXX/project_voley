@@ -1,6 +1,6 @@
 "use strict";
 
-const { MembershipValidationError } = require("./membershipErrors");
+const { MembershipCursorInvalidError, MembershipValidationError } = require("./membershipErrors");
 
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{16,128}$/;
 const MY_GROUPS_DEFAULT_PAGE_SIZE = 20;
@@ -9,6 +9,9 @@ const MY_GROUPS_MAX_CURSOR_LENGTH = 2048;
 const OWNER_ROSTER_DEFAULT_PAGE_SIZE = 20;
 const OWNER_ROSTER_MAX_PAGE_SIZE = 20;
 const OWNER_ROSTER_MAX_CURSOR_LENGTH = 2048;
+const OWN_HISTORY_DEFAULT_PAGE_SIZE = 20;
+const OWN_HISTORY_MAX_PAGE_SIZE = 20;
+const OWN_HISTORY_MAX_CURSOR_LENGTH = 2048;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 
 function isPlainObject(data) {
@@ -101,6 +104,24 @@ function validateListMyCurrentGroupMembershipsPayload(data) {
   return Object.freeze(cursor === undefined ? { pageSize } : { pageSize, cursor });
 }
 
+function validateListMyGroupMembershipHistoryPayload(data) {
+  if (!isPlainObject(data)) throw new MembershipValidationError();
+  const keys = Object.keys(data);
+  if (keys.some((key) => key !== "pageSize" && key !== "cursor")) {
+    throw new MembershipValidationError("Request contains unknown properties");
+  }
+  const pageSize = Object.prototype.hasOwnProperty.call(data, "pageSize")
+    ? data.pageSize : OWN_HISTORY_DEFAULT_PAGE_SIZE;
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > OWN_HISTORY_MAX_PAGE_SIZE) {
+    throw new MembershipValidationError("Page size is invalid");
+  }
+  if (!Object.prototype.hasOwnProperty.call(data, "cursor")) return Object.freeze({ pageSize });
+  if (typeof data.cursor !== "string" || !data.cursor || data.cursor.length > OWN_HISTORY_MAX_CURSOR_LENGTH) {
+    throw new MembershipCursorInvalidError();
+  }
+  return Object.freeze({ pageSize, cursor: data.cursor });
+}
+
 function validateListActiveGroupMembersForOwnedGroupPayload(data) {
   if (!isPlainObject(data)) throw new MembershipValidationError();
   const keys = Object.keys(data);
@@ -135,6 +156,9 @@ module.exports = {
   OWNER_ROSTER_DEFAULT_PAGE_SIZE,
   OWNER_ROSTER_MAX_CURSOR_LENGTH,
   OWNER_ROSTER_MAX_PAGE_SIZE,
+  OWN_HISTORY_DEFAULT_PAGE_SIZE,
+  OWN_HISTORY_MAX_CURSOR_LENGTH,
+  OWN_HISTORY_MAX_PAGE_SIZE,
   isPlainObject,
   validateCreateMembershipPayload,
   validateFinalizeMembershipPayload,
@@ -142,6 +166,7 @@ module.exports = {
   validateLeaveMyGroupMembershipPayload,
   validateListActiveGroupMembersForOwnedGroupPayload,
   validateListMyCurrentGroupMembershipsPayload,
+  validateListMyGroupMembershipHistoryPayload,
   validatePrepareActiveGroupMemberFinalizationPayload,
   validateFinalizeActiveGroupMemberPayload,
 };

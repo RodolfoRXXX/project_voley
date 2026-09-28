@@ -1,5 +1,7 @@
 "use strict";
 
+const crypto = require("node:crypto");
+
 const MEMBERSHIP_DTO_KEYS = Object.freeze(["id", "personId", "groupId", "seasonId", "estado", "fechaIngreso"]);
 const FINALIZED_MEMBERSHIP_DTO_KEYS = Object.freeze(["id", "groupId", "seasonId", "estado", "fechaIngreso", "fechaEgreso"]);
 
@@ -69,6 +71,20 @@ function toOwnerActiveGroupMemberItem(membership, person, isOwner) {
   });
 }
 
+function toOwnGroupMembershipHistoryItem({ membership, group, season, validityPeriodCount }) {
+  const item = {
+    rowKey: crypto.createHash("sha256").update(`E2-19:row:v1\0${membership.membershipId}`, "utf8").digest("base64url"),
+    group: Object.freeze({ id: group.groupId, nombre: group.nombre }),
+    season: Object.freeze({ id: season.seasonId, nombre: season.nombre }),
+    status: membership.estado === "activa" ? "CURRENT" : "HISTORICAL",
+    joinedAt: membership.fechaIngreso.toDate().toISOString(),
+    validityPeriodCount,
+    continuity: membership.schemaVersion === 4 ? "RENEWAL" : "INITIAL",
+  };
+  if (membership.estado === "finalizada") item.leftAt = membership.fechaEgreso.toDate().toISOString();
+  return Object.freeze(item);
+}
+
 function toAdministrativeFinalizationPreparation(result) {
   return Object.freeze({ person: Object.freeze({ firstName: result.firstName, lastName: result.lastName }), activationRef: result.activationRef });
 }
@@ -77,4 +93,4 @@ function toAdministrativeFinalizationResult(result) {
   return Object.freeze({ outcome: "MEMBERSHIP_FINALIZATION_CONFIRMED", effect: Object.freeze({ membershipId: result.membershipId, finalizedAt: result.finalizedAt.toDate().toISOString() }) });
 }
 
-module.exports = { FINALIZED_MEMBERSHIP_DTO_KEYS, MEMBERSHIP_DTO_KEYS, toAdministrativeFinalizationPreparation, toAdministrativeFinalizationResult, toFinalizedMembershipDto, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem, toOwnerActiveGroupMemberItem };
+module.exports = { FINALIZED_MEMBERSHIP_DTO_KEYS, MEMBERSHIP_DTO_KEYS, toAdministrativeFinalizationPreparation, toAdministrativeFinalizationResult, toFinalizedMembershipDto, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem, toOwnGroupMembershipHistoryItem, toOwnerActiveGroupMemberItem };

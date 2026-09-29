@@ -6,6 +6,7 @@ const { createFirestoreUserRepository } = require("../../users/infrastructure/fi
 const { createGroupService } = require("../application/groupService");
 const { createFirestoreGroupCreationGuard } = require("./firestoreGroupCreationGuard");
 const { createFirestoreGroupRepository } = require("./firestoreGroupRepository");
+const { createFirestoreGroupNameUpdateStore } = require("./firestoreGroupNameUpdateStore");
 const { createFirestoreOwnGroupsReader } = require("./firestoreOwnGroupsReader");
 const { createFirestoreSelfAccountReader } = require("./firestoreSelfAccountReader");
 
@@ -19,4 +20,5 @@ module.exports = createGroupService({
   groupRepository,
   ownGroupsReader,
   creationGuard: createFirestoreGroupCreationGuard({ db, ownGroupsReader }),
+  groupNameUpdateStore: createFirestoreGroupNameUpdateStore({ db, groupRepository }),
 });

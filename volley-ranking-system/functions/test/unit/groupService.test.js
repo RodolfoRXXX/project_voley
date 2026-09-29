@@ -7,8 +7,7 @@ const {
   GroupAccountRequiredError,
   GroupDependencyUnavailableError,
   GroupLimitReachedError,
-  GroupNotAuthorizedError,
-  GroupNotFoundError,
+  GroupNotAccessibleError,
   GroupUnauthenticatedError,
 } = require("../../src/groups/application/groupErrors");
 
@@ -56,13 +55,13 @@ test("autenticación, cuenta y dependencias fallan cerrado", async () => {
   await assert.rejects(inconsistent.listOwnGroups({ userId: "uid" }), GroupDependencyUnavailableError);
 });
 
-test("consultas son owner-scoped y distinguen no encontrado/no autorizado", async () => {
+test("consultas son owner-scoped y no enumeran Grupo ausente o ajeno", async () => {
   const owner = setup().service;
   assert.equal((await owner.getOwnGroup({ userId: "uid" }, "opaque")).group.id, "opaque");
   const missing = setup({ groupRepository: { newId() { return "id"; }, async getById() { return null; } } }).service;
-  await assert.rejects(missing.getOwnGroup({ userId: "uid" }, "missing"), GroupNotFoundError);
+  await assert.rejects(missing.getOwnGroup({ userId: "uid" }, "missing"), GroupNotAccessibleError);
   const foreign = setup({ groupRepository: { newId() { return "id"; }, async getById() { return persisted({ ownerId: "other" }); } } }).service;
-  await assert.rejects(foreign.getOwnGroup({ userId: "uid" }, "foreign"), GroupNotAuthorizedError);
+  await assert.rejects(foreign.getOwnGroup({ userId: "uid" }, "foreign"), GroupNotAccessibleError);
 });
 
 test("listado y dashboard producen envoltorios mínimos", async () => {

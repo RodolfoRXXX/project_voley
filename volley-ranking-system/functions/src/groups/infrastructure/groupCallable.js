@@ -13,6 +13,10 @@ const HTTPS_CODES = Object.freeze({
   CONFLICT: "aborted",
   DEPENDENCY_UNAVAILABLE: "unavailable",
   INTERNAL_ERROR: "internal",
+  GROUP_NOT_ACCESSIBLE: "permission-denied",
+  GROUP_INCOMPATIBLE: "failed-precondition",
+  STALE_UPDATE: "aborted",
+  IDEMPOTENCY_CONFLICT: "aborted",
 });
 
 function identityFromCallableContext(context) {

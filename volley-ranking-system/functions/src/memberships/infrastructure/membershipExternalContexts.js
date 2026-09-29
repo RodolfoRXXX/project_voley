@@ -42,7 +42,7 @@ function createOwnedGroupContextAdapter({ groupService }) {
         return Object.freeze({ id: group.id, estado: group.estado, ownerUserId: group.ownerUserId });
       } catch (error) {
         if (error?.reason === "NOT_FOUND") throw new MembershipGroupNotFoundError();
-        if (error?.reason === "NOT_AUTHORIZED") throw new MembershipNotAuthorizedError();
+        if (["GROUP_NOT_ACCESSIBLE", "NOT_AUTHORIZED"].includes(error?.reason)) throw new MembershipNotAuthorizedError();
         if (error?.reason === "VALIDATION_FAILED") throw new MembershipGroupIncompatibleError({ cause: error });
         if (error instanceof MembershipGroupIncompatibleError) throw error;
         throw new MembershipDependencyUnavailableError({ cause: error });

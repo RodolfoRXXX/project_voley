@@ -28,6 +28,9 @@ function createFirestoreGroupRepository({ db }) {
         schemaVersion: group.schemaVersion,
       });
     },
+    updateName(transaction, groupId, nombre) {
+      transaction.update(reference(groupId), "nombre", nombre);
+    },
   };
 }
 

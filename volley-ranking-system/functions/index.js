@@ -38,6 +38,7 @@ exports.getMyPerson = require("./callables/getMyPerson");
 exports.createOwnGroup = require("./callables/createOwnGroup");
 exports.listOwnGroups = require("./callables/listOwnGroups");
 exports.getOwnGroup = require("./callables/getOwnGroup");
+exports.updateOwnGroupName = require("./callables/updateOwnGroupName");
 exports.getOwnGroupsDashboard = require("./callables/getOwnGroupsDashboard");
 exports.createAndOpenSeason = require("./callables/createAndOpenSeason");
 exports.closeSeason = require("./callables/closeSeason");

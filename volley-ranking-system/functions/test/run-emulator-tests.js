@@ -139,6 +139,13 @@ const seasonUpdateTestPath = path.join(
   "emulator",
   "seasonUpdateE2.test.js"
 );
+const groupNameUpdateTestPath = path.join(
+  systemRoot,
+  "functions",
+  "test",
+  "emulator",
+  "groupNameUpdateE2.test.js"
+);
 const membershipTestPath = path.join(
   systemRoot,
   "functions",
@@ -223,7 +230,9 @@ const legacyJoinRetirementTestPath = path.join(
   "emulator",
   "legacyJoinRetirementE2.test.js"
 );
-const command = process.env.E2_19_REGRESSIONS === "1"
+const command = process.env.E2_20_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${groupNameUpdateTestPath}"`
+  : process.env.E2_19_REGRESSIONS === "1"
   ? `node --test --test-concurrency=1 "${membershipListTestPath}" "${membershipReactivationTestPath}" "${seasonHistoryTestPath}" "${membershipRenewalTestPath}"`
   : process.env.E2_19_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${ownGroupMembershipHistoryTestPath}"`
@@ -263,7 +272,7 @@ const command = process.env.E2_19_REGRESSIONS === "1"
       ? `node --test --test-concurrency=1 "${membershipTestPath}"`
       : process.env.E2_04_FOCAL === "1"
         ? `node --test --test-concurrency=1 "${membershipListTestPath}"`
-        : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${seasonTestPath}" "${seasonClosureTestPath}" "${seasonHistoryTestPath}" "${seasonUpdateTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${groupJoinRequestTestPath}" "${groupJoinRequestDecisionTestPath}" "${groupJoinRequestDecisionGapsTestPath}" "${membershipReactivationTestPath}" "${membershipSelfExitTestPath}" "${membershipOwnerRosterTestPath}" "${membershipAdministrativeFinalizationTestPath}" "${membershipRenewalTestPath}" "${ownGroupMembershipHistoryTestPath}" "${legacyJoinRetirementTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
+        : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${groupNameUpdateTestPath}" "${seasonTestPath}" "${seasonClosureTestPath}" "${seasonHistoryTestPath}" "${seasonUpdateTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${groupJoinRequestTestPath}" "${groupJoinRequestDecisionTestPath}" "${groupJoinRequestDecisionGapsTestPath}" "${membershipReactivationTestPath}" "${membershipSelfExitTestPath}" "${membershipOwnerRosterTestPath}" "${membershipAdministrativeFinalizationTestPath}" "${membershipRenewalTestPath}" "${ownGroupMembershipHistoryTestPath}" "${legacyJoinRetirementTestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
 const args = [
   "emulators:exec",
   "--project",

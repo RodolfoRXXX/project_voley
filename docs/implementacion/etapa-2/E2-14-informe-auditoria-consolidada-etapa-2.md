@@ -121,16 +121,17 @@ administración e historial de Temporadas.
 | Administración del ciclo de Membresía | Cubierto parcialmente | Finalización y reactivación entregadas; CU-026/CU-030 pendientes |
 | Renovación de Membresía | Pendiente | E2-09 registra CU-029 como no ejecutado |
 | Solicitud, aprobación y rechazo | Cubierto completamente | E2-06, E2-07 y adaptación de reingreso E2-09 |
-| Administración de Grupo, CU-012–015 | Pendiente | Las capacidades legacy son tombstones; no existe reemplazo canónico |
+| Administración de Grupo, CU-012–015 | Parcial, diferida y pendiente según caso | CU-012 tiene cobertura mínima por E2-20; CU-013 está diferido por DEC-E2-21 sin contar como implementado; CU-014/CU-015 permanecen pendientes |
 | Edición, cierre e historia de Temporadas, CU-017–019 | Pendiente | E2-02 las excluye y fichas posteriores las conservan como trabajo futuro |
 | Retiro de arrays y doble autoridad | Cubierto para Organización; diferido para E4 | E2-13 mantiene una allowlist cerrada sin escritura organizativa |
 | Criterios comunes por incremento | Cubierto | Los trece cierres contienen verificación, UAT, rollback y trazabilidad |
-| Cierre consolidado y actualización de Documento 5 | Pendiente | Documento 5 no fue actualizado y E2-13 no cierra la etapa |
+| Cierre consolidado y actualización de Documento 5 | Parcial; cierre pendiente | D5-041 registra prospectivamente el diferimiento de CU-013; E2-14 y la etapa continúan abiertas por los demás gates |
 
-La numeración efectiva E2-01 a E2-13 reemplazó legítimamente el orden preliminar, pero no existe una
-decisión aprobada que retire del alcance de Etapa 2 los casos pendientes o los asigne a una etapa
-posterior con criterio de salida. Las expresiones “trabajo futuro”, “ficha posterior” o “incremento
-propio” son exclusiones locales, no reasignaciones aprobadas.
+La numeración efectiva E2-01 a E2-13 reemplazó legítimamente el orden preliminar. DEC-E2-21 registra
+CU-013 como diferido y sin implementación; D5-041 establece que no bloqueará el futuro cierre una vez
+satisfechos los demás gates y repetida esta auditoría. La excepción sólo alcanza CU-013. No existe una
+decisión equivalente para los restantes casos pendientes: las expresiones “trabajo futuro”, “ficha
+posterior” o “incremento propio” continúan siendo exclusiones locales, no reasignaciones aprobadas.
 
 ## 6. Cobertura funcional
 
@@ -157,7 +158,8 @@ propio” son exclusiones locales, no reasignaciones aprobadas.
 
 - CU-010 — consultar historial de grupos.
 - CU-012 — editar información del Grupo.
-- CU-013 — configurar Grupo.
+- CU-013 — configurar Grupo: diferido por DEC-E2-21/D5-041, reconocido y sin cobertura implementada;
+  no bloqueará el futuro cierre una vez satisfechos los demás gates.
 - CU-014 — archivar Grupo.
 - CU-015 — eliminar Grupo bajo las reglas aprobadas.
 - CU-017 — editar Temporada.
@@ -240,7 +242,10 @@ Rules, arquitectura, mantenimiento, lint baseline, typecheck, build y `git diff 
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | E2-F01 | CU-017–019 no implementados | Documento 2 y mapa E2 de Documento 5 | No existe ciclo completo ni historia real de Temporada | Alto | Etapa 2 | Implementar edición, cierre, historia, frontend, concurrencia y UAT | Sí |
 | E2-F02 | CU-029 pendiente | Documento 2; fila preliminar de renovación | No existe continuidad intertemporada ni trazabilidad entre Membresías | Alto | Etapa 2 | Nueva Membresía para nueva Temporada con vínculo histórico e idempotencia | Sí |
-| E2-F03 | CU-012–015 sin reemplazo canónico | Documento 2 y administración de Grupo de Documento 5 | Grupo no puede editarse, configurarse, archivarse o eliminarse | Alto | Etapa 2 | Entregar contratos canónicos separados y retirar tombstones cuando corresponda | Sí |
+| E2-F03A | CU-012 con cobertura mínima parcial | Documento 2, E2-20 y administración de Grupo de Documento 5 | Sólo `nombre` posee edición canónica; no se presume edición adicional | Medio | Etapa 2 | Mantener la cobertura explícita y no ampliar CU-012 por inferencia | No por sí solo |
+| E2-F03B | CU-013 diferido por DEC-E2-21/D5-041 | Documento 2, addendum DEC-E2-21 y Documento 5 | El caso permanece reconocido y sin implementación | Bajo técnico; medio de gobernanza | Backlog condicionado y visible | Reabrir sólo ante necesidad verificable y ownership de Grupo aprobados | No, una vez satisfechos los demás gates; no cuenta como implementado |
+| E2-F03C | CU-014 pendiente | Documento 2 y administración de Grupo de Documento 5 | Grupo no puede archivarse mediante contrato canónico | Alto | Etapa 2 | Entregar E2-23 con lifecycle, consumidores, frontend y UAT | Sí |
+| E2-F03D | CU-015 pendiente | Documento 2 y administración de Grupo de Documento 5 | Grupo no puede eliminarse mediante contrato canónico | Alto | Etapa 2 | Entregar E2-24 con referencias, retención, tombstones, frontend y UAT | Sí |
 | E2-F04 | CU-026/CU-030 pendientes | Documento 2 y administración de Membresía de Documento 5 | Administración del lifecycle incompleta | Alto | Etapa 2 | Aprobar reglas de estados y entregar comandos, autorización, persistencia y UAT | Sí |
 | E2-F05 | CU-010 pendiente | Documento 2; consulta contextual de Documento 5 | No existe historia canónica de grupos de la Persona | Medio | Etapa 2 | Consulta histórica basada en Membresías/Temporadas sin fuente duplicada | Sí |
 | E2-E4-01 | Cuatro consumidores frontend legacy allowlisted | E2-13 | Exposición de documentos completos y dependencia de arrays | Medio | Etapa 4 | Sustituir por contratos/proyecciones backend y eliminar lecturas directas | No |
@@ -262,8 +267,8 @@ La ausencia de deploy no invalida la evidencia local. Tampoco permite declarar r
 | --- | --- | --- |
 | Documento 5 asigna renovación, administración de Grupo y ciclo de Temporada a E2, pero no están implementados | Funcional, bloqueante | No resuelta; requiere incrementos adicionales |
 | Las fichas posteriores cambian la numeración preliminar | Aparente, resuelta | La renumeración es válida; no cancela capacidades |
-| E2-13 acepta temporalmente no tener reemplazo para administración de Grupo | Funcional, bloqueante | La aceptación local no tiene etapa destino ni criterio de salida suficiente |
-| Documento 5 mantiene E2 como `HABILITADA PARA DEFINICIÓN` | Documental | Debe actualizarse sólo cuando exista cierre real o cambio aprobado de plan |
+| E2-13 acepta temporalmente no tener reemplazo para administración de Grupo | Funcional, parcialmente resuelta | DEC-E2-21/D5-041 resuelve sólo CU-013 por diferimiento; CU-014/CU-015 continúan pendientes |
+| Documento 5 mantiene E2 como `HABILITADA PARA DEFINICIÓN` | Documental | D5-041 actualiza el plan sin cerrar la etapa; el estado sólo cambiará tras la auditoría final y un cierre aprobado |
 | E2-13 describía su merge documental como previsto | Documental, resuelta | Git demuestra integración final en `9e276c9759e027388d7174597f1648132b3a604d` |
 | Rules aún usa roles globales y arrays | Aparente para E2; técnica real para E4 | No autoriza Organización v1; se conserva como deuda E4 |
 | “Cuatro consumidores” aparecen en dos archivos | Aparente, resuelta | Son cuatro símbolos/operaciones allowlisted, no cuatro archivos |
@@ -303,13 +308,18 @@ deberá confirmar alcance, subdivisión, reglas, contratos, riesgos y numeració
 3. **E2-17 — Renovación e historia intertemporada:** CU-029 y la porción dependiente de CU-010.
 4. Incrementos separados para CU-026/CU-030, precedidos por decisiones explícitas sobre estados y
    transiciones permitidas.
-5. Incrementos separados para CU-012–CU-015; edición/configuración no debe agruparse automáticamente
-   con archivo/eliminación si excede un corte verificable.
+5. Mantener CU-012 limitado a la cobertura aprobada por E2-20; conservar CU-013 visible como diferido
+   y no implementado bajo DEC-E2-21/D5-041; entregar CU-014 y CU-015 en incrementos separados sin
+   agrupar archivo y eliminación si exceden un corte verificable.
 6. Asignación formal de tombstones y compatibilidad pública residual, con etapa y criterio de retiro.
 7. Repetición posterior de E2-14 y ejecución del gate consolidado final.
 
 E2-14 queda reservado para la auditoría consolidada y su futura reevaluación. No debe reutilizarse
 automáticamente como nombre de un incremento funcional.
+
+E2-22/CU-026 queda habilitado únicamente para definición independiente. Debe resolver atributos,
+actores, permisos, estados, privacidad y catálogos propios de Membresía sin presuponer decisiones de
+CU-013; este informe no inicia su definición ni autoriza implementación.
 
 ## 14. Regla de reapertura
 

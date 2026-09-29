@@ -2100,6 +2100,9 @@ Solicitud o Temporada bajo numeración E1 modificaría incorrectamente el alcanc
 - Brechas: TECH-GAP-04 y dependencias de 08 y 09.
 - Salida: Grupo no contiene Membresías ni Solicitudes; Temporada es Agregado independiente
     en Módulo Grupos.
+- Excepción aprobada de salida: CU-013 puede permanecer diferido, visible y sin implementación bajo
+    DEC-E2-21/D5-041, exclusivamente después de satisfacer los demás gates de Etapa 2 y repetir
+    E2-14. Esta excepción no cubre otros casos pendientes ni habilita E3 por sí sola.
 
 ### 7.4.1 Decisiones de corte preliminares
 
@@ -2128,13 +2131,20 @@ Solicitud o Temporada bajo numeración E1 modificaría incorrectamente el alcanc
 | E2-06 — Renovación de Membresía | Crear una nueva Membresía para nueva Temporada y preservar trazabilidad con la anterior | Nueva Membresía |
 | E2-07 — Solicitud de ingreso a Grupo | Crear una Solicitud independiente para CU-031 | Solicitud |
 | E2-08 — Resolución de Solicitud | Aprobar o rechazar; coordinar Membresía mediante operación separada, idempotente y recuperable | Solicitud; Membresía como efecto coordinado |
-| E2-09 — Administración del Grupo | Editar, configurar, archivar o eliminar conforme a reglas aprobadas y ownership contextual | Grupo |
+| E2-09 — Administración del Grupo | Separar edición, configuración, archivo y eliminación en cortes verificables; CU-013 queda diferido por DEC-E2-21/D5-041 sin contarse como implementado | Grupo |
 | E2-10 — Administración e historial de Temporadas | Editar, cerrar y consultar temporadas anteriores sin modificar Grupo en la misma unidad | Temporada |
 | E2-11 — Retiro de arrays y cierre consolidado | Adaptar consumidores, retirar `memberIds`, `adminIds` y solicitudes embebidas, verificar ausencia de doble autoridad | Integración y retiro por flujo |
 
 El mapa anterior determina secuencia y límites, pero no reemplaza las Fichas de Incremento
 Implementable. E2-05, E2-09 o E2-10 deberán subdividirse si sus reglas concretas exceden un cambio
 funcional verificable y recuperable.
+
+DEC-E2-21 difiere CU-013 por ausencia de una necesidad funcional concreta. El caso permanece
+reconocido y sin cobertura implementada; sólo puede reabrirse cuando se aprueben necesidad,
+ownership de Grupo, actor, valores, validaciones, estados, privacidad y efecto observable. D5-041
+retira exclusivamente este caso como bloqueo futuro una vez cumplidos los restantes criterios; no
+afecta CU-014/CU-015, no cierra E2-14 o Etapa 2 y no habilita E3. E2-22/CU-026 puede avanzar sólo a
+definición independiente y no puede presuponer catálogos o permisos provenientes de CU-013.
 
 El siguiente incremento funcional es:
 
@@ -2321,6 +2331,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-038 | No existe un incremento técnico E1-04 | APROBADA | Cierre de Etapa 1 | La revisión consolidada es documental y no amplía Etapa 1 |
 | D5-039 | El siguiente incremento funcional es E2-01 — Creación de Grupo mínimo y ownership contextual | APROBADA | Entrada de Etapa 2 | Grupo y Owner se establecen en un mismo corte vertical |
 | D5-040 | La condición de Owner no crea automáticamente una Membresía | APROBADA | Etapa 2 | Membresía requiere Persona, Grupo y Temporada abierta |
+| D5-041 | CU-013 puede satisfacer su gate mediante diferimiento funcional explícito, deuda visible y condición verificable de reapertura; no cuenta como implementado | APROBADA | Etapa 2 / CU-013 | Sólo después de completar los demás gates y repetir E2-14 puede evaluarse el cierre; E3 no se habilita automáticamente |
 
 
 # 9. Decisiones abiertas no bloqueantes

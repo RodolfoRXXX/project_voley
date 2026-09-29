@@ -1,25 +1,24 @@
 "use strict";
 
-const { InvalidGroupStateError, buildGroup } = require("../domain/group");
+const { InvalidGroupStateError, buildGroup, normalizeGroupName } = require("../domain/group");
 const { toDashboardGroupDto, toGroupDto } = require("./groupDto");
 const {
   GroupAccountRequiredError,
   GroupDependencyUnavailableError,
   GroupError,
   GroupInternalError,
-  GroupNotAuthorizedError,
-  GroupNotFoundError,
+  GroupNotAccessibleError,
   GroupUnauthenticatedError,
   GroupValidationError,
 } = require("./groupErrors");
-const { hashGroupRequest, hashIdempotencyKey } = require("./groupHashing");
+const { groupEditToken, groupNameUpdateReceiptId, hashGroupNameUpdateRequest, hashGroupRequest, hashIdempotencyKey } = require("./groupHashing");
 
 function requireActor(identity) {
   if (!identity || typeof identity.userId !== "string" || !identity.userId.trim()) throw new GroupUnauthenticatedError();
   return identity.userId.trim();
 }
 
-function createGroupService({ selfAccountReader, groupRepository, ownGroupsReader, creationGuard }) {
+function createGroupService({ selfAccountReader, groupRepository, ownGroupsReader, creationGuard, groupNameUpdateStore }) {
   if (!selfAccountReader || !groupRepository || !ownGroupsReader || !creationGuard) {
     throw new TypeError("Group service dependencies are required");
   }
@@ -105,9 +104,29 @@ function createGroupService({ selfAccountReader, groupRepository, ownGroupsReade
       } catch (error) {
         throw new GroupDependencyUnavailableError(undefined, { cause: error });
       }
-      if (!group) throw new GroupNotFoundError();
-      if (group.ownerId !== userId) throw new GroupNotAuthorizedError();
-      return Object.freeze({ group: toGroupDto(group) });
+      if (!group || group.ownerId !== userId) throw new GroupNotAccessibleError();
+      return Object.freeze({ group: toGroupDto(group), editToken: groupEditToken(group) });
+    },
+
+    async updateOwnGroupName(identity, input) {
+      const userId = requireActor(identity);
+      if (!groupNameUpdateStore) throw new GroupDependencyUnavailableError();
+      let nombre;
+      try { nombre = normalizeGroupName(input.nombre); }
+      catch (error) {
+        if (error instanceof InvalidGroupStateError) throw new GroupValidationError(error.message, { cause: error });
+        throw error;
+      }
+      const command = Object.freeze({ userId, groupId: input.groupId, nombre,
+        expectedEditToken: input.expectedEditToken, idempotencyKey: input.idempotencyKey,
+        receiptId: groupNameUpdateReceiptId(userId, input.idempotencyKey) });
+      try {
+        return await groupNameUpdateStore.update(Object.freeze({ ...command,
+          requestHash: hashGroupNameUpdateRequest(userId, command) }));
+      } catch (error) {
+        if (error instanceof GroupError) throw error;
+        throw new GroupInternalError({ cause: error });
+      }
     },
 
     async getOwnGroupsDashboard(identity) {

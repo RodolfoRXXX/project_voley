@@ -114,6 +114,10 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /groupNameUpdateReceipts/{receiptId} {
+      allow read, write: if false;
+    }
+
     match /seasons/{seasonId} {
       allow read, write: if false;
     }

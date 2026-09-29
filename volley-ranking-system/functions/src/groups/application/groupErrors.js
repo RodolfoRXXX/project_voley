@@ -35,6 +35,18 @@ class GroupDependencyUnavailableError extends GroupError {
 class GroupInternalError extends GroupError {
   constructor(options = {}) { super("INTERNAL_ERROR", "Group operation failed", options); }
 }
+class GroupNotAccessibleError extends GroupError {
+  constructor() { super("GROUP_NOT_ACCESSIBLE", "Group is not accessible"); }
+}
+class GroupIncompatibleError extends GroupError {
+  constructor(options = {}) { super("GROUP_INCOMPATIBLE", "Group is incompatible", options); }
+}
+class GroupIdempotencyConflictError extends GroupError {
+  constructor() { super("IDEMPOTENCY_CONFLICT", "Idempotency key was used with a different request"); }
+}
+class GroupStaleUpdateError extends GroupError {
+  constructor() { super("STALE_UPDATE", "Group changed since it was read"); }
+}
 
 module.exports = {
   GroupAccountRequiredError,
@@ -42,9 +54,13 @@ module.exports = {
   GroupDependencyUnavailableError,
   GroupError,
   GroupInternalError,
+  GroupIdempotencyConflictError,
+  GroupIncompatibleError,
   GroupLimitReachedError,
   GroupNotAuthorizedError,
+  GroupNotAccessibleError,
   GroupNotFoundError,
   GroupUnauthenticatedError,
   GroupValidationError,
+  GroupStaleUpdateError,
 };

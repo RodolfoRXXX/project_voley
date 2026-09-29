@@ -21,4 +21,17 @@ function hashGroupRequest(userId, group) {
   return sha256(["sportexa:E2-01:request:v1", userId, "contract-v1", group.nombre, group.deporte]);
 }
 
-module.exports = { hashGroupRequest, hashIdempotencyKey };
+function groupEditToken(group) {
+  return sha256(["sportexa:E2-20:group-edit-token:v1", "contract-v1", group.groupId, group.ownerId, group.nombre]);
+}
+
+function groupNameUpdateReceiptId(actorUserId, idempotencyKey) {
+  return sha256(["sportexa:E2-20:group-name-update-receipt:v1", actorUserId, idempotencyKey]);
+}
+
+function hashGroupNameUpdateRequest(actorUserId, input) {
+  return sha256(["sportexa:E2-20:group-name-update-request:v1", "contract-v1", actorUserId,
+    input.groupId, input.nombre, input.expectedEditToken, input.idempotencyKey]);
+}
+
+module.exports = { groupEditToken, groupNameUpdateReceiptId, hashGroupNameUpdateRequest, hashGroupRequest, hashIdempotencyKey, sha256 };

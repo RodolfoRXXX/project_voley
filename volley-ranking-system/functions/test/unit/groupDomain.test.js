@@ -8,6 +8,7 @@ const {
   buildGroup,
   hydrateGroup,
   normalizeGroupName,
+  renameGroup,
 } = require("../../src/groups/domain/group");
 const { toGroupDto } = require("../../src/groups/application/groupDto");
 
@@ -26,6 +27,14 @@ test("Grupo normaliza nombre Unicode y crea exactamente un Owner con estado acti
   assert.equal(Object.hasOwn(group, "memberIds"), false);
   assert.equal(Object.hasOwn(group, "adminIds"), false);
   assert.equal(Object.hasOwn(group, "temporadaId"), false);
+});
+
+test("renameGroup reemplaza sólo el nombre y preserva byte-equivalentes los demás valores", () => {
+  const original = hydrateGroup("opaque", { nombre: "Grupo", deporte: "voleibol", ownerId: "uid", estado: "activo", createdAt: timestamp, schemaVersion: 1 });
+  const renamed = renameGroup(original, "  Grupo   Ñuevo  ");
+  assert.equal(renamed.nombre, "Grupo Ñuevo");
+  for (const key of ["groupId", "deporte", "ownerId", "estado", "createdAt", "schemaVersion"]) assert.equal(renamed[key], original[key]);
+  assert.deepEqual(Object.keys(renamed), Object.keys(original));
 });
 
 test("Grupo cuenta puntos de código, conserva casing/acentos y no exige nombre único", () => {

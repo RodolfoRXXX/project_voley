@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
+import { EditGroupNameDialog } from "@/components/groups/EditGroupNameDialog";
 import { GroupLoading } from "@/components/groups/GroupLoading";
 import { GroupPageShell } from "@/components/groups/GroupPageShell";
 import { OwnMembershipSection } from "@/components/memberships/OwnMembershipSection";
@@ -14,9 +15,11 @@ import type { OwnGroup } from "@/types/OwnGroup";
 
 export default function OwnGroupDetailPage() {
   const params = useParams<{ groupId: string }>();
+  const router = useRouter();
   const [group, setGroup] = useState<OwnGroup | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -48,6 +51,7 @@ export default function OwnGroupDetailPage() {
   return (
     <GroupPageShell backHref="/dashboard/groups" title={group?.nombre ?? "Detalle del Grupo"} description="Vista organizativa básica del Grupo propio.">
       {status === "loading" ? <GroupLoading label="Cargando detalle del Grupo" /> : null}
+      <div className="sr-only" aria-live="polite">{notice}</div>
       {status === "error" ? <section role="alert" className="rounded-xl border border-red-300 bg-red-50 p-5 text-red-900"><p>{error}</p><button className="mt-4 min-h-11 rounded-lg border border-red-400 px-4 py-2 font-semibold" onClick={() => { setStatus("loading"); setError(""); void load(); }}>Reintentar</button></section> : null}
       {status === "ready" && group ? (
         <div className="grid gap-5 lg:grid-cols-[2fr_1fr]">
@@ -55,6 +59,16 @@ export default function OwnGroupDetailPage() {
             <p className="text-xs font-semibold uppercase tracking-wide text-orange-600">Vóley · {group.estado}</p>
             <h2 className="mt-2 text-xl font-semibold">Organización activa</h2>
             <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">Este estado expresa vigencia organizativa. No implica una Temporada abierta ni operaciones deportivas.</p>
+            <EditGroupNameDialog
+              group={group}
+              onUpdated={(current, message) => { setGroup(current); setNotice(message); }}
+              onAccessLost={(message) => {
+                setGroup(null);
+                setStatus("loading");
+                setNotice(message);
+                router.replace("/dashboard/groups");
+              }}
+            />
           </section>
           <aside className="rounded-2xl border border-[var(--border)] p-5">
             <h2 className="font-semibold">Tu acceso</h2>

@@ -169,8 +169,8 @@ test("E2-01 crea y consulta Grupos propios con ownership, idempotencia y aislami
       assert.deepEqual(list.body.result.items, [ownerGroup]);
       assert.deepEqual(dashboard.body.result.items, [{ id: ownerGroup.id, nombre: ownerGroup.nombre, deporte: "voleibol", estado: "activo" }]);
       assert.deepEqual(detail.body.result.group, ownerGroup);
-      assert.equal(foreign.body?.error?.details?.reason, "NOT_AUTHORIZED");
-      assert.equal(missing.body?.error?.details?.reason, "NOT_FOUND");
+      assert.equal(foreign.body?.error?.details?.reason, "GROUP_NOT_ACCESSIBLE");
+      assert.equal(missing.body?.error?.details?.reason, "GROUP_NOT_ACCESSIBLE");
     });
 
     await t.test("dos solicitudes iguales simultáneas producen un Grupo y created/existing", async () => {

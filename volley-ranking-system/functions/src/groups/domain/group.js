@@ -82,6 +82,11 @@ function hydrateGroup(groupId, data) {
   return Object.freeze({ groupId, ...data });
 }
 
+function renameGroup(group, nombre) {
+  const normalizedName = normalizeGroupName(nombre);
+  return Object.freeze({ ...group, nombre: normalizedName });
+}
+
 module.exports = {
   GROUP_FIELDS,
   GROUP_INITIAL_STATE,
@@ -92,4 +97,5 @@ module.exports = {
   hydrateGroup,
   normalizeGroupName,
   normalizeSport,
+  renameGroup,
 };

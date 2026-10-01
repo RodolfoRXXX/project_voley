@@ -41,6 +41,7 @@ class MembershipTargetNotAccessibleError extends MembershipError { constructor()
 class MembershipTargetIsSelfError extends MembershipError { constructor() { super("TARGET_IS_SELF", "The target Membership belongs to the actor"); } }
 class MembershipTargetNotActiveError extends MembershipError { constructor() { super("TARGET_MEMBERSHIP_NOT_ACTIVE", "Target Membership is not active"); } }
 class MembershipActivationChangedError extends MembershipError { constructor() { super("MEMBERSHIP_ACTIVATION_CHANGED", "Membership activation changed"); } }
+class MembershipEditTokenStaleError extends MembershipError { constructor() { super("EDIT_TOKEN_STALE", "Membership edit token is stale"); } }
 
 module.exports = {
   MembershipAccountRequiredError,
@@ -72,6 +73,7 @@ module.exports = {
   MembershipTargetIsSelfError,
   MembershipTargetNotActiveError,
   MembershipActivationChangedError,
+  MembershipEditTokenStaleError,
   MembershipSeasonNotReactivatableError,
   MembershipSeasonNotModifiableError,
   MembershipSeasonIncompatibleError,

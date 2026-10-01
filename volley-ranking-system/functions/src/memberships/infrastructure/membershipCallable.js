@@ -34,6 +34,7 @@ const MEMBERSHIP_HTTPS_CODES = Object.freeze({
   TARGET_IS_SELF: "failed-precondition",
   TARGET_MEMBERSHIP_NOT_ACTIVE: "failed-precondition",
   MEMBERSHIP_ACTIVATION_CHANGED: "aborted",
+  EDIT_TOKEN_STALE: "aborted",
 });
 
 function membershipIdentityFromCallableContext(context) {

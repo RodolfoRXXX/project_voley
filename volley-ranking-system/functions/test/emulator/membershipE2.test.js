@@ -192,7 +192,7 @@ test("E2-03 crea y consulta Membresía propia del Owner con unicidad transaccion
 
       const document = (await db.collection("memberships").doc(created.id).get()).data();
       assert.deepEqual(Object.keys(document).sort(), ["createdAt", "estado", "fechaIngreso", "groupId", "latestPeriodId", "periodCount", "personId", "schemaVersion", "seasonId"]);
-      assert.equal(document.schemaVersion, 3);
+      assert.equal(document.schemaVersion, 5);
       assert.equal(document.periodCount, 1);
       assert.equal(document.latestPeriodId, membershipValidityPeriodId(created.id, 1));
       assert.equal(document.fechaIngreso.isEqual(document.createdAt), true);
@@ -453,7 +453,7 @@ test("E2-03 crea y consulta Membresía propia del Owner con unicidad transaccion
       const membershipRef = db.collection("memberships").doc(createdForFinalize.body.result.membership.id);
       const persisted = (await membershipRef.get()).data();
       assert.deepEqual(Object.keys(persisted).sort(), ["createdAt", "estado", "fechaEgreso", "fechaIngreso", "groupId", "latestPeriodId", "periodCount", "personId", "schemaVersion", "seasonId"]);
-      assert.equal(persisted.schemaVersion, 3);
+      assert.equal(persisted.schemaVersion, 5);
       assert.equal(persisted.estado, "finalizada");
       assert.equal(persisted.periodCount, 1);
       assert.equal(persisted.latestPeriodId, membershipValidityPeriodId(createdForFinalize.body.result.membership.id, 1));

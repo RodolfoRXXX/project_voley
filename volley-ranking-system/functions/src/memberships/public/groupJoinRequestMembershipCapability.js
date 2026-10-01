@@ -79,7 +79,7 @@ function createGroupJoinRequestMembershipCapability({ db, groupCapability, seaso
     return state.kind === "active" && state.membership.membershipId === input.membershipId && state.membership.seasonId === input.seasonId
       && state.guard.guardVersion === 2 && state.guard.activationOrdinal === input.expectedActivationOrdinal
       && guardIdempotencyHash(state.guard) === input.idempotencyKeyHash && guardRequestHash(state.guard) === input.requestHash
-      && (input.approvalEffect !== "RENEW_MEMBERSHIP" || (state.membership.schemaVersion === 4 && state.membership.previousMembershipId === input.previousMembershipId && input.expectedActivationOrdinal === 1));
+      && (input.approvalEffect !== "RENEW_MEMBERSHIP" || ([4, 6].includes(state.membership.schemaVersion) && state.membership.previousMembershipId === input.previousMembershipId && input.expectedActivationOrdinal === 1));
   }
 
   return Object.freeze({
@@ -125,7 +125,7 @@ function createGroupJoinRequestMembershipCapability({ db, groupCapability, seaso
             }
             if (input.approvalEffect !== "REACTIVATE_MEMBERSHIP" || state.membership.membershipId !== input.membershipId || state.membership.seasonId !== input.seasonId) throw new MembershipIncompatibleStateError();
             const currentCount = state.membership.schemaVersion === 2 ? 1 : state.membership.periodCount;
-            if (input.expectedActivationOrdinal === currentCount && state.membership.schemaVersion === 3 && state.latestPeriod?.estado === "cerrado") {
+            if (input.expectedActivationOrdinal === currentCount && [3, 5].includes(state.membership.schemaVersion) && state.latestPeriod?.estado === "cerrado") {
               return Object.freeze({ outcome: "REACTIVATION_SUPERSEDED", membershipId: input.membershipId, personId: input.personId, groupId: input.groupId, seasonId: input.seasonId, activationOrdinal: input.expectedActivationOrdinal });
             }
             if (input.expectedActivationOrdinal !== currentCount + 1) throw new MembershipIncompatibleStateError();
@@ -152,13 +152,13 @@ function createGroupJoinRequestMembershipCapability({ db, groupCapability, seaso
         const membership = await repository.getById(membershipId, unitOfWork);
         if (!membership) return Object.freeze({ status: "activation-absent" });
         if (membership.personId !== personId || membership.groupId !== groupId || membership.seasonId !== seasonId) return Object.freeze({ status: "incompatible" });
-        if (previousMembershipId !== undefined && (membership.schemaVersion !== 4 || membership.previousMembershipId !== previousMembershipId || expectedActivationOrdinal !== 1)) return Object.freeze({ status: "incompatible" });
+        if (previousMembershipId !== undefined && (![4, 6].includes(membership.schemaVersion) || membership.previousMembershipId !== previousMembershipId || expectedActivationOrdinal !== 1)) return Object.freeze({ status: "incompatible" });
         if (membership.schemaVersion === MEMBERSHIP_FINALIZED_SCHEMA_VERSION) {
           if (membership.estado !== "finalizada" || expectedActivationOrdinal !== 2) return Object.freeze({ status: "incompatible" });
           await repository.requirePeriodIntegrity({ transaction: unitOfWork, membership });
           return Object.freeze({ status: "activation-absent" });
         }
-        if (![3, 4].includes(membership.schemaVersion)) return Object.freeze({ status: "incompatible" });
+        if (![3, 4, 5, 6].includes(membership.schemaVersion) || !Number.isSafeInteger(membership.periodCount)) return Object.freeze({ status: "incompatible" });
         if (membership.estado === "finalizada" && expectedActivationOrdinal === membership.periodCount + 1) {
           await repository.requirePeriodIntegrity({ transaction: unitOfWork, membership });
           return Object.freeze({ status: "activation-absent" });

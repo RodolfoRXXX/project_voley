@@ -34,8 +34,8 @@ function hydrateMembershipLifecycleGuard(snapshot, { guardId, personId, groupId 
 function assertFinalizedMembershipCorrelated(membership, lifecycle, latestPeriod) {
   if (!membership || membership.membershipId !== lifecycle.membershipId || membership.personId !== lifecycle.personId || membership.groupId !== lifecycle.groupId || membership.seasonId !== lifecycle.seasonId || membership.estado !== "finalizada" || !sameTimestamp(membership.fechaEgreso, lifecycle.finalizedAt)
     || (lifecycle.lifecycleGuardVersion === 1 && membership.schemaVersion !== 2)
-    || (lifecycle.lifecycleGuardVersion === 2 && membership.schemaVersion !== 3)
-    || (lifecycle.lifecycleGuardVersion === 3 && (lifecycle.rootState !== "finalized" || ![3, 4].includes(membership.schemaVersion)))
+    || (lifecycle.lifecycleGuardVersion === 2 && ![3, 5].includes(membership.schemaVersion))
+    || (lifecycle.lifecycleGuardVersion === 3 && (lifecycle.rootState !== "finalized" || ![3, 4, 5, 6].includes(membership.schemaVersion)))
     || (lifecycle.lifecycleGuardVersion >= 2 && latestPeriod && (membership.periodCount !== lifecycle.lastActivationOrdinal || latestPeriod.ordinal !== lifecycle.lastActivationOrdinal || latestPeriod.estado !== "cerrado" || !sameTimestamp(latestPeriod.endedAt, lifecycle.finalizedAt)))) {
     throw new MembershipIncompatibleStateError("Finalized Membership lifecycle correlation is invalid");
   }
@@ -43,7 +43,7 @@ function assertFinalizedMembershipCorrelated(membership, lifecycle, latestPeriod
 function assertActiveLifecycleCorrelated(membership, lifecycle, activeGuard, latestPeriod) {
   if (!membership || !activeGuard || lifecycle.lifecycleGuardVersion !== 3 || lifecycle.rootState !== "active"
     || membership.membershipId !== lifecycle.membershipId || membership.personId !== lifecycle.personId || membership.groupId !== lifecycle.groupId || membership.seasonId !== lifecycle.seasonId
-    || membership.estado !== "activa" || ![3, 4].includes(membership.schemaVersion) || membership.periodCount !== lifecycle.lastActivationOrdinal
+    || membership.estado !== "activa" || ![3, 4, 5, 6].includes(membership.schemaVersion) || membership.periodCount !== lifecycle.lastActivationOrdinal
     || activeGuard.membershipId !== lifecycle.membershipId || activeGuard.activationOrdinal !== lifecycle.lastActivationOrdinal
     || !latestPeriod || latestPeriod.estado !== "abierto" || latestPeriod.ordinal !== lifecycle.lastActivationOrdinal) {
     throw new MembershipIncompatibleStateError("Active Membership lifecycle correlation is invalid");

@@ -21,7 +21,7 @@ const document = {
 
 test("construye el Aggregate Root mínimo, activo e inmutable", () => {
   const membership = buildMembership({ membershipId: "opaque-id", personId: "person-1", groupId: "group-1", seasonId: "season-1" });
-  assert.deepEqual(membership, { membershipId: "opaque-id", personId: "person-1", groupId: "group-1", seasonId: "season-1", estado: "activa", schemaVersion: 3 });
+  assert.deepEqual(membership, { membershipId: "opaque-id", personId: "person-1", groupId: "group-1", seasonId: "season-1", estado: "activa", schemaVersion: 5 });
   assert.equal(Object.isFrozen(membership), true);
 });
 

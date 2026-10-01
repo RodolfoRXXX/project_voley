@@ -1,6 +1,6 @@
 "use strict";
 
-const { createInitialMembership, hydrateMembership, assertPeriodBoundary } = require("../domain/membership");
+const { createInitialMembership, hydrateMembership, assertPeriodBoundary, hasPeriodMetadata } = require("../domain/membership");
 const { hydrateMembershipValidityPeriod } = require("../domain/membershipValidityPeriod");
 const { membershipValidityPeriodId } = require("../application/membershipHashing");
 const { InvalidMembershipStateError } = require("../domain/membership");
@@ -19,7 +19,7 @@ function createFirestoreMembershipRepository({ db }) {
   async function requirePeriodIntegrity({ transaction, membership }) {
     if (!membership) throw new InvalidMembershipStateError("Membership is required");
     const firstId = membershipValidityPeriodId(membership.membershipId, 1);
-    if (![3, 4].includes(membership.schemaVersion)) {
+    if (!hasPeriodMetadata(membership)) {
       const [firstSnapshot, openSnapshot] = await Promise.all([
         transaction.get(periodReference(membership.membershipId, firstId)),
         transaction.get(openPeriodsQuery(membership.membershipId)),
@@ -84,6 +84,7 @@ function createFirestoreMembershipRepository({ db }) {
       persistRoot(transaction, transition.membership);
       persistPeriods(transaction, transition.membership.membershipId, transition.periods);
     },
+    updateRoot(transaction, membership) { persistRoot(transaction, membership); },
     updateFinalized(transaction, membership) { persistRoot(transaction, membership); },
   };
 }

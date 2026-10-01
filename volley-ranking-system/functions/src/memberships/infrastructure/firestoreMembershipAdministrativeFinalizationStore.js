@@ -1,7 +1,7 @@
 "use strict";
 
 const { Timestamp } = require("firebase-admin/firestore");
-const { InvalidMembershipStateError, finalizeMembership } = require("../domain/membership");
+const { InvalidMembershipStateError, finalizeMembership, hasPeriodMetadata } = require("../domain/membership");
 const {
   MembershipAccountRequiredError,
   MembershipActivationChangedError,
@@ -139,8 +139,9 @@ function createFirestoreMembershipAdministrativeFinalizationStore({
     }
     assertMembershipCorrelated(membership, activeGuard, periods.latestPeriod);
     if (lifecycle) assertActiveLifecycleCorrelated(membership, lifecycle, activeGuard, periods.latestPeriod);
-    const activationOrdinal = membership.schemaVersion === 1 ? 1 : membership.periodCount;
-    const periodId = membership.schemaVersion === 1 ? membershipValidityPeriodId(membership.membershipId, 1) : membership.latestPeriodId;
+    const legacy = !hasPeriodMetadata(membership);
+    const activationOrdinal = legacy ? 1 : membership.periodCount;
+    const periodId = legacy ? membershipValidityPeriodId(membership.membershipId, 1) : membership.latestPeriodId;
     const activationRef = membershipAdministrativeFinalizationActivationRef({
       actorUserId: args.actorUserId, groupId: args.groupId,
       membershipId: membership.membershipId, targetPersonId: membership.personId, seasonId: membership.seasonId,

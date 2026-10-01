@@ -112,7 +112,7 @@ test("E2-12 no consume PERSON_REQUIRED administrativo y preserva el mensaje de i
   assert.equal(service.includes("Necesitás crear tu Persona antes de administrar integrantes del grupo."), false);
   assert.doesNotMatch(service, /getAdministrativeMembershipFinalizationErrorMessage/);
   assert.match(frontend, /await prepareActiveGroupMemberFinalizationForOwnedGroup[\s\S]*setPhase\("confirmation"\)/);
-  assert.match(frontend, /catch \(cause\) \{[\s\S]*closeIntent\(false\); await load\(\); setActionError\(getMembershipErrorMessage\(nextReason\)\)/);
+  assert.match(frontend, /catch \(cause\) \{[\s\S]*closeIntent\(false\); if \(nextReason === "GROUP_NOT_ACCESSIBLE"\) \{ onAccessLost\(getMembershipErrorMessage\(nextReason\)\); return; \} await load\(\); setActionError\(getMembershipErrorMessage\(nextReason\)\)/);
   assert.match(frontend, /const closeIntent[\s\S]*setPhase\("idle"\); setPrepared\(null\)/);
   assert.match(frontend, /\{prepared && \["confirmation", "submitting", "recoverable"\]\.includes\(phase\)/);
 });

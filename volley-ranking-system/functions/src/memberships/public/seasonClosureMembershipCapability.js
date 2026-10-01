@@ -25,7 +25,7 @@ function createSeasonClosureMembershipCapability({ db }) {
       try {
         const periods = await repository.requirePeriodIntegrity({ transaction: unitOfWork, membership });
         assertMembershipCorrelated(membership, guard, periods.latestPeriod);
-        if (membership.schemaVersion === 4) {
+        if ([4, 6].includes(membership.schemaVersion)) {
           const lifecycleId = membershipLifecycleGuardId(groupId, membership.personId);
           const lifecycle = hydrateMembershipLifecycleGuard(await unitOfWork.get(db.collection("membershipLifecycleGuards").doc(lifecycleId)), { guardId: lifecycleId, personId: membership.personId, groupId });
           assertActiveLifecycleCorrelated(membership, lifecycle, guard, periods.latestPeriod);

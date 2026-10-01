@@ -35,7 +35,7 @@ test("E2-18 raíz v4 exige lineage cerrado y lo preserva al finalizar/reactivar"
   assert.equal(finalized.membership.previousMembershipId, "m-old");
   const period2Id = membershipValidityPeriodId("m-new", 2);
   const reactivated = reactivateMembership({ membership: finalized.membership, reactivatedAt: later, firstPeriod: finalized.periods[0], latestPeriod: finalized.periods[0], nextPeriodId: period2Id });
-  assert.equal(reactivated.membership.schemaVersion, 4);
+  assert.equal(reactivated.membership.schemaVersion, 6);
   assert.equal(reactivated.membership.previousMembershipId, "m-old");
   assert.throws(() => buildRenewedMembership({ membershipId: "same", previousMembershipId: "same", personId: "p", groupId: "g", seasonId: "s" }));
   assert.throws(() => hydrateMembership("m-new", { ...active.membership, unexpected: true }));

@@ -64,7 +64,7 @@ test("E2-18 renueva por Solicitud, recupera retry y preserva lineage", async () 
     ]);
     assert.deepEqual(predecessor.data(), { personId, groupId, seasonId: oldSeasonId, estado: "finalizada", fechaIngreso: at, fechaEgreso: closedAt, createdAt: at, schemaVersion: 2 });
     assert.equal(middleSeason.data().nombre, "Intermedia");
-    assert.equal(created.data().schemaVersion, 4); assert.equal(created.data().previousMembershipId, predecessorId); assert.equal(created.data().seasonId, openSeasonId); assert.equal(created.data().periodCount, 1);
+    assert.equal(created.data().schemaVersion, 6); assert.equal(created.data().previousMembershipId, predecessorId); assert.equal(created.data().seasonId, openSeasonId); assert.equal(created.data().periodCount, 1); assert.equal(Object.hasOwn(created.data(), "cargo"), false);
     assert.equal((await db.collection("memberships").doc(createdMembershipId).collection("validityPeriods").doc(membershipValidityPeriodId(createdMembershipId, 1)).get()).data().estado, "abierto");
     assert.equal(activeGuard.data().membershipId, createdMembershipId); assert.equal(activeGuard.data().activationOrdinal, 1);
     assert.equal(lifecycle.data().membershipId, createdMembershipId); assert.equal(lifecycle.data().rootState, "active"); assert.equal(lifecycle.data().lifecycleGuardVersion, 3);

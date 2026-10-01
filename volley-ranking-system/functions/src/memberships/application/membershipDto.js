@@ -67,6 +67,7 @@ function toOwnerActiveGroupMemberItem(membership, person, isOwner) {
     membershipId: membership.membershipId,
     joinedAt: membership.fechaIngreso.toDate().toISOString(),
     isOwner: Boolean(isOwner),
+    cargo: Object.prototype.hasOwnProperty.call(membership, "cargo") ? membership.cargo : null,
     person: personDto,
   });
 }
@@ -79,7 +80,7 @@ function toOwnGroupMembershipHistoryItem({ membership, group, season, validityPe
     status: membership.estado === "activa" ? "CURRENT" : "HISTORICAL",
     joinedAt: membership.fechaIngreso.toDate().toISOString(),
     validityPeriodCount,
-    continuity: membership.schemaVersion === 4 ? "RENEWAL" : "INITIAL",
+    continuity: [4, 6].includes(membership.schemaVersion) ? "RENEWAL" : "INITIAL",
   };
   if (membership.estado === "finalizada") item.leftAt = membership.fechaEgreso.toDate().toISOString();
   return Object.freeze(item);
@@ -93,4 +94,22 @@ function toAdministrativeFinalizationResult(result) {
   return Object.freeze({ outcome: "MEMBERSHIP_FINALIZATION_CONFIRMED", effect: Object.freeze({ membershipId: result.membershipId, finalizedAt: result.finalizedAt.toDate().toISOString() }) });
 }
 
-module.exports = { FINALIZED_MEMBERSHIP_DTO_KEYS, MEMBERSHIP_DTO_KEYS, toAdministrativeFinalizationPreparation, toAdministrativeFinalizationResult, toFinalizedMembershipDto, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem, toOwnGroupMembershipHistoryItem, toOwnerActiveGroupMemberItem };
+function toMembershipCargoDetail(result) {
+  const person = result.person.status === "available"
+    ? Object.freeze({ status: "AVAILABLE", firstName: result.person.firstName, lastName: result.person.lastName })
+    : Object.freeze({ status: "UNAVAILABLE" });
+  return Object.freeze({ membership: Object.freeze({ id: result.membership.membershipId, person, cargo: Object.prototype.hasOwnProperty.call(result.membership, "cargo") ? result.membership.cargo : null }), editToken: result.editToken });
+}
+
+function toMembershipCargoUpdateResult(result) {
+  const appliedEffect = result.receipt ? Object.freeze({ membershipId: result.receipt.membershipId, cargo: result.receipt.cargo, confirmedAt: result.receipt.confirmedAt.toDate().toISOString(), editToken: result.receipt.editToken }) : null;
+  return Object.freeze({
+    outcome: result.outcome,
+    recovered: result.recovered,
+    appliedEffect,
+    currentMembership: Object.freeze({ id: result.current.membershipId, estado: result.current.estado, cargo: result.current.cargo }),
+    currentEditToken: result.current.editToken,
+  });
+}
+
+module.exports = { FINALIZED_MEMBERSHIP_DTO_KEYS, MEMBERSHIP_DTO_KEYS, toAdministrativeFinalizationPreparation, toAdministrativeFinalizationResult, toFinalizedMembershipDto, toMembershipCargoDetail, toMembershipCargoUpdateResult, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem, toOwnGroupMembershipHistoryItem, toOwnerActiveGroupMemberItem };

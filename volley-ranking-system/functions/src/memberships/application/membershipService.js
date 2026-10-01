@@ -1,7 +1,7 @@
 "use strict";
 
 const { buildMembership, InvalidMembershipStateError } = require("../domain/membership");
-const { toAdministrativeFinalizationPreparation, toAdministrativeFinalizationResult, toFinalizedMembershipDto, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem, toOwnGroupMembershipHistoryItem, toOwnerActiveGroupMemberItem } = require("./membershipDto");
+const { toAdministrativeFinalizationPreparation, toAdministrativeFinalizationResult, toFinalizedMembershipDto, toMembershipCargoDetail, toMembershipCargoUpdateResult, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem, toOwnGroupMembershipHistoryItem, toOwnerActiveGroupMemberItem } = require("./membershipDto");
 const { decodeMyGroupsCursor, encodeMyGroupsCursor } = require("./membershipCursor");
 const { decodeOwnerGroupMembersCursor, encodeOwnerGroupMembersCursor } = require("./ownerGroupMembersCursor");
 const { encodeOwnGroupMembershipHistoryCursor } = require("./ownGroupMembershipHistoryCursor");
@@ -16,7 +16,7 @@ const {
   MembershipUnauthenticatedError,
   MembershipValidationError,
 } = require("./membershipErrors");
-const { activeMembershipGuardId, hashMembershipAdministrativeActivationRef, hashMembershipAdministrativeFinalizationKey, hashMembershipAdministrativeFinalizationRequest, hashMembershipIdempotencyKey, hashMembershipRequest, hashMembershipSelfExitIdempotencyKey, hashMembershipSelfExitRequest, membershipAdministrativeFinalizationIntentId, membershipLifecycleGuardId, membershipSelfExitIntentId } = require("./membershipHashing");
+const { activeMembershipGuardId, hashMembershipAdministrativeActivationRef, hashMembershipAdministrativeFinalizationKey, hashMembershipAdministrativeFinalizationRequest, hashMembershipCargoUpdateKey, hashMembershipCargoUpdateRequest, hashMembershipIdempotencyKey, hashMembershipRequest, hashMembershipSelfExitIdempotencyKey, hashMembershipSelfExitRequest, membershipAdministrativeFinalizationIntentId, membershipCargoUpdateReceiptId, membershipLifecycleGuardId, membershipSelfExitIntentId } = require("./membershipHashing");
 const { isTransientDependencyError } = require("../../shared/application/transientDependencyError");
 const { annotateMembershipError, inheritMembershipDiagnostic } = require("./membershipObservability");
 
@@ -25,7 +25,7 @@ function requireActor(identity) {
   return identity.userId.trim();
 }
 
-function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, lifecycleGuard, selfExitStore, administrativeFinalizationStore, myMembershipReader, myCurrentGroupMembershipsReader, ownGroupMembershipHistoryReader, memberGroupContext, ownerActiveGroupMembersReader }) {
+function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, lifecycleGuard, selfExitStore, administrativeFinalizationStore, membershipCargoStore, myMembershipReader, myCurrentGroupMembershipsReader, ownGroupMembershipHistoryReader, memberGroupContext, ownerActiveGroupMembersReader }) {
   if (!selfAccountReader || !selfPersonContext || !ownedGroupContext || !openSeasonContext || !membershipRepository || !activeMembershipGuard || !myMembershipReader) {
     throw new TypeError("Membership service dependencies are required");
   }
@@ -267,6 +267,28 @@ function createMembershipService({ selfAccountReader, selfPersonContext, ownedGr
         if (isTransientDependencyError(error)) throw new MembershipDependencyUnavailableError({ cause: error });
         throw internalAt(error, operation, "roster-page");
       }
+    },
+
+    async getMembershipCargoForOwnedGroup(identity, input) {
+      const operation = "membership-cargo-get"; const userId = requireActor(identity);
+      await atStage(operation, "account", () => requireAccount(userId));
+      if (!membershipCargoStore) throw new MembershipDependencyUnavailableError();
+      const result = await atStage(operation, "transaction", () => membershipCargoStore.prepare({ actorUserId: userId, groupId: input.groupId, membershipId: input.membershipId }));
+      return toMembershipCargoDetail(result);
+    },
+
+    async updateMembershipCargoForOwnedGroup(identity, input) {
+      const operation = "membership-cargo-update"; const userId = requireActor(identity);
+      await atStage(operation, "account", () => requireAccount(userId));
+      if (!membershipCargoStore) throw new MembershipDependencyUnavailableError();
+      const result = await atStage(operation, "transaction", () => membershipCargoStore.confirm({
+        actorUserId: userId, groupId: input.groupId, membershipId: input.membershipId,
+        cargo: input.cargo, editToken: input.editToken,
+        receiptId: membershipCargoUpdateReceiptId(userId, input.idempotencyKey),
+        idempotencyKeyHash: hashMembershipCargoUpdateKey(userId, input.idempotencyKey),
+        requestHash: hashMembershipCargoUpdateRequest(userId, input.groupId, input.membershipId, input.cargo),
+      }));
+      return toMembershipCargoUpdateResult(result);
     },
 
     async listMyGroupMembershipHistory(identity, input) {

@@ -77,7 +77,7 @@ function createFirestoreOwnGroupMembershipHistoryReader({ db, personCapability, 
   async function readPeriods(transaction, memberships, metrics) {
     const refs = new Map();
     for (const membership of memberships) {
-      if (![3, 4].includes(membership.schemaVersion)) continue;
+      if (![3, 4, 5, 6].includes(membership.schemaVersion) || !Number.isSafeInteger(membership.periodCount)) continue;
       const firstId = membershipValidityPeriodId(membership.membershipId, 1);
       const latestId = membershipValidityPeriodId(membership.membershipId, membership.periodCount);
       if (membership.latestPeriodId !== latestId) throw new InvalidMembershipStateError("Latest validity period id is inconsistent");
@@ -91,7 +91,7 @@ function createFirestoreOwnGroupMembershipHistoryReader({ db, personCapability, 
     const byPath = new Map(snapshots.map((snapshot) => [snapshot.ref.path, snapshot]));
     const counts = new Map();
     for (const membership of memberships) {
-      if (![3, 4].includes(membership.schemaVersion)) { counts.set(membership.membershipId, 1); continue; }
+      if (![3, 4, 5, 6].includes(membership.schemaVersion) || !Number.isSafeInteger(membership.periodCount)) { counts.set(membership.membershipId, 1); continue; }
       const firstId = membershipValidityPeriodId(membership.membershipId, 1);
       const latestId = membershipValidityPeriodId(membership.membershipId, membership.periodCount);
       const base = db.collection("memberships").doc(membership.membershipId).collection("validityPeriods");

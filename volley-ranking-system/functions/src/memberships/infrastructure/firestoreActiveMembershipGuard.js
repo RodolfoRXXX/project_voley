@@ -77,8 +77,9 @@ function assertMembershipCorrelated(membership, guard, currentPeriod) {
     || membership.groupId !== guard.groupId
     || membership.seasonId !== guard.seasonId
     || membership.estado !== "activa"
-    || (guard.guardVersion === 1 && membership.schemaVersion !== 1)
-    || (guard.guardVersion === 2 && ![3, 4].includes(membership.schemaVersion))
+    || (guard.guardVersion === 1 && !(membership.schemaVersion === 1
+      || (membership.schemaVersion === 5 && !Object.prototype.hasOwnProperty.call(membership, "periodCount"))))
+    || (guard.guardVersion === 2 && ![3, 4, 5, 6].includes(membership.schemaVersion))
     || (guard.guardVersion === 2 && currentPeriod && (membership.periodCount !== guard.activationOrdinal || membership.latestPeriodId !== currentPeriod.periodId
       || currentPeriod?.estado !== "abierto" || currentPeriod.ordinal !== guard.activationOrdinal
       || currentPeriod.startedAt.toDate().getTime() !== guard.activatedAt.toDate().getTime()))) {

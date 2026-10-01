@@ -3,7 +3,7 @@ import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
 import type { ActiveOwnMembership, FinalizedOwnMembership, MembershipErrorReason, OwnMembership } from "@/types/OwnMembership";
 import type { LeaveMyGroupMembershipResult, ListMyCurrentGroupMembershipsResult } from "@/types/MyCurrentGroupMembership";
-import type { ListActiveGroupMembersResult } from "@/types/ActiveGroupMember";
+import type { ListActiveGroupMembersResult, MembershipCargoDetail, MembershipCargoUpdateResult } from "@/types/ActiveGroupMember";
 import type { ListMyGroupMembershipHistoryResult } from "@/types/OwnGroupMembershipHistory";
 
 export interface CreateMyMembershipInput { groupId: string; idempotencyKey: string; }
@@ -33,6 +33,8 @@ const leaveMyGroupCallable = httpsCallable<{ groupId: string; idempotencyKey: st
 const listActiveGroupMembersCallable = httpsCallable<{ groupId: string; pageSize?: number; cursor?: string }, ListActiveGroupMembersResult>(functions, "listActiveGroupMembersForOwnedGroup");
 const prepareAdministrativeFinalizationCallable = httpsCallable<{ groupId: string; membershipId: string }, PrepareActiveGroupMemberFinalizationResult>(functions, "prepareActiveGroupMemberFinalizationForOwnedGroup");
 const finalizeAdministrativeFinalizationCallable = httpsCallable<{ groupId: string; membershipId: string; activationRef: string; idempotencyKey: string }, FinalizeActiveGroupMemberResult>(functions, "finalizeActiveGroupMemberForOwnedGroup");
+const getMembershipCargoCallable = httpsCallable<{ groupId: string; membershipId: string }, MembershipCargoDetail>(functions, "getMembershipCargoForOwnedGroup");
+const updateMembershipCargoCallable = httpsCallable<{ groupId: string; membershipId: string; cargo: string | null; editToken: string; idempotencyKey: string }, MembershipCargoUpdateResult>(functions, "updateMembershipCargoForOwnedGroup");
 
 export async function createMyMembershipForOwnedGroup(input: CreateMyMembershipInput): Promise<CreateMyMembershipResult> {
   return (await createCallable(input)).data;
@@ -70,6 +72,14 @@ export async function finalizeActiveGroupMemberForOwnedGroup(input: { groupId: s
   return (await finalizeAdministrativeFinalizationCallable(input)).data;
 }
 
+export async function getMembershipCargoForOwnedGroup(input: { groupId: string; membershipId: string }): Promise<MembershipCargoDetail> {
+  return (await getMembershipCargoCallable(input)).data;
+}
+
+export async function updateMembershipCargoForOwnedGroup(input: { groupId: string; membershipId: string; cargo: string | null; editToken: string; idempotencyKey: string }): Promise<MembershipCargoUpdateResult> {
+  return (await updateMembershipCargoCallable(input)).data;
+}
+
 export function getMembershipErrorReason(error: unknown): MembershipErrorReason {
   if (typeof error === "object" && error !== null && "details" in error) {
     const details = (error as { details?: unknown }).details;
@@ -83,7 +93,7 @@ export function getMembershipErrorReason(error: unknown): MembershipErrorReason 
         "MEMBERSHIP_SEASON_NOT_MODIFIABLE",
         "IDEMPOTENCY_CONFLICT", "INCOMPATIBLE_STATE", "CONFLICT", "DEPENDENCY_NOT_CONFIGURED",
         "DEPENDENCY_UNAVAILABLE", "INTERNAL_ERROR", "GROUP_NOT_ACCESSIBLE", "ROSTER_CONTEXT_CHANGED",
-        "TARGET_MEMBERSHIP_NOT_ACCESSIBLE", "TARGET_IS_SELF", "TARGET_MEMBERSHIP_NOT_ACTIVE", "MEMBERSHIP_ACTIVATION_CHANGED",
+        "TARGET_MEMBERSHIP_NOT_ACCESSIBLE", "TARGET_IS_SELF", "TARGET_MEMBERSHIP_NOT_ACTIVE", "MEMBERSHIP_ACTIVATION_CHANGED", "EDIT_TOKEN_STALE",
       ];
       if (known.includes(reason)) return reason;
     }
@@ -122,6 +132,7 @@ export function getMembershipErrorMessage(reason: MembershipErrorReason): string
     TARGET_IS_SELF: "Para finalizar tu propia Membresía usá la acción de salida personal.",
     TARGET_MEMBERSHIP_NOT_ACTIVE: "La Membresía seleccionada ya no está activa. Actualizamos el roster.",
     MEMBERSHIP_ACTIVATION_CHANGED: "La activación cambió. Volvé a revisar y confirmar la Membresía actual.",
+    EDIT_TOKEN_STALE: "El cargo cambió mientras lo editabas. Actualizamos el valor vigente.",
   };
   return messages[reason];
 }

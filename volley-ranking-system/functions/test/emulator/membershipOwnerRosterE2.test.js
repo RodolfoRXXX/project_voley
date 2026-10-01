@@ -150,12 +150,12 @@ test("E2-11 consulta Owner de integrantes activos con integridad, privacidad y p
       assert.equal(result.status, 200, JSON.stringify(result.body));
       assert.equal(result.body.result.scope.status, "OPEN_SEASON");
       assert.deepEqual(result.body.result.items.map((item) => item.membershipId), ["e2-11-mixed-01", "e2-11-mixed-02", "e2-11-mixed-03", "e2-11-mixed-04"]);
-      assert.deepEqual(result.body.result.items[0], { membershipId: "e2-11-mixed-01", joinedAt: at(1788177100).toDate().toISOString(), isOwner: true, person: { status: "AVAILABLE", firstName: "Olivia", lastName: "Owner" } });
+      assert.deepEqual(result.body.result.items[0], { membershipId: "e2-11-mixed-01", joinedAt: at(1788177100).toDate().toISOString(), isOwner: true, cargo: null, person: { status: "AVAILABLE", firstName: "Olivia", lastName: "Owner" } });
       assert.deepEqual(result.body.result.items[1].person, { status: "AVAILABLE", firstName: "Mara", lastName: "Member" });
       assert.deepEqual(result.body.result.items[2].person, { status: "UNAVAILABLE" });
       assert.deepEqual(result.body.result.items[3].person, { status: "UNAVAILABLE" });
       assert.equal(result.body.result.nextCursor, null);
-      for (const item of result.body.result.items) assert.deepEqual(Object.keys(item).sort(), ["isOwner", "joinedAt", "membershipId", "person"]);
+      for (const item of result.body.result.items) assert.deepEqual(Object.keys(item).sort(), ["cargo", "isOwner", "joinedAt", "membershipId", "person"]);
       const serialized = JSON.stringify(result.body.result);
       for (const forbidden of ["personId", "seasonId", "emailContacto", "schemaVersion", "periodCount", "guardVersion", "memberIds", "adminIds"]) assert.equal(serialized.includes(forbidden), false, forbidden);
       const after = await Promise.all(["memberships", "activeMembershipGuards", "membershipLifecycleGuards", "notifications", "activities"].map((name) => db.collection(name).count().get().then((snapshot) => snapshot.data().count)));

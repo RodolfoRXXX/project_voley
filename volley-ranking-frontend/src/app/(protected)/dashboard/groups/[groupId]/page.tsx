@@ -21,6 +21,13 @@ export default function OwnGroupDetailPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
+  const handleAccessLost = useCallback((message: string) => {
+    setGroup(null);
+    setStatus("loading");
+    setNotice(message);
+    router.replace("/dashboard/groups");
+  }, [router]);
+
   const load = useCallback(async () => {
     try {
       setGroup((await getOwnGroup(params.groupId)).group);
@@ -62,12 +69,7 @@ export default function OwnGroupDetailPage() {
             <EditGroupNameDialog
               group={group}
               onUpdated={(current, message) => { setGroup(current); setNotice(message); }}
-              onAccessLost={(message) => {
-                setGroup(null);
-                setStatus("loading");
-                setNotice(message);
-                router.replace("/dashboard/groups");
-              }}
+              onAccessLost={handleAccessLost}
             />
           </section>
           <aside className="rounded-2xl border border-[var(--border)] p-5">
@@ -76,7 +78,10 @@ export default function OwnGroupDetailPage() {
           </aside>
           <SeasonHistorySection groupId={group.id} />
           <OwnMembershipSection groupId={group.id} />
-          <ActiveGroupMembersSection groupId={group.id} />
+          <ActiveGroupMembersSection
+            groupId={group.id}
+            onAccessLost={handleAccessLost}
+          />
           <PendingGroupJoinRequestsSection groupId={group.id} />
         </div>
       ) : null}

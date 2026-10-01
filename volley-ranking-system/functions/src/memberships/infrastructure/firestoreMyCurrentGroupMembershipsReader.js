@@ -71,7 +71,7 @@ function createFirestoreMyCurrentGroupMembershipsReader({ db, membershipReposito
           if (!guard) throw new MembershipIncompatibleStateError("Active Membership guard is absent");
           const periods = await membershipRepository.requirePeriodIntegrity({ transaction, membership: memberships[0] });
           assertMembershipCorrelated(memberships[0], guard, periods.latestPeriod);
-          if (memberships[0].schemaVersion === 4) {
+          if ([4, 6].includes(memberships[0].schemaVersion)) {
             const lifecycleId = membershipLifecycleGuardId(candidate.groupId, personId);
             const lifecycle = hydrateMembershipLifecycleGuard(await transaction.get(db.collection("membershipLifecycleGuards").doc(lifecycleId)), { guardId: lifecycleId, personId, groupId: candidate.groupId });
             assertActiveLifecycleCorrelated(memberships[0], lifecycle, guard, periods.latestPeriod);

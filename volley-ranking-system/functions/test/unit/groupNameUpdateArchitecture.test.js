@@ -15,7 +15,9 @@ test("E2-20 UI usa Functions, limita el formulario y cubre retry, stale, foco y 
   assert.doesNotMatch(ui, /firebase\/firestore|deporte|ownerId|schemaVersion|descripci|configur|archiv|elimin/i);
   for (const pattern of [/getOwnGroup/, /expectedEditToken/, /intent/, /sendingRef\.current/, /STALE_UPDATE/, /GROUP_NOT_ACCESSIBLE/, /Escape/, /queueMicrotask.*focus/, /aria-live/, /aria-busy/, /htmlFor="group-edit-name"/, /sm:/]) assert.match(ui, pattern);
   assert.match(detail, /EditGroupNameDialog/);
-  assert.match(detail, /onAccessLost=\{\(message\) => \{[\s\S]*setGroup\(null\);[\s\S]*router\.replace\("\/dashboard\/groups"\)/);
+  assert.match(detail, /const handleAccessLost = useCallback\([\s\S]*setGroup\(null\);[\s\S]*router\.replace\("\/dashboard\/groups"\)/);
+  assert.match(detail, /<EditGroupNameDialog[\s\S]*onAccessLost=\{handleAccessLost\}/);
+  assert.match(detail, /<ActiveGroupMembersSection[\s\S]*onAccessLost=\{handleAccessLost\}/);
 });
 
 test("E2-20 no agrega índice ni dependencias hacia otros Agregados", () => {

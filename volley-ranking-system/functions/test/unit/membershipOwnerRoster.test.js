@@ -74,8 +74,8 @@ test("servicio E2-11 revalida Cuenta, compone DTO mínimo y ancla cursor en la �
   assert.deepEqual(Object.keys(result).sort(), ["items", "nextCursor", "scope"]);
   assert.deepEqual(result.scope, { status: "OPEN_SEASON" });
   assert.deepEqual(result.items, [
-    { membershipId: "membership-01", joinedAt: "2026-08-31T12:00:00.123Z", isOwner: true, person: { status: "AVAILABLE", firstName: "Ana", lastName: "Pérez" } },
-    { membershipId: "membership-20", joinedAt: "2026-08-31T12:00:00.123Z", isOwner: false, person: { status: "UNAVAILABLE" } },
+    { membershipId: "membership-01", joinedAt: "2026-08-31T12:00:00.123Z", isOwner: true, cargo: null, person: { status: "AVAILABLE", firstName: "Ana", lastName: "Pérez" } },
+    { membershipId: "membership-20", joinedAt: "2026-08-31T12:00:00.123Z", isOwner: false, cargo: null, person: { status: "UNAVAILABLE" } },
   ]);
   assert.equal(captured.userId, "owner-1");
   assert.equal(captured.position, null);
@@ -141,7 +141,7 @@ test("arquitectura E2-11 conserva reader/DTO y E2-12 limita la acción a tercero
   assert.doesNotMatch(`${frontend}\n${frontendService}`, /firebase\/firestore|collection\(|getDoc\(|setDoc\(|updateDoc\(/);
   for (const marker of ["Integrantes", "Cargando integrantes", "NO_OPEN_SEASON", "No hay un roster actual", "Todavía no hay integrantes", "Identidad no disponible", "Owner", "Cargar más", "Reintentar", "ROSTER_CONTEXT_CHANGED", "aria-live", "aria-busy", "role=\"alert\"", "tabIndex={-1}", "min-h-11", "sm:grid-cols-2", "lg:col-span-2"]) assert.match(frontend, new RegExp(marker));
   for (const marker of [/item\.person\.status === "AVAILABLE" && !item\.isOwner/, /availableThirdParty \?/, /Finalizar Membresía/]) assert.match(frontend, marker);
-  assert.doesNotMatch(frontend, />\s*(Expulsar|Suspender|Editar)|kebab|checkbox/i);
+  assert.doesNotMatch(frontend, />\s*(Expulsar|Suspender)|kebab|checkbox/i);
   for (const collection of ["memberships", "validityPeriods", "activeMembershipGuards", "personas", "seasons", "openSeasonGuards"]) assert.match(rules, new RegExp(collection));
   assert.equal(indexes.indexes.filter((index) => index.collectionGroup === "memberships"
     && index.queryScope === "COLLECTION"

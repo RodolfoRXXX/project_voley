@@ -81,6 +81,37 @@ function hashMembershipAdministrativeActivationRef(activationRef) {
   return sha256LengthPrefixed(["sportexa:E2-12:membership-administrative-finalization-activation-ref-hash:v1", activationRef]);
 }
 
+function membershipCargoEditToken(actorUserId, membership) {
+  const hasCargo = Object.prototype.hasOwnProperty.call(membership, "cargo");
+  return sha256LengthPrefixed([
+    "sportexa:E2-22A:membership-cargo-edit-token:v1", actorUserId,
+    membership.groupId, membership.membershipId, membership.seasonId,
+    membership.estado, String(membership.schemaVersion),
+    String(membership.fechaIngreso.toDate().getTime()),
+    Object.prototype.hasOwnProperty.call(membership, "latestPeriodId") ? membership.latestPeriodId : "legacy",
+    Object.prototype.hasOwnProperty.call(membership, "periodCount") ? String(membership.periodCount) : "legacy",
+    hasCargo ? "present" : "absent",
+    hasCargo ? membership.cargo : "",
+  ]);
+}
+
+function membershipCargoUpdateReceiptId(actorUserId, key) {
+  return sha256LengthPrefixed(["sportexa:E2-22A:membership-cargo-update-receipt:v1", actorUserId, key]);
+}
+
+function hashMembershipCargoUpdateKey(actorUserId, key) {
+  return sha256LengthPrefixed(["sportexa:E2-22A:membership-cargo-update-key:v1", actorUserId, key]);
+}
+
+function hashMembershipCargoUpdateRequest(actorUserId, groupId, membershipId, cargo) {
+  return sha256LengthPrefixed([
+    "sportexa:E2-22A:membership-cargo-update-request:v1", "contract-v1",
+    actorUserId, groupId, membershipId,
+    cargo === null ? "remove" : "set",
+    cargo === null ? "" : cargo,
+  ]);
+}
+
 module.exports = {
   activeMembershipGuardId,
   hashGroupJoinRequestActivationIdempotency,
@@ -95,6 +126,10 @@ module.exports = {
   hashMembershipAdministrativeFinalizationKey,
   hashMembershipAdministrativeFinalizationRequest,
   hashMembershipAdministrativeActivationRef,
+  membershipCargoEditToken,
+  membershipCargoUpdateReceiptId,
+  hashMembershipCargoUpdateKey,
+  hashMembershipCargoUpdateRequest,
   membershipLifecycleGuardId,
   membershipValidityPeriodId,
   sha256LengthPrefixed,

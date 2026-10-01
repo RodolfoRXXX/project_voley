@@ -1,6 +1,7 @@
 "use strict";
 
 const { MembershipCursorInvalidError, MembershipValidationError } = require("./membershipErrors");
+const { InvalidMembershipStateError, normalizeMembershipCargo } = require("../domain/membership");
 
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{16,128}$/;
 const MY_GROUPS_DEFAULT_PAGE_SIZE = 20;
@@ -46,6 +47,25 @@ function validatePrepareActiveGroupMemberFinalizationPayload(data) {
   assertGroupId(data.groupId);
   assertDocumentId(data.membershipId);
   return Object.freeze({ groupId: data.groupId, membershipId: data.membershipId });
+}
+
+function validateGetMembershipCargoForOwnedGroupPayload(data) {
+  assertExactObject(data, ["groupId", "membershipId"]);
+  assertGroupId(data.groupId); assertDocumentId(data.membershipId);
+  return Object.freeze({ groupId: data.groupId, membershipId: data.membershipId });
+}
+
+function validateUpdateMembershipCargoForOwnedGroupPayload(data) {
+  assertExactObject(data, ["groupId", "membershipId", "cargo", "editToken", "idempotencyKey"]);
+  assertGroupId(data.groupId); assertDocumentId(data.membershipId);
+  if (typeof data.editToken !== "string" || !SHA256_PATTERN.test(data.editToken)) throw new MembershipValidationError("Edit token is invalid");
+  if (typeof data.idempotencyKey !== "string" || !IDEMPOTENCY_KEY_PATTERN.test(data.idempotencyKey)) throw new MembershipValidationError("Idempotency key is invalid");
+  let cargo = null;
+  if (data.cargo !== null) {
+    try { cargo = normalizeMembershipCargo(data.cargo); }
+    catch (error) { if (error instanceof InvalidMembershipStateError) throw new MembershipValidationError("Cargo is invalid", { cause: error }); throw error; }
+  }
+  return Object.freeze({ groupId: data.groupId, membershipId: data.membershipId, cargo, editToken: data.editToken, idempotencyKey: data.idempotencyKey });
 }
 
 function validateFinalizeActiveGroupMemberPayload(data) {
@@ -169,4 +189,6 @@ module.exports = {
   validateListMyGroupMembershipHistoryPayload,
   validatePrepareActiveGroupMemberFinalizationPayload,
   validateFinalizeActiveGroupMemberPayload,
+  validateGetMembershipCargoForOwnedGroupPayload,
+  validateUpdateMembershipCargoForOwnedGroupPayload,
 };

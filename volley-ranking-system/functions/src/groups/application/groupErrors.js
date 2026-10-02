@@ -47,9 +47,20 @@ class GroupIdempotencyConflictError extends GroupError {
 class GroupStaleUpdateError extends GroupError {
   constructor() { super("STALE_UPDATE", "Group changed since it was read"); }
 }
+class GroupStaleArchiveError extends GroupError {
+  constructor() { super("STALE_ARCHIVE", "Group changed since archive preparation"); }
+}
+class GroupAlreadyArchivedError extends GroupError {
+  constructor() { super("GROUP_ALREADY_ARCHIVED", "Group is already archived"); }
+}
+class GroupArchiveBlockedError extends GroupError {
+  constructor(reason) { super(reason, "Group has unresolved activity"); }
+}
 
 module.exports = {
   GroupAccountRequiredError,
+  GroupAlreadyArchivedError,
+  GroupArchiveBlockedError,
   GroupConflictError,
   GroupDependencyUnavailableError,
   GroupError,
@@ -63,4 +74,5 @@ module.exports = {
   GroupUnauthenticatedError,
   GroupValidationError,
   GroupStaleUpdateError,
+  GroupStaleArchiveError,
 };

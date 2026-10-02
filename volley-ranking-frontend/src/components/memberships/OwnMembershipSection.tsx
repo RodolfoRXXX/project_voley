@@ -25,7 +25,7 @@ function reasonForPresentation(cause: unknown) {
   return getMembershipErrorReason(cause);
 }
 
-export function OwnMembershipSection({ groupId }: { groupId: string }) {
+export function OwnMembershipSection({ groupId, onAccessLost }: { groupId: string; onAccessLost?: (message: string) => void }) {
   const [view, setView] = useState<ViewState>("loading");
   const [membership, setMembership] = useState<OwnMembership | null>(null);
   const [error, setError] = useState("");
@@ -68,10 +68,11 @@ export function OwnMembershipSection({ groupId }: { groupId: string }) {
       }
     } catch (cause) {
       const reason = reasonForPresentation(cause);
+      if (reason === "GROUP_NOT_ACCESSIBLE") { setMembership(null); onAccessLost?.(getMembershipErrorMessage(reason)); return; }
       setError(getMembershipErrorMessage(reason));
       setView(["CONFLICT", "DEPENDENCY_UNAVAILABLE", "INTERNAL_ERROR"].includes(reason) ? "recoverable-error" : "closed-error");
     }
-  }, [groupId]);
+  }, [groupId, onAccessLost]);
 
   useEffect(() => {
     intentRef.current.setGroupId(groupId);
@@ -100,12 +101,13 @@ export function OwnMembershipSection({ groupId }: { groupId: string }) {
       } catch (cause) {
         if (!active) return;
         const reason = reasonForPresentation(cause);
+        if (reason === "GROUP_NOT_ACCESSIBLE") { setMembership(null); onAccessLost?.(getMembershipErrorMessage(reason)); return; }
         setError(getMembershipErrorMessage(reason));
         setView(["CONFLICT", "DEPENDENCY_UNAVAILABLE", "INTERNAL_ERROR"].includes(reason) ? "recoverable-error" : "closed-error");
       }
     })();
     return () => { active = false; };
-  }, [groupId]);
+  }, [groupId, onAccessLost]);
 
   const confirm = useCallback(async () => {
     if (sendingRef.current) return;
@@ -122,6 +124,7 @@ export function OwnMembershipSection({ groupId }: { groupId: string }) {
       queueMicrotask(() => resultRef.current?.focus());
     } catch (cause) {
       const reason = reasonForPresentation(cause);
+      if (reason === "GROUP_NOT_ACCESSIBLE") { setMembership(null); onAccessLost?.(getMembershipErrorMessage(reason)); return; }
       intentRef.current.recordFailure(reason);
       if (reason === "IDEMPOTENCY_CONFLICT") {
         setError(getMembershipErrorMessage(reason));
@@ -143,7 +146,7 @@ export function OwnMembershipSection({ groupId }: { groupId: string }) {
     } finally {
       sendingRef.current = false;
     }
-  }, [groupId, load]);
+  }, [groupId, load, onAccessLost]);
 
   const recheckAfterIdempotencyConflict = useCallback(async () => {
     if (sendingRef.current) return;
@@ -170,12 +173,13 @@ export function OwnMembershipSection({ groupId }: { groupId: string }) {
       setView(openSeason ? "new-intent-required" : "season-required");
     } catch (cause) {
       const reason = reasonForPresentation(cause);
+      if (reason === "GROUP_NOT_ACCESSIBLE") { setMembership(null); onAccessLost?.(getMembershipErrorMessage(reason)); return; }
       setError(getMembershipErrorMessage(reason));
       setView(["CONFLICT", "DEPENDENCY_UNAVAILABLE", "INTERNAL_ERROR"].includes(reason) ? "idempotency-conflict" : "closed-error");
     } finally {
       sendingRef.current = false;
     }
-  }, [groupId]);
+  }, [groupId, onAccessLost]);
 
   const beginNewIntent = useCallback(() => {
     intentRef.current.setGroupId(groupId);
@@ -211,6 +215,7 @@ export function OwnMembershipSection({ groupId }: { groupId: string }) {
       queueMicrotask(() => resultRef.current?.focus());
     } catch (cause) {
       const reason = reasonForPresentation(cause);
+      if (reason === "GROUP_NOT_ACCESSIBLE") { setMembership(null); onAccessLost?.(getMembershipErrorMessage(reason)); return; }
       finalizationRef.current.fail(reason);
       setError(getMembershipErrorMessage(reason));
       if (reason === "MEMBERSHIP_REACTIVATION_REQUIRED") setView("reactivation-required");
@@ -218,7 +223,7 @@ export function OwnMembershipSection({ groupId }: { groupId: string }) {
     } finally {
       sendingRef.current = false;
     }
-  }, [groupId]);
+  }, [groupId, onAccessLost]);
 
   return (
     <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-7 lg:col-span-2" aria-labelledby="membership-heading">

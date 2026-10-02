@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { EditGroupNameDialog } from "@/components/groups/EditGroupNameDialog";
+import { ArchiveGroupDialog } from "@/components/groups/ArchiveGroupDialog";
 import { GroupLoading } from "@/components/groups/GroupLoading";
 import { GroupPageShell } from "@/components/groups/GroupPageShell";
 import { OwnMembershipSection } from "@/components/memberships/OwnMembershipSection";
@@ -20,39 +21,55 @@ export default function OwnGroupDetailPage() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const generation = useRef(0);
 
   const handleAccessLost = useCallback((message: string) => {
+    generation.current += 1;
     setGroup(null);
     setStatus("loading");
     setNotice(message);
     router.replace("/dashboard/groups");
   }, [router]);
+  const handleArchivePrepared = useCallback((current: OwnGroup) => { setGroup(current); }, []);
 
   const load = useCallback(async () => {
+    const current = ++generation.current;
     try {
-      setGroup((await getOwnGroup(params.groupId)).group);
+      const result = await getOwnGroup(params.groupId);
+      if (current !== generation.current) return;
+      setGroup(result.group);
       setStatus("ready");
     } catch (cause) {
+      if (current !== generation.current) return;
+      setGroup(null);
       setError(getGroupErrorMessage(getGroupErrorReason(cause)));
       setStatus("error");
     }
   }, [params.groupId]);
 
   useEffect(() => {
-    let active = true;
+    const current = ++generation.current;
+    queueMicrotask(() => {
+      if (current !== generation.current) return;
+      setGroup(null);
+      setStatus("loading");
+      setError("");
+      setNotice("");
+    });
     void getOwnGroup(params.groupId).then(
       (result) => {
-        if (!active) return;
+        if (current !== generation.current) return;
         setGroup(result.group);
         setStatus("ready");
       },
       (cause) => {
-        if (!active) return;
+        if (current !== generation.current) return;
+        setGroup(null);
         setError(getGroupErrorMessage(getGroupErrorReason(cause)));
         setStatus("error");
       }
     );
-    return () => { active = false; };
+    return () => { if (current === generation.current) generation.current += 1; };
   }, [params.groupId]);
 
   return (
@@ -63,26 +80,26 @@ export default function OwnGroupDetailPage() {
       {status === "ready" && group ? (
         <div className="grid gap-5 lg:grid-cols-[2fr_1fr]">
           <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-7">
-            <p className="text-xs font-semibold uppercase tracking-wide text-orange-600">Vóley · {group.estado}</p>
-            <h2 className="mt-2 text-xl font-semibold">Organización activa</h2>
-            <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">Este estado expresa vigencia organizativa. No implica una Temporada abierta ni operaciones deportivas.</p>
-            <EditGroupNameDialog
+            <p className="text-xs font-semibold uppercase tracking-wide text-orange-600">Vóley · {group.estado === "archivado" ? "Archivado" : "Activo"}</p>
+            <h2 className="mt-2 text-xl font-semibold">{group.estado === "archivado" ? "Organización archivada" : "Organización activa"}</h2>
+            <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">{group.estado === "archivado" ? `Archivado el ${new Date(group.archivedAt).toLocaleString("es-AR")}. La información se conserva en modo de consulta y no existe desarchivo.` : "Este estado expresa vigencia organizativa. No implica una Temporada abierta ni operaciones deportivas."}</p>
+            {group.estado === "activo" ? <><EditGroupNameDialog
               group={group}
               onUpdated={(current, message) => { setGroup(current); setNotice(message); }}
               onAccessLost={handleAccessLost}
-            />
+            /><ArchiveGroupDialog group={group} onPrepared={handleArchivePrepared} onArchived={(current, message) => { setGroup(current); setNotice(message); }} onAccessLost={handleAccessLost} /></> : null}
           </section>
           <aside className="rounded-2xl border border-[var(--border)] p-5">
             <h2 className="font-semibold">Tu acceso</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Podés administrar este Grupo como Owner. Las funciones que requieren integrantes estarán disponibles cuando se incorporen Membresías.</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{group.estado === "archivado" ? "Conservás acceso como Owner para consultar el Grupo y su historia." : "Podés administrar este Grupo como Owner. Las funciones que requieren integrantes estarán disponibles cuando se incorporen Membresías."}</p>
           </aside>
-          <SeasonHistorySection groupId={group.id} />
-          <OwnMembershipSection groupId={group.id} />
+          <SeasonHistorySection groupId={group.id} readOnly={group.estado === "archivado"} onAccessLost={handleAccessLost} />
+          {group.estado === "activo" ? <><OwnMembershipSection groupId={group.id} onAccessLost={handleAccessLost} />
           <ActiveGroupMembersSection
             groupId={group.id}
             onAccessLost={handleAccessLost}
           />
-          <PendingGroupJoinRequestsSection groupId={group.id} />
+          <PendingGroupJoinRequestsSection groupId={group.id} onAccessLost={handleAccessLost} /></> : null}
         </div>
       ) : null}
     </GroupPageShell>

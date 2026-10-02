@@ -18,6 +18,8 @@ export default function OwnGroupsPage() {
   const [items, setItems] = useState<OwnGroup[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
+  const activeItems = items.filter((group) => group.estado === "activo");
+  const archivedItems = items.filter((group) => group.estado === "archivado");
 
   const load = useCallback(async () => {
     try {
@@ -72,8 +74,9 @@ export default function OwnGroupsPage() {
           <Link className="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-orange-600 px-5 py-2 font-semibold text-white hover:bg-orange-700" href="/dashboard/groups/new">Crear Grupo</Link>
         </section>
       ) : null}
-      {status === "ready" && items.length > 0 ? <div className="grid gap-4">{items.map((group) => <GroupCard key={group.id} group={group} />)}</div> : null}
+      {status === "ready" && activeItems.length > 0 ? <div className="grid gap-4">{activeItems.map((group) => <GroupCard key={group.id} group={group} />)}</div> : null}
       </section>
+      {status === "ready" && archivedItems.length > 0 ? <section aria-labelledby="archived-groups-title" className="space-y-4"><div><h2 id="archived-groups-title" className="text-2xl font-semibold">Archivados</h2><p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">Grupos conservados para consulta, sin acciones operativas.</p></div><div className="grid gap-4">{archivedItems.map((group) => <GroupCard key={group.id} group={group} />)}</div></section> : null}
       <MyCurrentGroupMembershipsSection />
       <OwnGroupMembershipHistorySection />
     </GroupPageShell>

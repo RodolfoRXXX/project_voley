@@ -40,7 +40,10 @@ function createFirestoreSeasonUpdateStore({ db, groupRepository, seasonRepositor
           if (!groupSnapshot.exists || groupSnapshot.data()?.ownerId !== command.userId) {
             throw new SeasonGroupNotAccessibleError();
           }
-          try { groupRepository.fromSnapshot(groupSnapshot); }
+          try {
+            const group = groupRepository.fromSnapshot(groupSnapshot);
+            if (group.estado !== "activo") throw new SeasonGroupIncompatibleError();
+          }
           catch (error) {
             if (error instanceof InvalidGroupStateError) throw new SeasonGroupIncompatibleError({ cause: error });
             throw error;

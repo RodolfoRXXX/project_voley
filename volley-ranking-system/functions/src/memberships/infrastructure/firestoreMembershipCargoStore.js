@@ -41,10 +41,11 @@ function createFirestoreMembershipCargoStore({ db, membershipRepository, groupCa
     const account = await personCapability.getOwnerPersonReference({ unitOfWork: transaction, userId: actorUserId });
     if (!["found", "missing"].includes(account?.status)) throw new MembershipAccountRequiredError();
   }
-  async function requireOwner(transaction, args) {
-    const context = await groupCapability.getOwnedGroup({ unitOfWork: transaction, groupId: args.groupId, userId: args.actorUserId });
+  async function requireOwner(transaction, args, historical = false) {
+    const context = await groupCapability[historical ? "getOwnedGroupForHistory" : "getOwnedGroup"]({ unitOfWork: transaction, groupId: args.groupId, userId: args.actorUserId });
     if (context?.status === "not_accessible") throw new MembershipGroupNotAccessibleError();
     if (context?.status !== "owned") throw new MembershipIncompatibleStateError();
+    return context;
   }
   async function readMembership(transaction, args) {
     const snapshot = await transaction.get(membershipRepository.reference(args.membershipId));
@@ -105,7 +106,7 @@ function createFirestoreMembershipCargoStore({ db, membershipRepository, groupCa
 
   async function execute(args) {
     return db.runTransaction(async (transaction) => {
-      await requireAccount(transaction, args.actorUserId); await requireOwner(transaction, args);
+      await requireAccount(transaction, args.actorUserId); const ownerContext = await requireOwner(transaction, args, true);
       const membership = await readMembership(transaction, args);
       const receiptRef = receiptReference(args.receiptId);
       const receipt = hydrateReceipt(await transaction.get(receiptRef), args);
@@ -115,10 +116,11 @@ function createFirestoreMembershipCargoStore({ db, membershipRepository, groupCa
         if (membership.estado === "activa") {
           await requireActiveIntegrity(transaction, membership);
           const season = await groupCapability.getExactOpenSeason({ unitOfWork: transaction, groupId: membership.groupId, seasonId: membership.seasonId });
-          editable = season?.status === "open";
+          editable = ownerContext.active && season?.status === "open";
         }
         return Object.freeze({ outcome: "UPDATED", recovered: true, receipt, current: currentResult(membership, args.actorUserId, editable) });
       }
+      if (!ownerContext.active) throw new MembershipIncompatibleStateError();
       await requireActiveIntegrity(transaction, membership); await requireOpenSeason(transaction, membership);
       if (membershipCargoEditToken(args.actorUserId, membership) !== args.editToken) throw new MembershipEditTokenStaleError();
       const transition = changeMembershipCargo(membership, args.cargo);

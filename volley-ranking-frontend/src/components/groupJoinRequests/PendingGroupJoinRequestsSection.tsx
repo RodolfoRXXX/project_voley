@@ -10,7 +10,7 @@ const keyFactory = () => `group-join-decision-${crypto.randomUUID()}`;
 const effectLabel = (effect: PendingGroupJoinRequestForOwner["approvalEffect"]) => effect === "RENEW_MEMBERSHIP" ? "Renovar Membresía y aprobar Solicitud" : effect === "REACTIVATE_MEMBERSHIP" ? "Reactivar Membresía y aprobar Solicitud" : "Crear Membresía y aprobar Solicitud";
 const effectDescription = (effect: PendingGroupJoinRequestForOwner["approvalEffect"]) => effect === "RENEW_MEMBERSHIP" ? "Se creará una nueva Membresía para la Temporada abierta actual y se preservará íntegra la anterior. El backend revalidará la Temporada y la última Membresía al confirmar." : effect === "REACTIVATE_MEMBERSHIP" ? "Se reactivará la misma Membresía para la Temporada abierta actual. El backend revalidará la clasificación al confirmar." : "Se creará una Membresía en la Temporada abierta actual. El backend revalidará la clasificación al confirmar.";
 
-export function PendingGroupJoinRequestsSection({ groupId }: { groupId: string }) {
+export function PendingGroupJoinRequestsSection({ groupId, onAccessLost }: { groupId: string; onAccessLost?: (message: string) => void }) {
   const [items, setItems] = useState<PendingGroupJoinRequestForOwner[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -35,9 +35,9 @@ export function PendingGroupJoinRequestsSection({ groupId }: { groupId: string }
         for (const next of result.items) { const previous = current.find((item) => item.id === next.id); if (previous && previous.approvalEffect !== next.approvalEffect) intents.current.requireNewConfirmation("approve", next.id); }
         return append ? [...current, ...result.items] : result.items;
       }); setCursor(result.nextCursor); setStatus("ready"); focusResult();
-    } catch (cause) { setError(getGroupJoinRequestErrorMessage(getGroupJoinRequestErrorReason(cause))); setStatus("error"); focusResult(); }
+    } catch (cause) { const reason = getGroupJoinRequestErrorReason(cause); if (reason === "GROUP_NOT_ACCESSIBLE") { setItems([]); setConfirmation(null); onAccessLost?.(getGroupJoinRequestErrorMessage(reason)); return; } setError(getGroupJoinRequestErrorMessage(reason)); setStatus("error"); focusResult(); }
     finally { listBusy.current = false; }
-  }, [groupId]);
+  }, [groupId, onAccessLost]);
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { const refresh = (event: Event) => { if ((event as CustomEvent<{ groupId?: string }>).detail?.groupId === groupId) void load(); }; window.addEventListener("season-context-changed", refresh); return () => window.removeEventListener("season-context-changed", refresh); }, [groupId, load]);
   useEffect(() => { if (confirmation) dialogInitial.current?.focus(); }, [confirmation]);
@@ -51,7 +51,7 @@ export function PendingGroupJoinRequestsSection({ groupId }: { groupId: string }
       const result = await getGroupJoinRequestDecisionResult(groupId, requestId);
       setItems((current) => applyAuthoritativeDecision(current, result));
       setNotice(result.status === "APPROVAL_IN_PROGRESS" ? "La aprobación sigue en proceso." : result.status === "PENDING" ? "La solicitud sigue pendiente." : `Resultado confirmado: ${result.status === "APPROVED" ? "aprobada" : result.status === "REJECTED" ? "rechazada" : "cancelada"}.`);
-    } catch (cause) { setError(getGroupJoinRequestErrorMessage(getGroupJoinRequestErrorReason(cause))); setNotice(""); }
+    } catch (cause) { const reason = getGroupJoinRequestErrorReason(cause); if (reason === "GROUP_NOT_ACCESSIBLE") { setItems([]); setConfirmation(null); onAccessLost?.(getGroupJoinRequestErrorMessage(reason)); return; } setError(getGroupJoinRequestErrorMessage(reason)); setNotice(""); }
     finally { focusResult(); }
   };
   const consult = async (requestId: string) => {
@@ -75,6 +75,7 @@ export function PendingGroupJoinRequestsSection({ groupId }: { groupId: string }
       if (action === "approve") window.dispatchEvent(new CustomEvent("season-context-changed", { detail: { groupId } }));
     } catch (cause) {
       const reason = getGroupJoinRequestErrorReason(cause); setError(getGroupJoinRequestErrorMessage(reason)); setNotice("");
+      if (reason === "GROUP_NOT_ACCESSIBLE") { setItems([]); setConfirmation(null); onAccessLost?.(getGroupJoinRequestErrorMessage(reason)); return; }
       if (["MEMBERSHIP_REACTIVATION_SUPERSEDED", "MEMBERSHIP_RENEWAL_SUPERSEDED"].includes(reason)) intents.current.requireNewConfirmation(action, requestId);
       if (reason === "APPROVAL_IN_PROGRESS" || shouldConsultAfterDecisionError(reason)) await consultAuthoritative(requestId);
       else if (["REQUEST_CANCELLED", "DECISION_ALREADY_APPROVED", "DECISION_ALREADY_REJECTED"].includes(reason as GroupJoinRequestErrorReason)) await consultAuthoritative(requestId);

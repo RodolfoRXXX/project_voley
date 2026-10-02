@@ -1,7 +1,7 @@
 import { httpsCallable } from "firebase/functions";
 
 import { functions } from "@/lib/firebase";
-import type { DashboardGroup, GroupErrorReason, GroupSport, OwnGroup } from "@/types/OwnGroup";
+import type { DashboardGroup, GroupErrorReason, GroupSport, OwnGroup, OwnGroupActive, OwnGroupArchived } from "@/types/OwnGroup";
 
 export interface CreateOwnGroupInput {
   nombre: string;
@@ -26,14 +26,28 @@ export interface UpdateOwnGroupNameResult {
   recovered: boolean;
   appliedEffect: GroupNameAppliedEffect | null;
   currentGroup: OwnGroup;
-  currentEditToken: string;
+  currentEditToken: string | null;
+}
+export type GroupArchiveBlocker = "ACTIVE_MEMBERSHIPS_EXIST" | "OPEN_SEASON_EXISTS" | "PENDING_REQUESTS_EXIST" | "APPROVAL_IN_PROGRESS";
+export interface PrepareOwnGroupArchiveResult {
+  group: OwnGroupActive;
+  archiveToken: string;
+  eligibility: { status: "ELIGIBLE"; blockers: [] } | { status: "BLOCKED"; blockers: GroupArchiveBlocker[] };
+}
+export interface ArchiveOwnGroupResult {
+  outcome: "ARCHIVED" | "EXISTING_IDEMPOTENT";
+  recovered: boolean;
+  appliedEffect: { outcome: "ARCHIVED"; archivedAt: string };
+  currentGroup: OwnGroupArchived;
 }
 
 const createCallable = httpsCallable<CreateOwnGroupInput, CreateOwnGroupResult>(functions, "createOwnGroup");
 const listCallable = httpsCallable<Record<string, never>, { items: OwnGroup[] }>(functions, "listOwnGroups");
-const getCallable = httpsCallable<{ groupId: string }, { group: OwnGroup; editToken: string }>(functions, "getOwnGroup");
+const getCallable = httpsCallable<{ groupId: string }, { group: OwnGroup; editToken: string | null }>(functions, "getOwnGroup");
 const dashboardCallable = httpsCallable<Record<string, never>, { items: DashboardGroup[] }>(functions, "getOwnGroupsDashboard");
 const updateNameCallable = httpsCallable<UpdateOwnGroupNameInput, UpdateOwnGroupNameResult>(functions, "updateOwnGroupName");
+const prepareArchiveCallable = httpsCallable<{ groupId: string }, PrepareOwnGroupArchiveResult>(functions, "prepareOwnGroupArchive");
+const archiveCallable = httpsCallable<{ groupId: string; expectedArchiveToken: string; idempotencyKey: string }, ArchiveOwnGroupResult>(functions, "archiveOwnGroup");
 
 export async function createOwnGroup(input: CreateOwnGroupInput): Promise<CreateOwnGroupResult> {
   return (await createCallable(input)).data;
@@ -43,8 +57,16 @@ export async function listOwnGroups(): Promise<{ items: OwnGroup[] }> {
   return (await listCallable({})).data;
 }
 
-export async function getOwnGroup(groupId: string): Promise<{ group: OwnGroup; editToken: string }> {
+export async function getOwnGroup(groupId: string): Promise<{ group: OwnGroup; editToken: string | null }> {
   return (await getCallable({ groupId })).data;
+}
+
+export async function prepareOwnGroupArchive(groupId: string): Promise<PrepareOwnGroupArchiveResult> {
+  return (await prepareArchiveCallable({ groupId })).data;
+}
+
+export async function archiveOwnGroup(input: { groupId: string; expectedArchiveToken: string; idempotencyKey: string }): Promise<ArchiveOwnGroupResult> {
+  return (await archiveCallable(input)).data;
 }
 
 export async function updateOwnGroupName(input: UpdateOwnGroupNameInput): Promise<UpdateOwnGroupNameResult> {
@@ -60,7 +82,7 @@ export function getGroupErrorReason(error: unknown): GroupErrorReason {
     const details = (error as { details?: unknown }).details;
     if (typeof details === "object" && details !== null && "reason" in details) {
       const reason = String((details as { reason?: unknown }).reason);
-      const known: GroupErrorReason[] = ["UNAUTHENTICATED", "ACCOUNT_REQUIRED", "GROUP_NOT_ACCESSIBLE", "GROUP_INCOMPATIBLE", "NOT_AUTHORIZED", "NOT_FOUND", "VALIDATION_FAILED", "PROVISIONAL_LIMIT_REACHED", "STALE_UPDATE", "IDEMPOTENCY_CONFLICT", "CONFLICT", "DEPENDENCY_UNAVAILABLE", "INTERNAL_ERROR"];
+      const known: GroupErrorReason[] = ["UNAUTHENTICATED", "ACCOUNT_REQUIRED", "GROUP_NOT_ACCESSIBLE", "GROUP_INCOMPATIBLE", "NOT_AUTHORIZED", "NOT_FOUND", "VALIDATION_FAILED", "PROVISIONAL_LIMIT_REACHED", "STALE_UPDATE", "STALE_ARCHIVE", "GROUP_ALREADY_ARCHIVED", "ACTIVE_MEMBERSHIPS_EXIST", "OPEN_SEASON_EXISTS", "PENDING_REQUESTS_EXIST", "APPROVAL_IN_PROGRESS", "IDEMPOTENCY_CONFLICT", "CONFLICT", "DEPENDENCY_UNAVAILABLE", "INTERNAL_ERROR"];
       if (known.includes(reason as GroupErrorReason)) return reason as GroupErrorReason;
     }
   }
@@ -78,6 +100,12 @@ export function getGroupErrorMessage(reason: GroupErrorReason): string {
     VALIDATION_FAILED: "Revisá los datos ingresados.",
     PROVISIONAL_LIMIT_REACHED: "Por el momento podés administrar un único Grupo propio.",
     STALE_UPDATE: "El Grupo cambió desde que abriste la edición. Revisá el nombre vigente antes de guardar nuevamente.",
+    STALE_ARCHIVE: "El Grupo cambió desde la preparación. Volvé a revisar las condiciones antes de archivar.",
+    GROUP_ALREADY_ARCHIVED: "El Grupo ya fue archivado por otra intención.",
+    ACTIVE_MEMBERSHIPS_EXIST: "Finalizá todas las Membresías activas antes de archivar.",
+    OPEN_SEASON_EXISTS: "Cerrá la Temporada abierta antes de archivar.",
+    PENDING_REQUESTS_EXIST: "Decidí o esperá que se cancelen las Solicitudes pendientes antes de archivar.",
+    APPROVAL_IN_PROGRESS: "Terminá la recuperación de la aprobación en curso antes de archivar.",
     IDEMPOTENCY_CONFLICT: "Esta intención ya fue usada con otros datos. Iniciá una nueva edición.",
     CONFLICT: "La intención de creación entró en conflicto. Revisá los datos antes de reintentar.",
     DEPENDENCY_UNAVAILABLE: "No pudimos verificar el estado del Grupo. Reintentá en unos instantes.",

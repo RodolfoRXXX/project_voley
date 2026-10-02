@@ -44,16 +44,16 @@ function createFirestoreGroupNameUpdateStore({ db, groupRepository, now = () => 
           if (receipt) {
             if (receipt.actorUserId !== command.userId || receipt.groupId !== command.groupId
               || receipt.requestHash !== command.requestHash) throw new GroupIdempotencyConflictError();
-            let applied;
-            try { applied = renameGroup(group, receipt.appliedName); }
-            catch (error) { throw new GroupInternalError({ cause: error }); }
+            const applied = Object.freeze({ ...group, nombre: receipt.appliedName });
             return Object.freeze({
               outcome: "UPDATED", recovered: true,
               appliedEffect: Object.freeze({ outcome: "UPDATED", nombre: receipt.appliedName,
                 editToken: groupEditToken(applied), confirmedAt: receipt.confirmedAt.toDate().toISOString() }),
-              currentGroup: toGroupDto(group), currentEditToken: groupEditToken(group),
+              currentGroup: toGroupDto(group), currentEditToken: group.estado === "activo" ? groupEditToken(group) : null,
             });
           }
+
+          if (group.estado !== "activo") throw new GroupIncompatibleError();
 
           const currentEditToken = groupEditToken(group);
           if (currentEditToken !== command.expectedEditToken) throw new GroupStaleUpdateError();

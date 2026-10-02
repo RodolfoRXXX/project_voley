@@ -90,11 +90,12 @@ function createFirestoreSeasonHistoryReader({ db, groupRepository }) {
     async listPage({ userId, groupId, pageSize, position }) {
       try {
         return await db.runTransaction(async (transaction) => {
-          await requireOwnedGroup(transaction, groupId, userId);
+          const group = await requireOwnedGroup(transaction, groupId, userId);
           await readAnchor(transaction, groupId, position);
           const openSnapshot = await transaction.get(db.collection("seasons")
             .where("groupId", "==", groupId).where("estado", "==", "abierta").limit(2));
           const currentSeason = hydrateCurrent(openSnapshot);
+          if (group.estado === "archivado" && currentSeason) throw new SeasonGroupIncompatibleError();
           if (position && (currentSeason?.seasonId || null) !== position.currentSeasonId) {
             throw new SeasonCursorStaleError();
           }

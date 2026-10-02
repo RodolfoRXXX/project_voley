@@ -1,5 +1,5 @@
 function isCanonicalGroup(group = {}) {
-  return group?.schemaVersion === 1;
+  return [1, 2].includes(group?.schemaVersion);
 }
 
 function assertLegacyGroup(group = {}) {

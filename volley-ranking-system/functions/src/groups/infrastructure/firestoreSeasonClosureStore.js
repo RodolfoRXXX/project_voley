@@ -44,6 +44,7 @@ function createFirestoreSeasonClosureStore({ db, groupRepository, seasonReposito
           catch (error) { if (error instanceof InvalidGroupStateError) throw new SeasonGroupIncompatibleError({ cause: error }); throw error; }
           if (!group) throw new SeasonGroupNotFoundError();
           if (group.ownerId !== command.userId) throw new SeasonNotAuthorizedError();
+          if (group.estado !== "activo") throw new SeasonGroupIncompatibleError();
 
           let receipt;
           try { receipt = hydrateClosureReceipt(await transaction.get(receiptRef), receiptRef.id); }

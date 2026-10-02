@@ -37,10 +37,10 @@ test("rutas owner-scoped usan contratos y no importan Firestore", () => {
   }
 });
 
-test("alta directa legada fue retirada y las superficies legadas fallan ante schema v1", () => {
+test("alta directa legada fue retirada y las superficies legadas excluyen schemas canónicos v1/v2", () => {
   assert.doesNotMatch(read("volley-ranking-frontend/src/app/(admin)/admin/groups/new/page.tsx"), /addDoc|firebase\/firestore|roles/);
-  assert.match(read("volley-ranking-system/functions/src/services/groupAdminsService.js"), /schemaVersion === 1/);
-  assert.match(read("volley-ranking-system/functions/src/triggers/onGroupPendingAlertsSync.js"), /schemaVersion === 1/);
+  assert.match(read("volley-ranking-system/functions/src/services/groupAdminsService.js"), /\[1, 2\]\.includes/);
+  assert.match(read("volley-ranking-system/functions/src/triggers/onGroupPendingAlertsSync.js"), /\[1, 2\]\.includes/);
 });
 
 test("frontend cubre vacío, loading, doble submit, errores, Owner y estado deportivo vacío", () => {

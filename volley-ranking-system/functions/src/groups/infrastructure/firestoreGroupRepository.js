@@ -31,6 +31,13 @@ function createFirestoreGroupRepository({ db }) {
     updateName(transaction, groupId, nombre) {
       transaction.update(reference(groupId), "nombre", nombre);
     },
+    archive(transaction, groupId, archivedAt) {
+      transaction.update(reference(groupId), {
+        estado: "archivado",
+        archivedAt,
+        schemaVersion: 2,
+      });
+    },
   };
 }
 

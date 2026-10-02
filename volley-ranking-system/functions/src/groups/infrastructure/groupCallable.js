@@ -17,6 +17,12 @@ const HTTPS_CODES = Object.freeze({
   GROUP_INCOMPATIBLE: "failed-precondition",
   STALE_UPDATE: "aborted",
   IDEMPOTENCY_CONFLICT: "aborted",
+  STALE_ARCHIVE: "aborted",
+  GROUP_ALREADY_ARCHIVED: "failed-precondition",
+  ACTIVE_MEMBERSHIPS_EXIST: "failed-precondition",
+  OPEN_SEASON_EXISTS: "failed-precondition",
+  PENDING_REQUESTS_EXIST: "failed-precondition",
+  APPROVAL_IN_PROGRESS: "failed-precondition",
 });
 
 function identityFromCallableContext(context) {

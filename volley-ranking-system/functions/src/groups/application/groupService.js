@@ -11,14 +11,15 @@ const {
   GroupUnauthenticatedError,
   GroupValidationError,
 } = require("./groupErrors");
-const { groupEditToken, groupNameUpdateReceiptId, hashGroupNameUpdateRequest, hashGroupRequest, hashIdempotencyKey } = require("./groupHashing");
+const { groupArchiveReceiptId, groupEditToken, groupNameUpdateReceiptId,
+  hashGroupArchiveRequest, hashGroupNameUpdateRequest, hashGroupRequest, hashIdempotencyKey } = require("./groupHashing");
 
 function requireActor(identity) {
   if (!identity || typeof identity.userId !== "string" || !identity.userId.trim()) throw new GroupUnauthenticatedError();
   return identity.userId.trim();
 }
 
-function createGroupService({ selfAccountReader, groupRepository, ownGroupsReader, creationGuard, groupNameUpdateStore }) {
+function createGroupService({ selfAccountReader, groupRepository, ownGroupsReader, creationGuard, groupNameUpdateStore, groupArchiveStore }) {
   if (!selfAccountReader || !groupRepository || !ownGroupsReader || !creationGuard) {
     throw new TypeError("Group service dependencies are required");
   }
@@ -105,7 +106,7 @@ function createGroupService({ selfAccountReader, groupRepository, ownGroupsReade
         throw new GroupDependencyUnavailableError(undefined, { cause: error });
       }
       if (!group || group.ownerId !== userId) throw new GroupNotAccessibleError();
-      return Object.freeze({ group: toGroupDto(group), editToken: groupEditToken(group) });
+      return Object.freeze({ group: toGroupDto(group), editToken: group.estado === "activo" ? groupEditToken(group) : null });
     },
 
     async updateOwnGroupName(identity, input) {
@@ -134,10 +135,28 @@ function createGroupService({ selfAccountReader, groupRepository, ownGroupsReade
       await requireAccount(userId);
       try {
         const groups = await ownGroupsReader.listByOwner(userId);
-        return Object.freeze({ items: groups.map(toDashboardGroupDto) });
+        return Object.freeze({ items: groups.filter((group) => group.estado === "activo").map(toDashboardGroupDto) });
       } catch (error) {
         throw new GroupDependencyUnavailableError(undefined, { cause: error });
       }
+    },
+
+    async prepareOwnGroupArchive(identity, input) {
+      const userId = requireActor(identity);
+      if (!groupArchiveStore) throw new GroupDependencyUnavailableError();
+      try { return await groupArchiveStore.prepare({ userId, groupId: input.groupId }); }
+      catch (error) { if (error instanceof GroupError) throw error; throw new GroupInternalError({ cause: error }); }
+    },
+
+    async archiveOwnGroup(identity, input) {
+      const userId = requireActor(identity);
+      if (!groupArchiveStore) throw new GroupDependencyUnavailableError();
+      const command = Object.freeze({ userId, groupId: input.groupId,
+        expectedArchiveToken: input.expectedArchiveToken, idempotencyKey: input.idempotencyKey,
+        receiptId: groupArchiveReceiptId(userId, input.idempotencyKey) });
+      try { return await groupArchiveStore.archive(Object.freeze({ ...command,
+        requestHash: hashGroupArchiveRequest(userId, command) })); }
+      catch (error) { if (error instanceof GroupError) throw error; throw new GroupInternalError({ cause: error }); }
     },
   };
 }

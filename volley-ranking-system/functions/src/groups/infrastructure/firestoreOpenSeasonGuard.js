@@ -80,6 +80,7 @@ function createFirestoreOpenSeasonGuard({ db, groupRepository, now = () => Times
           catch (error) { if (error instanceof InvalidGroupStateError) throw new SeasonGroupIncompatibleError({ cause: error }); throw error; }
           if (!group) throw new SeasonGroupNotFoundError();
           if (group.ownerId !== userId) throw new SeasonNotAuthorizedError();
+          if (group.estado !== "activo") throw new SeasonGroupIncompatibleError();
 
           const [receiptSnapshot, legacySnapshot] = await transaction.getAll(receiptRef, legacyReceiptRef);
           let receipt;

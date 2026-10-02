@@ -143,6 +143,11 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
     if (context?.status === "incompatible") throw new GroupJoinRequestGroupIncompatibleError();
     if (context?.status !== "owned") throw new errors.GroupJoinRequestGroupNotAccessibleError();
   }
+  async function ownedGroupForHistory(unitOfWork, groupId, userId) {
+    const context = await groupCapability.getOwnedHistoricalContext({ unitOfWork, groupId, userId });
+    if (context?.status === "incompatible") throw new GroupJoinRequestGroupIncompatibleError();
+    if (context?.status !== "owned") throw new errors.GroupJoinRequestGroupNotAccessibleError();
+  }
   async function assertNoActiveMembership(unitOfWork, personId, groupId) {
     const context = await membershipCapability.getActiveContext({ unitOfWork, personId, groupId });
     if (context?.status === "incompatible") throw new GroupJoinRequestIncompatibleStateError();
@@ -391,6 +396,8 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
     async cancel({ personId, groupId, requestId, observe = () => {} }) {
       try {
         return await db.runTransaction(async (transaction) => {
+          const group = await groupCapability.getGroupContextForMembership({ unitOfWork: transaction, groupId });
+          if (group?.status !== "active") throw new GroupJoinRequestGroupIncompatibleError();
           const requestSnapshot = await transaction.get(repository.reference(requestId));
           const raw = requestSnapshot.exists ? requestSnapshot.data() : null;
           if (!raw || raw.personId !== personId || raw.groupId !== groupId) throw new GroupJoinRequestRequestNotFoundError();
@@ -459,7 +466,7 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
     async getDecisionResult({ userId, groupId, requestId, observe = () => {} }) {
       try {
         return await db.runTransaction(async (transaction) => {
-          await ownedGroup(transaction, groupId, userId);
+          await ownedGroupForHistory(transaction, groupId, userId);
           const requestSnapshot = await transaction.get(repository.reference(requestId));
           if (!requestSnapshot.exists || requestSnapshot.data()?.groupId !== groupId) throw new GroupJoinRequestRequestNotFoundError();
           const request = repository.fromSnapshot(requestSnapshot); const gRef = guardRef(groupId, request.personId); const cRef = coordinationRef(requestId);

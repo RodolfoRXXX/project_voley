@@ -1,7 +1,9 @@
 "use strict";
 
 const GROUP_SCHEMA_VERSION = 1;
+const GROUP_ARCHIVED_SCHEMA_VERSION = 2;
 const GROUP_INITIAL_STATE = "activo";
+const GROUP_ARCHIVED_STATE = "archivado";
 const GROUP_SPORTS = Object.freeze(["voleibol"]);
 const GROUP_FIELDS = Object.freeze([
   "nombre",
@@ -9,6 +11,15 @@ const GROUP_FIELDS = Object.freeze([
   "ownerId",
   "estado",
   "createdAt",
+  "schemaVersion",
+]);
+const GROUP_ARCHIVED_FIELDS = Object.freeze([
+  "nombre",
+  "deporte",
+  "ownerId",
+  "estado",
+  "createdAt",
+  "archivedAt",
   "schemaVersion",
 ]);
 
@@ -70,29 +81,53 @@ function buildGroup({ groupId, nombre, deporte, ownerId }) {
 
 function hydrateGroup(groupId, data) {
   requireId(groupId, "Group id");
-  assertExactKeys(data, GROUP_FIELDS, "Group document");
+  const active = data?.estado === GROUP_INITIAL_STATE && data?.schemaVersion === GROUP_SCHEMA_VERSION;
+  const archived = data?.estado === GROUP_ARCHIVED_STATE && data?.schemaVersion === GROUP_ARCHIVED_SCHEMA_VERSION;
+  if (!active && !archived) throw new InvalidGroupStateError("Group state and schema version are invalid");
+  assertExactKeys(data, active ? GROUP_FIELDS : GROUP_ARCHIVED_FIELDS, "Group document");
   if (data.nombre !== normalizeGroupName(data.nombre)) throw new InvalidGroupStateError("Group name is not normalized");
   if (data.deporte !== normalizeSport(data.deporte)) throw new InvalidGroupStateError("Sport is not normalized");
   requireId(data.ownerId, "Owner id");
-  if (data.estado !== GROUP_INITIAL_STATE) throw new InvalidGroupStateError("Group state is invalid");
-  if (data.schemaVersion !== GROUP_SCHEMA_VERSION) throw new InvalidGroupStateError("Group schema version is invalid");
   if (!data.createdAt || typeof data.createdAt.toDate !== "function" || Number.isNaN(data.createdAt.toDate().getTime())) {
     throw new InvalidGroupStateError("Group creation timestamp is invalid");
+  }
+  if (archived && (!data.archivedAt || typeof data.archivedAt.toDate !== "function"
+    || Number.isNaN(data.archivedAt.toDate().getTime())
+    || data.archivedAt.toDate().getTime() < data.createdAt.toDate().getTime())) {
+    throw new InvalidGroupStateError("Group archive timestamp is invalid");
   }
   return Object.freeze({ groupId, ...data });
 }
 
 function renameGroup(group, nombre) {
+  if (!group || group.estado !== GROUP_INITIAL_STATE || group.schemaVersion !== GROUP_SCHEMA_VERSION) {
+    throw new InvalidGroupStateError("Only an active Group can be renamed");
+  }
   const normalizedName = normalizeGroupName(nombre);
   return Object.freeze({ ...group, nombre: normalizedName });
 }
 
+function archiveGroup(group, archivedAt) {
+  if (!group || group.estado !== GROUP_INITIAL_STATE || group.schemaVersion !== GROUP_SCHEMA_VERSION) {
+    throw new InvalidGroupStateError("Only an active Group can be archived");
+  }
+  if (!archivedAt || typeof archivedAt.toDate !== "function" || Number.isNaN(archivedAt.toDate().getTime())
+    || (group.createdAt && archivedAt.toDate().getTime() < group.createdAt.toDate().getTime())) {
+    throw new InvalidGroupStateError("Group archive timestamp is invalid");
+  }
+  return Object.freeze({ ...group, estado: GROUP_ARCHIVED_STATE, archivedAt, schemaVersion: GROUP_ARCHIVED_SCHEMA_VERSION });
+}
+
 module.exports = {
+  GROUP_ARCHIVED_FIELDS,
+  GROUP_ARCHIVED_SCHEMA_VERSION,
+  GROUP_ARCHIVED_STATE,
   GROUP_FIELDS,
   GROUP_INITIAL_STATE,
   GROUP_SCHEMA_VERSION,
   GROUP_SPORTS,
   InvalidGroupStateError,
+  archiveGroup,
   buildGroup,
   hydrateGroup,
   normalizeGroupName,

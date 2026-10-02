@@ -29,6 +29,7 @@ export function EditGroupNameDialog({ group, onUpdated, onAccessLost }: {
     const requestGeneration = ++generation.current; setLoading(true); setError("");
     try {
       const result = await getOwnGroup(group.id); if (requestGeneration !== generation.current) return;
+      if (result.group.estado !== "activo" || !result.editToken) { setOpen(false); onAccessLost("El Grupo ya no admite edición. Volvé a abrirlo desde Mis Grupos."); return; }
       setNombre(result.group.nombre); setInitialName(result.group.nombre); setToken(result.editToken); intent.current = null;
       if (keepOpen) setNotice("Cargamos el nombre vigente. Revisalo y decidí explícitamente si querés editarlo.");
     } catch (cause) {

@@ -33,6 +33,12 @@ function createGroupJoinRequestGroupCapability({ db }) {
       return Object.freeze({ status: group.ownerId === userId ? "owned" : "not_authorized" });
     },
 
+    async getOwnedHistoricalContext({ unitOfWork, groupId, userId }) {
+      const group = await read(groupId, unitOfWork);
+      if (!group) return Object.freeze({ status: "incompatible" });
+      return Object.freeze({ status: group.ownerId === userId ? "owned" : "not_authorized" });
+    },
+
     async getGroupContextForMembership({ unitOfWork, groupId }) {
       const group = await read(groupId, unitOfWork);
       if (!group || group.estado !== "activo") return Object.freeze({ status: "incompatible" });

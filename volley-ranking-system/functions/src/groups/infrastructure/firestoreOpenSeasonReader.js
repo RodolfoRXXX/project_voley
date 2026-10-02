@@ -28,6 +28,7 @@ function createFirestoreOpenSeasonReader({ db, groupRepository, seasonRepository
     }
     if (!group) throw new SeasonGroupNotFoundError();
     if (group.ownerId !== userId) throw new SeasonNotAuthorizedError();
+    if (group.estado !== "activo") throw new SeasonGroupIncompatibleError();
     return group;
   }
 

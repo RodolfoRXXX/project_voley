@@ -22,6 +22,17 @@ function createAdministrativeMembershipFinalizationContextCapability({ db }) {
         throw error;
       }
     },
+    async getOwnedGroupForHistory({ unitOfWork, groupId, userId }) {
+      const snapshot = await unitOfWork.get(groupRepository.reference(groupId));
+      if (!snapshot.exists || snapshot.data()?.ownerId !== userId) return Object.freeze({ status: "not_accessible" });
+      try {
+        const group = groupRepository.fromSnapshot(snapshot);
+        return Object.freeze({ status: "owned", active: group.estado === "activo" });
+      } catch (error) {
+        if (error instanceof InvalidGroupStateError) return Object.freeze({ status: "incompatible" });
+        throw error;
+      }
+    },
     async getExactOpenSeason({ unitOfWork, groupId, seasonId }) {
       let guard;
       try { guard = hydrateOpenSeasonGuard(await unitOfWork.get(db.collection("openSeasonGuards").doc(groupId)), groupId); }

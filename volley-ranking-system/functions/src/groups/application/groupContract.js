@@ -4,6 +4,7 @@ const { GroupValidationError } = require("./groupErrors");
 
 const CREATION_KEYS = Object.freeze(["nombre", "deporte", "idempotencyKey"]);
 const UPDATE_NAME_KEYS = Object.freeze(["groupId", "nombre", "expectedEditToken", "idempotencyKey"]);
+const ARCHIVE_KEYS = Object.freeze(["groupId", "expectedArchiveToken", "idempotencyKey"]);
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{16,128}$/;
 const EDIT_TOKEN_PATTERN = /^[a-f0-9]{64}$/;
 
@@ -55,13 +56,27 @@ function validateUpdateOwnGroupNamePayload(data) {
   return data;
 }
 
+function validateArchiveOwnGroupPayload(data) {
+  assertExactObject(data, ARCHIVE_KEYS);
+  validateGroupIdPayload({ groupId: data.groupId });
+  if (typeof data.expectedArchiveToken !== "string" || !EDIT_TOKEN_PATTERN.test(data.expectedArchiveToken)) {
+    throw new GroupValidationError("Archive token is invalid");
+  }
+  if (typeof data.idempotencyKey !== "string" || !IDEMPOTENCY_KEY_PATTERN.test(data.idempotencyKey)) {
+    throw new GroupValidationError("Idempotency key is invalid");
+  }
+  return data;
+}
+
 module.exports = {
+  ARCHIVE_KEYS,
   CREATION_KEYS,
   EDIT_TOKEN_PATTERN,
   IDEMPOTENCY_KEY_PATTERN,
   UPDATE_NAME_KEYS,
   assertExactObject,
   validateCreateGroupPayload,
+  validateArchiveOwnGroupPayload,
   validateEmptyPayload,
   validateGroupIdPayload,
   validateUpdateOwnGroupNamePayload,

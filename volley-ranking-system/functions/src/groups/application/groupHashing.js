@@ -34,4 +34,28 @@ function hashGroupNameUpdateRequest(actorUserId, input) {
     input.groupId, input.nombre, input.expectedEditToken, input.idempotencyKey]);
 }
 
-module.exports = { groupEditToken, groupNameUpdateReceiptId, hashGroupNameUpdateRequest, hashGroupRequest, hashIdempotencyKey, sha256 };
+function canonicalTimestamp(value) {
+  if (!value || !Number.isSafeInteger(value.seconds) || !Number.isSafeInteger(value.nanoseconds)) {
+    throw new TypeError("Timestamp is invalid");
+  }
+  return `${value.seconds}.${String(value.nanoseconds).padStart(9, "0")}`;
+}
+
+function groupArchiveToken(group) {
+  return sha256(["sportexa:E2-23:group-archive-token:v1", "contract-v1", group.groupId,
+    group.ownerId, group.nombre, group.deporte, group.estado, group.schemaVersion,
+    canonicalTimestamp(group.createdAt)]);
+}
+
+function groupArchiveReceiptId(actorUserId, idempotencyKey) {
+  return sha256(["sportexa:E2-23:group-archive-receipt:v1", actorUserId, idempotencyKey]);
+}
+
+function hashGroupArchiveRequest(actorUserId, input) {
+  return sha256(["sportexa:E2-23:group-archive-request:v1", "contract-v1", actorUserId,
+    input.groupId, input.expectedArchiveToken, input.idempotencyKey]);
+}
+
+module.exports = { canonicalTimestamp, groupArchiveReceiptId, groupArchiveToken, groupEditToken,
+  groupNameUpdateReceiptId, hashGroupArchiveRequest, hashGroupNameUpdateRequest, hashGroupRequest,
+  hashIdempotencyKey, sha256 };

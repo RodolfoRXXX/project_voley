@@ -62,7 +62,8 @@ function sendRetiredLegacyGroupCapability(res) {
 }
 
 function isLegacyPublicActiveGroup(group) {
-  return ![1, 2].includes(group?.schemaVersion) && group?.visibility === "public" && group?.activo === true;
+  return ![1, 2].includes(group?.schemaVersion) && group?.schemaVersion == null
+    && group?.visibility === "public" && group?.activo === true;
 }
 
 async function countPublicMatches(groupId) {

@@ -25,8 +25,7 @@ service cloud.firestore {
 
     function isGroupMemberByData(group) {
       return signedIn()
-        && group.get("schemaVersion", 0) != 1
-        && group.get("schemaVersion", 0) != 2
+        && group.get("schemaVersion", null) == null
         && (hasId(group.get("memberIds", []), request.auth.uid)
           || hasId(group.get("adminIds", []), request.auth.uid)
           || group.get("ownerId", null) == request.auth.uid);
@@ -34,8 +33,7 @@ service cloud.firestore {
 
     function isGroupAdminByData(group) {
       return signedIn()
-        && group.get("schemaVersion", 0) != 1
-        && group.get("schemaVersion", 0) != 2
+        && group.get("schemaVersion", null) == null
         && (hasId(group.get("adminIds", []), request.auth.uid)
           || group.get("ownerId", null) == request.auth.uid);
     }
@@ -97,18 +95,15 @@ service cloud.firestore {
     }
 
     match /groups/{groupId} {
-      allow get: if resource.data.get("schemaVersion", 0) != 1
-        && resource.data.get("schemaVersion", 0) != 2
+      allow get: if resource.data.get("schemaVersion", null) == null
         && (isAppAdmin() || isGroupMemberByData(resource.data));
       // Legacy list queries remain limited to embedded relationship arrays.
       // Canonical schemas v1/v2 have neither legacy relationship field and remain private.
       allow list: if signedIn()
-        && resource.data.get("schemaVersion", 0) != 1
-        && resource.data.get("schemaVersion", 0) != 2
+        && resource.data.get("schemaVersion", null) == null
         && request.auth.uid in resource.data.get("memberIds", []);
       allow list: if signedIn()
-        && resource.data.get("schemaVersion", 0) != 1
-        && resource.data.get("schemaVersion", 0) != 2
+        && resource.data.get("schemaVersion", null) == null
         && request.auth.uid in resource.data.get("adminIds", []);
       allow create: if false;
       allow update: if false;
@@ -124,6 +119,10 @@ service cloud.firestore {
     }
 
     match /groupArchiveReceipts/{receiptId} {
+      allow read, write: if false;
+    }
+
+    match /groupDeletionReceipts/{receiptId} {
       allow read, write: if false;
     }
 

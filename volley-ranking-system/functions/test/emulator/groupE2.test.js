@@ -248,6 +248,16 @@ test("E2-01 crea y consulta Grupos propios con ownership, idempotencia y aislami
         createdAt: new Date(),
       });
       createdIds.add(legacyRef.id);
+      const futureCanonicalRef = db.collection("groups").doc("e2-future-canonical");
+      await futureCanonicalRef.set({
+        nombre: "Canónico futuro",
+        deporte: "voleibol",
+        ownerId: owner.uid,
+        estado: "activo",
+        createdAt: new Date(),
+        schemaVersion: 3,
+      });
+      createdIds.add(futureCanonicalRef.id);
 
       const memberList = await queryGroupsByArray({
         host: firestoreHost,
@@ -260,6 +270,14 @@ test("E2-01 crea y consulta Grupos propios con ownership, idempotencia y aislami
       const paths = memberList.body.filter((row) => row.document).map((row) => row.document.name);
       assert.equal(paths.some((path) => path.endsWith(`/${legacyRef.id}`)), true);
       assert.equal(paths.some((path) => path.endsWith(`/${ownerGroup.id}`)), false);
+      assert.equal(paths.some((path) => path.endsWith(`/${futureCanonicalRef.id}`)), false);
+      const futureDirect = await firestoreRequest({
+        host: firestoreHost,
+        projectId,
+        path: `groups/${futureCanonicalRef.id}`,
+        idToken: owner.idToken,
+      });
+      assert.equal(futureDirect.status, 403);
     });
 
     await t.test("callables legados no modifican un Grupo canónico", async () => {

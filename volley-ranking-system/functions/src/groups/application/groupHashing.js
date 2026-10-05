@@ -56,6 +56,26 @@ function hashGroupArchiveRequest(actorUserId, input) {
     input.groupId, input.expectedArchiveToken, input.idempotencyKey]);
 }
 
+function groupDeletionToken(group) {
+  return sha256(["sportexa:E2-24:group-deletion-token:v1", "contract-v1", group.groupId,
+    group.ownerId, group.nombre, group.deporte, group.estado, group.schemaVersion,
+    canonicalTimestamp(group.createdAt)]);
+}
+
+function hashGroupDeletionIdempotencyKey(actorUserId, idempotencyKey) {
+  return sha256(["sportexa:E2-24:group-deletion-idempotency:v1", actorUserId, idempotencyKey]);
+}
+
+function groupDeletionReceiptId(actorUserId, idempotencyKey) {
+  return sha256(["sportexa:E2-24:group-deletion-receipt:v1", actorUserId, idempotencyKey]);
+}
+
+function hashGroupDeletionRequest(actorUserId, input) {
+  return sha256(["sportexa:E2-24:group-deletion-request:v1", "contract-v1", actorUserId,
+    input.groupId, input.expectedDeletionToken, input.idempotencyKey]);
+}
+
 module.exports = { canonicalTimestamp, groupArchiveReceiptId, groupArchiveToken, groupEditToken,
-  groupNameUpdateReceiptId, hashGroupArchiveRequest, hashGroupNameUpdateRequest, hashGroupRequest,
-  hashIdempotencyKey, sha256 };
+  groupDeletionReceiptId, groupDeletionToken, groupNameUpdateReceiptId, hashGroupArchiveRequest,
+  hashGroupDeletionIdempotencyKey, hashGroupDeletionRequest, hashGroupNameUpdateRequest,
+  hashGroupRequest, hashIdempotencyKey, sha256 };

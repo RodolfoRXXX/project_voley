@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { GroupCard } from "@/components/groups/GroupCard";
@@ -15,6 +15,9 @@ import type { OwnGroup } from "@/types/OwnGroup";
 export default function OwnGroupsPage() {
   const searchParams = useSearchParams();
   const showRetirementNotice = searchParams.get("notice") === "legacy-group-capability-retired";
+  const showDeletedRetryNotice = searchParams.get("notice") === "created-group-was-deleted";
+  const showDeletionNotice = searchParams.get("notice") === "group-deleted";
+  const resultNotice = useRef<HTMLParagraphElement>(null);
   const [items, setItems] = useState<OwnGroup[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
@@ -47,6 +50,7 @@ export default function OwnGroupsPage() {
     );
     return () => { active = false; };
   }, []);
+  useEffect(() => { if (showDeletionNotice) resultNotice.current?.focus(); }, [showDeletionNotice]);
 
   return (
     <GroupPageShell title="Mis Grupos" description="Administrá los Grupos que te pertenecen por ownership, sin depender de roles globales.">
@@ -55,6 +59,8 @@ export default function OwnGroupsPage() {
           La vista anterior ya no está disponible. Usá los Grupos y Membresías vigentes.
         </p>
       ) : null}
+      {showDeletedRetryNotice ? <p role="status" tabIndex={-1} className="rounded-lg border border-blue-300 bg-blue-50 p-4 text-sm text-blue-950">La creación anterior fue confirmada y el Grupo se eliminó después. Iniciá una creación nueva si querés otro Grupo.</p> : null}
+      {showDeletionNotice ? <p ref={resultNotice} role="status" tabIndex={-1} className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-950">El Grupo fue eliminado definitivamente y el cupo quedó disponible para una creación nueva.</p> : null}
       <section aria-labelledby="owned-groups-title" className="space-y-4">
       <div>
         <h2 id="owned-groups-title" className="text-2xl font-semibold">Grupos que administrás</h2>

@@ -53,7 +53,11 @@ export default function NewOwnGroupPage() {
       if (!idempotencyKey) setIdempotencyKey(key);
       setAttemptedValues(`${nombre}\u0000${deporte}`);
       const result = await createOwnGroup({ nombre, deporte, idempotencyKey: key });
-      router.replace(`/dashboard/groups/${result.group.id}`);
+      if (result.outcome === "CREATED_THEN_DELETED") {
+        router.replace("/dashboard/groups?notice=created-group-was-deleted");
+      } else {
+        router.replace(`/dashboard/groups/${result.group.id}`);
+      }
     } catch (cause) {
       const reason = cause instanceof Error && cause.message === "Secure UUID generation is unavailable"
         ? "DEPENDENCY_UNAVAILABLE"

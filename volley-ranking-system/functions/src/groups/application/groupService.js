@@ -11,15 +11,16 @@ const {
   GroupUnauthenticatedError,
   GroupValidationError,
 } = require("./groupErrors");
-const { groupArchiveReceiptId, groupEditToken, groupNameUpdateReceiptId,
-  hashGroupArchiveRequest, hashGroupNameUpdateRequest, hashGroupRequest, hashIdempotencyKey } = require("./groupHashing");
+const { groupArchiveReceiptId, groupDeletionReceiptId, groupEditToken, groupNameUpdateReceiptId,
+  hashGroupArchiveRequest, hashGroupDeletionIdempotencyKey, hashGroupDeletionRequest,
+  hashGroupNameUpdateRequest, hashGroupRequest, hashIdempotencyKey } = require("./groupHashing");
 
 function requireActor(identity) {
   if (!identity || typeof identity.userId !== "string" || !identity.userId.trim()) throw new GroupUnauthenticatedError();
   return identity.userId.trim();
 }
 
-function createGroupService({ selfAccountReader, groupRepository, ownGroupsReader, creationGuard, groupNameUpdateStore, groupArchiveStore }) {
+function createGroupService({ selfAccountReader, groupRepository, ownGroupsReader, creationGuard, groupNameUpdateStore, groupArchiveStore, groupDeletionStore }) {
   if (!selfAccountReader || !groupRepository || !ownGroupsReader || !creationGuard) {
     throw new TypeError("Group service dependencies are required");
   }
@@ -80,6 +81,12 @@ function createGroupService({ selfAccountReader, groupRepository, ownGroupsReade
         throw new GroupInternalError({ cause: error });
       }
 
+      if (result.outcome === "CREATED_THEN_DELETED") return Object.freeze({
+        outcome: result.outcome, recovered: true,
+        appliedEffect: Object.freeze({ outcome: "CREATED" }),
+        subsequentEffect: Object.freeze({ outcome: "DELETED", deletedAt: result.deletedAt }),
+        currentGroup: null,
+      });
       const persisted = result.group || await readPersistedGroup(result.groupId);
       return Object.freeze({ outcome: result.outcome, group: toGroupDto(persisted) });
     },
@@ -156,6 +163,25 @@ function createGroupService({ selfAccountReader, groupRepository, ownGroupsReade
         receiptId: groupArchiveReceiptId(userId, input.idempotencyKey) });
       try { return await groupArchiveStore.archive(Object.freeze({ ...command,
         requestHash: hashGroupArchiveRequest(userId, command) })); }
+      catch (error) { if (error instanceof GroupError) throw error; throw new GroupInternalError({ cause: error }); }
+    },
+
+    async prepareOwnGroupDeletion(identity, input) {
+      const userId = requireActor(identity);
+      if (!groupDeletionStore) throw new GroupDependencyUnavailableError();
+      try { return await groupDeletionStore.prepare({ userId, groupId: input.groupId }); }
+      catch (error) { if (error instanceof GroupError) throw error; throw new GroupInternalError({ cause: error }); }
+    },
+
+    async deleteOwnGroup(identity, input) {
+      const userId = requireActor(identity);
+      if (!groupDeletionStore) throw new GroupDependencyUnavailableError();
+      const command = Object.freeze({ userId, groupId: input.groupId,
+        expectedDeletionToken: input.expectedDeletionToken,
+        idempotencyKeyHash: hashGroupDeletionIdempotencyKey(userId, input.idempotencyKey),
+        receiptId: groupDeletionReceiptId(userId, input.idempotencyKey),
+        requestHash: hashGroupDeletionRequest(userId, input) });
+      try { return await groupDeletionStore.delete(command); }
       catch (error) { if (error instanceof GroupError) throw error; throw new GroupInternalError({ cause: error }); }
     },
   };

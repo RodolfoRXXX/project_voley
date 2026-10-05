@@ -33,6 +33,11 @@ test("E2-10 salida voluntaria self-person es durable, concurrente y sin efectos 
   const { projectId } = assertSafeFirebaseTestEnvironment(process.env); assert.equal(projectId, SYNTHETIC_DATA.projectId);
   const admin = require("firebase-admin"); const app = admin.initializeApp({ projectId }, "e2-10-self-exit"); const db = app.firestore(); const auth = app.auth(); const T = admin.firestore.Timestamp;
   const fixtures = createFirestoreFixtureRegistry(db);
+  const unrelatedCollections = ["activities", "notifications", "alerts", "groupJoinRequests", "groupJoinRequestIntents"];
+  const unrelatedBaseline = new Map(await Promise.all(unrelatedCollections.map(async (collection) => {
+    const snapshot = await db.collection(collection).get();
+    return [collection, snapshot.docs.map((document) => document.id).sort()];
+  })));
   const [owner, member, other, noPerson, noAccount, globalAdmin] = await Promise.all(["owner", "member", "other", "no-person", "no-account", "admin"].map((name) => signUp(process.env.FIREBASE_AUTH_EMULATOR_HOST, name)));
   const person = { owner: "e2-10-person-owner", member: "e2-10-person-member", other: "e2-10-person-other" };
   const call = (name, data, actor = member) => invoke(process.env.FUNCTIONS_EMULATOR_HOST, projectId, name, data, actor?.idToken);
@@ -141,7 +146,10 @@ test("E2-10 salida voluntaria self-person es durable, concurrente y sin efectos 
     await t.test("reglas niegan Membresías, Períodos e intents para cualquier cliente", async () => {
       const intentPath = `membershipSelfExitIntents/${membershipSelfExitIntentId(member.uid, "e2-10-v3-key-0001")}`;
       for (const actor of [null, member, owner, globalAdmin]) for (const path of ["memberships/e2-10-v3-membership", `memberships/e2-10-v3-membership/validityPeriods/${membershipValidityPeriodId("e2-10-v3-membership", 2)}`, intentPath]) { assert.equal(await direct(process.env.FIRESTORE_EMULATOR_HOST, projectId, path, actor?.idToken), 403); assert.equal(await direct(process.env.FIRESTORE_EMULATOR_HOST, projectId, path, actor?.idToken, "PATCH"), 403); }
-      for (const collection of ["activities", "notifications", "alerts", "groupJoinRequests", "groupJoinRequestIntents"]) assert.equal((await db.collection(collection).get()).size, 0, collection);
+      for (const collection of unrelatedCollections) {
+        const snapshot = await db.collection(collection).get();
+        assert.deepEqual(snapshot.docs.map((document) => document.id).sort(), unrelatedBaseline.get(collection), collection);
+      }
     });
   } finally {
     await fixtures.registerQuery(db.collection("membershipSelfExitIntents")); await fixtures.cleanup(); await auth.deleteUsers([owner.uid, member.uid, other.uid, noPerson.uid, noAccount.uid, globalAdmin.uid]); await app.delete();

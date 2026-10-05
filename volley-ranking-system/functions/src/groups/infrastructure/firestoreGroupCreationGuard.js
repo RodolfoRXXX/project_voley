@@ -6,8 +6,11 @@ const {
   GroupConflictError,
   GroupDependencyUnavailableError,
   GroupError,
+  GroupIdempotencyConflictError,
+  GroupIncompatibleError,
   GroupLimitReachedError,
 } = require("../application/groupErrors");
+const { hydrateGroupDeletionReceipt } = require("./groupDeletionReceipts");
 
 const GUARD_FIELDS = Object.freeze(["groupId", "idempotencyKeyHash", "requestHash", "createdAt", "guardVersion"]);
 const HASH_PATTERN = /^[a-f0-9]{64}$/;
@@ -46,6 +49,21 @@ function createFirestoreGroupCreationGuard({ db, ownGroupsReader }) {
       const guardRef = db.collection("groupCreationGuards").doc(userId);
       try {
         return await db.runTransaction(async (transaction) => {
+          const historicalSnapshot = await transaction.get(db.collection("groupDeletionReceipts")
+            .where("actorUserId", "==", userId)
+            .where("creationIdempotencyKeyHash", "==", idempotencyKeyHash)
+            .limit(2));
+          if (historicalSnapshot.size > 1) throw new GroupIncompatibleError();
+          if (!historicalSnapshot.empty) {
+            let historical;
+            try { historical = hydrateGroupDeletionReceipt(historicalSnapshot.docs[0], historicalSnapshot.docs[0].id); }
+            catch (error) { throw new GroupIncompatibleError({ cause: error }); }
+            if (historical.actorUserId !== userId || historical.creationIdempotencyKeyHash !== idempotencyKeyHash) {
+              throw new GroupIncompatibleError();
+            }
+            if (historical.creationRequestHash !== requestHash) throw new GroupIdempotencyConflictError();
+            return { outcome: "CREATED_THEN_DELETED", deletedAt: historical.deletedAt.toDate().toISOString() };
+          }
           const guard = hydrateGuard(await transaction.get(guardRef), userId);
           if (guard) {
             let persisted;

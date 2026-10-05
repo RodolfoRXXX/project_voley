@@ -37,10 +37,16 @@ test("rutas owner-scoped usan contratos y no importan Firestore", () => {
   }
 });
 
-test("alta directa legada fue retirada y las superficies legadas excluyen schemas canónicos v1/v2", () => {
+test("alta directa legada fue retirada y las superficies legadas excluyen schemas canónicos presentes y futuros", () => {
   assert.doesNotMatch(read("volley-ranking-frontend/src/app/(admin)/admin/groups/new/page.tsx"), /addDoc|firebase\/firestore|roles/);
-  assert.match(read("volley-ranking-system/functions/src/services/groupAdminsService.js"), /\[1, 2\]\.includes/);
-  assert.match(read("volley-ranking-system/functions/src/triggers/onGroupPendingAlertsSync.js"), /\[1, 2\]\.includes/);
+  const { isCanonicalGroup } = require("../../src/services/groupAdminsService");
+  assert.equal(isCanonicalGroup({}), false);
+  assert.equal(isCanonicalGroup({ schemaVersion: 1 }), true);
+  assert.equal(isCanonicalGroup({ schemaVersion: 2 }), true);
+  assert.equal(isCanonicalGroup({ schemaVersion: 3 }), true);
+  assert.match(read("volley-ranking-system/functions/src/httpApi.js"), /schemaVersion == null/);
+  assert.match(read("volley-ranking-system/functions/src/triggers/onGroupPendingAlertsSync.js"), /schemaVersion != null/);
+  assert.match(read("volley-ranking-system/firestore.rules"), /schemaVersion", null\) == null/);
 });
 
 test("frontend cubre vacío, loading, doble submit, errores, Owner y estado deportivo vacío", () => {

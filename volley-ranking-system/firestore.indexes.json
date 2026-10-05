@@ -1,6 +1,22 @@
 {
   "indexes": [
     {
+      "collectionGroup": "groupDeletionReceipts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "actorUserId", "mode": "ASCENDING" },
+        { "fieldPath": "creationIdempotencyKeyHash", "mode": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "groupDeletionReceipts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "actorUserId", "mode": "ASCENDING" },
+        { "fieldPath": "groupId", "mode": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "memberships",
       "queryScope": "COLLECTION",
       "fields": [

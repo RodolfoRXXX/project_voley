@@ -53,6 +53,15 @@ class GroupStaleArchiveError extends GroupError {
 class GroupAlreadyArchivedError extends GroupError {
   constructor() { super("GROUP_ALREADY_ARCHIVED", "Group is already archived"); }
 }
+class GroupNotDeletableError extends GroupError {
+  constructor() { super("GROUP_NOT_DELETABLE", "Group cannot be deleted"); }
+}
+class GroupStaleDeletionError extends GroupError {
+  constructor() { super("STALE_DELETION", "Group changed since deletion preparation"); }
+}
+class GroupDeletionBlockedError extends GroupError {
+  constructor(reason) { super(reason, "Group has references that prevent deletion"); }
+}
 class GroupArchiveBlockedError extends GroupError {
   constructor(reason) { super(reason, "Group has unresolved activity"); }
 }
@@ -71,8 +80,11 @@ module.exports = {
   GroupNotAuthorizedError,
   GroupNotAccessibleError,
   GroupNotFoundError,
+  GroupNotDeletableError,
   GroupUnauthenticatedError,
   GroupValidationError,
   GroupStaleUpdateError,
   GroupStaleArchiveError,
+  GroupStaleDeletionError,
+  GroupDeletionBlockedError,
 };

@@ -8,6 +8,7 @@ const { createFirestoreGroupCreationGuard } = require("./firestoreGroupCreationG
 const { createFirestoreGroupRepository } = require("./firestoreGroupRepository");
 const { createFirestoreGroupNameUpdateStore } = require("./firestoreGroupNameUpdateStore");
 const { createFirestoreGroupArchiveStore } = require("./firestoreGroupArchiveStore");
+const { createFirestoreGroupDeletionStore } = require("./firestoreGroupDeletionStore");
 const { createFirestoreOwnGroupsReader } = require("./firestoreOwnGroupsReader");
 const { createFirestoreSelfAccountReader } = require("./firestoreSelfAccountReader");
 const { createFirestoreMembershipRepository } = require("../../memberships/infrastructure/firestoreMembershipRepository");
@@ -25,6 +26,11 @@ module.exports = createGroupService({
   creationGuard: createFirestoreGroupCreationGuard({ db, ownGroupsReader }),
   groupNameUpdateStore: createFirestoreGroupNameUpdateStore({ db, groupRepository }),
   groupArchiveStore: createFirestoreGroupArchiveStore({
+    db, groupRepository,
+    membershipRepository: createFirestoreMembershipRepository({ db }),
+    joinRequestRepository: createFirestoreGroupJoinRequestRepository({ db }),
+  }),
+  groupDeletionStore: createFirestoreGroupDeletionStore({
     db, groupRepository,
     membershipRepository: createFirestoreMembershipRepository({ db }),
     joinRequestRepository: createFirestoreGroupJoinRequestRepository({ db }),

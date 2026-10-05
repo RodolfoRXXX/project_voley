@@ -38,6 +38,9 @@ function createFirestoreGroupRepository({ db }) {
         schemaVersion: 2,
       });
     },
+    deleteRoot(transaction, groupId) {
+      transaction.delete(reference(groupId));
+    },
   };
 }
 

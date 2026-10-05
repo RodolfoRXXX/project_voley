@@ -9,7 +9,8 @@ module.exports = functions.firestore
   .onWrite(async (change, context) => {
     const beforeGroup = change.before.exists ? change.before.data() : null;
     const afterGroup = change.after.exists ? change.after.data() : null;
-    if ([1, 2].includes(beforeGroup?.schemaVersion) || [1, 2].includes(afterGroup?.schemaVersion)) return null;
+    if ([1, 2].includes(beforeGroup?.schemaVersion) || [1, 2].includes(afterGroup?.schemaVersion)
+      || beforeGroup?.schemaVersion != null || afterGroup?.schemaVersion != null) return null;
     const groupId = context.params.groupId;
 
     await Promise.all([

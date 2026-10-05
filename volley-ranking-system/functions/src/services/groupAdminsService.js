@@ -1,5 +1,6 @@
 function isCanonicalGroup(group = {}) {
-  return [1, 2].includes(group?.schemaVersion);
+  return [1, 2].includes(group?.schemaVersion)
+    || (Number.isSafeInteger(group?.schemaVersion) && group.schemaVersion > 0);
 }
 
 function assertLegacyGroup(group = {}) {

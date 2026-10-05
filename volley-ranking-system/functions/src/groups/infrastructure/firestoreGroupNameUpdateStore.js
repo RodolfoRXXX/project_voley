@@ -11,6 +11,7 @@ const {
 } = require("../application/groupErrors");
 const { isTransactionConflict, isUnavailable } = require("./firestoreGroupCreationGuard");
 const { hydrateGroupNameUpdateReceipt } = require("./groupNameUpdateReceipts");
+const { hydrateGroupDeletionReceipt } = require("./groupDeletionReceipts");
 
 function compatibleAccount(snapshot, userId) {
   if (!snapshot.exists || snapshot.id !== userId) return false;
@@ -29,8 +30,31 @@ function createFirestoreGroupNameUpdateStore({ db, groupRepository, now = () => 
           const accountSnapshot = await transaction.get(db.collection("users").doc(command.userId));
           if (!compatibleAccount(accountSnapshot, command.userId)) throw new GroupAccountRequiredError();
 
+          let receipt;
+          try { receipt = hydrateGroupNameUpdateReceipt(await transaction.get(receiptRef), receiptRef.id); }
+          catch (error) { throw new GroupIncompatibleError({ cause: error }); }
+          if (receipt && (receipt.actorUserId !== command.userId || receipt.groupId !== command.groupId
+            || receipt.requestHash !== command.requestHash)) throw new GroupIdempotencyConflictError();
+
           const groupSnapshot = await transaction.get(groupRepository.reference(command.groupId));
-          if (!groupSnapshot.exists || groupSnapshot.data()?.ownerId !== command.userId) throw new GroupNotAccessibleError();
+          if (!groupSnapshot.exists) {
+            if (!receipt) throw new GroupNotAccessibleError();
+            const deletionSnapshot = await transaction.get(db.collection("groupDeletionReceipts")
+              .where("actorUserId", "==", command.userId).where("groupId", "==", command.groupId).limit(2));
+            if (deletionSnapshot.size !== 1) throw new GroupIncompatibleError();
+            let deletion;
+            try { deletion = hydrateGroupDeletionReceipt(deletionSnapshot.docs[0], deletionSnapshot.docs[0].id); }
+            catch (error) { throw new GroupIncompatibleError({ cause: error }); }
+            if (deletion.actorUserId !== command.userId || deletion.groupId !== command.groupId
+              || deletion.deletedAt.toDate().getTime() < receipt.confirmedAt.toDate().getTime()) throw new GroupIncompatibleError();
+            return Object.freeze({
+              outcome: "UPDATED_THEN_DELETED", recovered: true,
+              appliedEffect: Object.freeze({ outcome: "UPDATED", confirmedAt: receipt.confirmedAt.toDate().toISOString() }),
+              subsequentEffect: Object.freeze({ outcome: "DELETED", deletedAt: deletion.deletedAt.toDate().toISOString() }),
+              currentGroup: null, currentEditToken: null,
+            });
+          }
+          if (groupSnapshot.data()?.ownerId !== command.userId) throw new GroupNotAccessibleError();
           let group;
           try { group = groupRepository.fromSnapshot(groupSnapshot); }
           catch (error) {
@@ -38,12 +62,7 @@ function createFirestoreGroupNameUpdateStore({ db, groupRepository, now = () => 
             throw error;
           }
 
-          let receipt;
-          try { receipt = hydrateGroupNameUpdateReceipt(await transaction.get(receiptRef), receiptRef.id); }
-          catch (error) { throw new GroupInternalError({ cause: error }); }
           if (receipt) {
-            if (receipt.actorUserId !== command.userId || receipt.groupId !== command.groupId
-              || receipt.requestHash !== command.requestHash) throw new GroupIdempotencyConflictError();
             const applied = Object.freeze({ ...group, nombre: receipt.appliedName });
             return Object.freeze({
               outcome: "UPDATED", recovered: true,

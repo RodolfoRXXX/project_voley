@@ -2,9 +2,9 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - ejecución actualizada al cierre de Etapa 1 - 25 de agosto de 2026*
+*Borrador consolidado - ejecución actualizada al cierre de Etapa 2 - 6 de octubre de 2026*
 
-> Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0 y 1. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
+> Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
 El presente archivo Markdown es la fuente editable, versionada y canónica del Documento 5. Toda
 modificación futura deberá realizarse sobre esta fuente y cualquier PDF posterior deberá generarse a
@@ -14,7 +14,7 @@ partir de ella.
 # Estado del documento
 
 Este borrador conserva el contenido aprobado hasta la FASE 2 del Documento 5 y actualiza su estado
-operativo con la evidencia consolidada hasta el cierre de la Etapa 1.
+operativo con la evidencia consolidada hasta el cierre de la Etapa 2.
 Incluye:
 - Capítulo 1 - Propósito y alcance;
 - Capítulo 2 - Estado inicial y activos reutilizables;
@@ -28,16 +28,17 @@ Incluye:
 - registro de decisiones aprobadas;
 - decisiones abiertas no bloqueantes;
 - cierre consolidado de la Etapa 0;
-- detalle operativo y cierre consolidado de la Etapa 1;
-- mapa implementable preliminar de la Etapa 2;
+- detalle operativo y cierre consolidado de las Etapas 1 y 2;
+- mapa implementable y decisiones de salida de la Etapa 2;
 - roadmap general de las Etapas 3 a 9.
 
 Estado operativo del plan:
 
 - `ETAPA 0 CERRADA`;
 - `ETAPA 1 CERRADA`;
-- `ETAPA 2 HABILITADA PARA DEFINICIÓN`;
-- Etapas 3 a 9 conservadas a nivel de roadmap.
+- `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
+- `ETAPA 3 HABILITADA PARA DEFINICIÓN`;
+- Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
 Documento 5 registra resultados y decisiones de nivel etapa sin convertirse en un historial duplicado
@@ -2090,7 +2091,7 @@ Solicitud o Temporada bajo numeración E1 modificaría incorrectamente el alcanc
 
 ## 7.4 Etapa 2 - Organización, Grupo, Membresía, Solicitud y Temporada
 
-- Estado: `HABILITADA PARA DEFINICIÓN`.
+- Estado: `CERRADA CON RIESGO RESIDUAL ACEPTADO` por DEC-E2-26/D5-045.
 - Objetivo: materializar fronteras organizativas y contextuales.
 - Fuentes de verdad: Grupo, Membresía, Solicitud y Temporada.
 - Dependencias: Persona y actor identificables; contratos mínimos de identidad.
@@ -2114,6 +2115,13 @@ Solicitud o Temporada bajo numeración E1 modificaría incorrectamente el alcanc
     con su sustitución por una proyección pública deportiva aprobada. Las superficies se conservan
     hasta cumplir sus condiciones y una decisión posterior autorice el retiro. La asignación
     resuelve E2-COMP-01 como pendiente documental, no prueba retiro ni habilita E3.
+- Cierre excepcional aprobado: D5-045 acepta de forma acotada el riesgo residual del incidente
+    intermitente entre edición de cargo y finalización administrativa. La auditoría original conserva
+    su resultado `230/232`; las ejecuciones posteriores documentadas, incluida una integral
+    `232/232`, no reprodujeron el fallo, y la causa histórica permanece desconocida. La observabilidad
+    incorporada permite conservar evidencia técnica ante reaparición. Esta aceptación cierra E2-14 y
+    Etapa 2 administrativamente y habilita Etapa 3 sólo para definición; no declara resuelto el
+    incidente, no convierte en aprobada la auditoría original y no autoriza producción o deploy.
 
 ### 7.4.1 Decisiones de corte preliminares
 
@@ -2189,6 +2197,7 @@ El siguiente incremento funcional es:
 
 ## 7.5 Etapa 3 - Pago deportivo independiente
 
+- Estado: `HABILITADA PARA DEFINICIÓN`; implementación, preparación productiva y deploy no autorizados.
 - Objetivo: establecer Pago como única fuente económica deportiva.
 - Fuente de verdad: Pago.
 - Dependencias: identificadores estables y comprensión de referencias de Grupo, Persona y
@@ -2380,6 +2389,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-042 | Posición, dorsal y observaciones de CU-026 pueden satisfacer su tratamiento de salida mediante diferimiento explícito por atributo; cargo conserva cobertura parcial y CU-026 no cuenta como completamente implementado | APROBADA | Etapa 2 / CU-026 | No bloquean por sí solos después de completar los demás gates y repetir E2-14; cada atributo se reabre antes de una utilidad que lo necesite |
 | D5-043 | CU-034–CU-038 pueden satisfacer su tratamiento de salida mediante diferimiento hasta la primera capacidad real delegable, sin perfiles ni asignaciones especulativas | APROBADA | Etapa 2 / CU-034–CU-038 | No bloquean por sí solos después de completar los demás gates y repetir E2-14; antes de delegar deben aprobarse perfiles, capacidades, asignación, revocación, alcance y revalidación backend |
 | D5-044 | La compatibilidad residual se conserva y asigna por superficie: seis callables y ocho rutas HTTP tombstone a Etapa 9; dos GET de catálogo legacy a Etapa 4 junto con su proyección pública deportiva sustituta | APROBADA | Etapas 2, 4 y 9 / E2-COMP-01 | Resuelve la asignación documental para repetir E2-14; cada retiro requiere condiciones verificadas y una decisión posterior, sin inferir ausencia de consumidores externos |
+| D5-045 | Se acepta de forma acotada el riesgo residual del incidente intermitente entre edición de cargo y finalización administrativa, con causa histórica desconocida y observabilidad técnica incorporada | APROBADA | Cierre E2-14 y Etapa 2 | Cierra administrativamente con riesgo residual aceptado y habilita E3 sólo para definición; no aprueba retroactivamente la auditoría `230/232`, no declara resuelto el incidente ni autoriza producción o deploy |
 
 
 # 9. Decisiones abiertas no bloqueantes

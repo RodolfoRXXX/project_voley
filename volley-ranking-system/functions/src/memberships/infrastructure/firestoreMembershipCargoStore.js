@@ -11,6 +11,7 @@ const {
 const { activeMembershipGuardId, membershipCargoEditToken, membershipLifecycleGuardId } = require("../application/membershipHashing");
 const { assertMembershipCorrelated, hydrateActiveMembershipGuard, isAmbiguousTransactionFailure, isMembershipContention } = require("./firestoreActiveMembershipGuard");
 const { assertActiveLifecycleCorrelated, hydrateMembershipLifecycleGuard } = require("./firestoreMembershipLifecycleGuard");
+const { createMembershipTransactionObserver } = require("./membershipTransactionObservability");
 
 const RECEIPT_FIELDS = Object.freeze(["receiptVersion", "actorUserId", "groupId", "membershipId", "idempotencyKeyHash", "requestHash", "cargo", "confirmedAt", "editToken"]);
 const HASH = /^[a-f0-9]{64}$/;
@@ -33,7 +34,10 @@ function hydrateReceipt(snapshot, args) {
   return Object.freeze(data);
 }
 
-function createFirestoreMembershipCargoStore({ db, membershipRepository, groupCapability, personCapability, now = () => Timestamp.now() }) {
+function createFirestoreMembershipCargoStore({
+  db, membershipRepository, groupCapability, personCapability, now = () => Timestamp.now(),
+  transactionObserver = createMembershipTransactionObserver(),
+}) {
   if (!db || !membershipRepository || !groupCapability || !personCapability || typeof now !== "function") throw new TypeError("Membership cargo store dependencies are required");
   const receiptReference = (receiptId) => db.collection("membershipCargoUpdateReceipts").doc(receiptId);
 
@@ -133,9 +137,18 @@ function createFirestoreMembershipCargoStore({ db, membershipRepository, groupCa
   }
 
   return Object.freeze({ receiptReference, hydrateReceipt, prepare, async confirm(args) {
+    const observation = transactionObserver.start("membership-cargo-update");
     try { return await execute(args); }
     catch (error) {
-      if (isMembershipContention(error) || isAmbiguousTransactionFailure(error)) { try { return await execute(args); } catch (recoveryError) { throw map(recoveryError); } }
+      if (isMembershipContention(error) || isAmbiguousTransactionFailure(error)) {
+        if (!(error instanceof MembershipError)) observation.record("transaction", error);
+        try { return await execute(args); }
+        catch (recoveryError) {
+          if (!(recoveryError instanceof MembershipError)) observation.record("recovery", recoveryError);
+          throw map(recoveryError);
+        }
+      }
+      if (!(error instanceof MembershipError)) observation.record("mapping", error);
       throw map(error);
     }
   } });

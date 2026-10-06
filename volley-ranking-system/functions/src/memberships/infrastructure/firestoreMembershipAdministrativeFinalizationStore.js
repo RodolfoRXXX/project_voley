@@ -25,6 +25,7 @@ const {
 const { annotateMembershipError } = require("../application/membershipObservability");
 const { assertMembershipCorrelated, hydrateActiveMembershipGuard, isAmbiguousTransactionFailure, isMembershipContention } = require("./firestoreActiveMembershipGuard");
 const { assertActiveLifecycleCorrelated, assertFinalizedMembershipCorrelated, hydrateMembershipLifecycleGuard } = require("./firestoreMembershipLifecycleGuard");
+const { createMembershipTransactionObserver } = require("./membershipTransactionObservability");
 
 const ACTION = "FINALIZE_ACTIVE_THIRD_PARTY_MEMBERSHIP";
 const SUCCESS = "MEMBERSHIP_FINALIZATION_CONFIRMED";
@@ -79,6 +80,7 @@ function toResult(intent) {
 
 function createFirestoreMembershipAdministrativeFinalizationStore({
   db, membershipRepository, groupCapability, personCapability, now = () => Timestamp.now(),
+  transactionObserver = createMembershipTransactionObserver(),
 }) {
   if (!db || !membershipRepository || !groupCapability || !personCapability || typeof now !== "function") {
     throw new TypeError("Administrative Membership finalization dependencies are required");
@@ -251,11 +253,18 @@ function createFirestoreMembershipAdministrativeFinalizationStore({
     hydrate: hydrateAdministrativeFinalizationIntent,
     prepare,
     async confirm(args) {
+      const observation = transactionObserver.start("administrative-finalization");
       try { return await execute(args); }
       catch (error) {
         if (isMembershipContention(error) || isAmbiguousTransactionFailure(error)) {
-          try { return await execute(args); } catch (recoveryError) { throw mapError(recoveryError); }
+          if (!(error instanceof MembershipError)) observation.record("transaction", error);
+          try { return await execute(args); }
+          catch (recoveryError) {
+            if (!(recoveryError instanceof MembershipError)) observation.record("recovery", recoveryError);
+            throw mapError(recoveryError);
+          }
         }
+        if (!(error instanceof MembershipError)) observation.record("mapping", error);
         throw mapError(error);
       }
     },

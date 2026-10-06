@@ -2103,6 +2103,17 @@ Solicitud o Temporada bajo numeración E1 modificaría incorrectamente el alcanc
 - Excepción aprobada de salida: CU-013 puede permanecer diferido, visible y sin implementación bajo
     DEC-E2-21/D5-041, exclusivamente después de satisfacer los demás gates de Etapa 2 y repetir
     E2-14. Esta excepción no cubre otros casos pendientes ni habilita E3 por sí sola.
+- Excepciones aprobadas de salida: posición, dorsal y observaciones de CU-026 pueden permanecer
+    diferidos bajo DEC-E2-25/D5-042, y CU-034–CU-038 pueden permanecer diferidos bajo
+    DEC-E2-25/D5-043 hasta que exista la primera capacidad real que deba delegarse. Los casos siguen
+    reconocidos, no se cuentan como completamente implementados y sólo dejan de bloquear por sí
+    solos después de satisfacer los demás gates y repetir E2-14. Estas excepciones no aprueban una
+    categoría abierta de atributos, perfiles o permisos y no habilitan E3.
+- Roadmap de compatibilidad residual: D5-044 asigna los seis callables y las ocho rutas HTTP
+    administrativas tombstone a Etapa 9, y los dos GET del catálogo público legacy a Etapa 4 junto
+    con su sustitución por una proyección pública deportiva aprobada. Las superficies se conservan
+    hasta cumplir sus condiciones y una decisión posterior autorice el retiro. La asignación
+    resuelve E2-COMP-01 como pendiente documental, no prueba retiro ni habilita E3.
 
 ### 7.4.1 Decisiones de corte preliminares
 
@@ -2146,6 +2157,31 @@ retira exclusivamente este caso como bloqueo futuro una vez cumplidos los restan
 afecta CU-014/CU-015, no cierra E2-14 o Etapa 2 y no habilita E3. E2-22/CU-026 puede avanzar sólo a
 definición independiente y no puede presuponer catálogos o permisos provenientes de CU-013.
 
+DEC-E2-25 difiere `posición`, `dorsal` y `observaciones` de CU-026 hasta que una utilidad concreta
+permita aprobar por atributo su finalidad, ownership, actor, valores, validaciones, privacidad y
+lifecycle. E2-22A conserva exclusivamente la cobertura implementada de cargo descriptivo; CU-026 no
+queda agotado y no se aprueba una categoría abierta de atributos. D5-042 dispone que esos atributos
+no bloquean por sí solos el futuro cierre después de completar los demás gates y repetir E2-14.
+
+La misma decisión difiere CU-034–CU-038 hasta el primer módulo con capacidades reales que deban
+delegarse. Antes de implementar esa capacidad deberán definirse casos aplicables, perfiles,
+capacidades, asignación, revocación, alcance contextual y revalidación backend. Cargo, rol deportivo
+y perfil de permisos permanecen separados; no se crean perfiles, identificadores o asignaciones
+especulativas ni se promete convertir cargos en permisos. D5-043 limita su efecto al gate de Etapa 2:
+los casos siguen reconocidos y sin implementación. Ninguna de estas decisiones cierra E2-14 o
+Etapa 2 ni habilita E3.
+
+D5-044 asigna el tratamiento futuro de la compatibilidad residual sin adelantar su ejecución. En
+Etapa 4 deberán aprobarse la proyección pública deportiva y su privacidad, migrarse páginas y BFF,
+verificarse la ausencia de dependencia interna, comprobarse privacidad y regresiones y resolverse
+el tratamiento de consumidores externos antes de retirar `GET /groups/public` y
+`GET /groups/{id}/public`. En Etapa 9 cada callable y ruta tombstone deberá revisarse individualmente
+o por familia justificada con inventario interno, evidencia externa disponible, rechazo sin efectos,
+pruebas de exports/rutas/métodos/regresiones y una decisión documentada que autorice el retiro. La
+ausencia de referencias internas no prueba ausencia externa. Si la evidencia externa resulta
+insuficiente, deberá decidirse expresamente entre aviso, compatibilidad versionada o aceptación del
+riesgo, sin exigir una demostración exhaustiva imposible ni inventar telemetría o ventanas cumplidas.
+
 El siguiente incremento funcional es:
 
 `E2-01 — Creación de Grupo mínimo y ownership contextual`.
@@ -2173,6 +2209,10 @@ El siguiente incremento funcional es:
     estables.
 - Activos: núcleo de Torneos, fixture, fases, standings y tipos TournamentMatch.
 - Brechas: TECH-GAP-05 y partes de 10 y 14.
+- Compatibilidad residual asignada: sustituir el catálogo legacy por una proyección pública
+    deportiva aprobada. Antes de retirar sus dos GET deberán aprobarse contrato y privacidad,
+    migrarse páginas y BFF, verificarse ausencia de dependencia interna, comprobarse privacidad y
+    regresiones y resolverse expresamente el tratamiento de consumidores externos.
 - Salida: no existe transacción ni Repositorio compartido; fallos intermedios son detectables y
     recuperables.
 
@@ -2230,6 +2270,11 @@ El siguiente incremento funcional es:
 - Objetivo: verificar que el alcance implementado no dependa del modelo anterior.
 - Dependencias: cierre de etapas seleccionadas y puntos de integración.
 - Brechas: TECH-GAP-15, 16, 17 y 20 cuando corresponda.
+- Compatibilidad residual asignada: revisar los seis callables y las ocho rutas HTTP administrativas
+    tombstone, individualmente o por familia justificada, usando inventario interno, evidencia
+    externa disponible, comprobación de rechazo sin efectos y pruebas aplicables. El retiro exige
+    una decisión posterior documentada; evidencia externa insuficiente requiere decidir aviso,
+    compatibilidad versionada o aceptación del riesgo.
 - Salida: ausencia de doble autoridad, residuos retirados o justificados, deuda aceptada y
     operación verificada.
 - Evidencia: auditoría final, trazabilidad, inventario de deuda y pruebas completas del alcance.
@@ -2332,6 +2377,9 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-039 | El siguiente incremento funcional es E2-01 — Creación de Grupo mínimo y ownership contextual | APROBADA | Entrada de Etapa 2 | Grupo y Owner se establecen en un mismo corte vertical |
 | D5-040 | La condición de Owner no crea automáticamente una Membresía | APROBADA | Etapa 2 | Membresía requiere Persona, Grupo y Temporada abierta |
 | D5-041 | CU-013 puede satisfacer su gate mediante diferimiento funcional explícito, deuda visible y condición verificable de reapertura; no cuenta como implementado | APROBADA | Etapa 2 / CU-013 | Sólo después de completar los demás gates y repetir E2-14 puede evaluarse el cierre; E3 no se habilita automáticamente |
+| D5-042 | Posición, dorsal y observaciones de CU-026 pueden satisfacer su tratamiento de salida mediante diferimiento explícito por atributo; cargo conserva cobertura parcial y CU-026 no cuenta como completamente implementado | APROBADA | Etapa 2 / CU-026 | No bloquean por sí solos después de completar los demás gates y repetir E2-14; cada atributo se reabre antes de una utilidad que lo necesite |
+| D5-043 | CU-034–CU-038 pueden satisfacer su tratamiento de salida mediante diferimiento hasta la primera capacidad real delegable, sin perfiles ni asignaciones especulativas | APROBADA | Etapa 2 / CU-034–CU-038 | No bloquean por sí solos después de completar los demás gates y repetir E2-14; antes de delegar deben aprobarse perfiles, capacidades, asignación, revocación, alcance y revalidación backend |
+| D5-044 | La compatibilidad residual se conserva y asigna por superficie: seis callables y ocho rutas HTTP tombstone a Etapa 9; dos GET de catálogo legacy a Etapa 4 junto con su proyección pública deportiva sustituta | APROBADA | Etapas 2, 4 y 9 / E2-COMP-01 | Resuelve la asignación documental para repetir E2-14; cada retiro requiere condiciones verificadas y una decisión posterior, sin inferir ausencia de consumidores externos |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -2350,7 +2398,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | Paginación y optimización N+1 | Cuando volumen o mediciones lo justifiquen |
 | Contenido, límites y precios definitivos de Planes | Etapa 6 |
 | Política fina de visibilidad por recurso | Etapa correspondiente, respetando privado por defecto |
-| Roles y permisos específicos | Etapas 2, 7 y 8 |
+| Diseño concreto de roles, perfiles, capacidades y permisos | Antes del primer módulo con una capacidad real delegable, bajo DEC-E2-25/D5-043 |
 | Diseño físico de Repositorios | Junto con cada Agregado |
 | Retención histórica futura | Cuando exista necesidad operativa o legal |
 | Alcance del export preventivo | Antes de reinicialización |

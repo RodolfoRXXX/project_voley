@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - ejecución actualizada al cierre de Etapa 2 - 6 de octubre de 2026*
+*Borrador consolidado - E3-01 formalizada documentalmente - 7 de octubre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -14,7 +14,7 @@ partir de ella.
 # Estado del documento
 
 Este borrador conserva el contenido aprobado hasta la FASE 2 del Documento 5 y actualiza su estado
-operativo con la evidencia consolidada hasta el cierre de la Etapa 2.
+operativo con el cierre de la Etapa 2 y la formalización documental de E3-01.
 Incluye:
 - Capítulo 1 - Propósito y alcance;
 - Capítulo 2 - Estado inicial y activos reutilizables;
@@ -1988,7 +1988,7 @@ el plan, pero no obliga a ejecutarlas en una cascada rígida ni a publicarlas co
 | 0 | Estabilización y red de seguridad | `CERRADA` | Arquitectura congelada y repositorio auditado | Seguridad implementada y probada, entorno reproducible y reinicialización preparada |
 | 1 | Usuario, Persona y autorización | `CERRADA` | Cierre de Etapa 0 | Identidad separada y autorización contextual inicial |
 | 2 | Grupo, Membresía, Solicitud y Temporada | `CERRADA CON RIESGO RESIDUAL ACEPTADO` | Persona y actor identificables | Fuentes de verdad organizativas separadas |
-| 3 | Pago deportivo | `HABILITADA PARA DEFINICIÓN` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
+| 3 | Pago deportivo | `E3-01 LISTA PARA IMPLEMENTAR; EJECUCIÓN NO AUTORIZADA` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
 | 4 | Partido-Torneo y CU-075 | `ROADMAP` | Modelo de Partido, contratos y pruebas | Resultado original y estado competitivo separados |
 | 5 | Estadísticas, Rendimiento, Actividad y recuperación | `ROADMAP` | Cada fuente original correspondiente | Proyecciones reconstruibles y procesos recuperables |
 | 6 | Comercial | `ROADMAP` | Usuario estable y consultas deportivas públicas | Capacidades y límites sin otorgar permisos deportivos |
@@ -2197,7 +2197,8 @@ El siguiente incremento funcional es:
 
 ## 7.5 Etapa 3 - Pago deportivo independiente
 
-- Estado: `HABILITADA PARA DEFINICIÓN`; implementación, preparación productiva y deploy no autorizados.
+- Estado: `E3-01 LISTA PARA IMPLEMENTAR`; su ejecución, preparación
+    productiva y deploy requieren autorización separada.
 - Objetivo: establecer Pago como única fuente económica deportiva.
 - Fuente de verdad: Pago.
 - Dependencias: identificadores estables y comprensión de referencias de Grupo, Persona y
@@ -2207,6 +2208,12 @@ El siguiente incremento funcional es:
 - Activos: flujos actuales de cobro, estados y vistas.
 - Brechas: TECH-GAP-06 y parte de 09.
 - Salida: participaciones, equipos e inscripciones dejan de ser fuentes económicas.
+- Primer incremento adoptado por D5-046: E3-01 — conceptos, ocurrencias, generación explícita de
+    obligaciones por Membresía y consultas Owner/propias. Pago es obligación independiente; no
+    incorpora ingresos, Tesorería ni liquidación prearchivo.
+- Coordinación E3/E4: el gate de retiro económico permanece en E3. Los contratos deportivos E4
+    pueden definirse de forma delimitada bajo D5-027, pero cada incremento futuro requiere
+    autorización propia y no adelanta catálogos o tombstones D5-044.
 
 
 ## 7.6 Etapa 4 - Partido, Torneo y CU-075
@@ -2390,6 +2397,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-043 | CU-034–CU-038 pueden satisfacer su tratamiento de salida mediante diferimiento hasta la primera capacidad real delegable, sin perfiles ni asignaciones especulativas | APROBADA | Etapa 2 / CU-034–CU-038 | No bloquean por sí solos después de completar los demás gates y repetir E2-14; antes de delegar deben aprobarse perfiles, capacidades, asignación, revocación, alcance y revalidación backend |
 | D5-044 | La compatibilidad residual se conserva y asigna por superficie: seis callables y ocho rutas HTTP tombstone a Etapa 9; dos GET de catálogo legacy a Etapa 4 junto con su proyección pública deportiva sustituta | APROBADA | Etapas 2, 4 y 9 / E2-COMP-01 | Resuelve la asignación documental para repetir E2-14; cada retiro requiere condiciones verificadas y una decisión posterior, sin inferir ausencia de consumidores externos |
 | D5-045 | Se acepta de forma acotada el riesgo residual del incidente intermitente entre edición de cargo y finalización administrativa, con causa histórica desconocida y observabilidad técnica incorporada | APROBADA | Cierre E2-14 y Etapa 2 | Cierra administrativamente con riesgo residual aceptado y habilita E3 sólo para definición; no aprueba retroactivamente la auditoría `230/232`, no declara resuelto el incidente ni autoriza producción o deploy |
+| D5-046 | E3-01 inicia Pago con conceptos, ocurrencias, obligaciones por Membresía y consultas Owner/propias; adopta DEC-E3-01 y sus addenda, manteniendo el retiro de autoridad económica legacy como gate de E3 | APROBADA | Etapa 3 / E3-01 | La ficha queda `LISTA PARA IMPLEMENTAR`, pero código y cada incremento posterior requieren autorización separada; D5-043 se conserva antes de delegar y D5-044 no se adelanta |
 
 
 # 9. Decisiones abiertas no bloqueantes

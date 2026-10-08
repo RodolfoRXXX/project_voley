@@ -2211,6 +2211,13 @@ El siguiente incremento funcional es:
 - Primer incremento adoptado por D5-046: E3-01 — conceptos, ocurrencias, generación explícita de
     obligaciones por Membresía y consultas Owner/propias. Pago es obligación independiente; no
     incorpora ingresos, Tesorería ni liquidación prearchivo.
+- Primera capacidad delegable adoptada por D5-047: E3-02 — `GROUP_TREASURY`, exclusivamente de
+    consulta sobre conceptos, ocurrencias y obligaciones E3-01 del Grupo. Admite múltiples
+    concesiones individuales con Cuenta–Persona única y vigencia acreditada por Período real o ancla
+    legacy compatible, sin modificar Membresía. Finalización, reactivación, renovación, cambio de
+    Owner y archivo no reviven ni heredan autoridad. La evolución mínima `ownershipRevision`
+    pertenece a Grupo, debe ser preservada por writers ordinarios y sólo una futura transferencia
+    canónica puede incrementarla junto con `ownerId`; la transferencia queda fuera de E3-02.
 - Coordinación E3/E4: el gate de retiro económico permanece en E3. Los contratos deportivos E4
     pueden definirse de forma delimitada bajo D5-027, pero cada incremento futuro requiere
     autorización propia y no adelanta catálogos o tombstones D5-044.
@@ -2398,6 +2405,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-044 | La compatibilidad residual se conserva y asigna por superficie: seis callables y ocho rutas HTTP tombstone a Etapa 9; dos GET de catálogo legacy a Etapa 4 junto con su proyección pública deportiva sustituta | APROBADA | Etapas 2, 4 y 9 / E2-COMP-01 | Resuelve la asignación documental para repetir E2-14; cada retiro requiere condiciones verificadas y una decisión posterior, sin inferir ausencia de consumidores externos |
 | D5-045 | Se acepta de forma acotada el riesgo residual del incidente intermitente entre edición de cargo y finalización administrativa, con causa histórica desconocida y observabilidad técnica incorporada | APROBADA | Cierre E2-14 y Etapa 2 | Cierra administrativamente con riesgo residual aceptado y habilita E3 sólo para definición; no aprueba retroactivamente la auditoría `230/232`, no declara resuelto el incidente ni autoriza producción o deploy |
 | D5-046 | E3-01 inicia Pago con conceptos, ocurrencias, obligaciones por Membresía y consultas Owner/propias; adopta DEC-E3-01 y sus addenda, manteniendo el retiro de autoridad económica legacy como gate de E3 | APROBADA | Etapa 3 / E3-01 | La ficha queda `LISTA PARA IMPLEMENTAR`, pero código y cada incremento posterior requieren autorización separada; D5-043 se conserva antes de delegar y D5-044 no se adelanta |
+| D5-047 | E3-02 adopta `GROUP_TREASURY` exclusivamente de consulta y el addendum conjunto de Documentos 2/3/4; satisface la reapertura de D5-043 sólo para esta primera capacidad delegable | APROBADA | Etapa 3 / E3-02 / CU-036–CU-038 parcial | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; CU-034/CU-035 y la cobertura restante continúan pendientes; D5-044, D5-045 y el gate económico de E3 no cambian |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -2416,7 +2424,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | Paginación y optimización N+1 | Cuando volumen o mediciones lo justifiquen |
 | Contenido, límites y precios definitivos de Planes | Etapa 6 |
 | Política fina de visibilidad por recurso | Etapa correspondiente, respetando privado por defecto |
-| Diseño concreto de roles, perfiles, capacidades y permisos | Antes del primer módulo con una capacidad real delegable, bajo DEC-E2-25/D5-043 |
+| Roles, perfiles y capacidades posteriores a `GROUP_TREASURY` | E3-02/D5-047 resuelve sólo esta capacidad fija; cualquier perfil configurable, CRUD de roles o capacidad adicional requiere necesidad y decisión propias bajo los límites de D5-043 |
 | Diseño físico de Repositorios | Junto con cada Agregado |
 | Retención histórica futura | Cuando exista necesidad operativa o legal |
 | Alcance del export preventivo | Antes de reinicialización |

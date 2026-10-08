@@ -31,7 +31,7 @@ const BLOCKER_ORDER = Object.freeze([
   "FUNCTIONAL_REFERENCES_EXIST", "OPERATION_IN_PROGRESS",
 ]);
 const FUNCTIONAL_COLLECTIONS = Object.freeze([
-  "matches", "teams", "groupStats", "tournamentRegistrations", "tournamentTeams",
+  "matches", "teams", "groupStats", "tournamentRegistrations", "tournamentTeams", "payments",
 ]);
 const SEASON_TECHNICAL_COLLECTIONS = Object.freeze([
   "seasonOpeningReceipts", "seasonClosureReceipts", "seasonUpdateReceipts",

@@ -76,6 +76,7 @@ export default function Navbar() {
   const navItems: NavItem[] = [
     { label: "Inicio", href: "/dashboard" },
     { label: "Mis grupos", href: "/dashboard/groups" },
+    { label: "Mis obligaciones", href: "/dashboard/obligations" },
     { label: "Grupos", href: "/groups" },
     { label: "Torneos", href: "/tournaments" },
 

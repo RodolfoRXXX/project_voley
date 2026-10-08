@@ -250,6 +250,39 @@
           "mode": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "groupChargeConcepts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "name", "mode": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "groupChargeOccurrences",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "conceptId", "mode": "ASCENDING" },
+        { "fieldPath": "createdAt", "mode": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "dueDate", "mode": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "personId", "mode": "ASCENDING" },
+        { "fieldPath": "dueDate", "mode": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

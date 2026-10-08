@@ -44,6 +44,10 @@ export default function AppSidebar() {
       href: "/dashboard/groups",
     },
     {
+      label: "Mis obligaciones",
+      href: "/dashboard/obligations",
+    },
+    {
       label: "Grupos",
       href: "/groups",
     },

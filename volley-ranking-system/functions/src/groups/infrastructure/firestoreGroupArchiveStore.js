@@ -180,7 +180,7 @@ function createFirestoreGroupArchiveStore({ db, groupRepository, membershipRepos
           const blockers = await inspectEligibility(transaction, command.groupId);
           if (blockers.length) throw new GroupArchiveBlockedError(blockers[0]);
           const archivedAt = now(); const archived = archiveGroup(group, archivedAt);
-          groupRepository.archive(transaction, command.groupId, archivedAt);
+          groupRepository.archive(transaction, command.groupId, archivedAt, archived.schemaVersion);
           transaction.create(receiptRef, {
             action: "ARCHIVE_GROUP", actorUserId: command.userId, groupId: command.groupId,
             requestHash: command.requestHash, appliedState: "archivado", archivedAt,

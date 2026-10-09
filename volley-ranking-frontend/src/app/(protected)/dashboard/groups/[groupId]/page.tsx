@@ -11,6 +11,7 @@ import { ActiveGroupMembersSection } from "@/components/memberships/ActiveGroupM
 import { PendingGroupJoinRequestsSection } from "@/components/groupJoinRequests/PendingGroupJoinRequestsSection";
 import { SeasonHistorySection } from "@/components/seasons/SeasonHistorySection";
 import { OwnerEconomySection } from "@/components/payments/OwnerEconomySection";
+import { OwnerTreasuryAccessSection } from "@/components/treasury/OwnerTreasuryAccessSection";
 import { getGroupErrorMessage, getGroupErrorReason, getOwnGroup } from "@/services/groupsService";
 import type { OwnGroup, OwnGroupActive } from "@/types/OwnGroup";
 
@@ -98,6 +99,7 @@ export default function OwnGroupDetailPage() {
           </aside>
           <SeasonHistorySection groupId={group.id} readOnly={group.estado === "archivado"} onAccessLost={handleAccessLost} />
           <OwnerEconomySection groupId={group.id} readOnly={group.estado === "archivado"} />
+          {group.estado === "activo" ? <OwnerTreasuryAccessSection groupId={group.id} /> : null}
           {group.estado === "activo" ? <><OwnMembershipSection groupId={group.id} onAccessLost={handleAccessLost} />
           <ActiveGroupMembersSection
             groupId={group.id}

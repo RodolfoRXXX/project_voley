@@ -3,8 +3,10 @@
 const { Timestamp } = require("firebase-admin/firestore");
 const { hydrateGroup, InvalidGroupStateError } = require("../../groups/domain/group");
 const { hydrateSeason, InvalidSeasonStateError } = require("../../groups/domain/season");
+const { createGroupObligationPresentationCapability } = require("../../groups/public/groupObligationPresentationCapability");
 const { createMembershipObligationEligibilityCapability } = require("../../memberships/public/membershipObligationEligibilityCapability");
 const { createPaymentPersonPresentationCapability } = require("../../persons/public/paymentPersonPresentationCapability");
+const { createGroupTreasuryAuthorizationCapability } = require("../../treasury/public/groupTreasuryAuthorizationCapability");
 const {
   conceptDto, exact, hash, hydrateConcept, hydrateOccurrence, iso, monthBounds, opaqueId, paymentDto,
   normalizeConceptName, normalizeExceptionReason, requireAmount, requireDueDate, requireId, requireKind, requireVersion, stable,
@@ -14,6 +16,7 @@ const {
   PaymentConceptVersionStaleError, PaymentConcurrentModificationError, PaymentDependencyUnavailableError,
   PaymentError, PaymentGroupNotAccessibleError, PaymentGroupNotOperationalError, PaymentIdempotencyConflictError,
   PaymentIncompatibleStateError, PaymentOccurrenceNotAvailableError, PaymentPersonRequiredError,
+  PaymentTreasuryNotAuthorizedError,
 } = require("../application/paymentErrors");
 
 function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHooks = Object.freeze({}) }) {
@@ -23,6 +26,8 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
   const receipts = db.collection("paymentCommandReceipts");
   const membershipCapability = createMembershipObligationEligibilityCapability({ db });
   const personPresentation = createPaymentPersonPresentationCapability({ db });
+  const groupPresentation = createGroupObligationPresentationCapability({ db });
+  const treasuryAuthorization = createGroupTreasuryAuthorizationCapability({ db });
 
   function isTransient(error) { return ["cancelled", "deadline-exceeded", "resource-exhausted", "aborted", "unavailable", 1, 4, 8, 10, 14].includes(error?.code); }
   function map(error) {
@@ -43,6 +48,14 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
     if (!snapshot.exists || snapshot.data()?.ownerId !== userId) throw new PaymentGroupNotAccessibleError();
     let group; try { group = hydrateGroup(snapshot.id, snapshot.data()); } catch (cause) { if (cause instanceof InvalidGroupStateError) throw new PaymentIncompatibleStateError({ cause }); throw cause; }
     if (active && group.estado !== "activo") throw new PaymentGroupNotOperationalError();
+    return group;
+  }
+  async function economicGroup(transaction, userId, groupId) {
+    await account(transaction, userId); const snapshot = await transaction.get(db.collection("groups").doc(groupId));
+    let group; try { group = snapshot.exists ? hydrateGroup(snapshot.id, snapshot.data()) : null; } catch (cause) { if (cause instanceof InvalidGroupStateError) throw new PaymentIncompatibleStateError({ cause }); throw cause; }
+    if (group?.ownerId === userId) return group;
+    const delegated = await treasuryAuthorization.evaluate({ unitOfWork: transaction, accountId: userId, groupId });
+    if (delegated.status !== "AUTHORIZED") throw new PaymentTreasuryNotAuthorizedError();
     return group;
   }
   function cursor(scope, anchor) { const body = Buffer.from(JSON.stringify({ v: 1, scope, anchor })).toString("base64url"); return `${body}.${hash(body)}`; }
@@ -100,7 +113,7 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
 
   async function listConcepts(userId, input) {
     try { return await db.runTransaction(async (transaction) => {
-      await ownedGroup(transaction, userId, input.groupId, { active: false });
+      await economicGroup(transaction, userId, input.groupId);
       const scope = { contract: "concepts", userId, groupId: input.groupId, pageSize: input.pageSize }; const anchor = readCursor(input.cursor, scope);
       let query = concepts.where("groupId", "==", input.groupId).orderBy("name", "asc").orderBy("__name__", "asc");
       if (anchor) { const anchorDoc = await transaction.get(concepts.doc(anchor.id)); if (!anchorDoc.exists || anchorDoc.data()?.groupId !== input.groupId || anchorDoc.data()?.name !== anchor.name) throw new PaymentConcurrentModificationError(); query = query.startAfter(anchor.name, anchor.id); }
@@ -111,7 +124,7 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
 
   async function listOccurrences(userId, input) {
     try { return await db.runTransaction(async (transaction) => {
-      await ownedGroup(transaction, userId, input.groupId, { active: false }); const conceptSnapshot = await transaction.get(concepts.doc(input.conceptId)); const concept = conceptSnapshot.exists ? hydrateConcept(conceptSnapshot.id, conceptSnapshot.data()) : null; assertConcept(concept, input.groupId);
+      await economicGroup(transaction, userId, input.groupId); const conceptSnapshot = await transaction.get(concepts.doc(input.conceptId)); const concept = conceptSnapshot.exists ? hydrateConcept(conceptSnapshot.id, conceptSnapshot.data()) : null; assertConcept(concept, input.groupId);
       const scope = { contract: "occurrences", userId, groupId: input.groupId, conceptId: input.conceptId, pageSize: input.pageSize }; const anchor = readCursor(input.cursor, scope);
       let query = occurrences.where("groupId", "==", input.groupId).where("conceptId", "==", input.conceptId).orderBy("createdAt", "desc").orderBy("__name__", "desc");
       if (anchor) { const ref = occurrences.doc(anchor.id); const doc = await transaction.get(ref); if (!doc.exists || doc.data()?.groupId !== input.groupId || doc.data()?.conceptId !== input.conceptId || iso(doc.data()?.createdAt) !== anchor.createdAt) throw new PaymentConcurrentModificationError(); query = query.startAfter(doc.data().createdAt, anchor.id); }
@@ -247,12 +260,21 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
     try { return await db.runTransaction(async (transaction) => {
       let field; let value; let group = null;
       if (own) { const user = await account(transaction, userId, true); field = "personId"; value = user.personaId; }
-      else { group = await ownedGroup(transaction, userId, input.groupId, { active: false }); field = "groupId"; value = input.groupId; }
+      else { group = await economicGroup(transaction, userId, input.groupId); field = "groupId"; value = input.groupId; }
       const scope = { contract: own ? "my-obligations" : "group-obligations", userId, ...(group ? { groupId: group.groupId } : { personId: value }), pageSize: input.pageSize }; const anchor = readCursor(input.cursor, scope);
       let query = payments.where(field, "==", value).orderBy("dueDate", "desc").orderBy("__name__", "desc");
       if (anchor) { const doc = await transaction.get(payments.doc(anchor.id)); if (!doc.exists || doc.data()?.[field] !== value || doc.data()?.dueDate !== anchor.dueDate) throw new PaymentConcurrentModificationError(); query = query.startAfter(anchor.dueDate, anchor.id); }
       const snapshot = await transaction.get(query.limit(input.pageSize + 1)); const docs = snapshot.docs.slice(0, input.pageSize); const items = [];
-      for (const doc of docs) { const payment = persistedPayment(doc); const person = own ? undefined : await personPresentation.get(transaction, payment.personId); items.push(paymentDto(payment, { owner: !own, person })); }
+      for (const doc of docs) {
+        const payment = persistedPayment(doc); const person = own ? undefined : await personPresentation.get(transaction, payment.personId);
+        let groupName;
+        if (own) {
+          const presentedGroup = await groupPresentation.get({ unitOfWork: transaction, groupId: payment.groupId });
+          if (presentedGroup.status !== "AVAILABLE") throw new PaymentIncompatibleStateError();
+          groupName = presentedGroup.name;
+        }
+        items.push(paymentDto(payment, { owner: !own, person, groupName }));
+      }
       const last = docs.at(-1); return Object.freeze({ items: Object.freeze(items), ...(snapshot.size > input.pageSize ? { nextCursor: cursor(scope, { dueDate: last.data().dueDate, id: last.id }) } : {}) });
     }); } catch (error) { throw map(error); }
   }

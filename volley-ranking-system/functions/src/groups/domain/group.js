@@ -2,6 +2,8 @@
 
 const GROUP_SCHEMA_VERSION = 1;
 const GROUP_ARCHIVED_SCHEMA_VERSION = 2;
+const GROUP_OWNERSHIP_SCHEMA_VERSION = 3;
+const GROUP_OWNERSHIP_ARCHIVED_SCHEMA_VERSION = 4;
 const GROUP_INITIAL_STATE = "activo";
 const GROUP_ARCHIVED_STATE = "archivado";
 const GROUP_SPORTS = Object.freeze(["voleibol"]);
@@ -22,6 +24,8 @@ const GROUP_ARCHIVED_FIELDS = Object.freeze([
   "archivedAt",
   "schemaVersion",
 ]);
+const GROUP_OWNERSHIP_FIELDS = Object.freeze([...GROUP_FIELDS.slice(0, -1), "ownershipRevision", "schemaVersion"]);
+const GROUP_OWNERSHIP_ARCHIVED_FIELDS = Object.freeze([...GROUP_ARCHIVED_FIELDS.slice(0, -1), "ownershipRevision", "schemaVersion"]);
 
 class InvalidGroupStateError extends Error {
   constructor(message) {
@@ -81,13 +85,18 @@ function buildGroup({ groupId, nombre, deporte, ownerId }) {
 
 function hydrateGroup(groupId, data) {
   requireId(groupId, "Group id");
-  const active = data?.estado === GROUP_INITIAL_STATE && data?.schemaVersion === GROUP_SCHEMA_VERSION;
-  const archived = data?.estado === GROUP_ARCHIVED_STATE && data?.schemaVersion === GROUP_ARCHIVED_SCHEMA_VERSION;
+  const active = data?.estado === GROUP_INITIAL_STATE && [GROUP_SCHEMA_VERSION, GROUP_OWNERSHIP_SCHEMA_VERSION].includes(data?.schemaVersion);
+  const archived = data?.estado === GROUP_ARCHIVED_STATE && [GROUP_ARCHIVED_SCHEMA_VERSION, GROUP_OWNERSHIP_ARCHIVED_SCHEMA_VERSION].includes(data?.schemaVersion);
   if (!active && !archived) throw new InvalidGroupStateError("Group state and schema version are invalid");
-  assertExactKeys(data, active ? GROUP_FIELDS : GROUP_ARCHIVED_FIELDS, "Group document");
+  const ownershipAware = [GROUP_OWNERSHIP_SCHEMA_VERSION, GROUP_OWNERSHIP_ARCHIVED_SCHEMA_VERSION].includes(data.schemaVersion);
+  assertExactKeys(data, active ? (ownershipAware ? GROUP_OWNERSHIP_FIELDS : GROUP_FIELDS)
+    : (ownershipAware ? GROUP_OWNERSHIP_ARCHIVED_FIELDS : GROUP_ARCHIVED_FIELDS), "Group document");
   if (data.nombre !== normalizeGroupName(data.nombre)) throw new InvalidGroupStateError("Group name is not normalized");
   if (data.deporte !== normalizeSport(data.deporte)) throw new InvalidGroupStateError("Sport is not normalized");
   requireId(data.ownerId, "Owner id");
+  if (ownershipAware && (!Number.isSafeInteger(data.ownershipRevision) || data.ownershipRevision < 1)) {
+    throw new InvalidGroupStateError("Group ownership revision is invalid");
+  }
   if (!data.createdAt || typeof data.createdAt.toDate !== "function" || Number.isNaN(data.createdAt.toDate().getTime())) {
     throw new InvalidGroupStateError("Group creation timestamp is invalid");
   }
@@ -100,7 +109,7 @@ function hydrateGroup(groupId, data) {
 }
 
 function renameGroup(group, nombre) {
-  if (!group || group.estado !== GROUP_INITIAL_STATE || group.schemaVersion !== GROUP_SCHEMA_VERSION) {
+  if (!group || group.estado !== GROUP_INITIAL_STATE || ![GROUP_SCHEMA_VERSION, GROUP_OWNERSHIP_SCHEMA_VERSION].includes(group.schemaVersion)) {
     throw new InvalidGroupStateError("Only an active Group can be renamed");
   }
   const normalizedName = normalizeGroupName(nombre);
@@ -108,20 +117,26 @@ function renameGroup(group, nombre) {
 }
 
 function archiveGroup(group, archivedAt) {
-  if (!group || group.estado !== GROUP_INITIAL_STATE || group.schemaVersion !== GROUP_SCHEMA_VERSION) {
+  if (!group || group.estado !== GROUP_INITIAL_STATE || ![GROUP_SCHEMA_VERSION, GROUP_OWNERSHIP_SCHEMA_VERSION].includes(group.schemaVersion)) {
     throw new InvalidGroupStateError("Only an active Group can be archived");
   }
   if (!archivedAt || typeof archivedAt.toDate !== "function" || Number.isNaN(archivedAt.toDate().getTime())
     || (group.createdAt && archivedAt.toDate().getTime() < group.createdAt.toDate().getTime())) {
     throw new InvalidGroupStateError("Group archive timestamp is invalid");
   }
-  return Object.freeze({ ...group, estado: GROUP_ARCHIVED_STATE, archivedAt, schemaVersion: GROUP_ARCHIVED_SCHEMA_VERSION });
+  return Object.freeze({ ...group, estado: GROUP_ARCHIVED_STATE, archivedAt,
+    schemaVersion: group.schemaVersion === GROUP_OWNERSHIP_SCHEMA_VERSION
+      ? GROUP_OWNERSHIP_ARCHIVED_SCHEMA_VERSION : GROUP_ARCHIVED_SCHEMA_VERSION });
 }
 
 module.exports = {
   GROUP_ARCHIVED_FIELDS,
   GROUP_ARCHIVED_SCHEMA_VERSION,
   GROUP_ARCHIVED_STATE,
+  GROUP_OWNERSHIP_ARCHIVED_FIELDS,
+  GROUP_OWNERSHIP_ARCHIVED_SCHEMA_VERSION,
+  GROUP_OWNERSHIP_FIELDS,
+  GROUP_OWNERSHIP_SCHEMA_VERSION,
   GROUP_FIELDS,
   GROUP_INITIAL_STATE,
   GROUP_SCHEMA_VERSION,

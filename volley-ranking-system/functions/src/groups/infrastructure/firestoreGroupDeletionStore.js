@@ -32,6 +32,7 @@ const BLOCKER_ORDER = Object.freeze([
 ]);
 const FUNCTIONAL_COLLECTIONS = Object.freeze([
   "matches", "teams", "groupStats", "tournamentRegistrations", "tournamentTeams", "payments",
+  "groupCapabilityGrants", "groupCapabilityGrantSlots", "groupCapabilityCommandReceipts",
 ]);
 const SEASON_TECHNICAL_COLLECTIONS = Object.freeze([
   "seasonOpeningReceipts", "seasonClosureReceipts", "seasonUpdateReceipts",

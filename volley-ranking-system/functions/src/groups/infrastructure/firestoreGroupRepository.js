@@ -24,6 +24,7 @@ function createFirestoreGroupRepository({ db }) {
         deporte: group.deporte,
         ownerId: group.ownerId,
         estado: group.estado,
+        ...(group.ownershipRevision === undefined ? {} : { ownershipRevision: group.ownershipRevision }),
         createdAt: FieldValue.serverTimestamp(),
         schemaVersion: group.schemaVersion,
       });
@@ -31,11 +32,12 @@ function createFirestoreGroupRepository({ db }) {
     updateName(transaction, groupId, nombre) {
       transaction.update(reference(groupId), "nombre", nombre);
     },
-    archive(transaction, groupId, archivedAt) {
+    archive(transaction, groupId, archivedAt, schemaVersion = 2) {
       transaction.update(reference(groupId), {
         estado: "archivado",
         archivedAt,
         schemaVersion: 2,
+        ...(schemaVersion === 4 ? { schemaVersion: 4 } : {}),
       });
     },
     deleteRoot(transaction, groupId) {

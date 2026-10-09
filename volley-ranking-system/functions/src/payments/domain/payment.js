@@ -88,7 +88,7 @@ function hydrateOccurrence(id, data) {
 }
 function conceptDto(concept) { return Object.freeze({ conceptId: concept.conceptId, version: concept.version, name: concept.name, kind: concept.kind, defaultAmountMinor: concept.defaultAmountMinor, estado: concept.estado, currency: "ARS" }); }
 function occurrenceDto(item) { return Object.freeze({ occurrenceKey: item.occurrenceKey, name: item.name, estado: item.estado, createdAt: iso(item.createdAt) }); }
-function paymentDto(payment, { owner = false, now = new Date(), person } = {}) {
+function paymentDto(payment, { owner = false, now = new Date(), person, groupName } = {}) {
   const dto = {
     paymentId: payment.paymentId, groupId: payment.groupId, membershipId: payment.membershipId,
     concept: { conceptId: payment.conceptId, ...payment.conceptSnapshot }, amountMinor: payment.amountMinor, dueDate: payment.dueDate,
@@ -97,7 +97,7 @@ function paymentDto(payment, { owner = false, now = new Date(), person } = {}) {
     ...(payment.exceptionReason ? { exceptionReason: payment.exceptionReason } : {}), createdAt: iso(payment.createdAt),
   };
   if (owner && person) dto.person = person;
-  if (!owner) delete dto.groupId;
+  if (!owner) { delete dto.groupId; dto.groupName = groupName; }
   return Object.freeze(dto);
 }
 

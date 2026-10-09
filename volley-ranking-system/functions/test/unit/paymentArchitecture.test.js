@@ -27,10 +27,21 @@ test("E3-01 no importa superficies económicas legacy", () => {
   for (const forbidden of ["participations", "tournamentRegistrations", "tournamentTeams", "pagoEstado", "updatePagoEstado"]) assert.doesNotMatch(source, new RegExp(forbidden));
   assert.doesNotMatch(source, /memberships\/(?:domain|application|infrastructure)/);
   assert.match(source, /memberships\/public\/membershipObligationEligibilityCapability/);
+  assert.match(source, /groups\/public\/groupObligationPresentationCapability/);
+  assert.doesNotMatch(source, /groupId:\s*payment\.groupId[\s\S]*?owner:\s*false/);
 });
 
 test("E3-01 UI no usa diálogos nativos y separa contexto, excepciones y archivo", () => {
   const ui = fs.readFileSync(path.resolve(systemRoot, "../../volley-ranking-frontend/src/components/payments/OwnerEconomySection.tsx"), "utf8");
   assert.doesNotMatch(ui, /window\.(?:alert|prompt|confirm)\(/);
   for (const evidence of ["role=\"dialog\"", "aria-modal=\"true\"", "clearGenerationContext", "Usar otro importe", "Cobro específico", "Pendiente de pago", "if (readOnly) return"]) assert.equal(ui.includes(evidence), true, evidence);
+});
+
+test("E3-02 presenta cobros específicos y Grupo en obligaciones propias", () => {
+  const delegated = fs.readFileSync(path.resolve(systemRoot, "../../volley-ranking-frontend/src/components/treasury/TreasuryEconomyView.tsx"), "utf8");
+  const mine = fs.readFileSync(path.resolve(systemRoot, "../../volley-ranking-frontend/src/components/payments/MyObligationsView.tsx"), "utf8");
+  assert.match(delegated, /Ver cobros específicos/);
+  assert.doesNotMatch(delegated, /Ver ocurrencias/);
+  assert.match(mine, /Grupo: \{item\.groupName\}/);
+  assert.doesNotMatch(mine, /item\.groupId/);
 });

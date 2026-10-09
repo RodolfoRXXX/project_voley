@@ -283,6 +283,14 @@
         { "fieldPath": "personId", "mode": "ASCENDING" },
         { "fieldPath": "dueDate", "mode": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "groupCapabilityGrants",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "grantedAt", "mode": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

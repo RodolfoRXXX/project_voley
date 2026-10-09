@@ -320,6 +320,18 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /groupCapabilityGrants/{grantId} {
+      allow read, write: if false;
+    }
+
+    match /groupCapabilityGrantSlots/{slotId} {
+      allow read, write: if false;
+    }
+
+    match /groupCapabilityCommandReceipts/{receiptId} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

@@ -27,8 +27,8 @@ test("E3-01 IDs económicos son deterministas y DTO propio minimiza groupId", ()
   assert.equal(opaqueId("payment", "MONTHLY", "g", "m", "c", "2026-10"), opaqueId("payment", "MONTHLY", "g", "m", "c", "2026-10"));
   assert.notEqual(opaqueId("payment", "MONTHLY", "g", "m", "c", "2026-10"), opaqueId("payment", "MONTHLY", "g", "m", "c", "2026-09"));
   const timestamp = { toDate: () => new Date("2026-10-01T03:00:00Z") };
-  const dto = paymentDto({ paymentId: "p", groupId: "g", membershipId: "m", conceptId: "c", conceptSnapshot: { version: 1, name: "Cuota", kind: "MONTHLY", currency: "ARS", defaultAmountMinor: 100 }, amountMinor: 100, dueDate: "2026-10-01", periodKey: "2026-10", estado: "PENDING", createdAt: timestamp }, { owner: false, now: new Date("2026-10-03T03:00:00Z") });
-  assert.equal(dto.groupId, undefined); assert.equal(dto.person, undefined); assert.equal(dto.overdue, true); assert.equal(dto.estado, "PENDING");
+  const dto = paymentDto({ paymentId: "p", groupId: "g", membershipId: "m", conceptId: "c", conceptSnapshot: { version: 1, name: "Cuota", kind: "MONTHLY", currency: "ARS", defaultAmountMinor: 100 }, amountMinor: 100, dueDate: "2026-10-01", periodKey: "2026-10", estado: "PENDING", createdAt: timestamp }, { owner: false, groupName: "Grupo Norte", now: new Date("2026-10-03T03:00:00Z") });
+  assert.equal(dto.groupId, undefined); assert.equal(dto.groupName, "Grupo Norte"); assert.equal(dto.person, undefined); assert.equal(dto.overdue, true); assert.equal(dto.estado, "PENDING");
   const ownerDto = paymentDto({ paymentId: "p", groupId: "g", membershipId: "m", conceptId: "c", conceptSnapshot: { version: 1, name: "Cuota", kind: "MONTHLY", currency: "ARS", defaultAmountMinor: 100 }, amountMinor: 100, dueDate: "2026-10-01", periodKey: "2026-10", estado: "PENDING", createdAt: timestamp }, { owner: true, person: { status: "AVAILABLE", firstName: "Mara", lastName: "Sintética" } });
   assert.deepEqual(ownerDto.person, { status: "AVAILABLE", firstName: "Mara", lastName: "Sintética" });
   assert.equal(normalizeExceptionReason("  Razón   válida "), "Razón válida");

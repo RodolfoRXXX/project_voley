@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - E3-01 formalizada documentalmente - 7 de octubre de 2026*
+*Borrador consolidado - E3-03 formalizada documentalmente - 9 de octubre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -14,7 +14,7 @@ partir de ella.
 # Estado del documento
 
 Este borrador conserva el contenido aprobado hasta la FASE 2 del Documento 5 y actualiza su estado
-operativo con el cierre de la Etapa 2 y la formalización documental de E3-01.
+operativo con el cierre de la Etapa 2 y la formalización documental de E3-01, E3-02 y E3-03.
 Incluye:
 - Capítulo 1 - Propósito y alcance;
 - Capítulo 2 - Estado inicial y activos reutilizables;
@@ -1988,7 +1988,7 @@ el plan, pero no obliga a ejecutarlas en una cascada rígida ni a publicarlas co
 | 0 | Estabilización y red de seguridad | `CERRADA` | Arquitectura congelada y repositorio auditado | Seguridad implementada y probada, entorno reproducible y reinicialización preparada |
 | 1 | Usuario, Persona y autorización | `CERRADA` | Cierre de Etapa 0 | Identidad separada y autorización contextual inicial |
 | 2 | Grupo, Membresía, Solicitud y Temporada | `CERRADA CON RIESGO RESIDUAL ACEPTADO` | Persona y actor identificables | Fuentes de verdad organizativas separadas |
-| 3 | Pago deportivo | `E3-01 LISTA PARA IMPLEMENTAR; EJECUCIÓN NO AUTORIZADA` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
+| 3 | Pago deportivo | `E3-03 LISTO PARA IMPLEMENTAR; EJECUCIÓN NO AUTORIZADA` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
 | 4 | Partido-Torneo y CU-075 | `ROADMAP` | Modelo de Partido, contratos y pruebas | Resultado original y estado competitivo separados |
 | 5 | Estadísticas, Rendimiento, Actividad y recuperación | `ROADMAP` | Cada fuente original correspondiente | Proyecciones reconstruibles y procesos recuperables |
 | 6 | Comercial | `ROADMAP` | Usuario estable y consultas deportivas públicas | Capacidades y límites sin otorgar permisos deportivos |
@@ -2197,7 +2197,7 @@ El siguiente incremento funcional es:
 
 ## 7.5 Etapa 3 - Pago deportivo independiente
 
-- Estado: `E3-01 LISTA PARA IMPLEMENTAR`; su ejecución, preparación
+- Estado: `E3-03 LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; su ejecución, preparación
     productiva y deploy requieren autorización separada.
 - Objetivo: establecer Pago como única fuente económica deportiva.
 - Fuente de verdad: Pago.
@@ -2218,6 +2218,19 @@ El siguiente incremento funcional es:
     Owner y archivo no reviven ni heredan autoridad. La evolución mínima `ownershipRevision`
     pertenece a Grupo, debe ser preservada por writers ordinarios y sólo una futura transferencia
     canónica puede incrementarla junto con `ownerId`; la transferencia queda fuera de E3-02.
+- Entrega informada y validación adoptadas por D5-048: E3-03 incorpora Entrega informada como
+    Agregado independiente para una declaración distribuida explícitamente entre 1 y 20 Pagos de la
+    misma Membresía, Temporada y Grupo. Entrega posee declaración, líneas, total derivado, decisión,
+    lifecycle y trazabilidad de reversión común; cada Pago conserva obligación, aplicaciones,
+    movimientos, saldo, estado y revisión económica. Confirmación y reversión modifican una Entrega
+    y los Pagos alcanzados en una única transacción acotada, sin fusionar dominios ni generalizar la
+    excepción. `GROUP_PAYMENT_NOTICE_REVIEW` requiere concesión independiente, sólo decide pendientes
+    de terceros en Grupo activo y no habilita historia general, reversión ni operación delegada en
+    archivo. Owner conserva historia/detalle de confirmadas y reversión completa; tras revertir,
+    `decisionState` permanece `CONFIRMED`, `applicationState` pasa de `APPLIED` a `REVERSED` y las
+    aplicaciones originales permanecen inmutables. Exintegrantes, Temporada cerrada y prearchivo
+    conservan sus reglas. Tamaño, presupuesto e índices deben verificarse durante implementación y
+    no se consideran medidos por esta formalización.
 - Coordinación E3/E4: el gate de retiro económico permanece en E3. Los contratos deportivos E4
     pueden definirse de forma delimitada bajo D5-027, pero cada incremento futuro requiere
     autorización propia y no adelanta catálogos o tombstones D5-044.
@@ -2406,6 +2419,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-045 | Se acepta de forma acotada el riesgo residual del incidente intermitente entre edición de cargo y finalización administrativa, con causa histórica desconocida y observabilidad técnica incorporada | APROBADA | Cierre E2-14 y Etapa 2 | Cierra administrativamente con riesgo residual aceptado y habilita E3 sólo para definición; no aprueba retroactivamente la auditoría `230/232`, no declara resuelto el incidente ni autoriza producción o deploy |
 | D5-046 | E3-01 inicia Pago con conceptos, ocurrencias, obligaciones por Membresía y consultas Owner/propias; adopta DEC-E3-01 y sus addenda, manteniendo el retiro de autoridad económica legacy como gate de E3 | APROBADA | Etapa 3 / E3-01 | La ficha queda `LISTA PARA IMPLEMENTAR`, pero código y cada incremento posterior requieren autorización separada; D5-043 se conserva antes de delegar y D5-044 no se adelanta |
 | D5-047 | E3-02 adopta `GROUP_TREASURY` exclusivamente de consulta y el addendum conjunto de Documentos 2/3/4; satisface la reapertura de D5-043 sólo para esta primera capacidad delegable | APROBADA | Etapa 3 / E3-02 / CU-036–CU-038 parcial | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; CU-034/CU-035 y la cobertura restante continúan pendientes; D5-044, D5-045 y el gate económico de E3 no cambian |
+| D5-048 | E3-03 adopta DEC-E3-03 y el addendum conjunto de Documentos 1/1.5/2/3/4; incorpora Entrega informada como Agregado independiente, revisión explícita, confirmación/reversión atómicas y `GROUP_PAYMENT_NOTICE_REVIEW` como capacidad fija separada | APROBADA | Etapa 3 / E3-03 / obligaciones por Membresía | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; Pago conserva toda autoridad económica, `GROUP_TREASURY` sigue read-only, los diferimientos restantes de roles/permisos, D5-044, D5-045 y el gate económico de E3 no cambian; cada incremento posterior requiere autorización independiente |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -2424,7 +2438,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | Paginación y optimización N+1 | Cuando volumen o mediciones lo justifiquen |
 | Contenido, límites y precios definitivos de Planes | Etapa 6 |
 | Política fina de visibilidad por recurso | Etapa correspondiente, respetando privado por defecto |
-| Roles, perfiles y capacidades posteriores a `GROUP_TREASURY` | E3-02/D5-047 resuelve sólo esta capacidad fija; cualquier perfil configurable, CRUD de roles o capacidad adicional requiere necesidad y decisión propias bajo los límites de D5-043 |
+| Roles, perfiles y capacidades posteriores a las capacidades fijas E3-02/E3-03 | D5-047 resuelve `GROUP_TREASURY` read-only y D5-048 resuelve sólo `GROUP_PAYMENT_NOTICE_REVIEW`; cualquier perfil configurable, CRUD de roles o capacidad adicional requiere necesidad y decisión propias bajo los límites de D5-043 |
 | Diseño físico de Repositorios | Junto con cada Agregado |
 | Retención histórica futura | Cuando exista necesidad operativa o legal |
 | Alcance del export preventivo | Antes de reinicialización |

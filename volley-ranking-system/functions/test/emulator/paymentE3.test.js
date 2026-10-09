@@ -41,7 +41,7 @@ test("E3-01 persiste conceptos, obligaciones, recovery idempotente, privacidad y
       const input = { groupId: "e3-group", name: "Cuota mensual", kind: "MONTHLY", defaultAmountMinor: 150000, idempotencyKey: "e3-concept-key-000001" };
       const created = await store.createConcept(owner.uid, input); const recovered = await store.createConcept(owner.uid, input); monthly = created.resource;
       assert.equal(created.outcome, "CREATED"); assert.equal(recovered.recovered, true); assert.equal(recovered.resource.conceptId, monthly.conceptId);
-      await assert.rejects(store.listConcepts(foreign.uid, { groupId: "e3-group", pageSize: 20 }), (error) => error.reason === "GROUP_NOT_ACCESSIBLE");
+      await assert.rejects(store.listConcepts(foreign.uid, { groupId: "e3-group", pageSize: 20 }), (error) => error.reason === "GROUP_TREASURY_NOT_AUTHORIZED");
       const changed = await store.changeConceptAmount(owner.uid, { groupId: "e3-group", conceptId: monthly.conceptId, defaultAmountMinor: 175000, expectedVersion: 1, idempotencyKey: "e3-amount-key-0000001" }); monthly = changed.resource; assert.equal(monthly.version, 2);
     });
 
@@ -60,7 +60,10 @@ test("E3-01 persiste conceptos, obligaciones, recovery idempotente, privacidad y
     });
 
     await t.test("consulta propia deriva Persona, incluye exintegrantes y no expone groupId", async () => {
-      const own = await store.listMyObligations(member.uid, { pageSize: 20 }); assert.equal(own.items.length, 3); assert.equal(own.items.every((item) => item.groupId === undefined), true);
+      await set("groups/e3-archived-group", { nombre: "Grupo Histórico", deporte: "voleibol", ownerId: owner.uid, estado: "archivado", createdAt: ts(admin, "2025-01-01T00:00:00Z"), archivedAt: ts(admin, "2026-09-01T00:00:00Z"), schemaVersion: 2 });
+      await set("payments/e3-archived-payment", { groupId: "e3-archived-group", membershipId: "e3-archived-membership", personId: "person-member", seasonId: "e3-archived-season", conceptId: "e3-archived-concept", conceptSnapshot: { version: 1, name: "Cuota histórica", kind: "MONTHLY", currency: "ARS", defaultAmountMinor: 90000 }, amountMinor: 90000, dueDate: "2026-08-20", estado: "PENDING", generationIntentId: "e3-archived-intent", payloadHash: "a".repeat(64), periodKey: "2026-08", createdAt: ts(admin, "2026-08-01T00:00:00Z"), schemaVersion: 1 });
+      const own = await store.listMyObligations(member.uid, { pageSize: 20 }); assert.equal(own.items.length, 4); assert.equal(own.items.every((item) => item.groupId === undefined), true);
+      assert.deepEqual(new Set(own.items.map((item) => item.groupName)), new Set(["Grupo E3", "Grupo Histórico"]));
       const foreignOwn = await store.listMyObligations(foreign.uid, { pageSize: 20 }); assert.equal(foreignOwn.items.length, 0);
     });
 

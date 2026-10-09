@@ -22,6 +22,7 @@ const PaymentOccurrenceNotAvailableError = error("PaymentOccurrenceNotAvailableE
 const PaymentConcurrentModificationError = error("PaymentConcurrentModificationError", "CONCURRENT_MODIFICATION", "Payment context changed concurrently");
 const PaymentIncompatibleStateError = error("PaymentIncompatibleStateError", "INCOMPATIBLE_STATE", "Payment context is incompatible");
 const PaymentDependencyUnavailableError = error("PaymentDependencyUnavailableError", "DEPENDENCY_UNAVAILABLE", "Payment dependency is unavailable");
+const PaymentTreasuryNotAuthorizedError = error("PaymentTreasuryNotAuthorizedError", "GROUP_TREASURY_NOT_AUTHORIZED", "Treasury access is not authorized");
 
 module.exports = {
   PaymentError, PaymentUnauthenticatedError, PaymentAccountRequiredError, PaymentPersonRequiredError,
@@ -29,4 +30,5 @@ module.exports = {
   PaymentIdempotencyConflictError, PaymentConceptNotAvailableError, PaymentConceptDeactivatedError,
   PaymentConceptVersionStaleError, PaymentOccurrenceNotAvailableError,
   PaymentConcurrentModificationError, PaymentIncompatibleStateError, PaymentDependencyUnavailableError,
+  PaymentTreasuryNotAuthorizedError,
 };

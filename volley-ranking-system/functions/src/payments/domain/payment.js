@@ -91,8 +91,12 @@ function occurrenceDto(item) { return Object.freeze({ occurrenceKey: item.occurr
 function paymentDto(payment, { owner = false, now = new Date(), person, groupName } = {}) {
   const dto = {
     paymentId: payment.paymentId, groupId: payment.groupId, membershipId: payment.membershipId,
+    seasonId: payment.seasonId,
     concept: { conceptId: payment.conceptId, ...payment.conceptSnapshot }, amountMinor: payment.amountMinor, dueDate: payment.dueDate,
-    estado: payment.estado, overdue: payment.estado === "PENDING" && payment.dueDate < new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(now),
+    estado: payment.economicState || payment.estado,
+    balanceMinor: payment.balanceMinor ?? payment.amountMinor,
+    economicRevision: payment.economicRevision ?? 1,
+    overdue: (payment.economicState || payment.estado) !== "SETTLED" && payment.dueDate < new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(now),
     ...(payment.periodKey ? { periodKey: payment.periodKey } : { occurrenceKey: payment.occurrenceKey }),
     ...(payment.exceptionReason ? { exceptionReason: payment.exceptionReason } : {}), createdAt: iso(payment.createdAt),
   };

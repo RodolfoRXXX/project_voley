@@ -12,6 +12,8 @@ import { PendingGroupJoinRequestsSection } from "@/components/groupJoinRequests/
 import { SeasonHistorySection } from "@/components/seasons/SeasonHistorySection";
 import { OwnerEconomySection } from "@/components/payments/OwnerEconomySection";
 import { OwnerTreasuryAccessSection } from "@/components/treasury/OwnerTreasuryAccessSection";
+import { PaymentDeliveriesAdminSection } from "@/components/paymentDeliveries/PaymentDeliveriesAdminSection";
+import { OwnerPaymentReviewAccessSection } from "@/components/paymentDeliveries/OwnerPaymentReviewAccessSection";
 import { getGroupErrorMessage, getGroupErrorReason, getOwnGroup } from "@/services/groupsService";
 import type { OwnGroup, OwnGroupActive } from "@/types/OwnGroup";
 
@@ -22,6 +24,7 @@ export default function OwnGroupDetailPage() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [economyRefreshVersion, setEconomyRefreshVersion] = useState(0);
   const generation = useRef(0);
   const archivedStatus = useRef<HTMLHeadingElement>(null);
 
@@ -98,8 +101,10 @@ export default function OwnGroupDetailPage() {
             <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{group.estado === "archivado" ? "Conservás acceso como Owner para consultar el Grupo y su historia." : "Podés administrar este Grupo como Owner. Las funciones que requieren integrantes estarán disponibles cuando se incorporen Membresías."}</p>
           </aside>
           <SeasonHistorySection groupId={group.id} readOnly={group.estado === "archivado"} onAccessLost={handleAccessLost} />
-          <OwnerEconomySection groupId={group.id} readOnly={group.estado === "archivado"} />
+          <OwnerEconomySection groupId={group.id} readOnly={group.estado === "archivado"} refreshVersion={economyRefreshVersion} />
+          <PaymentDeliveriesAdminSection groupId={group.id} owner onEconomyChanged={() => setEconomyRefreshVersion((version) => version + 1)} />
           {group.estado === "activo" ? <OwnerTreasuryAccessSection groupId={group.id} /> : null}
+          {group.estado === "activo" ? <OwnerPaymentReviewAccessSection groupId={group.id} /> : null}
           {group.estado === "activo" ? <><OwnMembershipSection groupId={group.id} onAccessLost={handleAccessLost} />
           <ActiveGroupMembersSection
             groupId={group.id}

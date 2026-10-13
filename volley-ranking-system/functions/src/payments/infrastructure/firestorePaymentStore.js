@@ -172,17 +172,28 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
     if (!doc.exists) return null; const data = doc.data();
     try {
       const hasPeriod = Object.hasOwn(data || {}, "periodKey"); const hasOccurrence = Object.hasOwn(data || {}, "occurrenceKey"); const hasException = Object.hasOwn(data || {}, "exceptionReason");
-      const fields = ["groupId", "membershipId", "personId", "seasonId", "conceptId", "conceptSnapshot", "amountMinor", "dueDate", "estado", "generationIntentId", "payloadHash", "createdAt", "schemaVersion", hasPeriod ? "periodKey" : "occurrenceKey", ...(hasException ? ["exceptionReason"] : [])];
-      if (hasPeriod === hasOccurrence || !exact(data, fields) || data.schemaVersion !== 1 || data.estado !== "PENDING" || !/^[a-f0-9]{64}$/.test(data.payloadHash) || !iso(data.createdAt)) throw new Error();
+      const economic = data?.schemaVersion === 2 ? ["confirmedIncomeMinor", "reversedIncomeMinor", "netConfirmedIncomeMinor", "balanceMinor", "economicState", "economicRevision"] : [];
+      const fields = ["groupId", "membershipId", "personId", "seasonId", "conceptId", "conceptSnapshot", "amountMinor", "dueDate", "estado", "generationIntentId", "payloadHash", "createdAt", "schemaVersion", hasPeriod ? "periodKey" : "occurrenceKey", ...(hasException ? ["exceptionReason"] : []), ...economic];
+      if (hasPeriod === hasOccurrence || !exact(data, fields) || ![1, 2].includes(data.schemaVersion) || !/^[a-f0-9]{64}$/.test(data.payloadHash) || !iso(data.createdAt)) throw new Error();
       for (const id of [data.groupId, data.membershipId, data.personId, data.seasonId, data.conceptId, data.generationIntentId]) requireId(id); requireAmount(data.amountMinor); requireDueDate(data.dueDate);
       if (!exact(data.conceptSnapshot, ["version", "name", "kind", "currency", "defaultAmountMinor"]) || data.conceptSnapshot.currency !== "ARS") throw new Error(); requireVersion(data.conceptSnapshot.version); requireKind(data.conceptSnapshot.kind); requireAmount(data.conceptSnapshot.defaultAmountMinor);
       if (normalizeConceptName(data.conceptSnapshot.name) !== data.conceptSnapshot.name) throw new Error();
       if (hasPeriod && (data.conceptSnapshot.kind !== "MONTHLY" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(data.periodKey))) throw new Error(); if (hasOccurrence && (data.conceptSnapshot.kind !== "ONE_TIME" || requireId(data.occurrenceKey) !== data.occurrenceKey)) throw new Error();
       if (hasException && normalizeExceptionReason(data.exceptionReason) !== data.exceptionReason) throw new Error();
+      if (data.schemaVersion === 1) {
+        if (data.estado !== "PENDING") throw new Error();
+        return Object.freeze({ paymentId: doc.id, ...data, confirmedIncomeMinor: 0, reversedIncomeMinor: 0,
+          netConfirmedIncomeMinor: 0, balanceMinor: data.amountMinor, economicState: "PENDING", economicRevision: 1 });
+      }
+      for (const field of ["confirmedIncomeMinor", "reversedIncomeMinor", "netConfirmedIncomeMinor", "balanceMinor", "economicRevision"]) if (!Number.isSafeInteger(data[field]) || data[field] < 0) throw new Error();
+      if (data.economicRevision < 2 || data.netConfirmedIncomeMinor !== data.confirmedIncomeMinor - data.reversedIncomeMinor
+        || data.balanceMinor !== data.amountMinor - data.netConfirmedIncomeMinor || data.balanceMinor < 0
+        || !["PENDING", "PARTIAL", "SETTLED"].includes(data.economicState) || data.estado !== data.economicState) throw new Error();
       return Object.freeze({ paymentId: doc.id, ...data });
     } catch (cause) { if (cause instanceof PaymentIncompatibleStateError) throw cause; throw new PaymentIncompatibleStateError({ cause }); }
   }
-  function economicShape(payment) { const { paymentId, createdAt, generationIntentId, payloadHash, schemaVersion, estado, ...shape } = payment; return shape; }
+  function economicShape(payment) { const { paymentId, createdAt, generationIntentId, payloadHash, schemaVersion, estado,
+    confirmedIncomeMinor, reversedIncomeMinor, netConfirmedIncomeMinor, balanceMinor, economicState, economicRevision, ...shape } = payment; return shape; }
   function expectedPayment(intent, row, eligibility) { return { groupId: intent.groupId, membershipId: row.membershipId, personId: eligibility.personId, seasonId: eligibility.seasonId, conceptId: intent.conceptSnapshot.conceptId, conceptSnapshot: { version: intent.conceptSnapshot.version, name: intent.conceptSnapshot.name, kind: intent.conceptSnapshot.kind, currency: "ARS", defaultAmountMinor: intent.conceptSnapshot.defaultAmountMinor }, amountMinor: row.appliedAmountMinor, ...(row.exceptionReason ? { exceptionReason: row.exceptionReason } : {}), dueDate: intent.dueDate, ...(intent.kind === "MONTHLY" ? { periodKey: intent.periodKey } : { occurrenceKey: intent.occurrenceKey }) };
   }
 

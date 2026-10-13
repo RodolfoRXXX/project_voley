@@ -186,6 +186,24 @@ service cloud.firestore {
 
     match /payments/{paymentId} {
       allow read, write: if false;
+
+      match /deliveryApplications/{applicationId} {
+        allow read, write: if false;
+      }
+    }
+
+    // E3-03 remains callable-only. Delivery declarations, decisions, reversal
+    // evidence and command receipts are never readable or writable by clients.
+    match /paymentDeliveries/{deliveryId} {
+      allow read, write: if false;
+    }
+
+    match /paymentDeliveryReversals/{reversalId} {
+      allow read, write: if false;
+    }
+
+    match /paymentDeliveryCommandReceipts/{receiptId} {
+      allow read, write: if false;
     }
 
     match /paymentGenerationIntents/{intentId} {

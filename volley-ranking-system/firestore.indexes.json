@@ -291,6 +291,81 @@
         { "fieldPath": "groupId", "mode": "ASCENDING" },
         { "fieldPath": "grantedAt", "mode": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "groupCapabilityGrants",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "capabilityId", "mode": "ASCENDING" },
+        { "fieldPath": "grantedAt", "mode": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "paymentDeliveries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "personId", "mode": "ASCENDING" },
+        { "fieldPath": "reportedAt", "mode": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "paymentDeliveries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "personId", "mode": "ASCENDING" },
+        { "fieldPath": "membershipId", "mode": "ASCENDING" },
+        { "fieldPath": "reportedAt", "mode": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "paymentDeliveries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "decisionState", "mode": "ASCENDING" },
+        { "fieldPath": "reportedAt", "mode": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "paymentDeliveries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "decisionState", "mode": "ASCENDING" },
+        { "fieldPath": "confirmedAt", "mode": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "paymentDeliveries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "decisionState", "mode": "ASCENDING" },
+        { "fieldPath": "applicationState", "mode": "ASCENDING" },
+        { "fieldPath": "confirmedAt", "mode": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "paymentDeliveries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "decisionState", "mode": "ASCENDING" },
+        { "fieldPath": "membershipId", "mode": "ASCENDING" },
+        { "fieldPath": "confirmedAt", "mode": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "paymentDeliveries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "decisionState", "mode": "ASCENDING" },
+        { "fieldPath": "applicationState", "mode": "ASCENDING" },
+        { "fieldPath": "membershipId", "mode": "ASCENDING" },
+        { "fieldPath": "confirmedAt", "mode": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

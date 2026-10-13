@@ -42,6 +42,6 @@ test("E3-02 presenta cobros específicos y Grupo en obligaciones propias", () =>
   const mine = fs.readFileSync(path.resolve(systemRoot, "../../volley-ranking-frontend/src/components/payments/MyObligationsView.tsx"), "utf8");
   assert.match(delegated, /Ver cobros específicos/);
   assert.doesNotMatch(delegated, /Ver ocurrencias/);
-  assert.match(mine, /Grupo: \{item\.groupName\}/);
-  assert.doesNotMatch(mine, /item\.groupId/);
+  assert.match(mine, /Grupo: \{groupName\}/);
+  assert.doesNotMatch(mine, /Grupo: \{item\.groupId\}/);
 });

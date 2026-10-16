@@ -72,11 +72,13 @@ function paymentUpdate(payment, appliedDelta, reversedDelta) {
     estado: economicState, economicRevision: payment.economicRevision + 1, schemaVersion: 2 };
 }
 function deliveryDto(data, { includeLines = true, person } = {}) {
-  return Object.freeze({ deliveryId: data.deliveryId, groupId: data.groupId, seasonId: data.seasonId,
+  return Object.freeze({ deliveryId: data.deliveryId, receiptId: data.receiptId || data.deliveryId, origin: "INFORMED", groupId: data.groupId, seasonId: data.seasonId,
     membershipId: data.membershipId, declaredPaidOn: data.declaredPaidOn, declaredTotalMinor: data.declaredTotalMinor,
     decisionState: data.decisionState, ...(data.applicationState ? { applicationState: data.applicationState } : {}),
     reportedAt: iso(data.reportedAt), ...(data.confirmedAt ? { confirmedAt: iso(data.confirmedAt) } : {}),
     ...(data.rejectedAt ? { rejectedAt: iso(data.rejectedAt), rejection: data.rejection } : {}),
+    ...(data.resolution ? { resolution: { administrativeReceiptId: data.resolution.administrativeReceiptId,
+      correctedFields: data.resolution.correctedFields, resolvedAt: iso(data.resolution.resolvedAt) } } : {}),
     ...(data.reversedAt ? { reversedAt: iso(data.reversedAt), reversal: { reason: data.reversal.reason } } : {}),
     ...(includeLines ? { lines: data.lines.map((line) => ({ lineId: line.lineId, paymentId: line.paymentId,
       selectionMode: line.selectionMode, requestedAmountMinor: line.requestedAmountMinor,

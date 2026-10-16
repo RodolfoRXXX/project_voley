@@ -1,6 +1,6 @@
 "use strict";
 const assert = require("node:assert/strict"); const fs = require("node:fs"); const path = require("node:path"); const { pathToFileURL } = require("node:url"); const test = require("node:test");
-const { validateReject, validateReport, validateGrantList } = require("../../src/paymentDeliveries/application/paymentDeliveryContract");
+const { validateReject, validateReport, validateGrantList, validateOwnerObligationDetail, validateReportedForPayments } = require("../../src/paymentDeliveries/application/paymentDeliveryContract");
 const { validateListActiveGroupMembersForOwnedGroupPayload } = require("../../src/memberships/application/membershipContract");
 const { paymentUpdate, requestHash, transactionBudget } = require("../../src/paymentDeliveries/domain/paymentDelivery");
 
@@ -19,6 +19,16 @@ test("E3-03 fecha Buenos Aires, rechazo OTHER y hash canónico son cerrados", ()
   assert.throws(() => validateReport({ ...report(1), declaredPaidOn: "2026-10-14" }, new Date("2026-10-13T15:00:00Z")), (error) => error.reason === "VALIDATION_FAILED");
   assert.throws(() => validateReject({ groupId: "g", deliveryId: "d", reasonCode: "OTHER", idempotencyKey: "delivery-key-000002" }), (error) => error.reason === "VALIDATION_FAILED");
   const a = report(2); const b = { ...a, lines: [...a.lines].reverse() }; assert.equal(requestHash(a), requestHash(b));
+});
+
+test("E3-04 readers focales aceptan hasta 20 obligaciones visibles y contratos cerrados", () => {
+  const obligations = Array.from({ length: 20 }, (_, index) => ({ paymentId: `payment-${index}`, membershipId: `membership-${index}` }));
+  assert.equal(validateReportedForPayments({ groupId: "group-1", obligations }).obligations.length, 20);
+  assert.throws(() => validateReportedForPayments({ groupId: "group-1", obligations: [] }), (error) => error.reason === "VALIDATION_FAILED");
+  assert.throws(() => validateReportedForPayments({ groupId: "group-1", obligations: [...obligations, { paymentId: "payment-20", membershipId: "membership-20" }] }), (error) => error.reason === "VALIDATION_FAILED");
+  assert.throws(() => validateReportedForPayments({ groupId: "group-1", obligations: [obligations[0], obligations[0]] }), (error) => error.reason === "VALIDATION_FAILED");
+  assert.deepEqual(validateOwnerObligationDetail({ groupId: "group-1", paymentId: "payment-1" }), { groupId: "group-1", paymentId: "payment-1", pageSize: 20, cursor: undefined });
+  assert.throws(() => validateOwnerObligationDetail({ groupId: "group-1", paymentId: "payment-1", actorId: "forbidden" }), (error) => error.reason === "VALIDATION_FAILED");
 });
 
 test("E3-03 deriva saldos/revisión y preserva FULL exacto", () => {

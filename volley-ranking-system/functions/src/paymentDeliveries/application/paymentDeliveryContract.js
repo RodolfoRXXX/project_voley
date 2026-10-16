@@ -23,5 +23,14 @@ function validateReviewGrant(data) { closed(data, ["groupId", "membershipId", "i
 function validateReviewRevoke(data) { closed(data, ["groupId", "grantId", "idempotencyKey"]); return Object.freeze({ groupId: d.id(data.groupId), grantId: d.id(data.grantId), idempotencyKey: d.key(data.idempotencyKey) }); }
 function validateGroup(data) { closed(data, ["groupId"]); return Object.freeze({ groupId: d.id(data.groupId) }); }
 function validateGrantList(data) { const page = optionalPage(data, ["groupId"]); return Object.freeze({ groupId: d.id(data.groupId), ...page }); }
+function validateReportedForPayments(data) {
+  closed(data, ["groupId", "obligations"]);
+  if (!Array.isArray(data.obligations) || data.obligations.length < 1 || data.obligations.length > d.MAX_LINES) throw new DeliveryValidationError();
+  const obligations = data.obligations.map((item) => { closed(item, ["paymentId", "membershipId"]); return Object.freeze({ paymentId: d.id(item.paymentId), membershipId: d.id(item.membershipId) }); });
+  if (new Set(obligations.map((item) => item.paymentId)).size !== obligations.length) throw new DeliveryValidationError();
+  return Object.freeze({ groupId: d.id(data.groupId), obligations: Object.freeze(obligations) });
+}
+function validateOwnerObligationDetail(data) { const page = optionalPage(data, ["groupId", "paymentId"]); return Object.freeze({ groupId: d.id(data.groupId), paymentId: d.id(data.paymentId), ...page }); }
 module.exports = { validateAdminGet, validateAdminList, validateDeliveryCommand, validateGet, validateGrantList, validateGroup,
-  validateHistory, validateOwnList, validateReject, validateReport, validateReverse, validateReviewGrant, validateReviewRevoke };
+  validateHistory, validateOwnList, validateOwnerObligationDetail, validateReject, validateReport, validateReportedForPayments,
+  validateReverse, validateReviewGrant, validateReviewRevoke };

@@ -272,9 +272,11 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
       let field; let value; let group = null;
       if (own) { const user = await account(transaction, userId, true); field = "personId"; value = user.personaId; }
       else { group = await economicGroup(transaction, userId, input.groupId); field = "groupId"; value = input.groupId; }
-      const scope = { contract: own ? "my-obligations" : "group-obligations", userId, ...(group ? { groupId: group.groupId } : { personId: value }), pageSize: input.pageSize }; const anchor = readCursor(input.cursor, scope);
-      let query = payments.where(field, "==", value).orderBy("dueDate", "desc").orderBy("__name__", "desc");
-      if (anchor) { const doc = await transaction.get(payments.doc(anchor.id)); if (!doc.exists || doc.data()?.[field] !== value || doc.data()?.dueDate !== anchor.dueDate) throw new PaymentConcurrentModificationError(); query = query.startAfter(anchor.dueDate, anchor.id); }
+      const scope = { contract: own ? "my-obligations" : "group-obligations", userId, ...(group ? { groupId: group.groupId } : { personId: value }), economicStates: input.economicStates || null, pageSize: input.pageSize }; const anchor = readCursor(input.cursor, scope);
+      let query = payments.where(field, "==", value);
+      if (input.economicStates) query = query.where("estado", "in", input.economicStates);
+      query = query.orderBy("dueDate", "desc").orderBy("__name__", "desc");
+      if (anchor) { const doc = await transaction.get(payments.doc(anchor.id)); if (!doc.exists || doc.data()?.[field] !== value || doc.data()?.dueDate !== anchor.dueDate || (input.economicStates && !input.economicStates.includes(doc.data()?.estado))) throw new PaymentConcurrentModificationError(); query = query.startAfter(anchor.dueDate, anchor.id); }
       const snapshot = await transaction.get(query.limit(input.pageSize + 1)); const docs = snapshot.docs.slice(0, input.pageSize); const items = [];
       for (const doc of docs) {
         const payment = persistedPayment(doc); const person = own ? undefined : await personPresentation.get(transaction, payment.personId);
@@ -290,6 +292,33 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
     }); } catch (error) { throw map(error); }
   }
 
+  async function getOwnerGroupEconomySummary(userId, input) {
+    try { return await db.runTransaction(async (transaction) => {
+      await ownedGroup(transaction, userId, input.groupId, { active: false });
+      const [paymentSnapshot, deliverySnapshot] = await Promise.all([
+        transaction.get(payments.where("groupId", "==", input.groupId).where("estado", "in", ["PENDING", "PARTIAL"])),
+        transaction.get(db.collection("paymentDeliveries").where("groupId", "==", input.groupId).where("decisionState", "==", "REPORTED")),
+      ]);
+      let pendingBalanceMinor = 0;
+      for (const doc of paymentSnapshot.docs) {
+        const payment = persistedPayment(doc);
+        if (!payment || !["PENDING", "PARTIAL"].includes(payment.economicState)) throw new PaymentIncompatibleStateError();
+        pendingBalanceMinor += payment.balanceMinor;
+        if (!Number.isSafeInteger(pendingBalanceMinor)) throw new PaymentIncompatibleStateError();
+      }
+      for (const doc of deliverySnapshot.docs) {
+        const data = doc.data();
+        if (data?.deliveryId !== doc.id || data.groupId !== input.groupId || data.decisionState !== "REPORTED"
+          || ![1, 2].includes(data.schemaVersion) || !iso(data.reportedAt)) throw new PaymentIncompatibleStateError();
+      }
+      return Object.freeze({
+        pendingBalanceMinor,
+        pendingObligationCount: paymentSnapshot.size,
+        pendingNoticeCount: deliverySnapshot.size,
+      });
+    }); } catch (error) { throw map(error); }
+  }
+
   return Object.freeze({
     createConcept: (userId, input) => mutateConcept(userId, input, "CREATE_CONCEPT"),
     renameConcept: (userId, input) => mutateConcept(userId, input, "RENAME_CONCEPT"),
@@ -298,6 +327,7 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
     listConcepts, listOccurrences, createOccurrence, listCandidates, generate,
     listGroupObligations: (userId, input) => listPayments(userId, input, false),
     listMyObligations: (userId, input) => listPayments(userId, input, true),
+    getOwnerGroupEconomySummary,
     evaluateMembership,
   });
 }

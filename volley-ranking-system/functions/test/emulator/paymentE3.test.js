@@ -67,6 +67,16 @@ test("E3-01 persiste conceptos, obligaciones, recovery idempotente, privacidad y
       const foreignOwn = await store.listMyObligations(foreign.uid, { pageSize: 20 }); assert.equal(foreignOwn.items.length, 0);
     });
 
+    await t.test("filtro pendiente se aplica antes del límite y una reversión hace reaparecer la obligación", async () => {
+      await set("payments/e3-filter-settled", { groupId: "e3-group", membershipId: "e3-active", personId: "person-member", seasonId: "e3-season", conceptId: monthly.conceptId, conceptSnapshot: { version: monthly.version, name: monthly.name, kind: monthly.kind, currency: "ARS", defaultAmountMinor: 100 }, amountMinor: 100, dueDate: "2027-12-31", estado: "SETTLED", economicState: "SETTLED", confirmedIncomeMinor: 100, reversedIncomeMinor: 0, netConfirmedIncomeMinor: 100, balanceMinor: 0, economicRevision: 2, generationIntentId: "filter-intent", payloadHash: "f".repeat(64), periodKey: "2027-12", createdAt: ts(admin, "2026-10-01T00:00:00Z"), schemaVersion: 2 });
+      const filtered = await store.listGroupObligations(owner.uid, { groupId: "e3-group", economicStates: ["PENDING", "PARTIAL"], pageSize: 1 });
+      assert.equal(filtered.items.length, 1); assert.notEqual(filtered.items[0].paymentId, "e3-filter-settled");
+      await db.doc("payments/e3-filter-settled").update({ estado: "PENDING", economicState: "PENDING", reversedIncomeMinor: 100, netConfirmedIncomeMinor: 0, balanceMinor: 100, economicRevision: 3 });
+      const restored = await store.listGroupObligations(owner.uid, { groupId: "e3-group", economicStates: ["PENDING", "PARTIAL"], pageSize: 1 });
+      assert.equal(restored.items[0].paymentId, "e3-filter-settled"); assert.equal(restored.items[0].balanceMinor, 100);
+      await db.doc("payments/e3-filter-settled").delete();
+    });
+
     await t.test("MONTHLY permite otro mes elegible y conserva la obligación histórica", async () => {
       const september = await store.generate(owner.uid, generation(monthly, ["e3-active"], "e3-generation-september", { periodKey: "2026-09", dueDate: "2026-09-20" })); assert.equal(september.rows[0].outcome, "CREATED");
       const payments = await db.collection("payments").where("membershipId", "==", "e3-active").get(); assert.equal(payments.size, 2); const periods = payments.docs.map((doc) => doc.data().periodKey).sort(); assert.deepEqual(periods, ["2026-09", "2026-10"]); assert.equal(payments.docs.every((doc) => doc.data().conceptSnapshot.version === 2), true);

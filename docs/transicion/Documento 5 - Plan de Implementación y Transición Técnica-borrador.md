@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - E3-04 formalizada documentalmente - 14 de octubre de 2026*
+*Borrador consolidado - E3-05 formalizada documentalmente - 16 de octubre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -14,7 +14,8 @@ partir de ella.
 # Estado del documento
 
 Este borrador conserva el contenido aprobado hasta la FASE 2 del Documento 5 y actualiza su estado
-operativo con el cierre de la Etapa 2 y la formalización documental de E3-01, E3-02, E3-03 y E3-04.
+operativo con el cierre de la Etapa 2 y la formalización documental de E3-01, E3-02, E3-03, E3-04 y
+E3-05.
 Incluye:
 - Capítulo 1 - Propósito y alcance;
 - Capítulo 2 - Estado inicial y activos reutilizables;
@@ -1988,7 +1989,7 @@ el plan, pero no obliga a ejecutarlas en una cascada rígida ni a publicarlas co
 | 0 | Estabilización y red de seguridad | `CERRADA` | Arquitectura congelada y repositorio auditado | Seguridad implementada y probada, entorno reproducible y reinicialización preparada |
 | 1 | Usuario, Persona y autorización | `CERRADA` | Cierre de Etapa 0 | Identidad separada y autorización contextual inicial |
 | 2 | Grupo, Membresía, Solicitud y Temporada | `CERRADA CON RIESGO RESIDUAL ACEPTADO` | Persona y actor identificables | Fuentes de verdad organizativas separadas |
-| 3 | Pago deportivo | `E3-04 LISTO PARA IMPLEMENTAR; EJECUCIÓN NO AUTORIZADA` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
+| 3 | Pago deportivo | `E3-05 LISTO PARA IMPLEMENTAR; EJECUCIÓN NO AUTORIZADA` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
 | 4 | Partido-Torneo y CU-075 | `ROADMAP` | Modelo de Partido, contratos y pruebas | Resultado original y estado competitivo separados |
 | 5 | Estadísticas, Rendimiento, Actividad y recuperación | `ROADMAP` | Cada fuente original correspondiente | Proyecciones reconstruibles y procesos recuperables |
 | 6 | Comercial | `ROADMAP` | Usuario estable y consultas deportivas públicas | Capacidades y límites sin otorgar permisos deportivos |
@@ -2197,7 +2198,7 @@ El siguiente incremento funcional es:
 
 ## 7.5 Etapa 3 - Pago deportivo independiente
 
-- Estado: `E3-04 LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; su ejecución, preparación
+- Estado: `E3-05 LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; su ejecución, preparación
     productiva y deploy requieren autorización separada.
 - Objetivo: establecer Pago como única fuente económica deportiva.
 - Fuente de verdad: Pago.
@@ -2245,6 +2246,22 @@ El siguiente incremento funcional es:
     historia general, reversión y liquidación prearchivo. Tamaño, presupuesto, índices y
     concurrencia quedan para verificación ejecutable durante implementación, sin convertir Auth/UAT
     real o una auditoría de rendimiento en gate de esta formalización.
+- Anulación de obligación sin ingresos adoptada por D5-050: E3-05 incorpora exclusivamente la
+    transición Owner-only de una obligación creada indebidamente que nunca tuvo aplicaciones
+    económicas y no posee un aviso `REPORTED` relacionado. Pago conserva identidad, principal,
+    snapshots, generación y outcomes históricos; lifecycle/estado `VOIDED` y un componente no
+    monetario igual al principal explican saldo exigible cero sin crear ingreso, condonación,
+    Recepción o devolución. La raíz anulada no libera la clave económica ni permite regenerar la
+    misma obligación. Grupo archivado admite sólo Owner y Pago prearchivo. Historia Owner/propia se
+    integra como `Abiertas | Anuladas`; Tesorería conserva lectura económica mínima sin categoría,
+    actor ni explicación. La fuente complementaria es el
+    [addendum E3-05 a Documentos 2/3/4](../arquitectura/Documento-2-3-4-addendum-E3-05-anulacion-obligacion-sin-ingresos.md),
+    adoptado por [DEC-E3-05](../implementacion/etapa-3/DEC-E3-05-anulacion-obligacion-sin-ingresos.md).
+    La comprobación ejecutable completa de avisos queda como primer gate bajo futura autorización de
+    implementación, en Emulator local y con datos sintéticos; no está demostrada por la
+    formalización. Si resulta inviable, esa parte se detiene y requiere decisión arquitectónica, sin
+    adoptar proyección o límite implícitos. Corrección del exigible, condonación, anulación con
+    aplicaciones, devolución real, permisos nuevos y Caja permanecen fuera de E3-05.
 - Coordinación E3/E4: el gate de retiro económico permanece en E3. Los contratos deportivos E4
     pueden definirse de forma delimitada bajo D5-027, pero cada incremento futuro requiere
     autorización propia y no adelanta catálogos o tombstones D5-044.
@@ -2435,6 +2452,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-047 | E3-02 adopta `GROUP_TREASURY` exclusivamente de consulta y el addendum conjunto de Documentos 2/3/4; satisface la reapertura de D5-043 sólo para esta primera capacidad delegable | APROBADA | Etapa 3 / E3-02 / CU-036–CU-038 parcial | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; CU-034/CU-035 y la cobertura restante continúan pendientes; D5-044, D5-045 y el gate económico de E3 no cambian |
 | D5-048 | E3-03 adopta DEC-E3-03 y el addendum conjunto de Documentos 1/1.5/2/3/4; incorpora Entrega informada como Agregado independiente, revisión explícita, confirmación/reversión atómicas y `GROUP_PAYMENT_NOTICE_REVIEW` como capacidad fija separada | APROBADA | Etapa 3 / E3-03 / obligaciones por Membresía | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; Pago conserva toda autoridad económica, `GROUP_TREASURY` sigue read-only, los diferimientos restantes de roles/permisos, D5-044, D5-045 y el gate económico de E3 no cambian; cada incremento posterior requiere autorización independiente |
 | D5-049 | E3-04 adopta DEC-E3-04 y el addendum conjunto de Documentos 1/1.5/2/3/4; generaliza Recepción con orígenes `INFORMED | ADMINISTRATIVE`, registro administrativo multiobligación, coordinación explícita con avisos y `GROUP_DIRECT_PAYMENT_RECORD` | APROBADA | Etapa 3 / E3-04 / obligaciones por Membresía | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; D5-043 queda resuelta sólo para esta capacidad fija; Pago conserva autoridad económica, `GROUP_TREASURY` sigue read-only, `GROUP_PAYMENT_NOTICE_REVIEW` no habilita registro directo y los demás diferimientos de roles/permisos, D5-044, D5-045, Auth/UAT y el gate económico legacy no cambian |
+| D5-050 | E3-05 adopta DEC-E3-05 y el addendum conjunto de Documentos 2/3/4; incorpora anulación Owner-only de obligación indebida sin aplicaciones ni aviso pendiente, preservando identidad, principal, snapshots y generación | APROBADA | Etapa 3 / E3-05 / CU-081 focal | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; el gate ejecutable de avisos es el primero de una futura implementación y puede detener esa parte; corrección, condonación, obligaciones con aplicaciones, devolución, permisos nuevos y Caja siguen fuera; D5-044, D5-045, Auth/UAT y gate económico legacy no cambian |
 
 
 # 9. Decisiones abiertas no bloqueantes

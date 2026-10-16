@@ -88,7 +88,7 @@ export function OpenSeasonForm({ groupId }: { groupId: string }) {
       const persisted = (await getOwnSeason(groupId, result.season.id)).season;
       setConfirmed(persisted);
       queueMicrotask(() => feedbackRef.current?.focus());
-      globalThis.setTimeout(() => router.replace(`/dashboard/groups/${groupId}`), 700);
+      globalThis.setTimeout(() => router.replace(`/dashboard/groups/${groupId}/seasons`), 700);
     } catch (cause) {
       const reason = cause instanceof Error && cause.message === "Secure UUID generation is unavailable"
         ? "DEPENDENCY_UNAVAILABLE"
@@ -105,8 +105,8 @@ export function OpenSeasonForm({ groupId }: { groupId: string }) {
   }
 
   if (checking) return <p role="status" className="text-sm text-[var(--text-muted)]">Verificando el contexto de Temporada…</p>;
-  if (contextError) return <div ref={feedbackRef} tabIndex={-1} role="alert" className="rounded-xl border border-red-300 bg-red-50 p-5 text-red-900"><p>{contextError.message}</p><div className="mt-4 flex flex-wrap gap-3"><button type="button" className="min-h-11 rounded-lg border border-red-400 px-4 py-2 font-semibold" onClick={() => { setContextError(null); setChecking(true); setContextAttempt((value) => value + 1); }}>Reintentar</button><Link className="inline-flex min-h-11 items-center px-2 font-semibold underline" href={`/dashboard/groups/${groupId}`}>Volver al Grupo</Link></div></div>;
-  if (existing) return <div ref={feedbackRef} tabIndex={-1} role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-5"><h2 className="font-semibold text-emerald-950">El Grupo ya tiene una Temporada abierta</h2><p className="mt-2 text-sm text-emerald-900">{existing.nombre} · {existing.fechaInicio} · {existing.estado}</p><Link className="mt-4 inline-flex min-h-11 items-center font-semibold text-emerald-900 underline" href={`/dashboard/groups/${groupId}`}>Volver al Grupo</Link></div>;
+  if (contextError) return <div ref={feedbackRef} tabIndex={-1} role="alert" className="rounded-xl border border-red-300 bg-red-50 p-5 text-red-900"><p>{contextError.message}</p><div className="mt-4 flex flex-wrap gap-3"><button type="button" className="min-h-11 rounded-lg border border-red-400 px-4 py-2 font-semibold" onClick={() => { setContextError(null); setChecking(true); setContextAttempt((value) => value + 1); }}>Reintentar</button><Link className="inline-flex min-h-11 items-center px-2 font-semibold underline" href={`/dashboard/groups/${groupId}/seasons`}>Volver a Temporadas</Link></div></div>;
+  if (existing) return <div ref={feedbackRef} tabIndex={-1} role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-5"><h2 className="font-semibold text-emerald-950">El Grupo ya tiene una Temporada abierta</h2><p className="mt-2 text-sm text-emerald-900">{existing.nombre} · {existing.fechaInicio} · {existing.estado}</p><Link className="mt-4 inline-flex min-h-11 items-center font-semibold text-emerald-900 underline" href={`/dashboard/groups/${groupId}/seasons`}>Volver a Temporadas</Link></div>;
   if (confirmed) return <div ref={feedbackRef} tabIndex={-1} role="status" aria-live="assertive" className="rounded-xl border border-emerald-200 bg-emerald-50 p-5"><h2 className="font-semibold text-emerald-950">Temporada creada y abierta</h2><p className="mt-2 text-sm text-emerald-900">{confirmed.nombre} · {confirmed.fechaInicio}. Volviendo al Grupo…</p></div>;
 
   return (

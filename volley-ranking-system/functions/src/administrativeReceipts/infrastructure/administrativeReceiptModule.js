@@ -1,0 +1,1 @@
+"use strict"; const {db}=require("../../firebase"); const {createFirestoreAdministrativeReceiptStore}=require("./firestoreAdministrativeReceiptStore"); module.exports=createFirestoreAdministrativeReceiptStore({db});

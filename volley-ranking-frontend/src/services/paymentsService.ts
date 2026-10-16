@@ -1,6 +1,8 @@
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
 import type { ChargeConcept, ChargeKind, ChargeOccurrence, GenerationRow, MonthlyMembershipCandidate, Obligation, PaymentErrorReason } from "@/types/Payment";
+import { formatArs, parseArsMinor } from "./arsMoney.mjs";
+export { formatArs, parseArsMinor };
 
 type Page<T> = { items: T[]; nextCursor?: string };
 const createConceptCall = httpsCallable<{ groupId: string; name: string; kind: ChargeKind; defaultAmountMinor: number; idempotencyKey: string }, { outcome: string; recovered: boolean; resource: ChargeConcept }>(functions, "createGroupChargeConcept");
@@ -12,12 +14,13 @@ const listOccurrencesCall = httpsCallable<{ groupId: string; conceptId: string; 
 const createOccurrenceCall = httpsCallable<{ groupId: string; conceptId: string; expectedConceptVersion: number; name: string; occurrenceListToken: string; idempotencyKey: string }, { outcome: string; recovered: boolean; resource: ChargeOccurrence }>(functions, "createChargeOccurrence");
 const candidatesCall = httpsCallable<{ groupId: string; periodKey: string; pageSize?: number; cursor?: string }, Page<MonthlyMembershipCandidate>>(functions, "listOwnerMonthlyMembershipCandidates");
 const generateCall = httpsCallable<Record<string, unknown>, { generationIntentId: string; complete: boolean; rows: GenerationRow[] }>(functions, "generateMembershipObligations");
-const listGroupCall = httpsCallable<{ groupId: string; pageSize?: number; cursor?: string }, Page<Obligation>>(functions, "listGroupObligations");
-const listMineCall = httpsCallable<{ pageSize?: number; cursor?: string }, Page<Obligation>>(functions, "listMyObligations");
+type ObligationListInput = { economicStates?: ["PENDING", "PARTIAL"]; pageSize?: number; cursor?: string };
+const listGroupCall = httpsCallable<ObligationListInput & { groupId: string }, Page<Obligation>>(functions, "listGroupObligations");
+const listMineCall = httpsCallable<ObligationListInput, Page<Obligation>>(functions, "listMyObligations");
+export type OwnerGroupEconomySummary = { pendingBalanceMinor: number; pendingObligationCount: number; pendingNoticeCount: number };
+const ownerSummaryCall = httpsCallable<{ groupId: string }, OwnerGroupEconomySummary>(functions, "getOwnerGroupEconomySummary");
 
 export const newPaymentKey = () => crypto.randomUUID().replaceAll("-", "");
-export function parseArsMinor(value: string): number | null { const normalized = value.trim().replace(",", "."); if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return null; const [whole, decimal = ""] = normalized.split("."); const amount = Number(whole) * 100 + Number(decimal.padEnd(2, "0")); return Number.isSafeInteger(amount) && amount >= 1 && amount <= 999999999999 ? amount : null; }
-export const formatArs = (minor: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(minor / 100);
 export const createChargeConcept = async (input: { groupId: string; name: string; kind: ChargeKind; defaultAmountMinor: number; idempotencyKey: string }) => (await createConceptCall(input)).data;
 export const renameChargeConcept = async (input: { groupId: string; conceptId: string; name: string; expectedVersion: number; idempotencyKey: string }) => (await renameConceptCall(input)).data;
 export const changeChargeConceptAmount = async (input: { groupId: string; conceptId: string; defaultAmountMinor: number; expectedVersion: number; idempotencyKey: string }) => (await changeAmountCall(input)).data;
@@ -27,7 +30,8 @@ export const listChargeOccurrences = async (input: { groupId: string; conceptId:
 export const createChargeOccurrence = async (input: { groupId: string; conceptId: string; expectedConceptVersion: number; name: string; occurrenceListToken: string; idempotencyKey: string }) => (await createOccurrenceCall(input)).data;
 export const listMonthlyCandidates = async (input: { groupId: string; periodKey: string; pageSize?: number; cursor?: string }) => (await candidatesCall(input)).data;
 export const generateMembershipObligations = async (input: Record<string, unknown>) => (await generateCall(input)).data;
-export const listGroupObligations = async (input: { groupId: string; pageSize?: number; cursor?: string }) => (await listGroupCall(input)).data;
-export const listMyObligations = async (input: { pageSize?: number; cursor?: string } = {}) => (await listMineCall(input)).data;
+export const listGroupObligations = async (input: ObligationListInput & { groupId: string }) => (await listGroupCall({ economicStates: ["PENDING", "PARTIAL"], ...input })).data;
+export const listMyObligations = async (input: ObligationListInput = {}) => (await listMineCall({ economicStates: ["PENDING", "PARTIAL"], ...input })).data;
+export const getOwnerGroupEconomySummary = async (groupId: string) => (await ownerSummaryCall({ groupId })).data;
 export function getPaymentErrorReason(error: unknown): PaymentErrorReason { if (typeof error === "object" && error && "details" in error) { const details = (error as { details?: unknown }).details; if (typeof details === "object" && details && "reason" in details) return String((details as { reason: unknown }).reason) as PaymentErrorReason; } return "INTERNAL_ERROR"; }
 export function getPaymentErrorMessage(reason: PaymentErrorReason): string { return ({ UNAUTHENTICATED: "Tu sesión venció.", ACCOUNT_REQUIRED: "Tu cuenta todavía no está disponible.", PERSON_REQUIRED: "Necesitás vincular tu Persona para consultar obligaciones.", GROUP_NOT_ACCESSIBLE: "Ya no tenés acceso económico a este Grupo.", GROUP_NOT_OPERATIONAL: "El Grupo archivado sólo admite consultas.", GROUP_TREASURY_NOT_AUTHORIZED: "Tu acceso de consulta a Tesorería ya no está vigente.", OPEN_SEASON_REQUIRED: "Se necesita una Temporada abierta.", MEMBERSHIP_NOT_ELIGIBLE: "La Membresía no es elegible.", MEMBERSHIP_VALIDITY_NOT_OVERLAPPING: "La Membresía no tuvo vigencia durante ese mes.", MEMBERSHIP_VALIDITY_UNPROVABLE: "No pudo demostrarse la vigencia canónica de la Membresía.", CHARGE_CONCEPT_NOT_AVAILABLE: "El concepto ya no está disponible.", CHARGE_CONCEPT_DEACTIVATED: "El concepto fue desactivado.", CONCEPT_VERSION_STALE: "El concepto cambió; revisá su versión vigente.", OCCURRENCE_NOT_AVAILABLE: "La ocurrencia ya no está disponible.", OBLIGATION_PAYLOAD_CONFLICT: "Ya existe una obligación con datos económicos diferentes.", VALIDATION_FAILED: "Revisá los datos ingresados.", IDEMPOTENCY_CONFLICT: "La intención fue usada con otros datos.", CONCURRENT_MODIFICATION: "El contexto cambió; actualizá la vista.", INCOMPATIBLE_STATE: "Los datos canónicos son incompatibles.", DEPENDENCY_UNAVAILABLE: "El resultado es incierto; reintentá la misma intención para recuperarlo.", INTERNAL_ERROR: "No pudimos completar la operación." } satisfies Record<PaymentErrorReason, string>)[reason]; }

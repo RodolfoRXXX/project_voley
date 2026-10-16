@@ -20,6 +20,7 @@ const DeliveryDraftStaleError = make("DeliveryDraftStaleError", "DELIVERY_DRAFT_
 const DeliveryStaleBalanceError = make("DeliveryStaleBalanceError", "DELIVERY_STALE_BALANCE", "Delivery no longer fits available balances");
 const DeliveryAlreadyDecidedError = make("DeliveryAlreadyDecidedError", "DELIVERY_ALREADY_DECIDED", "Delivery was already decided");
 const ReviewNotAuthorizedError = make("ReviewNotAuthorizedError", "PAYMENT_NOTICE_REVIEW_NOT_AUTHORIZED", "Payment notice review is not authorized");
+const TreasuryDetailNotAuthorizedError = make("TreasuryDetailNotAuthorizedError", "GROUP_TREASURY_NOT_AUTHORIZED", "Treasury economy access is not authorized");
 const SelfReviewForbiddenError = make("SelfReviewForbiddenError", "SELF_REVIEW_FORBIDDEN", "A reviewer cannot decide their own debt");
 const PrearchivePaymentRequiredError = make("PrearchivePaymentRequiredError", "PREARCHIVE_PAYMENT_REQUIRED", "Every payment must predate group archive");
 const DeliveryNotReversibleError = make("DeliveryNotReversibleError", "DELIVERY_NOT_REVERSIBLE", "Delivery is not reversible");
@@ -32,4 +33,4 @@ module.exports = { PaymentDeliveryError, DeliveryUnauthenticatedError, DeliveryV
   DeliveryScopeMismatchError, DuplicateDeliveryLineError, DeliveryLineLimitExceededError, DeliveryDraftStaleError,
   DeliveryStaleBalanceError, DeliveryAlreadyDecidedError, ReviewNotAuthorizedError, SelfReviewForbiddenError,
   PrearchivePaymentRequiredError, DeliveryNotReversibleError, DeliveryIdempotencyConflictError,
-  DeliveryIncompatibleStateError, DeliveryConcurrentModificationError };
+  DeliveryIncompatibleStateError, DeliveryConcurrentModificationError, TreasuryDetailNotAuthorizedError };

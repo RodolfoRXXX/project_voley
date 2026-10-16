@@ -9,6 +9,7 @@ import type { MembershipErrorReason } from "@/types/OwnMembership";
 import { createMembershipSelfExitMachine } from "./membershipSelfExitMachine.mjs";
 import { getMyGroupTreasuryContext } from "@/services/treasuryService";
 import { getMyPaymentReviewContext } from "@/services/paymentDeliveriesService";
+import { getMyDirectPaymentRecordContext } from "@/services/administrativeReceiptsService";
 
 type Status = "loading" | "ready" | "error" | "person-required";
 type ExitView = "idle" | "confirmation" | "submitting" | "recoverable" | "season-closed" | "blocked" | "confirmed";
@@ -24,6 +25,7 @@ export function MyCurrentGroupMembershipsSection() {
   const [emptyContinuation, setEmptyContinuation] = useState(false);
   const [treasuryGroups, setTreasuryGroups] = useState<Set<string>>(new Set());
   const [paymentReviewGroups, setPaymentReviewGroups] = useState<Set<string>>(new Set());
+  const [directPaymentGroups, setDirectPaymentGroups] = useState<Set<string>>(new Set());
   const [exitView, setExitView] = useState<ExitView>("idle");
   const [exitReason, setExitReason] = useState<MembershipErrorReason | null>(null);
   const exitMachineRef = useRef(createMembershipSelfExitMachine());
@@ -55,17 +57,19 @@ export function MyCurrentGroupMembershipsSection() {
   }, [acceptError, acceptResult]);
   useEffect(() => {
     let active = true; const ids = [...new Set(items.map((item) => item.group.id))];
-    if (!ids.length) { queueMicrotask(() => { if (active) { setTreasuryGroups(new Set()); setPaymentReviewGroups(new Set()); } }); return () => { active = false; }; }
+    if (!ids.length) { queueMicrotask(() => { if (active) { setTreasuryGroups(new Set()); setPaymentReviewGroups(new Set()); setDirectPaymentGroups(new Set()); } }); return () => { active = false; }; }
     void Promise.all(ids.map(async (groupId) => {
-      const [treasury, paymentReview] = await Promise.all([
+      const [treasury, paymentReview, directPayment] = await Promise.all([
         getMyGroupTreasuryContext(groupId).then(() => true, () => false),
         getMyPaymentReviewContext(groupId).then(() => true, () => false),
+        getMyDirectPaymentRecordContext(groupId).then(() => true, () => false),
       ]);
-      return { groupId, treasury, paymentReview };
+      return { groupId, treasury, paymentReview, directPayment };
     })).then((values) => {
       if (!active) return;
       setTreasuryGroups(new Set(values.filter((value) => value.treasury).map((value) => value.groupId)));
       setPaymentReviewGroups(new Set(values.filter((value) => value.paymentReview).map((value) => value.groupId)));
+      setDirectPaymentGroups(new Set(values.filter((value) => value.directPayment).map((value) => value.groupId)));
     });
     return () => { active = false; };
   }, [items]);
@@ -146,6 +150,7 @@ export function MyCurrentGroupMembershipsSection() {
         {status === "ready" && nextCursor ? <button type="button" className="mt-4 min-h-11 rounded-lg bg-orange-600 px-5 py-2 font-semibold text-white hover:bg-orange-700 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-60" disabled={loadingNext || exitView === "submitting"} onClick={() => void load(nextCursor)}>{loadingNext ? "Cargando…" : "Ver página siguiente"}</button> : null}
         {status === "ready" && !nextCursor && items.length > 0 ? <p className="mt-4 text-sm text-[var(--text-muted)]">Llegaste al fin de los resultados.</p> : null}
       </div>
+      {directPaymentGroups.size > 0 ? <div className="mt-4 rounded-xl border border-orange-300 p-4"><p className="font-semibold">Registro directo habilitado</p><p className="mt-1 text-sm text-[var(--text-muted)]">Permiso independiente, sin Tesorería ni revisión de avisos.</p><div className="mt-2 flex flex-wrap gap-2">{items.filter((item) => directPaymentGroups.has(item.group.id)).map((item) => <Link key={item.group.id} className="inline-flex min-h-11 items-center rounded-lg border border-orange-500 px-4 py-2 font-semibold" href={`/dashboard/direct-payment/${item.group.id}`}>Registrar recepciones · {item.group.nombre}</Link>)}</div></div> : null}
     </section>
   );
 }

@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { validateListGroupObligations, validateListMyObligations } = require("../../src/payments/application/paymentContract");
 
 const systemRoot = path.resolve(__dirname, "../..");
 test("E3-01 publica sólo callables backend y niega colecciones económicas al cliente", () => {
@@ -14,12 +15,20 @@ test("E3-01 publica sólo callables backend y niega colecciones económicas al c
   assert.match(rules, /match \/payments\/\{paymentId\}[\s\S]*?allow read, write: if false/);
 });
 
-test("E3-01 declara exactamente los cuatro índices económicos y Pago bloquea CU-015", () => {
+test("E3-01 declara los índices económicos, incluidos pendientes por Grupo/Persona, y Pago bloquea CU-015", () => {
   const indexes = JSON.parse(fs.readFileSync(path.resolve(systemRoot, "../firestore.indexes.json"), "utf8")).indexes;
   const economic = indexes.filter((item) => ["groupChargeConcepts", "groupChargeOccurrences", "payments"].includes(item.collectionGroup));
-  assert.equal(economic.length, 4);
+  assert.equal(economic.length, 8);
+  for (const field of ["groupId", "personId"]) assert.equal(economic.some((item) => item.collectionGroup === "payments" && item.fields.map((entry) => entry.fieldPath).join(",") === `${field},estado,dueDate`), true);
   const deletion = fs.readFileSync(path.join(systemRoot, "src/groups/infrastructure/firestoreGroupDeletionStore.js"), "utf8");
   assert.match(deletion, /"payments"/);
+});
+
+test("E3-04 acepta sólo el filtro económico canónico pendiente/parcial", () => {
+  assert.deepEqual(validateListGroupObligations({ groupId: "group", economicStates: ["PENDING", "PARTIAL"], pageSize: 20 }).economicStates, ["PENDING", "PARTIAL"]);
+  assert.deepEqual(validateListMyObligations({ economicStates: ["PENDING", "PARTIAL"], pageSize: 20 }).economicStates, ["PENDING", "PARTIAL"]);
+  assert.throws(() => validateListGroupObligations({ groupId: "group", economicStates: ["PARTIAL", "PENDING"] }));
+  assert.throws(() => validateListMyObligations({ economicStates: ["SETTLED"] }));
 });
 
 test("E3-01 no importa superficies económicas legacy", () => {

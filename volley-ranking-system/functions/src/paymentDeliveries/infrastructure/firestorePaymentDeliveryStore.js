@@ -5,6 +5,7 @@ const { createGroupOwnershipContextCapability } = require("../../groups/public/g
 const { createTreasuryMembershipAuthorizationCapability } = require("../../memberships/public/treasuryMembershipAuthorizationCapability");
 const { createTreasuryAccountIdentityCapability } = require("../../users/public/treasuryAccountIdentityCapability");
 const { createPaymentPersonPresentationCapability } = require("../../persons/public/paymentPersonPresentationCapability");
+const { createGroupTreasuryAuthorizationCapability } = require("../../treasury/public/groupTreasuryAuthorizationCapability");
 const { createFirestorePaymentDeliveryRepository } = require("./firestorePaymentDeliveryRepository");
 const { createFirestorePaymentEconomicRepository } = require("./firestorePaymentEconomicRepository");
 const { createFirestorePaymentReviewRepository } = require("./firestorePaymentReviewRepository");
@@ -16,9 +17,11 @@ function createFirestorePaymentDeliveryStore({ db, now = () => Timestamp.now(), 
   const deliveryRepository = createFirestorePaymentDeliveryRepository({ db }); const economicRepository = createFirestorePaymentEconomicRepository({ db }); const reviewRepository = createFirestorePaymentReviewRepository({ db });
   const deliveries = deliveryRepository.deliveries;
   const receipts = deliveryRepository.commandReceipts; const reversals = deliveryRepository.reversals;
+  const candidateGuards = db.collection("paymentReceiptCandidateGuards");
   const grants = reviewRepository.grants; const slots = reviewRepository.slots; const capabilityReceipts = reviewRepository.commandReceipts;
   const ownership = createGroupOwnershipContextCapability({ db }); const membershipAuth = createTreasuryMembershipAuthorizationCapability({ db });
   const identity = createTreasuryAccountIdentityCapability({ db }); const personPresentation = createPaymentPersonPresentationCapability({ db });
+  const treasuryAuthorization = createGroupTreasuryAuthorizationCapability({ db });
 
   function map(error) {
     if (error instanceof e.PaymentDeliveryError) return error;
@@ -58,12 +61,13 @@ function createFirestorePaymentDeliveryStore({ db, now = () => Timestamp.now(), 
     try {
       const required = ["deliveryId", "groupId", "seasonId", "membershipId", "personId", "reportedByAccountId", "declaredPaidOn", "lines", "declaredTotalMinor", "decisionState", "reportedAt", "revision", "schemaVersion"];
       required.forEach((field) => { if (!Object.hasOwn(data, field)) throw new Error(); });
-      if (data.deliveryId !== snapshot.id || data.schemaVersion !== 1 || !["REPORTED", "CONFIRMED", "REJECTED"].includes(data.decisionState)
+      if (data.deliveryId !== snapshot.id || ![1, 2].includes(data.schemaVersion) || (data.schemaVersion === 2 && (data.origin !== "INFORMED" || data.receiptId !== snapshot.id)) || !["REPORTED", "CONFIRMED", "REJECTED", "RESOLVED_BY_ADMINISTRATIVE_RECEIPT"].includes(data.decisionState)
         || !Array.isArray(data.lines) || data.lines.length < 1 || data.lines.length > d.MAX_LINES || !timestamp(data.reportedAt)) throw new Error();
       [data.deliveryId, data.groupId, data.seasonId, data.membershipId, data.personId, data.reportedByAccountId].forEach(d.id);
       if (data.declaredTotalMinor !== data.lines.reduce((sum, line) => sum + line.requestedAmountMinor, 0)) throw new Error();
       if (data.decisionState === "CONFIRMED" && (!["APPLIED", "REVERSED"].includes(data.applicationState) || !timestamp(data.confirmedAt))) throw new Error();
       if (data.decisionState === "REJECTED" && (!timestamp(data.rejectedAt) || !data.rejection)) throw new Error();
+      if (data.decisionState === "RESOLVED_BY_ADMINISTRATIVE_RECEIPT" && (!timestamp(data.resolution?.resolvedAt) || data.resolution?.administrativeReceiptId !== data.resolvedByAdministrativeReceiptId || !Array.isArray(data.resolution?.correctedFields))) throw new Error();
       return Object.freeze({ ...data });
     } catch (cause) { throw new e.DeliveryIncompatibleStateError({ cause }); }
   }
@@ -77,6 +81,11 @@ function createFirestorePaymentDeliveryStore({ db, now = () => Timestamp.now(), 
     idempotencyKeyHash: d.hash(input.idempotencyKey), requestHash: d.requestHash(input), groupId: delivery.groupId,
     deliveryId: delivery.deliveryId, outcome, completedAt, schemaVersion: 1 }; }
   function assertReceipt(receipt, actorId, operation, input) { if (receipt.actorAccountId !== actorId || receipt.operation !== operation || receipt.requestHash !== d.requestHash(input) || receipt.deliveryId !== input.deliveryId && operation !== "REPORT") throw new e.DeliveryIdempotencyConflictError(); }
+  async function candidateGuardMutation(transaction, groupId, membershipId, at) {
+    const guardId = d.opaqueId("payment-receipt-candidate-guard", groupId, membershipId); const ref = candidateGuards.doc(guardId); const snapshot = await transaction.get(ref); const data = snapshot.data();
+    if (snapshot.exists && (data?.guardId !== guardId || data.groupId !== groupId || data.membershipId !== membershipId || data.schemaVersion !== 1 || !Number.isSafeInteger(data.revision) || data.revision < 1)) throw new e.DeliveryIncompatibleStateError();
+    return { ref, data: snapshot.exists ? { ...data, revision: data.revision + 1, updatedAt: at } : { guardId, groupId, membershipId, revision: 1, createdAt: at, updatedAt: at, schemaVersion: 1 } };
+  }
 
   function grantShape(snapshot) {
     if (!snapshot.exists) return null; const data = snapshot.data();
@@ -106,6 +115,13 @@ function createFirestorePaymentDeliveryStore({ db, now = () => Timestamp.now(), 
     if (delivery && delivery.personId === own.personId) throw new e.SelfReviewForbiddenError();
     return { kind: "REVIEWER", group, personId: own.personId, grantId: grant.grantId };
   }
+  async function obligationDetailAuthorization(transaction, accountId, groupId, audience) {
+    if (audience === "OWNER") return reviewerAuthorization(transaction, accountId, groupId, { ownerOnly: true });
+    await account(transaction, accountId, false); const group = validGroup(await transaction.get(db.collection("groups").doc(groupId)));
+    const authorization = await treasuryAuthorization.evaluate({ unitOfWork: transaction, accountId, groupId });
+    if (authorization.status !== "AUTHORIZED") throw new e.TreasuryDetailNotAuthorizedError();
+    return { kind: "TREASURY", group };
+  }
 
   async function report(accountId, input) {
     const rid = d.receiptId(accountId, "REPORT", input.idempotencyKey); const receiptRef = receipts.doc(rid); const deliveryRef = deliveries.doc(d.deliveryId(accountId, input.idempotencyKey));
@@ -123,13 +139,13 @@ function createFirestorePaymentDeliveryStore({ db, now = () => Timestamp.now(), 
         hydrated.push(payment);
       }
       if (stale.length) throw new e.DeliveryDraftStaleError({ details: { lines: stale } });
-      const at = now(); const lines = input.lines.map((line, index) => ({ lineId: d.applicationId(deliveryRef.id, line.paymentId), paymentId: line.paymentId, selectionMode: line.selectionMode,
+      const at = now(); const guard = await candidateGuardMutation(transaction, membership.groupId, membership.membershipId, at); const lines = input.lines.map((line, index) => ({ lineId: d.applicationId(deliveryRef.id, line.paymentId), paymentId: line.paymentId, selectionMode: line.selectionMode,
         requestedAmountMinor: line.requestedAmountMinor, expectedBalanceMinor: line.expectedBalanceMinor, expectedEconomicRevision: line.expectedEconomicRevision,
         conceptName: hydrated[index].conceptSnapshot.name, dueDate: hydrated[index].dueDate }));
       const data = { deliveryId: deliveryRef.id, groupId: membership.groupId, seasonId: membership.seasonId, membershipId: membership.membershipId, personId: membership.personId,
         reportedByAccountId: accountId, declaredPaidOn: input.declaredPaidOn, lines, declaredTotalMinor: lines.reduce((sum, line) => sum + line.requestedAmountMinor, 0),
         decisionState: "REPORTED", reportedAt: at, revision: 1, schemaVersion: 1 };
-      const receipt = receiptData(receiptRef, accountId, "REPORT", input, data, "REPORTED", at); transaction.create(deliveryRef, data); transaction.create(receiptRef, receipt);
+      const receipt = receiptData(receiptRef, accountId, "REPORT", input, data, "REPORTED", at); transaction.create(deliveryRef, data); transaction.create(receiptRef, receipt); transaction.set(guard.ref, guard.data);
       if (typeof testHooks.beforeReportCommit === "function") await testHooks.beforeReportCommit({ transaction, data });
       return { outcome: "REPORTED", delivery: d.deliveryDto(data) };
     }); } catch (error) { throw map(error); }
@@ -141,10 +157,10 @@ function createFirestorePaymentDeliveryStore({ db, now = () => Timestamp.now(), 
       const persistedReceipt = hydrateReceipt(await transaction.get(receiptRef)); const delivery = hydrateDelivery(await transaction.get(deliveryRef));
       if (!delivery || delivery.groupId !== input.groupId) throw new e.DeliveryNotAccessibleError(); const authorization = await reviewerAuthorization(transaction, accountId, input.groupId, { delivery });
       if (persistedReceipt) { assertReceipt(persistedReceipt, accountId, operation, input); if (operation === "CONFIRM") await verifyApplications(transaction, delivery, "APPLIED"); return { outcome: "EXISTING", delivery: d.deliveryDto(delivery) }; }
-      if (delivery.decisionState !== "REPORTED") throw new e.DeliveryAlreadyDecidedError(); const at = now();
+      if (delivery.decisionState !== "REPORTED") throw new e.DeliveryAlreadyDecidedError(); const at = now(); const guard = await candidateGuardMutation(transaction, delivery.groupId, delivery.membershipId, at);
       if (operation === "REJECT") { const rejection = { reasonCode: input.reasonCode, ...(input.reasonNote ? { reasonNote: input.reasonNote } : {}), decidedByAccountId: accountId };
         const updated = { ...delivery, decisionState: "REJECTED", rejection, rejectedAt: at, revision: delivery.revision + 1 };
-        transaction.update(deliveryRef, { decisionState: "REJECTED", rejection, rejectedAt: at, revision: updated.revision }); transaction.create(receiptRef, receiptData(receiptRef, accountId, operation, input, delivery, "REJECTED", at)); return { outcome: "REJECTED", delivery: d.deliveryDto(updated) }; }
+        transaction.update(deliveryRef, { decisionState: "REJECTED", rejection, rejectedAt: at, revision: updated.revision }); transaction.create(receiptRef, receiptData(receiptRef, accountId, operation, input, delivery, "REJECTED", at)); transaction.set(guard.ref, guard.data); return { outcome: "REJECTED", delivery: d.deliveryDto(updated) }; }
       if (typeof testHooks.afterConfirmAuthorization === "function") await testHooks.afterConfirmAuthorization({ transaction, delivery, authorization });
       const paymentSnapshots = await Promise.all(delivery.lines.map((line) => transaction.get(economicRepository.paymentRef(line.paymentId))));
       const applicationSnapshots = await Promise.all(delivery.lines.map((line) => transaction.get(economicRepository.applicationRef(line.paymentId, line.lineId))));
@@ -153,7 +169,7 @@ function createFirestorePaymentDeliveryStore({ db, now = () => Timestamp.now(), 
       if (stale.length) throw new e.DeliveryStaleBalanceError({ details: { lines: stale, decisionState: "REPORTED" } });
       hydrated.forEach((payment, index) => { const line = delivery.lines[index]; transaction.update(economicRepository.paymentRef(payment.paymentId), d.paymentUpdate(payment, line.requestedAmountMinor, 0)); transaction.create(economicRepository.applicationRef(payment.paymentId, line.lineId), { applicationId: line.lineId, deliveryId: delivery.deliveryId, lineId: line.lineId, paymentId: payment.paymentId, appliedAmountMinor: line.requestedAmountMinor, applicationState: "APPLIED", confirmedAt: at, confirmedByAccountId: accountId, schemaVersion: 1 }); });
       const updated = { ...delivery, decisionState: "CONFIRMED", applicationState: "APPLIED", confirmedAt: at, confirmedByAccountId: accountId, confirmedByKind: authorization.kind, revision: delivery.revision + 1 };
-      transaction.update(deliveryRef, { decisionState: "CONFIRMED", applicationState: "APPLIED", confirmedAt: at, confirmedByAccountId: accountId, confirmedByKind: authorization.kind, revision: updated.revision }); transaction.create(receiptRef, receiptData(receiptRef, accountId, operation, input, delivery, "CONFIRMED", at));
+      transaction.update(deliveryRef, { decisionState: "CONFIRMED", applicationState: "APPLIED", confirmedAt: at, confirmedByAccountId: accountId, confirmedByKind: authorization.kind, revision: updated.revision }); transaction.create(receiptRef, receiptData(receiptRef, accountId, operation, input, delivery, "CONFIRMED", at)); transaction.set(guard.ref, guard.data);
       if (typeof testHooks.beforeConfirmCommit === "function") await testHooks.beforeConfirmCommit({ transaction, delivery, payments: hydrated });
       return { outcome: "CONFIRMED", delivery: d.deliveryDto(updated) };
     }); } catch (error) { throw map(error); }
@@ -191,6 +207,59 @@ function createFirestorePaymentDeliveryStore({ db, now = () => Timestamp.now(), 
   async function getOwn(accountId, input) { try { return await db.runTransaction(async (transaction) => { const actor = await ownAuthorization(transaction, accountId); const delivery = hydrateDelivery(await transaction.get(deliveries.doc(input.deliveryId))); if (!delivery || delivery.personId !== actor.personId) throw new e.DeliveryNotAccessibleError(); return d.deliveryDto(delivery); }); } catch (error) { throw map(error); } }
   async function listPending(accountId, input) { try { return await db.runTransaction(async (transaction) => { const auth = await reviewerAuthorization(transaction, accountId, input.groupId); const scope = { contract: "pending-payment-deliveries", accountId, groupId: input.groupId, pageSize: input.pageSize }; const anchor = decodeCursor(input.cursor, scope); let query = deliveries.where("groupId", "==", input.groupId).where("decisionState", "==", "REPORTED").orderBy("reportedAt", "asc").orderBy("__name__", "asc"); if (anchor) query = query.startAfter(Timestamp.fromMillis(anchor.at), anchor.id); const snapshot = await transaction.get(query.limit(input.pageSize + 1)); const candidates = snapshot.docs.filter((doc) => auth.kind === "OWNER" || doc.data().personId !== auth.personId); const docs = candidates.slice(0, input.pageSize); const items = []; for (const doc of docs) items.push(d.deliveryDto(hydrateDelivery(doc), { includeLines: false, person: await personPresentation.get(transaction, doc.data().personId) })); const last = docs.at(-1); return { items, ...(snapshot.size > input.pageSize && last ? { nextCursor: encodeCursor(scope, { at: last.data().reportedAt.toMillis(), id: last.id }) } : {}) }; }); } catch (error) { throw map(error); } }
   async function getPending(accountId, input) { try { return await db.runTransaction(async (transaction) => { const delivery = hydrateDelivery(await transaction.get(deliveries.doc(input.deliveryId))); if (!delivery || delivery.groupId !== input.groupId || delivery.decisionState !== "REPORTED") throw new e.DeliveryNotAccessibleError(); await reviewerAuthorization(transaction, accountId, input.groupId, { delivery }); const person = await personPresentation.get(transaction, delivery.personId); return d.deliveryDto(delivery, { person }); }); } catch (error) { throw map(error); } }
+  async function listReportedForPayments(accountId, input) { try { return await db.runTransaction(async (transaction) => {
+    const authorization = await reviewerAuthorization(transaction, accountId, input.groupId);
+    const paymentSnapshots = await Promise.all(input.obligations.map((item) => transaction.get(economicRepository.paymentRef(item.paymentId))));
+    const visible = new Map();
+    paymentSnapshots.forEach((snapshot, index) => { const payment = d.economicPayment(snapshot); const requested = input.obligations[index]; if (!payment || payment.groupId !== input.groupId || payment.membershipId !== requested.membershipId) throw new e.DeliveryNotAccessibleError(); visible.set(payment.paymentId, payment); });
+    const membershipIds = [...new Set([...visible.values()].map((payment) => payment.membershipId))];
+    const snapshot = await transaction.get(deliveries.where("groupId", "==", input.groupId).where("decisionState", "==", "REPORTED").where("membershipId", "in", membershipIds));
+    const items = [];
+    for (const doc of snapshot.docs) { const delivery = hydrateDelivery(doc); if (authorization.kind !== "OWNER" && delivery.personId === authorization.personId) continue; const matchingPaymentIds = delivery.lines.map((line) => line.paymentId).filter((paymentId) => visible.get(paymentId)?.membershipId === delivery.membershipId); if (!matchingPaymentIds.length) continue; items.push({ ...d.deliveryDto(delivery, { includeLines: false }), matchingPaymentIds }); }
+    items.sort((left, right) => left.reportedAt.localeCompare(right.reportedAt) || left.deliveryId.localeCompare(right.deliveryId));
+    return { items };
+  }); } catch (error) { throw map(error); } }
+  async function getObligationDetail(accountId, input, audience) { try { return await db.runTransaction(async (transaction) => {
+    const authorization = await obligationDetailAuthorization(transaction, accountId, input.groupId, audience);
+    const paymentSnapshot = await transaction.get(economicRepository.paymentRef(input.paymentId)); const payment = d.economicPayment(paymentSnapshot);
+    if (!payment || payment.groupId !== input.groupId) throw new e.DeliveryNotAccessibleError();
+    const applicationScope = { contract: "payment-obligation-detail-v1", audience, accountId, groupId: input.groupId, paymentId: input.paymentId, order: "__name__:asc", pageSize: input.pageSize }; const applicationAnchor = decodeCursor(input.cursor, applicationScope);
+    if (applicationAnchor && (!d.exact(applicationAnchor, ["id"]) || typeof applicationAnchor.id !== "string" || !applicationAnchor.id)) throw new e.DeliveryConcurrentModificationError();
+    let applicationQuery = economicRepository.paymentRef(payment.paymentId).collection("deliveryApplications").orderBy("__name__", "asc");
+    if (applicationAnchor) { const anchorSnapshot = await transaction.get(economicRepository.applicationRef(payment.paymentId, applicationAnchor.id)); if (!anchorSnapshot.exists || anchorSnapshot.data()?.paymentId !== payment.paymentId) throw new e.DeliveryConcurrentModificationError(); applicationQuery = applicationQuery.startAfter(applicationAnchor.id); }
+    const [membershipSnapshot, groupSnapshot, seasonSnapshot, applicationSnapshot] = await Promise.all([
+      transaction.get(db.collection("memberships").doc(payment.membershipId)), transaction.get(db.collection("groups").doc(payment.groupId)),
+      transaction.get(db.collection("seasons").doc(payment.seasonId)), transaction.get(applicationQuery.limit(input.pageSize + 1)),
+    ]);
+    const membership = membershipContext(membershipSnapshot); if (membership.groupId !== payment.groupId || membership.seasonId !== payment.seasonId || membership.personId !== payment.personId) throw new e.DeliveryIncompatibleStateError();
+    const person = await personPresentation.get(transaction, payment.personId); const groupData = groupSnapshot.data(); const seasonData = seasonSnapshot.data();
+    if (!groupSnapshot.exists || groupSnapshot.id !== authorization.group.groupId || !seasonSnapshot.exists || seasonData?.groupId !== payment.groupId) throw new e.DeliveryIncompatibleStateError();
+    let occurrenceName; if (payment.occurrenceKey) { const occurrence = await transaction.get(db.collection("groupChargeOccurrences").doc(payment.occurrenceKey)); if (occurrence.exists && occurrence.data()?.groupId === payment.groupId && occurrence.data()?.conceptId === payment.conceptId && typeof occurrence.data()?.name === "string") occurrenceName = occurrence.data().name; }
+    const actorCache = new Map();
+    async function actorPresentation(actorAccountId, fallback) { if (!actorCache.has(actorAccountId)) actorCache.set(actorAccountId, (async () => { const actor = await account(transaction, actorAccountId, false); if (actor.personId) { const presented = await personPresentation.get(transaction, actor.personId); if (presented.status === "AVAILABLE") return { label: `${presented.firstName} ${presented.lastName}` }; } return { label: fallback }; })()); return actorCache.get(actorAccountId); }
+    const applications = [];
+    const applicationDocs = applicationSnapshot.docs.slice(0, input.pageSize);
+    for (const applicationDoc of applicationDocs) {
+      const application = applicationDoc.data(); if (application.paymentId !== payment.paymentId || !Number.isSafeInteger(application.appliedAmountMinor) || application.appliedAmountMinor <= 0 || !["APPLIED", "REVERSED"].includes(application.applicationState)) throw new e.DeliveryIncompatibleStateError();
+      if (application.source?.kind === "ADMINISTRATIVE") {
+        const rootSnapshot = await transaction.get(deliveries.doc(application.source.receiptId)); const root = rootSnapshot.data();
+        if (!rootSnapshot.exists || root?.schemaVersion !== 2 || root.origin !== "ADMINISTRATIVE" || root.receiptId !== rootSnapshot.id || root.groupId !== payment.groupId || !root.lines?.some((line) => line.paymentId === payment.paymentId && line.lineId === application.lineId && line.amountMinor === application.appliedAmountMinor)) throw new e.DeliveryIncompatibleStateError();
+        applications.push({ origin: "ADMINISTRATIVE", eventLabel: "Registrado", effectiveOn: root.receivedOn, eventAt: d.iso(root.recordedAt), amountMinor: application.appliedAmountMinor, applicationState: application.applicationState, actor: audience === "OWNER" ? await actorPresentation(root.recordedByAccountId, root.recordedByKind === "OWNER" ? "Owner del Grupo" : "Registrante autorizado") : { label: "la administración" }, ...(root.reversedAt ? { reversedAt: d.iso(root.reversedAt), reversalReason: root.reversal?.reason } : {}) });
+      } else {
+        const rootSnapshot = await transaction.get(deliveries.doc(application.deliveryId)); const root = hydrateDelivery(rootSnapshot);
+        if (!root || root.groupId !== payment.groupId || root.decisionState !== "CONFIRMED" || !root.lines.some((line) => line.paymentId === payment.paymentId && line.lineId === application.lineId && line.requestedAmountMinor === application.appliedAmountMinor)) throw new e.DeliveryIncompatibleStateError();
+        applications.push({ origin: "INFORMED", eventLabel: "Confirmado", effectiveOn: root.declaredPaidOn, eventAt: d.iso(root.confirmedAt), amountMinor: application.appliedAmountMinor, applicationState: application.applicationState, actor: audience === "OWNER" ? await actorPresentation(root.confirmedByAccountId, root.confirmedByKind === "OWNER" ? "Owner del Grupo" : "Revisor autorizado") : { label: "la administración" }, ...(root.reversedAt ? { reversedAt: d.iso(root.reversedAt), reversalReason: root.reversal?.reason } : {}) });
+      }
+    }
+    applications.sort((left, right) => right.eventAt.localeCompare(left.eventAt));
+    const pendingNotices = [];
+    if (audience === "OWNER") { const pendingSnapshot = await transaction.get(deliveries.where("membershipId", "==", payment.membershipId).where("decisionState", "==", "REPORTED"));
+      for (const doc of pendingSnapshot.docs) { const delivery = hydrateDelivery(doc); if (delivery.groupId !== payment.groupId || delivery.personId !== payment.personId || delivery.seasonId !== payment.seasonId) throw new e.DeliveryIncompatibleStateError(); if (delivery.lines.some((line) => line.paymentId === payment.paymentId)) pendingNotices.push({ deliveryId: delivery.deliveryId, declaredPaidOn: delivery.declaredPaidOn, declaredTotalMinor: delivery.declaredTotalMinor, reportedAt: d.iso(delivery.reportedAt) }); } }
+    const applicationLast = applicationDocs.at(-1);
+    return { audience, person, context: { ...(typeof groupData?.nombre === "string" && groupData.nombre ? { groupName: groupData.nombre } : {}), ...(typeof seasonData?.nombre === "string" && seasonData.nombre ? { seasonName: seasonData.nombre } : {}) }, obligation: { concept: { name: payment.conceptSnapshot.name, kind: payment.conceptSnapshot.kind, version: payment.conceptSnapshot.version, defaultAmountMinor: payment.conceptSnapshot.defaultAmountMinor }, ...(payment.periodKey ? { periodKey: payment.periodKey } : {}), ...(occurrenceName ? { occurrenceName } : {}), amountMinor: payment.amountMinor, dueDate: payment.dueDate, netConfirmedIncomeMinor: payment.netConfirmedIncomeMinor, balanceMinor: payment.balanceMinor, estado: payment.economicState }, applications, ...(audience === "OWNER" ? { pendingNotices } : {}), ...(applicationSnapshot.size > input.pageSize && applicationLast ? { nextCursor: encodeCursor(applicationScope, { id: applicationLast.id }) } : {}) };
+  }); } catch (error) { throw map(error); } }
+  const getOwnerObligationDetail = (accountId, input) => getObligationDetail(accountId, input, "OWNER");
+  const getTreasuryObligationDetail = (accountId, input) => getObligationDetail(accountId, input, "TREASURY");
   async function listHistory(accountId, input) { try { return await db.runTransaction(async (transaction) => { await reviewerAuthorization(transaction, accountId, input.groupId, { ownerOnly: true }); const scope = { contract: "owner-confirmed-payment-deliveries", accountId, ...input, cursor: undefined }; const anchor = decodeCursor(input.cursor, scope); let query = deliveries.where("groupId", "==", input.groupId).where("decisionState", "==", "CONFIRMED"); if (input.applicationState) query = query.where("applicationState", "==", input.applicationState); if (input.membershipId) query = query.where("membershipId", "==", input.membershipId); if (input.confirmedFrom) query = query.where("confirmedAt", ">=", Timestamp.fromDate(new Date(`${input.confirmedFrom}T00:00:00-03:00`))); if (input.confirmedTo) query = query.where("confirmedAt", "<", Timestamp.fromDate(new Date(`${input.confirmedTo}T23:59:59.999-03:00`))); query = query.orderBy("confirmedAt", "desc").orderBy("__name__", "desc"); if (anchor) query = query.startAfter(Timestamp.fromMillis(anchor.at), anchor.id); const snapshot = await transaction.get(query.limit(input.pageSize + 1)); const docs = snapshot.docs.slice(0, input.pageSize); const items = []; for (const doc of docs) items.push(d.deliveryDto(hydrateDelivery(doc), { includeLines: false, person: await personPresentation.get(transaction, doc.data().personId) })); const last = docs.at(-1); return { items, ...(snapshot.size > input.pageSize ? { nextCursor: encodeCursor(scope, { at: last.data().confirmedAt.toMillis(), id: last.id }) } : {}) }; }); } catch (error) { throw map(error); } }
   async function getHistory(accountId, input) { try { return await db.runTransaction(async (transaction) => { await reviewerAuthorization(transaction, accountId, input.groupId, { ownerOnly: true }); const delivery = hydrateDelivery(await transaction.get(deliveries.doc(input.deliveryId))); if (!delivery || delivery.groupId !== input.groupId || delivery.decisionState !== "CONFIRMED") throw new e.DeliveryNotAccessibleError(); await verifyApplications(transaction, delivery, delivery.applicationState); return d.deliveryDto(delivery, { person: await personPresentation.get(transaction, delivery.personId) }); }); } catch (error) { throw map(error); } }
   async function getReviewOutcome(accountId, input) { try { return await db.runTransaction(async (transaction) => { await reviewerAuthorization(transaction, accountId, input.groupId); const delivery = hydrateDelivery(await transaction.get(deliveries.doc(input.deliveryId))); if (!delivery || delivery.groupId !== input.groupId || ![delivery.confirmedByAccountId, delivery.rejection?.decidedByAccountId].includes(accountId)) throw new e.DeliveryNotAccessibleError(); return d.deliveryDto(delivery); }); } catch (error) { throw map(error); } }
@@ -214,7 +283,7 @@ function createFirestorePaymentDeliveryStore({ db, now = () => Timestamp.now(), 
   async function getReviewContext(accountId, input) { try { return await db.runTransaction(async (transaction) => { const authorization = await reviewerAuthorization(transaction, accountId, input.groupId); if (authorization.kind !== "REVIEWER") throw new e.ReviewNotAuthorizedError(); return { groupId: input.groupId, capabilityId: d.CAPABILITY_ID, canReviewPaymentNotices: true }; }); } catch (error) { throw map(error); } }
 
   return Object.freeze({ report, confirm: (accountId, input) => decide(accountId, input, "CONFIRM"), reject: (accountId, input) => decide(accountId, input, "REJECT"), reverse,
-    listOwn, getOwn, listPending, getPending, listHistory, getHistory, getReviewOutcome,
+    listOwn, getOwn, listPending, getPending, listReportedForPayments, getOwnerObligationDetail, getTreasuryObligationDetail, listHistory, getHistory, getReviewOutcome,
     grantReview, revokeReview, listReviewGrants, getReviewContext });
 }
 

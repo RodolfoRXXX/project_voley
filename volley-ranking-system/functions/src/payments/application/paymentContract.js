@@ -27,7 +27,16 @@ function validateGeneration(data) {
   const baseAmountMinor = requireAmount(data.baseAmountMinor); if (exceptions.some((item) => item.amountMinor === baseAmountMinor)) throw new PaymentValidationError();
   return Object.freeze({ groupId: requireId(data.groupId), conceptId: requireId(data.conceptId), expectedConceptVersion: requireVersion(data.expectedConceptVersion), membershipIds: Object.freeze(membershipIds), dueDate: requireDueDate(data.dueDate), baseAmountMinor, exceptions: Object.freeze(exceptions), generationIdempotencyKey: requireIdempotencyKey(data.generationIdempotencyKey), kind, ...(kind === "MONTHLY" ? { periodKey: requirePeriodKey(data.periodKey) } : { occurrenceKey: requireId(data.occurrenceKey) }) });
 }
-function validateListGroupObligations(data) { return groupPage(data); }
-function validateListMyObligations(data) { requireExact(data, [...(data?.pageSize === undefined ? [] : ["pageSize"]), ...(data?.cursor === undefined ? [] : ["cursor"])]); return Object.freeze({ pageSize: requirePageSize(data.pageSize), cursor: optionalCursor(data.cursor) }); }
+function optionalEconomicStates(value) {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length !== 2 || value[0] !== "PENDING" || value[1] !== "PARTIAL") throw new PaymentValidationError();
+  return Object.freeze(["PENDING", "PARTIAL"]);
+}
+function validateListGroupObligations(data) {
+  requireExact(data, ["groupId", ...(data?.economicStates === undefined ? [] : ["economicStates"]), ...(data?.pageSize === undefined ? [] : ["pageSize"]), ...(data?.cursor === undefined ? [] : ["cursor"])]);
+  return Object.freeze({ groupId: requireId(data.groupId), economicStates: optionalEconomicStates(data.economicStates), pageSize: requirePageSize(data.pageSize), cursor: optionalCursor(data.cursor) });
+}
+function validateListMyObligations(data) { requireExact(data, [...(data?.economicStates === undefined ? [] : ["economicStates"]), ...(data?.pageSize === undefined ? [] : ["pageSize"]), ...(data?.cursor === undefined ? [] : ["cursor"])]); return Object.freeze({ economicStates: optionalEconomicStates(data.economicStates), pageSize: requirePageSize(data.pageSize), cursor: optionalCursor(data.cursor) }); }
+function validateOwnerGroupEconomySummary(data) { requireExact(data, ["groupId"]); return Object.freeze({ groupId: requireId(data.groupId) }); }
 
-module.exports = { validateCandidates, validateChangeAmount, validateCreateConcept, validateCreateOccurrence, validateDeactivateConcept, validateGeneration, validateListConcepts, validateListGroupObligations, validateListMyObligations, validateListOccurrences, validateRenameConcept };
+module.exports = { validateCandidates, validateChangeAmount, validateCreateConcept, validateCreateOccurrence, validateDeactivateConcept, validateGeneration, validateListConcepts, validateListGroupObligations, validateListMyObligations, validateListOccurrences, validateOwnerGroupEconomySummary, validateRenameConcept };

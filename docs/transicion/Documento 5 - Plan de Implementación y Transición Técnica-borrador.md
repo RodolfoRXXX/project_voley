@@ -1989,7 +1989,7 @@ el plan, pero no obliga a ejecutarlas en una cascada rígida ni a publicarlas co
 | 0 | Estabilización y red de seguridad | `CERRADA` | Arquitectura congelada y repositorio auditado | Seguridad implementada y probada, entorno reproducible y reinicialización preparada |
 | 1 | Usuario, Persona y autorización | `CERRADA` | Cierre de Etapa 0 | Identidad separada y autorización contextual inicial |
 | 2 | Grupo, Membresía, Solicitud y Temporada | `CERRADA CON RIESGO RESIDUAL ACEPTADO` | Persona y actor identificables | Fuentes de verdad organizativas separadas |
-| 3 | Pago deportivo | `E3-05 LISTO PARA IMPLEMENTAR; EJECUCIÓN NO AUTORIZADA` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
+| 3 | Pago deportivo | `E3-06 LISTO PARA IMPLEMENTAR; EJECUCIÓN NO AUTORIZADA` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
 | 4 | Partido-Torneo y CU-075 | `ROADMAP` | Modelo de Partido, contratos y pruebas | Resultado original y estado competitivo separados |
 | 5 | Estadísticas, Rendimiento, Actividad y recuperación | `ROADMAP` | Cada fuente original correspondiente | Proyecciones reconstruibles y procesos recuperables |
 | 6 | Comercial | `ROADMAP` | Usuario estable y consultas deportivas públicas | Capacidades y límites sin otorgar permisos deportivos |
@@ -2198,7 +2198,7 @@ El siguiente incremento funcional es:
 
 ## 7.5 Etapa 3 - Pago deportivo independiente
 
-- Estado: `E3-05 LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; su ejecución, preparación
+- Estado: `E3-06 LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; su ejecución, preparación
     productiva y deploy requieren autorización separada.
 - Objetivo: establecer Pago como única fuente económica deportiva.
 - Fuente de verdad: Pago.
@@ -2262,6 +2262,22 @@ El siguiente incremento funcional es:
     formalización. Si resulta inviable, esa parte se detiene y requiere decisión arquitectónica, sin
     adoptar proyección o límite implícitos. Corrección del exigible, condonación, anulación con
     aplicaciones, devolución real, permisos nuevos y Caja permanecen fuera de E3-05.
+- Corrección del principal exigible adoptada por D5-051: E3-06 incorpora corrección individual
+    Owner-only sobre Pago `ACTIVE` en estado `PENDING | PARTIAL | SETTLED`. Conserva principal y
+    snapshot originales, identidad, generación, aplicaciones y outcomes; agrega principal base
+    vigente e historia append-only dentro de Pago. El nuevo principal es positivo y no inferior al
+    ingreso neto confirmado; saldo y estado se rederivan sin crear Recepción ni movimiento
+    monetario. Un aviso `REPORTED` relacionado bloquea mediante comprobación completa. La anulación
+    posterior de una corregida conserva historia y sólo procede con elegibilidad estricta E3-05:
+    cero aplicaciones históricas —incluidas revertidas—, ingresos cero y ausencia de aviso
+    relacionado; `voidedAmountMinor` extingue el principal base, `VOIDED` sigue terminal y la clave
+    permanece ocupada. Historia Owner/propia usa default 20, `pageSize` 1–50 y privacidad por
+    audiencia; Tesorería no recibe historia completa. Al aumentar una saldada, la UI advierte la
+    nueva deuda desde el detalle canónico y el comando revalida. Las fuentes complementarias son el
+    [addendum E3-06 a Documentos 2/3/4](../arquitectura/Documento-2-3-4-addendum-E3-06-correccion-principal-exigible.md),
+    adoptado por [DEC-E3-06](../implementacion/etapa-3/DEC-E3-06-correccion-principal-exigible.md).
+    Compatibilidad v1–v4 no requiere backfill. Condonación, Caja, devolución,
+    restablecimiento/reemplazo, permisos nuevos y retiro económico legacy permanecen pendientes.
 - Coordinación E3/E4: el gate de retiro económico permanece en E3. Los contratos deportivos E4
     pueden definirse de forma delimitada bajo D5-027, pero cada incremento futuro requiere
     autorización propia y no adelanta catálogos o tombstones D5-044.
@@ -2453,6 +2469,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-048 | E3-03 adopta DEC-E3-03 y el addendum conjunto de Documentos 1/1.5/2/3/4; incorpora Entrega informada como Agregado independiente, revisión explícita, confirmación/reversión atómicas y `GROUP_PAYMENT_NOTICE_REVIEW` como capacidad fija separada | APROBADA | Etapa 3 / E3-03 / obligaciones por Membresía | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; Pago conserva toda autoridad económica, `GROUP_TREASURY` sigue read-only, los diferimientos restantes de roles/permisos, D5-044, D5-045 y el gate económico de E3 no cambian; cada incremento posterior requiere autorización independiente |
 | D5-049 | E3-04 adopta DEC-E3-04 y el addendum conjunto de Documentos 1/1.5/2/3/4; generaliza Recepción con orígenes `INFORMED | ADMINISTRATIVE`, registro administrativo multiobligación, coordinación explícita con avisos y `GROUP_DIRECT_PAYMENT_RECORD` | APROBADA | Etapa 3 / E3-04 / obligaciones por Membresía | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; D5-043 queda resuelta sólo para esta capacidad fija; Pago conserva autoridad económica, `GROUP_TREASURY` sigue read-only, `GROUP_PAYMENT_NOTICE_REVIEW` no habilita registro directo y los demás diferimientos de roles/permisos, D5-044, D5-045, Auth/UAT y el gate económico legacy no cambian |
 | D5-050 | E3-05 adopta DEC-E3-05 y el addendum conjunto de Documentos 2/3/4; incorpora anulación Owner-only de obligación indebida sin aplicaciones ni aviso pendiente, preservando identidad, principal, snapshots y generación | APROBADA | Etapa 3 / E3-05 / CU-081 focal | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; el gate ejecutable de avisos es el primero de una futura implementación y puede detener esa parte; corrección, condonación, obligaciones con aplicaciones, devolución, permisos nuevos y Caja siguen fuera; D5-044, D5-045, Auth/UAT y gate económico legacy no cambian |
+| D5-051 | E3-06 adopta DEC-E3-06 y el addendum conjunto de Documentos 2/3/4; incorpora corrección individual Owner-only del principal exigible, preserva evidencia original e historia y armoniza anulación posterior estricta | APROBADA | Etapa 3 / E3-06 | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; condonación, Caja, devolución, restablecimiento/reemplazo y permisos nuevos siguen fuera; D5-044, D5-045, Auth/UAT y gate económico legacy no cambian |
 
 
 # 9. Decisiones abiertas no bloqueantes

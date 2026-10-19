@@ -74,6 +74,7 @@ test("E2-23 wiring preserves one atomic Group patch plus receipt and no cascade"
 test("frontend exposes preparation, stable retry, focus and archived read-only state", () => {
   const dialog = read("volley-ranking-frontend/src/components/groups/ArchiveGroupDialog.tsx");
   const detail = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/page.tsx");
+  const frame = read("volley-ranking-frontend/src/components/groups/GroupFrame.tsx");
   const seasons = read("volley-ranking-frontend/src/components/seasons/SeasonHistorySection.tsx");
   const ownMembership = read("volley-ranking-frontend/src/components/memberships/OwnMembershipSection.tsx");
   const pendingRequests = read("volley-ranking-frontend/src/components/groupJoinRequests/PendingGroupJoinRequestsSection.tsx");
@@ -83,7 +84,11 @@ test("frontend exposes preparation, stable retry, focus and archived read-only s
   assert.match(dialog, /onPrepared\(result\.group\)/);
   assert.match(dialog, /await prepare\(getGroupErrorMessage\(reason\)\)/);
   assert.match(dialog, /inFlight\.current = false; setSending\(false\)/);
-  assert.match(detail, /group\.estado === "activo"/); assert.match(detail, /Organización archivada/); assert.match(detail, /generation\.current/);
+  assert.match(detail, /group\.estado === "activo"/); assert.match(dialog, /generation\.current/);
+  assert.match(frame, /currentAccess\?\.owner && currentAccess\.group\?\.estado === "activo"/);
+  assert.match(frame, /groupState === "archivado"/);
+  assert.match(frame, /archivedStatus\.current\?\.focus/);
+  assert.match(frame, /GroupActionsMenu/);
   assert.match(detail, /readOnly=\{group\.estado === "archivado"\}/);
   for (const source of [seasons, ownMembership, pendingRequests]) assert.match(source, /onAccessLost/);
   assert.match(seasons, /!readOnly \? <Link/);

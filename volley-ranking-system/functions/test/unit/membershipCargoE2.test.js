@@ -109,13 +109,16 @@ test("E2-22A mantiene backend único, receipts deny-all y UI callable-only sin p
   const store = read("volley-ranking-system/functions/src/memberships/infrastructure/firestoreMembershipCargoStore.js");
   const rules = read("volley-ranking-system/firestore.rules"); const frontend = read("volley-ranking-frontend/src/components/memberships/ActiveGroupMembersSection.tsx");
   const detail = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/page.tsx");
+  const frame = read("volley-ranking-frontend/src/components/groups/GroupFrame.tsx");
   assert.match(store, /runTransaction/); assert.match(store, /transaction\.create\(receiptRef/); assert.match(store, /membershipRepository\.updateRoot/);
   assert.match(rules, /match \/membershipCargoUpdateReceipts\/\{receiptId\}[\s\S]*allow read, write: if false/);
   assert.doesNotMatch(`${store}\n${frontend}`, /profileId|permissionProfileId|adminIds|memberIds/);
   assert.doesNotMatch(store, /new MembershipIncompatibleStateError\("/);
   assert.doesNotMatch(frontend, /firebase\/firestore|setDoc\(|updateDoc\(/);
   assert.match(frontend, /onAccessLost\(getCargoErrorMessage\(nextReason\)\); return/);
-  assert.match(detail, /const handleAccessLost = useCallback\([\s\S]*setGroup\(null\);[\s\S]*router\.replace\("\/dashboard\/groups"\)/);
+  assert.match(frame, /const loseAccess = useCallback\([\s\S]*access: null[\s\S]*setPendingOperation\(false\)[\s\S]*setRecoveryBlocked\(false\)/);
+  assert.match(frame, /const handleAccessLost = useCallback\([\s\S]*loseAccess\(message\)[\s\S]*router\.replace\("\/dashboard\/groups"\)/);
+  assert.match(detail, /loseAccess\(message\)[\s\S]*router\.replace\("\/dashboard\/groups"\)/);
   assert.match(detail, /<ActiveGroupMembersSection[\s\S]*onAccessLost=\{handleAccessLost\}/);
   for (const marker of ["Editar cargo", "El cargo es descriptivo y no otorga permisos", "Quitar", "Cancelar", "EDIT_TOKEN_STALE", "min-h-11", "Escape", "cargoDialogKeyDown", "GROUP_NOT_ACCESSIBLE", "pendingCargo", "Reintentar la misma edición"]) assert.match(frontend, new RegExp(marker));
 });

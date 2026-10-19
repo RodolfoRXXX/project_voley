@@ -12,13 +12,16 @@ test("E2-20 usa writer acotado, callable backend y receipt deny-all", () => {
 test("E2-20 UI usa Functions, limita el formulario y cubre retry, stale, foco y pérdida de acceso", () => {
   const ui = read("volley-ranking-frontend/src/components/groups/EditGroupNameDialog.tsx");
   const detail = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/page.tsx");
+  const frame = read("volley-ranking-frontend/src/components/groups/GroupFrame.tsx");
   const actions = read("volley-ranking-frontend/src/components/groups/GroupActionsMenu.tsx");
   assert.doesNotMatch(ui, /firebase\/firestore|deporte|ownerId|schemaVersion|descripci|configur|archiv|elimin/i);
   for (const pattern of [/getOwnGroup/, /expectedEditToken/, /intent/, /sendingRef\.current/, /STALE_UPDATE/, /GROUP_NOT_ACCESSIBLE/, /Escape/, /queueMicrotask.*focus/, /aria-live/, /aria-busy/, /htmlFor="group-edit-name"/, /sm:/]) assert.match(ui, pattern);
-  assert.match(detail, /GroupActionsMenu/);
+  assert.match(frame, /GroupActionsMenu/);
   assert.match(actions, /EditGroupNameDialog/);
-  assert.match(detail, /const handleAccessLost = useCallback\([\s\S]*setGroup\(null\);[\s\S]*router\.replace\("\/dashboard\/groups"\)/);
-  assert.match(detail, /<GroupActionsMenu[\s\S]*onAccessLost=\{handleAccessLost\}/);
+  assert.match(frame, /const loseAccess = useCallback\([\s\S]*access: null[\s\S]*setPendingOperation\(false\)[\s\S]*setRecoveryBlocked\(false\)/);
+  assert.match(frame, /const handleAccessLost = useCallback\([\s\S]*loseAccess\(message\)[\s\S]*router\.replace\("\/dashboard\/groups"\)/);
+  assert.match(frame, /<GroupActionsMenu[\s\S]*onAccessLost=\{handleAccessLost\}/);
+  assert.match(detail, /loseAccess\(message\)[\s\S]*router\.replace\("\/dashboard\/groups"\)/);
   assert.match(detail, /<ActiveGroupMembersSection[\s\S]*onAccessLost=\{handleAccessLost\}/);
 });
 

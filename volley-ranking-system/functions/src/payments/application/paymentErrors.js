@@ -23,6 +23,11 @@ const PaymentConcurrentModificationError = error("PaymentConcurrentModificationE
 const PaymentIncompatibleStateError = error("PaymentIncompatibleStateError", "INCOMPATIBLE_STATE", "Payment context is incompatible");
 const PaymentDependencyUnavailableError = error("PaymentDependencyUnavailableError", "DEPENDENCY_UNAVAILABLE", "Payment dependency is unavailable");
 const PaymentTreasuryNotAuthorizedError = error("PaymentTreasuryNotAuthorizedError", "GROUP_TREASURY_NOT_AUTHORIZED", "Treasury access is not authorized");
+const PaymentNotAccessibleError = error("PaymentNotAccessibleError", "PAYMENT_NOT_ACCESSIBLE", "Payment is not accessible");
+const PaymentNotVoidableError = error("PaymentNotVoidableError", "PAYMENT_NOT_VOIDABLE", "Payment cannot be voided");
+const PaymentPendingNoticeError = error("PaymentPendingNoticeError", "PAYMENT_PENDING_NOTICE", "Payment has a pending notice");
+const PaymentVoidStaleError = error("PaymentVoidStaleError", "PAYMENT_VOID_STALE", "Payment revision is stale");
+const PaymentNotPrearchiveError = error("PaymentNotPrearchiveError", "PAYMENT_NOT_PREARCHIVE", "Payment is not demonstrably prearchive");
 
 module.exports = {
   PaymentError, PaymentUnauthenticatedError, PaymentAccountRequiredError, PaymentPersonRequiredError,
@@ -30,5 +35,6 @@ module.exports = {
   PaymentIdempotencyConflictError, PaymentConceptNotAvailableError, PaymentConceptDeactivatedError,
   PaymentConceptVersionStaleError, PaymentOccurrenceNotAvailableError,
   PaymentConcurrentModificationError, PaymentIncompatibleStateError, PaymentDependencyUnavailableError,
-  PaymentTreasuryNotAuthorizedError,
+  PaymentTreasuryNotAuthorizedError, PaymentNotAccessibleError, PaymentNotVoidableError,
+  PaymentPendingNoticeError, PaymentVoidStaleError, PaymentNotPrearchiveError,
 };

@@ -19,6 +19,35 @@
       ]
     },
     {
+      "collectionGroup": "payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "estado", "mode": "ASCENDING" },
+        { "fieldPath": "voidedAt", "mode": "DESCENDING" },
+        { "fieldPath": "__name__", "mode": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "personId", "mode": "ASCENDING" },
+        { "fieldPath": "estado", "mode": "ASCENDING" },
+        { "fieldPath": "voidedAt", "mode": "DESCENDING" },
+        { "fieldPath": "__name__", "mode": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "paymentDeliveries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "membershipId", "mode": "ASCENDING" },
+        { "fieldPath": "decisionState", "mode": "ASCENDING" },
+        { "fieldPath": "__name__", "mode": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "groupDeletionReceipts",
       "queryScope": "COLLECTION",
       "fields": [

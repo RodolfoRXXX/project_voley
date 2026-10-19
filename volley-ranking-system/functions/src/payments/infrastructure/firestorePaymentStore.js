@@ -16,7 +16,8 @@ const {
   PaymentConceptVersionStaleError, PaymentConcurrentModificationError, PaymentDependencyUnavailableError,
   PaymentError, PaymentGroupNotAccessibleError, PaymentGroupNotOperationalError, PaymentIdempotencyConflictError,
   PaymentIncompatibleStateError, PaymentOccurrenceNotAvailableError, PaymentPersonRequiredError,
-  PaymentTreasuryNotAuthorizedError,
+  PaymentTreasuryNotAuthorizedError, PaymentNotAccessibleError, PaymentNotVoidableError,
+  PaymentPendingNoticeError, PaymentVoidStaleError, PaymentNotPrearchiveError,
 } = require("../application/paymentErrors");
 
 function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHooks = Object.freeze({}) }) {
@@ -69,6 +70,14 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
   function receiptResult(receipt) { return Object.freeze({ outcome: receipt.outcome, recovered: true, resource: receipt.resource }); }
   function commandReceipt(data) {
     if (!exact(data, ["actorUserId", "groupId", "operation", "idempotencyKeyHash", "requestHash", "outcome", "resource", "createdAt", "schemaVersion"]) || data.schemaVersion !== 1 || !/^[a-f0-9]{64}$/.test(data.idempotencyKeyHash) || !/^[a-f0-9]{64}$/.test(data.requestHash) || typeof data.actorUserId !== "string" || !data.resource || !iso(data.createdAt)) throw new PaymentIncompatibleStateError();
+    return data;
+  }
+  function voidReceipt(snapshot) {
+    if (!snapshot.exists) return null; const data = snapshot.data();
+    if (!exact(data, ["actorUserId", "groupId", "operation", "idempotencyKeyHash", "requestHash", "paymentId", "outcome", "fromEconomicRevision", "toEconomicRevision", "completedAt", "schemaVersion"])
+      || data.operation !== "VOID_PAYMENT_OBLIGATION" || data.outcome !== "VOIDED" || data.schemaVersion !== 2
+      || !/^[a-f0-9]{64}$/.test(data.idempotencyKeyHash || "") || !/^[a-f0-9]{64}$/.test(data.requestHash || "")
+      || !Number.isSafeInteger(data.fromEconomicRevision) || data.toEconomicRevision !== data.fromEconomicRevision + 1 || !iso(data.completedAt)) throw new PaymentIncompatibleStateError();
     return data;
   }
   async function mutateConcept(userId, input, operation) {
@@ -172,9 +181,10 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
     if (!doc.exists) return null; const data = doc.data();
     try {
       const hasPeriod = Object.hasOwn(data || {}, "periodKey"); const hasOccurrence = Object.hasOwn(data || {}, "occurrenceKey"); const hasException = Object.hasOwn(data || {}, "exceptionReason");
-      const economic = data?.schemaVersion === 2 ? ["confirmedIncomeMinor", "reversedIncomeMinor", "netConfirmedIncomeMinor", "balanceMinor", "economicState", "economicRevision"] : [];
-      const fields = ["groupId", "membershipId", "personId", "seasonId", "conceptId", "conceptSnapshot", "amountMinor", "dueDate", "estado", "generationIntentId", "payloadHash", "createdAt", "schemaVersion", hasPeriod ? "periodKey" : "occurrenceKey", ...(hasException ? ["exceptionReason"] : []), ...economic];
-      if (hasPeriod === hasOccurrence || !exact(data, fields) || ![1, 2].includes(data.schemaVersion) || !/^[a-f0-9]{64}$/.test(data.payloadHash) || !iso(data.createdAt)) throw new Error();
+      const economic = [2, 3].includes(data?.schemaVersion) ? ["confirmedIncomeMinor", "reversedIncomeMinor", "netConfirmedIncomeMinor", "balanceMinor", "economicState", "economicRevision"] : [];
+      const voided = data?.schemaVersion === 3 ? ["lifecycle", "voidedAmountMinor", "voidReasonCode", "voidExplanation", "voidedAt", "voidedByAccountId"] : [];
+      const fields = ["groupId", "membershipId", "personId", "seasonId", "conceptId", "conceptSnapshot", "amountMinor", "dueDate", "estado", "generationIntentId", "payloadHash", "createdAt", "schemaVersion", hasPeriod ? "periodKey" : "occurrenceKey", ...(hasException ? ["exceptionReason"] : []), ...economic, ...voided];
+      if (hasPeriod === hasOccurrence || !exact(data, fields) || ![1, 2, 3].includes(data.schemaVersion) || !/^[a-f0-9]{64}$/.test(data.payloadHash) || !iso(data.createdAt)) throw new Error();
       for (const id of [data.groupId, data.membershipId, data.personId, data.seasonId, data.conceptId, data.generationIntentId]) requireId(id); requireAmount(data.amountMinor); requireDueDate(data.dueDate);
       if (!exact(data.conceptSnapshot, ["version", "name", "kind", "currency", "defaultAmountMinor"]) || data.conceptSnapshot.currency !== "ARS") throw new Error(); requireVersion(data.conceptSnapshot.version); requireKind(data.conceptSnapshot.kind); requireAmount(data.conceptSnapshot.defaultAmountMinor);
       if (normalizeConceptName(data.conceptSnapshot.name) !== data.conceptSnapshot.name) throw new Error();
@@ -186,6 +196,14 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
           netConfirmedIncomeMinor: 0, balanceMinor: data.amountMinor, economicState: "PENDING", economicRevision: 1 });
       }
       for (const field of ["confirmedIncomeMinor", "reversedIncomeMinor", "netConfirmedIncomeMinor", "balanceMinor", "economicRevision"]) if (!Number.isSafeInteger(data[field]) || data[field] < 0) throw new Error();
+      if (data.schemaVersion === 3) {
+        const { normalizeVoidExplanation, requireVoidReason } = require("../domain/payment");
+        if (data.lifecycle !== "VOIDED" || data.estado !== "VOIDED" || data.economicState !== "VOIDED" || data.voidedAmountMinor !== data.amountMinor
+          || data.confirmedIncomeMinor !== 0 || data.reversedIncomeMinor !== 0 || data.netConfirmedIncomeMinor !== 0 || data.balanceMinor !== 0
+          || requireVoidReason(data.voidReasonCode) !== data.voidReasonCode || normalizeVoidExplanation(data.voidExplanation) !== data.voidExplanation
+          || !iso(data.voidedAt) || requireId(data.voidedByAccountId) !== data.voidedByAccountId) throw new Error();
+        return Object.freeze({ paymentId: doc.id, ...data });
+      }
       if (data.economicRevision < 2 || data.netConfirmedIncomeMinor !== data.confirmedIncomeMinor - data.reversedIncomeMinor
         || data.balanceMinor !== data.amountMinor - data.netConfirmedIncomeMinor || data.balanceMinor < 0
         || !["PENDING", "PARTIAL", "SETTLED"].includes(data.economicState) || data.estado !== data.economicState) throw new Error();
@@ -234,6 +252,7 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
         const eligibility = await evaluateMembership(transaction, { membershipId, groupId: intent.groupId, kind: intent.kind, periodKey: intent.periodKey });
         if (eligibility.outcome !== "ELIGIBLE") return fail(eligibility.outcome === "SEASON_CLOSED" ? "OPEN_SEASON_REQUIRED" : eligibility.outcome === "NOT_OVERLAPPING" ? "MEMBERSHIP_VALIDITY_NOT_OVERLAPPING" : eligibility.outcome === "NOT_ACTIVE" ? "MEMBERSHIP_NOT_ELIGIBLE" : "MEMBERSHIP_VALIDITY_UNPROVABLE");
         const expected = expectedPayment(intent, row, eligibility);
+        if (existingPayment?.lifecycle === "VOIDED") return fail("OBLIGATION_VOIDED", existingPayment);
         if (existingPayment) return stable(economicShape(existingPayment)) === stable(expected) ? (() => { const timestamp = now(); transaction.update(rowRef, { status: "EXISTING", paymentId, updatedAt: timestamp }); return publicRow({ ...row, status: "EXISTING" }, existingPayment); })() : fail("OBLIGATION_PAYLOAD_CONFLICT", existingPayment);
         const timestamp = now(); const created = { ...expected, estado: "PENDING", generationIntentId: intentId, payloadHash: row.payloadHash, createdAt: timestamp, schemaVersion: 1 }; transaction.create(paymentRef, created); transaction.update(rowRef, { status: "CREATED", paymentId, updatedAt: timestamp }); if (occurrence?.estado === "UNUSED") transaction.update(occurrences.doc(occurrence.occurrenceKey), { estado: "USED", firstUsedAt: timestamp }); return publicRow({ ...row, status: "CREATED" }, { paymentId, ...created });
       });
@@ -272,11 +291,12 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
       let field; let value; let group = null;
       if (own) { const user = await account(transaction, userId, true); field = "personId"; value = user.personaId; }
       else { group = await economicGroup(transaction, userId, input.groupId); field = "groupId"; value = input.groupId; }
-      const scope = { contract: own ? "my-obligations" : "group-obligations", userId, ...(group ? { groupId: group.groupId } : { personId: value }), economicStates: input.economicStates || null, pageSize: input.pageSize }; const anchor = readCursor(input.cursor, scope);
+      const status = input.status || (input.economicStates ? "OPEN" : null);
+      const scope = { contract: own ? "my-obligations" : "group-obligations", userId, ...(group ? { groupId: group.groupId } : { personId: value }), status, economicStates: input.economicStates || null, pageSize: input.pageSize }; const anchor = readCursor(input.cursor, scope);
       let query = payments.where(field, "==", value);
-      if (input.economicStates) query = query.where("estado", "in", input.economicStates);
-      query = query.orderBy("dueDate", "desc").orderBy("__name__", "desc");
-      if (anchor) { const doc = await transaction.get(payments.doc(anchor.id)); if (!doc.exists || doc.data()?.[field] !== value || doc.data()?.dueDate !== anchor.dueDate || (input.economicStates && !input.economicStates.includes(doc.data()?.estado))) throw new PaymentConcurrentModificationError(); query = query.startAfter(anchor.dueDate, anchor.id); }
+      if (status === "VOIDED") query = query.where("estado", "==", "VOIDED").orderBy("voidedAt", "desc").orderBy("__name__", "desc");
+      else { if (status === "OPEN" || input.economicStates) query = query.where("estado", "in", ["PENDING", "PARTIAL"]); query = query.orderBy("dueDate", "desc").orderBy("__name__", "desc"); }
+      if (anchor) { const doc = await transaction.get(payments.doc(anchor.id)); const anchorValue = status === "VOIDED" ? iso(doc.data()?.voidedAt) : doc.data()?.dueDate; if (!doc.exists || doc.data()?.[field] !== value || anchorValue !== anchor.value || (status === "VOIDED" ? doc.data()?.estado !== "VOIDED" : status === "OPEN" && !["PENDING", "PARTIAL"].includes(doc.data()?.estado))) throw new PaymentConcurrentModificationError(); query = query.startAfter(status === "VOIDED" ? doc.data().voidedAt : anchor.value, anchor.id); }
       const snapshot = await transaction.get(query.limit(input.pageSize + 1)); const docs = snapshot.docs.slice(0, input.pageSize); const items = [];
       for (const doc of docs) {
         const payment = persistedPayment(doc); const person = own ? undefined : await personPresentation.get(transaction, payment.personId);
@@ -286,9 +306,60 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
           if (presentedGroup.status !== "AVAILABLE") throw new PaymentIncompatibleStateError();
           groupName = presentedGroup.name;
         }
-        items.push(paymentDto(payment, { owner: !own, person, groupName }));
+        const treasury = !own && group.ownerId !== userId;
+        items.push(paymentDto(payment, { owner: !own, treasury, person, groupName }));
       }
-      const last = docs.at(-1); return Object.freeze({ items: Object.freeze(items), ...(snapshot.size > input.pageSize ? { nextCursor: cursor(scope, { dueDate: last.data().dueDate, id: last.id }) } : {}) });
+      const last = docs.at(-1); const anchorValue = last ? (status === "VOIDED" ? iso(last.data().voidedAt) : last.data().dueDate) : null; return Object.freeze({ items: Object.freeze(items), ...(snapshot.size > input.pageSize ? { nextCursor: cursor(scope, { value: anchorValue, id: last.id }) } : {}) });
+    }); } catch (error) { throw map(error); }
+  }
+
+  function prearchive(payment, group) { return group.estado === "activo" || (group.estado === "archivado" && iso(group.archivedAt) && payment.createdAt.toMillis() <= group.archivedAt.toMillis() && typeof payment.generationIntentId === "string" && /^[a-f0-9]{64}$/.test(payment.payloadHash)); }
+  function voidResource(payment) { return Object.freeze({ paymentId: payment.paymentId, groupId: payment.groupId, membershipId: payment.membershipId, amountMinor: payment.amountMinor, balanceMinor: 0, estado: "VOIDED", lifecycle: "VOIDED", economicRevision: payment.economicRevision, voidedAmountMinor: payment.voidedAmountMinor, voidReasonCode: payment.voidReasonCode, voidExplanation: payment.voidExplanation, voidedAt: iso(payment.voidedAt) }); }
+  async function voidPayment(userId, input) {
+    const operation = "VOID_PAYMENT_OBLIGATION"; const rid = receiptId(userId, input.groupId, operation, input.idempotencyKey); const receiptRef = receipts.doc(rid); const expectedHash = requestHash(input);
+    try {
+      const result = await db.runTransaction(async (transaction) => {
+        const [receiptSnapshot, paymentSnapshot] = await Promise.all([transaction.get(receiptRef), transaction.get(payments.doc(input.paymentId))]);
+        const stored = voidReceipt(receiptSnapshot); const payment = persistedPayment(paymentSnapshot);
+        const group = await ownedGroup(transaction, userId, input.groupId, { active: false });
+        if (!payment || payment.groupId !== input.groupId) throw new PaymentNotAccessibleError();
+        if (stored) {
+          if (stored.actorUserId !== userId || stored.groupId !== input.groupId || stored.paymentId !== input.paymentId || stored.requestHash !== expectedHash) throw new PaymentIdempotencyConflictError();
+          if (payment.lifecycle !== "VOIDED" || payment.economicRevision !== stored.toEconomicRevision || payment.voidedByAccountId !== userId) throw new PaymentIncompatibleStateError();
+          return Object.freeze({ outcome: "EXISTING", recovered: true, resource: voidResource(payment) });
+        }
+        if (payment.lifecycle === "VOIDED") throw new PaymentIncompatibleStateError();
+        if (!prearchive(payment, group)) throw new PaymentNotPrearchiveError();
+        if (payment.economicRevision !== input.expectedEconomicRevision) throw new PaymentVoidStaleError();
+        if (payment.economicState !== "PENDING" || payment.confirmedIncomeMinor !== 0 || payment.reversedIncomeMinor !== 0 || payment.netConfirmedIncomeMinor !== 0 || payment.balanceMinor !== payment.amountMinor) throw new PaymentNotVoidableError();
+        const applications = await transaction.get(payments.doc(input.paymentId).collection("deliveryApplications"));
+        if (!applications.empty) throw new PaymentNotVoidableError();
+        const guardRef = db.collection("paymentReceiptCandidateGuards").doc(opaqueId("payment-receipt-candidate-guard", input.groupId, payment.membershipId)); const guardSnapshot = await transaction.get(guardRef); const guard = guardSnapshot.data();
+        if (guardSnapshot.exists && (guard?.guardId !== guardRef.id || guard.groupId !== input.groupId || guard.membershipId !== payment.membershipId || guard.schemaVersion !== 1 || !Number.isSafeInteger(guard.revision) || guard.revision < 1)) throw new PaymentIncompatibleStateError();
+        const notices = await transaction.get(db.collection("paymentDeliveries").where("membershipId", "==", payment.membershipId).where("decisionState", "==", "REPORTED").orderBy("__name__", "asc"));
+        for (const doc of notices.docs) { const notice = doc.data(); if (notice?.groupId !== input.groupId || notice.membershipId !== payment.membershipId || notice.decisionState !== "REPORTED" || !Array.isArray(notice.lines)) throw new PaymentIncompatibleStateError(); if (notice.lines.some((line) => line?.paymentId === input.paymentId)) throw new PaymentPendingNoticeError(); }
+        if (typeof testHooks.afterVoidReads === "function") await testHooks.afterVoidReads({ transaction, payment, guardRef });
+        const at = now(); const changes = { lifecycle: "VOIDED", voidedAmountMinor: payment.amountMinor, voidReasonCode: input.reasonCode, voidExplanation: input.explanation, voidedAt: at, voidedByAccountId: userId, balanceMinor: 0, economicState: "VOIDED", estado: "VOIDED", economicRevision: payment.economicRevision + 1, confirmedIncomeMinor: 0, reversedIncomeMinor: 0, netConfirmedIncomeMinor: 0, schemaVersion: 3 };
+        transaction.update(payments.doc(input.paymentId), changes);
+        transaction.set(guardRef, guardSnapshot.exists ? { ...guard, revision: guard.revision + 1, updatedAt: at } : { guardId: guardRef.id, groupId: input.groupId, membershipId: payment.membershipId, revision: 1, createdAt: at, updatedAt: at, schemaVersion: 1 });
+        transaction.create(receiptRef, { actorUserId: userId, groupId: input.groupId, operation, idempotencyKeyHash: hash(input.idempotencyKey), requestHash: expectedHash, paymentId: input.paymentId, outcome: "VOIDED", fromEconomicRevision: payment.economicRevision, toEconomicRevision: payment.economicRevision + 1, completedAt: at, schemaVersion: 2 });
+        return Object.freeze({ outcome: "VOIDED", recovered: false, resource: voidResource({ ...payment, ...changes }) });
+      });
+      if (typeof testHooks.afterVoidCommit === "function") await testHooks.afterVoidCommit(result);
+      return result;
+    } catch (error) { const mapped = map(error); if (mapped instanceof PaymentDependencyUnavailableError) return Object.freeze({ outcome: "PENDING_RECOVERY" }); throw mapped; }
+  }
+
+  async function getMyPaymentObligationDetail(userId, input) {
+    try { return await db.runTransaction(async (transaction) => {
+      const user = await account(transaction, userId, true); const payment = persistedPayment(await transaction.get(payments.doc(input.paymentId)));
+      if (!payment || payment.personId !== user.personaId) throw new PaymentNotAccessibleError();
+      const membership = await transaction.get(db.collection("memberships").doc(payment.membershipId)); const data = membership.data();
+      if (!membership.exists || data?.personId !== payment.personId || data.groupId !== payment.groupId || data.seasonId !== payment.seasonId || !["activa", "finalizada"].includes(data.estado)) throw new PaymentNotAccessibleError();
+      const presentedGroup = await groupPresentation.get({ unitOfWork: transaction, groupId: payment.groupId }); if (presentedGroup.status !== "AVAILABLE") throw new PaymentIncompatibleStateError();
+      const season = await transaction.get(db.collection("seasons").doc(payment.seasonId)); if (!season.exists || season.data()?.groupId !== payment.groupId || typeof season.data()?.nombre !== "string") throw new PaymentIncompatibleStateError();
+      const { overdue, createdAt, ...dto } = paymentDto(payment, { owner: false, groupName: presentedGroup.name });
+      return Object.freeze({ ...dto, context: { groupName: presentedGroup.name, seasonName: season.data().nombre } });
     }); } catch (error) { throw map(error); }
   }
 
@@ -328,6 +399,7 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
     listGroupObligations: (userId, input) => listPayments(userId, input, false),
     listMyObligations: (userId, input) => listPayments(userId, input, true),
     getOwnerGroupEconomySummary,
+    voidPayment, getMyPaymentObligationDetail,
     evaluateMembership,
   });
 }

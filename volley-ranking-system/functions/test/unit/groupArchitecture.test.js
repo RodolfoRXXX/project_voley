@@ -33,8 +33,15 @@ test("rutas owner-scoped usan contratos y no importan Firestore", () => {
   for (const file of ["page.tsx", "new/page.tsx", "[groupId]/page.tsx"]) {
     const source = read(`${base}/${file}`);
     assert.doesNotMatch(source, /firebase\/firestore|collection\(|addDoc\(|getDocs\(/);
-    assert.match(source, /groupsService|GroupPageShell/);
   }
+  assert.match(read(`${base}/page.tsx`), /groupsService|GroupPageShell/);
+  assert.match(read(`${base}/new/page.tsx`), /groupsService|GroupPageShell/);
+  const detail = read(`${base}/[groupId]/page.tsx`);
+  const frame = read("volley-ranking-frontend/src/components/groups/GroupFrame.tsx");
+  assert.match(detail, /useGroupFrame/);
+  assert.match(detail, /!owner \|\| !group/);
+  assert.match(frame, /getOwnGroup/);
+  assert.match(frame, /GroupPageShell/);
 });
 
 test("alta directa legada fue retirada y las superficies legadas excluyen schemas canónicos presentes y futuros", () => {
@@ -53,14 +60,22 @@ test("frontend cubre vacío, loading, doble submit, errores, Owner y estado depo
   const list = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/page.tsx");
   const form = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/new/page.tsx");
   const detail = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/page.tsx");
+  const frame = read("volley-ranking-frontend/src/components/groups/GroupFrame.tsx");
+  const navigation = read("volley-ranking-frontend/src/components/groups/GroupContextNavigation.tsx");
   assert.match(list, /Todavía no tenés un Grupo propio/);
   assert.match(list, /GroupLoading/);
   assert.match(form, /sendingRef\.current|randomUUID|aria-live|role="alert"/);
   for (const reason of ["VALIDATION_FAILED", "PROVISIONAL_LIMIT_REACHED", "CONFLICT", "DEPENDENCY_UNAVAILABLE", "NOT_AUTHORIZED"]) {
     assert.match(read("volley-ranking-frontend/src/services/groupsService.ts"), new RegExp(reason));
   }
-  assert.match(detail, /Membresías/);
-  assert.match(detail, /Temporada/);
-  assert.match(detail, /Owner/);
+  assert.match(frame, /GroupLoading/);
+  assert.match(frame, /frame\.status === "error"/);
+  assert.match(frame, /GroupActionsMenu/);
+  assert.match(detail, /!owner \|\| !group/);
+  assert.match(detail, /GroupSeasonSummaryCard/);
+  assert.match(detail, /ActiveGroupMembersSection/);
+  assert.match(navigation, /label: "Integrantes"/);
+  assert.match(navigation, /label: "Temporadas"/);
+  assert.match(navigation, /owner \?/);
   assert.match(detail, /sm:|lg:/);
 });

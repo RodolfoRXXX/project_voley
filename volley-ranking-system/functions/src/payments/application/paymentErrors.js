@@ -28,6 +28,11 @@ const PaymentNotVoidableError = error("PaymentNotVoidableError", "PAYMENT_NOT_VO
 const PaymentPendingNoticeError = error("PaymentPendingNoticeError", "PAYMENT_PENDING_NOTICE", "Payment has a pending notice");
 const PaymentVoidStaleError = error("PaymentVoidStaleError", "PAYMENT_VOID_STALE", "Payment revision is stale");
 const PaymentNotPrearchiveError = error("PaymentNotPrearchiveError", "PAYMENT_NOT_PREARCHIVE", "Payment is not demonstrably prearchive");
+const PaymentVoidedError = error("PaymentVoidedError", "PAYMENT_VOIDED", "Voided payment cannot be corrected");
+const PaymentPrincipalUnchangedError = error("PaymentPrincipalUnchangedError", "PRINCIPAL_UNCHANGED", "Payment principal is unchanged");
+const PaymentPrincipalBelowNetIncomeError = error("PaymentPrincipalBelowNetIncomeError", "PRINCIPAL_BELOW_NET_INCOME", "Payment principal is below net confirmed income");
+const PaymentPrincipalStaleError = error("PaymentPrincipalStaleError", "PAYMENT_PRINCIPAL_STALE", "Payment principal revision is stale");
+const PaymentPrincipalAmountInvalidError = error("PaymentPrincipalAmountInvalidError", "PRINCIPAL_AMOUNT_INVALID", "Payment principal amount is invalid");
 
 module.exports = {
   PaymentError, PaymentUnauthenticatedError, PaymentAccountRequiredError, PaymentPersonRequiredError,
@@ -37,4 +42,6 @@ module.exports = {
   PaymentConcurrentModificationError, PaymentIncompatibleStateError, PaymentDependencyUnavailableError,
   PaymentTreasuryNotAuthorizedError, PaymentNotAccessibleError, PaymentNotVoidableError,
   PaymentPendingNoticeError, PaymentVoidStaleError, PaymentNotPrearchiveError,
+  PaymentVoidedError, PaymentPrincipalUnchangedError, PaymentPrincipalBelowNetIncomeError, PaymentPrincipalStaleError,
+  PaymentPrincipalAmountInvalidError,
 };

@@ -48,36 +48,58 @@ function economicPayment(snapshot) {
   try {
     required.forEach((field) => { if (!Object.hasOwn(data, field)) throw new Error(); });
     [snapshot.id, data.groupId, data.membershipId, data.personId, data.seasonId].forEach(id); amount(data.amountMinor);
-    if (!iso(data.createdAt) || ![1, 2, 3].includes(data.schemaVersion)) throw new Error();
+    if (!iso(data.createdAt) || ![1, 2, 3, 4].includes(data.schemaVersion)) throw new Error();
     if (data.schemaVersion === 1) {
       if (data.estado !== "PENDING") throw new Error();
       return Object.freeze({ paymentId: snapshot.id, ...data, confirmedIncomeMinor: 0, reversedIncomeMinor: 0,
         netConfirmedIncomeMinor: 0, balanceMinor: data.amountMinor, economicState: "PENDING", economicRevision: 1 });
     }
     for (const field of ["confirmedIncomeMinor", "reversedIncomeMinor", "netConfirmedIncomeMinor", "balanceMinor", "economicRevision"]) if (!Number.isSafeInteger(data[field]) || data[field] < 0) throw new Error();
-    if (data.schemaVersion === 3) {
-      if (data.lifecycle !== "VOIDED" || data.estado !== "VOIDED" || data.economicState !== "VOIDED" || data.voidedAmountMinor !== data.amountMinor
+    const currentPrincipalMinor = data.schemaVersion === 4 ? data.currentPrincipalMinor : data.amountMinor;
+    if (data.schemaVersion === 4) {
+      amount(currentPrincipalMinor);
+      if (!Number.isSafeInteger(data.principalCorrectionCount) || data.principalCorrectionCount < 1 || !id(data.lastPrincipalCorrectionId) || !iso(data.lastCorrectedAt)) throw new Error();
+    }
+    if (data.lifecycle === "VOIDED") {
+      if (![3, 4].includes(data.schemaVersion) || data.estado !== "VOIDED" || data.economicState !== "VOIDED" || data.voidedAmountMinor !== currentPrincipalMinor
         || data.confirmedIncomeMinor !== 0 || data.reversedIncomeMinor !== 0 || data.netConfirmedIncomeMinor !== 0 || data.balanceMinor !== 0
         || !["DUPLICATE", "WRONG_MEMBERSHIP", "WRONG_CONCEPT_OR_PERIOD", "NOT_OWED", "OTHER"].includes(data.voidReasonCode)
         || text(data.voidExplanation) !== data.voidExplanation || !iso(data.voidedAt) || id(data.voidedByAccountId) !== data.voidedByAccountId) throw new Error();
-      return Object.freeze({ paymentId: snapshot.id, ...data });
+      return Object.freeze({ paymentId: snapshot.id, ...data, currentPrincipalMinor });
     }
     if (data.economicRevision < 2 || data.netConfirmedIncomeMinor !== data.confirmedIncomeMinor - data.reversedIncomeMinor
-      || data.balanceMinor !== data.amountMinor - data.netConfirmedIncomeMinor || data.balanceMinor < 0
+      || data.balanceMinor !== currentPrincipalMinor - data.netConfirmedIncomeMinor || data.balanceMinor < 0
       || !["PENDING", "PARTIAL", "SETTLED"].includes(data.economicState) || data.estado !== data.economicState) throw new Error();
-    return Object.freeze({ paymentId: snapshot.id, ...data });
+    return Object.freeze({ paymentId: snapshot.id, ...data, currentPrincipalMinor });
   } catch (cause) { throw new DeliveryIncompatibleStateError({ cause }); }
 }
 function paymentUpdate(payment, appliedDelta, reversedDelta) {
   const confirmedIncomeMinor = payment.confirmedIncomeMinor + appliedDelta;
   const reversedIncomeMinor = payment.reversedIncomeMinor + reversedDelta;
   const netConfirmedIncomeMinor = confirmedIncomeMinor - reversedIncomeMinor;
-  const balanceMinor = payment.amountMinor - netConfirmedIncomeMinor;
+  const balanceMinor = (payment.currentPrincipalMinor ?? payment.amountMinor) - netConfirmedIncomeMinor;
   if (netConfirmedIncomeMinor < 0 || balanceMinor < 0) throw new DeliveryIncompatibleStateError();
   const economicState = netConfirmedIncomeMinor === 0 ? "PENDING" : balanceMinor === 0 ? "SETTLED" : "PARTIAL";
   return { confirmedIncomeMinor, reversedIncomeMinor, netConfirmedIncomeMinor, balanceMinor, economicState,
-    estado: economicState, economicRevision: payment.economicRevision + 1, schemaVersion: 2 };
+    estado: economicState, economicRevision: payment.economicRevision + 1, schemaVersion: payment.schemaVersion === 4 ? 4 : 2 };
 }
+function principalCorrection(snapshot) {
+  if (!snapshot.exists) return null; const data = snapshot.data();
+  try {
+    const fields = ["correctionId", "paymentId", "groupId", "fromPrincipalMinor", "toPrincipalMinor", "deltaMinor", "reasonCode", "explanation", "correctedByAccountId", "fromEconomicRevision", "toEconomicRevision", "correctedAt", "schemaVersion"];
+    if (!exact(data, fields) || data.correctionId !== snapshot.id || data.schemaVersion !== 1) throw new Error();
+    [data.correctionId, data.paymentId, data.groupId, data.correctedByAccountId].forEach(id); amount(data.fromPrincipalMinor); amount(data.toPrincipalMinor);
+    if (!["AMOUNT_ENTRY_ERROR", "WRONG_APPROVED_BASE_AMOUNT", "MEMBERSHIP_EXCEPTION_AMOUNT_ERROR", "ARITHMETIC_ERROR"].includes(data.reasonCode)
+      || data.deltaMinor !== data.toPrincipalMinor - data.fromPrincipalMinor || data.deltaMinor === 0 || !Number.isSafeInteger(data.deltaMinor)
+      || text(data.explanation) !== data.explanation || !Number.isSafeInteger(data.fromEconomicRevision) || data.fromEconomicRevision < 1
+      || data.toEconomicRevision !== data.fromEconomicRevision + 1 || !iso(data.correctedAt)) throw new Error();
+    return Object.freeze(data);
+  } catch (cause) { throw new DeliveryIncompatibleStateError({ cause }); }
+}
+function principalCorrectionDto(item, owner) { return Object.freeze({ correctionId: item.correctionId, fromPrincipalMinor: item.fromPrincipalMinor,
+  toPrincipalMinor: item.toPrincipalMinor, deltaMinor: item.deltaMinor, reasonCode: item.reasonCode,
+  fromEconomicRevision: item.fromEconomicRevision, toEconomicRevision: item.toEconomicRevision, correctedAt: iso(item.correctedAt),
+  ...(owner ? { explanation: item.explanation, actor: { label: "Owner del Grupo" } } : {}) }); }
 function deliveryDto(data, { includeLines = true, person } = {}) {
   return Object.freeze({ deliveryId: data.deliveryId, receiptId: data.receiptId || data.deliveryId, origin: "INFORMED", groupId: data.groupId, seasonId: data.seasonId,
     membershipId: data.membershipId, declaredPaidOn: data.declaredPaidOn, declaredTotalMinor: data.declaredTotalMinor,
@@ -98,4 +120,4 @@ function transactionBudget(operation, lineCount) {
 
 module.exports = { MAX_LINES, CAPABILITY_ID, amount, applicationId, canonicalLines, civilDate, cursor, deliveryDto,
   deliveryId, economicPayment, exact, hash, id, iso, key, opaqueId, pageSize, paymentUpdate, receiptId,
-  requestHash, reviewSlotId, stable, text, transactionBudget, revision };
+  principalCorrection, principalCorrectionDto, requestHash, reviewSlotId, stable, text, transactionBudget, revision };

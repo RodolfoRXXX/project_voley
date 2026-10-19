@@ -114,7 +114,7 @@ test("E3-01 persiste conceptos, obligaciones, recovery idempotente, privacidad y
     });
 
     await t.test("Rules niegan acceso directo a todas las colecciones E3-01", async () => {
-      const paths = ["groupChargeConcepts/x", "groupChargeOccurrences/x", "payments/x", `paymentGenerationIntents/${firstIntent}`, `paymentGenerationIntents/${firstIntent}/rows/e3-active`, "paymentCommandReceipts/x"];
+      const paths = ["groupChargeConcepts/x", "groupChargeOccurrences/x", "payments/x", "payments/x/principalCorrections/x", `paymentGenerationIntents/${firstIntent}`, `paymentGenerationIntents/${firstIntent}/rows/e3-active`, "paymentCommandReceipts/x"];
       for (const path of paths) { const read = await firestoreRequest({ host: process.env.FIRESTORE_EMULATOR_HOST, projectId, path, idToken: owner.idToken }); const write = await firestoreRequest({ host: process.env.FIRESTORE_EMULATOR_HOST, projectId, path, idToken: owner.idToken, method: "PATCH", body: { fields: { manipulated: { booleanValue: true } } } }); assert.equal(read.status, 403, `${path}: ${read.body}`); assert.equal(write.status, 403, `${path}: ${write.body}`); }
     });
   } finally {

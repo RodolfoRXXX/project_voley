@@ -3,8 +3,9 @@
 const {
   normalizeConceptName, normalizeExceptionReason, normalizeOccurrenceName, requireAmount, requireDueDate,
   normalizeVoidExplanation, requireExact, requireId, requireIdempotencyKey, requireKind, requirePageSize, requirePeriodKey, requireVersion, requireVoidReason,
+  normalizePrincipalCorrectionExplanation, requirePrincipalCorrectionReason,
 } = require("../domain/payment");
-const { PaymentValidationError } = require("./paymentErrors");
+const { PaymentPrincipalAmountInvalidError, PaymentValidationError } = require("./paymentErrors");
 
 function optionalCursor(value) { if (value === undefined) return undefined; if (typeof value !== "string" || value.length < 8 || value.length > 4096) throw new PaymentValidationError(); return value; }
 function groupPage(data, max = 50) { requireExact(data, ["groupId", ...(data?.pageSize === undefined ? [] : ["pageSize"]), ...(data?.cursor === undefined ? [] : ["cursor"])]); return Object.freeze({ groupId: requireId(data.groupId), pageSize: requirePageSize(data.pageSize, max), cursor: optionalCursor(data.cursor) }); }
@@ -42,5 +43,7 @@ function validateListMyObligations(data) { requireExact(data, [...(data?.economi
 function validateOwnerGroupEconomySummary(data) { requireExact(data, ["groupId"]); return Object.freeze({ groupId: requireId(data.groupId) }); }
 function validateVoidPayment(data) { requireExact(data, ["groupId", "paymentId", "expectedEconomicRevision", "reasonCode", "explanation", "idempotencyKey"]); return Object.freeze({ groupId: requireId(data.groupId), paymentId: requireId(data.paymentId), expectedEconomicRevision: requireVersion(data.expectedEconomicRevision), reasonCode: requireVoidReason(data.reasonCode), explanation: normalizeVoidExplanation(data.explanation), idempotencyKey: requireIdempotencyKey(data.idempotencyKey) }); }
 function validateMyPaymentDetail(data) { requireExact(data, ["paymentId"]); return Object.freeze({ paymentId: requireId(data.paymentId) }); }
+function validateCorrectPaymentPrincipal(data) { requireExact(data, ["groupId", "paymentId", "newPrincipalMinor", "expectedEconomicRevision", "reasonCode", "explanation", "idempotencyKey"]); let newPrincipalMinor; try { newPrincipalMinor = requireAmount(data.newPrincipalMinor); } catch (_) { throw new PaymentPrincipalAmountInvalidError(); } return Object.freeze({ groupId: requireId(data.groupId), paymentId: requireId(data.paymentId), newPrincipalMinor, expectedEconomicRevision: requireVersion(data.expectedEconomicRevision), reasonCode: requirePrincipalCorrectionReason(data.reasonCode), explanation: normalizePrincipalCorrectionExplanation(data.explanation), idempotencyKey: requireIdempotencyKey(data.idempotencyKey) }); }
+function validateListPrincipalCorrections(data) { requireExact(data, ["paymentId", ...(data?.pageSize === undefined ? [] : ["pageSize"]), ...(data?.cursor === undefined ? [] : ["cursor"])]); return Object.freeze({ paymentId: requireId(data.paymentId), pageSize: requirePageSize(data.pageSize), cursor: optionalCursor(data.cursor) }); }
 
-module.exports = { validateCandidates, validateChangeAmount, validateCreateConcept, validateCreateOccurrence, validateDeactivateConcept, validateGeneration, validateListConcepts, validateListGroupObligations, validateListMyObligations, validateListOccurrences, validateMyPaymentDetail, validateOwnerGroupEconomySummary, validateRenameConcept, validateVoidPayment };
+module.exports = { validateCandidates, validateChangeAmount, validateCorrectPaymentPrincipal, validateCreateConcept, validateCreateOccurrence, validateDeactivateConcept, validateGeneration, validateListConcepts, validateListGroupObligations, validateListMyObligations, validateListOccurrences, validateListPrincipalCorrections, validateMyPaymentDetail, validateOwnerGroupEconomySummary, validateRenameConcept, validateVoidPayment };

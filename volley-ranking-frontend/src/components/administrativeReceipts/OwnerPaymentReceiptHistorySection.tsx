@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PaymentObligationDetailDialog } from "@/components/payments/PaymentObligationDetailDialog";
 import {
   administrativeReceiptErrorMessage,
   administrativeReceiptErrorReason,
@@ -43,9 +44,11 @@ export function OwnerPaymentReceiptHistorySection({
   const [reason, setReason] = useState("");
   const [recoveryPending, setRecoveryPending] = useState(false);
   const [detail, setDetail] = useState<PaymentReceipt | null>(null);
+  const [detailPaymentId, setDetailPaymentId] = useState<string | null>(null);
   const busy = useRef(false);
   const toggle = useRef<HTMLButtonElement>(null);
   const cancel = useRef<HTMLButtonElement>(null);
+  const obligationTrigger = useRef<HTMLButtonElement | null>(null);
 
   const load = useCallback(async (append = false) => {
     if (busy.current) return;
@@ -155,18 +158,20 @@ export function OwnerPaymentReceiptHistorySection({
       ) : null}
 
       {detail ? (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-black/50 p-4" role="presentation" onKeyDown={(event) => { if (event.key === "Escape") setDetail(null); }}>
+        <div className="fixed inset-0 z-40 grid place-items-center bg-black/50 p-4" role="presentation" onKeyDown={(event) => { if (event.key === "Escape" && !detailPaymentId) setDetail(null); }}>
           <div role="dialog" aria-modal="true" aria-labelledby="receipt-detail-title" className="max-h-[90vh] w-full max-w-xl overflow-auto rounded-2xl bg-[var(--surface)] p-6 shadow-xl">
             <h3 id="receipt-detail-title" className="text-lg font-semibold">Detalle de la recepción</h3>
             <p className="mt-2">{personName(detail)} · {formatArs(detail.totalMinor)} · {detail.receivedOn}</p>
             <p className="mt-1 text-sm text-[var(--text-muted)]">Origen: {detail.origin === "ADMINISTRATIVE" ? "Registro administrativo" : "Pago informado"} · Estado: {detail.applicationState === "REVERSED" ? "Revertido" : detail.decisionState === "REPORTED" ? "Pendiente" : detail.decisionState === "REJECTED" ? "Rechazado" : detail.decisionState === "RESOLVED_BY_ADMINISTRATIVE_RECEIPT" ? "Resuelto por registro administrativo, sin ingreso propio" : "Aplicado"}</p>
-            <ul className="mt-4 divide-y rounded-lg border">{detail.lines.map((line) => <li key={line.lineId ?? line.paymentId} className="flex justify-between gap-3 p-3 text-sm"><span>{line.conceptName} · vence {line.dueDate} · {line.allocationMode === "FULL" ? "Total" : "Parcial"}</span><strong>{formatArs(line.amountMinor)}</strong></li>)}</ul>
+            <ul className="mt-4 divide-y rounded-lg border">{detail.lines.map((line) => <li key={line.lineId ?? line.paymentId} className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm"><span>{line.conceptName} · vence {line.dueDate} · {line.allocationMode === "FULL" ? "Total" : "Parcial"}</span><div className="flex items-center gap-3"><strong>{formatArs(line.amountMinor)}</strong><button type="button" className="min-h-11 rounded-lg border px-3 font-semibold" onClick={(event) => { obligationTrigger.current = event.currentTarget; setDetailPaymentId(line.paymentId); }}>Ver obligación</button></div></li>)}</ul>
             {detail.reversal ? <p className="mt-3 text-sm">Motivo de reversión: {detail.reversal.reason}</p> : null}
             <div className="mt-5 flex flex-wrap justify-end gap-2"><button type="button" className="min-h-11 rounded-lg border px-4 font-semibold" onClick={() => setDetail(null)}>Cerrar</button>{detail.applicationState === "APPLIED" ? <button type="button" className="min-h-11 rounded-lg border border-red-400 px-4 font-semibold text-red-800" onClick={() => { setTarget({ receipt: detail, key: detail.origin === "ADMINISTRATIVE" ? newAdministrativeReceiptKey() : newDeliveryKey() }); setRecoveryPending(false); setDetail(null); }}>Revertir registro</button> : null}</div>
             {detail.applicationState === "APPLIED" ? <p className="mt-3 text-sm text-amber-800">La reversión corrige el registro; no devuelve dinero.</p> : null}
           </div>
         </div>
       ) : null}
+
+      {detailPaymentId ? <PaymentObligationDetailDialog groupId={groupId} paymentId={detailPaymentId} onClose={() => { setDetailPaymentId(null); queueMicrotask(() => obligationTrigger.current?.focus()); }} onVoided={() => { onEconomyChanged?.(); void load(false); }} /> : null}
 
       {target ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" role="presentation" onKeyDown={(event) => { if (event.key === "Escape" && !busy.current && !recoveryPending) setTarget(null); }}>

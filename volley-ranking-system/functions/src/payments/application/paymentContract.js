@@ -2,7 +2,7 @@
 
 const {
   normalizeConceptName, normalizeExceptionReason, normalizeOccurrenceName, requireAmount, requireDueDate,
-  requireExact, requireId, requireIdempotencyKey, requireKind, requirePageSize, requirePeriodKey, requireVersion,
+  normalizeVoidExplanation, requireExact, requireId, requireIdempotencyKey, requireKind, requirePageSize, requirePeriodKey, requireVersion, requireVoidReason,
 } = require("../domain/payment");
 const { PaymentValidationError } = require("./paymentErrors");
 
@@ -32,11 +32,15 @@ function optionalEconomicStates(value) {
   if (!Array.isArray(value) || value.length !== 2 || value[0] !== "PENDING" || value[1] !== "PARTIAL") throw new PaymentValidationError();
   return Object.freeze(["PENDING", "PARTIAL"]);
 }
+function optionalStatus(value) { if (value === undefined) return undefined; if (!["OPEN", "VOIDED"].includes(value)) throw new PaymentValidationError(); return value; }
 function validateListGroupObligations(data) {
-  requireExact(data, ["groupId", ...(data?.economicStates === undefined ? [] : ["economicStates"]), ...(data?.pageSize === undefined ? [] : ["pageSize"]), ...(data?.cursor === undefined ? [] : ["cursor"])]);
-  return Object.freeze({ groupId: requireId(data.groupId), economicStates: optionalEconomicStates(data.economicStates), pageSize: requirePageSize(data.pageSize), cursor: optionalCursor(data.cursor) });
+  requireExact(data, ["groupId", ...(data?.economicStates === undefined ? [] : ["economicStates"]), ...(data?.status === undefined ? [] : ["status"]), ...(data?.pageSize === undefined ? [] : ["pageSize"]), ...(data?.cursor === undefined ? [] : ["cursor"])]);
+  if (data?.economicStates !== undefined && data?.status !== undefined) throw new PaymentValidationError();
+  return Object.freeze({ groupId: requireId(data.groupId), economicStates: optionalEconomicStates(data.economicStates), status: optionalStatus(data.status), pageSize: requirePageSize(data.pageSize), cursor: optionalCursor(data.cursor) });
 }
-function validateListMyObligations(data) { requireExact(data, [...(data?.economicStates === undefined ? [] : ["economicStates"]), ...(data?.pageSize === undefined ? [] : ["pageSize"]), ...(data?.cursor === undefined ? [] : ["cursor"])]); return Object.freeze({ economicStates: optionalEconomicStates(data.economicStates), pageSize: requirePageSize(data.pageSize), cursor: optionalCursor(data.cursor) }); }
+function validateListMyObligations(data) { requireExact(data, [...(data?.economicStates === undefined ? [] : ["economicStates"]), ...(data?.status === undefined ? [] : ["status"]), ...(data?.pageSize === undefined ? [] : ["pageSize"]), ...(data?.cursor === undefined ? [] : ["cursor"])]); if (data?.economicStates !== undefined && data?.status !== undefined) throw new PaymentValidationError(); return Object.freeze({ economicStates: optionalEconomicStates(data.economicStates), status: optionalStatus(data.status), pageSize: requirePageSize(data.pageSize), cursor: optionalCursor(data.cursor) }); }
 function validateOwnerGroupEconomySummary(data) { requireExact(data, ["groupId"]); return Object.freeze({ groupId: requireId(data.groupId) }); }
+function validateVoidPayment(data) { requireExact(data, ["groupId", "paymentId", "expectedEconomicRevision", "reasonCode", "explanation", "idempotencyKey"]); return Object.freeze({ groupId: requireId(data.groupId), paymentId: requireId(data.paymentId), expectedEconomicRevision: requireVersion(data.expectedEconomicRevision), reasonCode: requireVoidReason(data.reasonCode), explanation: normalizeVoidExplanation(data.explanation), idempotencyKey: requireIdempotencyKey(data.idempotencyKey) }); }
+function validateMyPaymentDetail(data) { requireExact(data, ["paymentId"]); return Object.freeze({ paymentId: requireId(data.paymentId) }); }
 
-module.exports = { validateCandidates, validateChangeAmount, validateCreateConcept, validateCreateOccurrence, validateDeactivateConcept, validateGeneration, validateListConcepts, validateListGroupObligations, validateListMyObligations, validateListOccurrences, validateOwnerGroupEconomySummary, validateRenameConcept };
+module.exports = { validateCandidates, validateChangeAmount, validateCreateConcept, validateCreateOccurrence, validateDeactivateConcept, validateGeneration, validateListConcepts, validateListGroupObligations, validateListMyObligations, validateListOccurrences, validateMyPaymentDetail, validateOwnerGroupEconomySummary, validateRenameConcept, validateVoidPayment };

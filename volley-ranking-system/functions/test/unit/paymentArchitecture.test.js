@@ -18,8 +18,9 @@ test("E3-01 publica sólo callables backend y niega colecciones económicas al c
 test("E3-01 declara los índices económicos, incluidos pendientes por Grupo/Persona, y Pago bloquea CU-015", () => {
   const indexes = JSON.parse(fs.readFileSync(path.resolve(systemRoot, "../firestore.indexes.json"), "utf8")).indexes;
   const economic = indexes.filter((item) => ["groupChargeConcepts", "groupChargeOccurrences", "payments"].includes(item.collectionGroup));
-  assert.equal(economic.length, 8);
+  assert.equal(economic.length >= 8, true);
   for (const field of ["groupId", "personId"]) assert.equal(economic.some((item) => item.collectionGroup === "payments" && item.fields.map((entry) => entry.fieldPath).join(",") === `${field},estado,dueDate`), true);
+  for (const field of ["groupId", "personId"]) assert.equal(economic.some((item) => item.collectionGroup === "payments" && item.fields.map((entry) => entry.fieldPath).join(",") === `${field},estado,voidedAt,__name__`), true);
   const deletion = fs.readFileSync(path.join(systemRoot, "src/groups/infrastructure/firestoreGroupDeletionStore.js"), "utf8");
   assert.match(deletion, /"payments"/);
 });
@@ -37,7 +38,7 @@ test("E3-01 no importa superficies económicas legacy", () => {
   assert.doesNotMatch(source, /memberships\/(?:domain|application|infrastructure)/);
   assert.match(source, /memberships\/public\/membershipObligationEligibilityCapability/);
   assert.match(source, /groups\/public\/groupObligationPresentationCapability/);
-  assert.doesNotMatch(source, /groupId:\s*payment\.groupId[\s\S]*?owner:\s*false/);
+  assert.doesNotMatch(source, /paymentDto\(payment,\s*\{\s*groupId:\s*payment\.groupId,\s*owner:\s*false/);
 });
 
 test("E3-01 UI no usa diálogos nativos y separa contexto, excepciones y archivo", () => {

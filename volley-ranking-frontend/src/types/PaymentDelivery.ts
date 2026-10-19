@@ -11,7 +11,7 @@ export type ReportedPaymentDeliveryMatch = PaymentDelivery & { matchingPaymentId
 type PaymentObligationDetailBase = {
   person: PersonPresentation;
   context: { groupName?: string; seasonName?: string };
-  obligation: { concept: { name: string; kind: "MONTHLY" | "ONE_TIME"; version: number; defaultAmountMinor: number }; periodKey?: string; occurrenceName?: string; amountMinor: number; dueDate: string; netConfirmedIncomeMinor: number; balanceMinor: number; estado: "PENDING" | "PARTIAL" | "SETTLED" };
+  obligation: { concept: { name: string; kind: "MONTHLY" | "ONE_TIME"; version: number; defaultAmountMinor: number }; periodKey?: string; occurrenceName?: string; amountMinor: number; dueDate: string; netConfirmedIncomeMinor: number; balanceMinor: number; estado: "PENDING" | "PARTIAL" | "SETTLED" | "VOIDED"; economicRevision: number; lifecycle?: "VOIDED"; voidedAmountMinor?: number; voidedAt?: string; voidReasonCode?: import("./Payment").VoidReasonCode; voidExplanation?: string; voidedBy?: { label: string } };
   nextCursor?: string;
 };
 type PaymentObligationApplication = { origin: "INFORMED" | "ADMINISTRATIVE"; eventLabel: "Confirmado" | "Registrado"; effectiveOn: string; eventAt: string; amountMinor: number; applicationState: DeliveryApplicationState; reversedAt?: string; reversalReason?: string };

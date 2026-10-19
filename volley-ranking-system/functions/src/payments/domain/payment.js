@@ -27,6 +27,8 @@ function normalizeText(value, { maxPoints, maxBytes }) {
 function normalizeConceptName(value) { return normalizeText(value, { maxPoints: 80, maxBytes: 160 }); }
 function normalizeOccurrenceName(value) { return normalizeText(value, { maxPoints: 100, maxBytes: 200 }); }
 function normalizeExceptionReason(value) { return normalizeText(value, { maxPoints: 240, maxBytes: 480 }); }
+function normalizeVoidExplanation(value) { return normalizeText(value, { maxPoints: 240, maxBytes: 480 }); }
+function requireVoidReason(value) { if (!["DUPLICATE", "WRONG_MEMBERSHIP", "WRONG_CONCEPT_OR_PERIOD", "NOT_OWED", "OTHER"].includes(value)) throw new PaymentValidationError(); return value; }
 function requireAmount(value) { if (!Number.isSafeInteger(value) || value < 1 || value > MAX_AMOUNT_MINOR) throw new PaymentValidationError(); return value; }
 function requireVersion(value) { if (!Number.isSafeInteger(value) || value < 1) throw new PaymentValidationError(); return value; }
 function requireIdempotencyKey(value) { if (typeof value !== "string" || !IDEMPOTENCY_PATTERN.test(value)) throw new PaymentValidationError(); return value; }
@@ -88,7 +90,7 @@ function hydrateOccurrence(id, data) {
 }
 function conceptDto(concept) { return Object.freeze({ conceptId: concept.conceptId, version: concept.version, name: concept.name, kind: concept.kind, defaultAmountMinor: concept.defaultAmountMinor, estado: concept.estado, currency: "ARS" }); }
 function occurrenceDto(item) { return Object.freeze({ occurrenceKey: item.occurrenceKey, name: item.name, estado: item.estado, createdAt: iso(item.createdAt) }); }
-function paymentDto(payment, { owner = false, now = new Date(), person, groupName } = {}) {
+function paymentDto(payment, { owner = false, treasury = false, now = new Date(), person, groupName } = {}) {
   const dto = {
     paymentId: payment.paymentId, groupId: payment.groupId, membershipId: payment.membershipId,
     seasonId: payment.seasonId,
@@ -96,18 +98,23 @@ function paymentDto(payment, { owner = false, now = new Date(), person, groupNam
     estado: payment.economicState || payment.estado,
     balanceMinor: payment.balanceMinor ?? payment.amountMinor,
     economicRevision: payment.economicRevision ?? 1,
-    overdue: (payment.economicState || payment.estado) !== "SETTLED" && payment.dueDate < new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(now),
+    overdue: !["SETTLED", "VOIDED"].includes(payment.economicState || payment.estado) && payment.dueDate < new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(now),
     ...(payment.periodKey ? { periodKey: payment.periodKey } : { occurrenceKey: payment.occurrenceKey }),
     ...(payment.exceptionReason ? { exceptionReason: payment.exceptionReason } : {}), createdAt: iso(payment.createdAt),
   };
   if (owner && person) dto.person = person;
   if (!owner) { delete dto.groupId; dto.groupName = groupName; }
+  if (payment.lifecycle === "VOIDED") {
+    dto.lifecycle = "VOIDED"; dto.voidedAt = iso(payment.voidedAt); dto.voidedAmountMinor = payment.voidedAmountMinor;
+    if (!treasury) dto.voidReasonCode = payment.voidReasonCode;
+    if (owner && !treasury) { dto.voidExplanation = payment.voidExplanation; dto.voidedBy = { label: "Owner del Grupo" }; }
+  }
   return Object.freeze(dto);
 }
 
 module.exports = {
   MAX_AMOUNT_MINOR, conceptDto, currentPeriodKey, exact, hash, hydrateConcept, hydrateOccurrence, iso, occurrenceDto,
-  monthBounds, normalizeConceptName, normalizeExceptionReason, normalizeOccurrenceName, opaqueId,
+  monthBounds, normalizeConceptName, normalizeExceptionReason, normalizeOccurrenceName, normalizeVoidExplanation, opaqueId,
   paymentDto, requireAmount, requireDueDate, requireExact, requireId, requireIdempotencyKey, requireKind,
-  requirePageSize, requirePeriodKey, requireVersion, stable,
+  requirePageSize, requirePeriodKey, requireVersion, requireVoidReason, stable,
 };

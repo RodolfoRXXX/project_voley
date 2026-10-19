@@ -48,13 +48,20 @@ function economicPayment(snapshot) {
   try {
     required.forEach((field) => { if (!Object.hasOwn(data, field)) throw new Error(); });
     [snapshot.id, data.groupId, data.membershipId, data.personId, data.seasonId].forEach(id); amount(data.amountMinor);
-    if (!iso(data.createdAt) || ![1, 2].includes(data.schemaVersion)) throw new Error();
+    if (!iso(data.createdAt) || ![1, 2, 3].includes(data.schemaVersion)) throw new Error();
     if (data.schemaVersion === 1) {
       if (data.estado !== "PENDING") throw new Error();
       return Object.freeze({ paymentId: snapshot.id, ...data, confirmedIncomeMinor: 0, reversedIncomeMinor: 0,
         netConfirmedIncomeMinor: 0, balanceMinor: data.amountMinor, economicState: "PENDING", economicRevision: 1 });
     }
     for (const field of ["confirmedIncomeMinor", "reversedIncomeMinor", "netConfirmedIncomeMinor", "balanceMinor", "economicRevision"]) if (!Number.isSafeInteger(data[field]) || data[field] < 0) throw new Error();
+    if (data.schemaVersion === 3) {
+      if (data.lifecycle !== "VOIDED" || data.estado !== "VOIDED" || data.economicState !== "VOIDED" || data.voidedAmountMinor !== data.amountMinor
+        || data.confirmedIncomeMinor !== 0 || data.reversedIncomeMinor !== 0 || data.netConfirmedIncomeMinor !== 0 || data.balanceMinor !== 0
+        || !["DUPLICATE", "WRONG_MEMBERSHIP", "WRONG_CONCEPT_OR_PERIOD", "NOT_OWED", "OTHER"].includes(data.voidReasonCode)
+        || text(data.voidExplanation) !== data.voidExplanation || !iso(data.voidedAt) || id(data.voidedByAccountId) !== data.voidedByAccountId) throw new Error();
+      return Object.freeze({ paymentId: snapshot.id, ...data });
+    }
     if (data.economicRevision < 2 || data.netConfirmedIncomeMinor !== data.confirmedIncomeMinor - data.reversedIncomeMinor
       || data.balanceMinor !== data.amountMinor - data.netConfirmedIncomeMinor || data.balanceMinor < 0
       || !["PENDING", "PARTIAL", "SETTLED"].includes(data.economicState) || data.estado !== data.economicState) throw new Error();

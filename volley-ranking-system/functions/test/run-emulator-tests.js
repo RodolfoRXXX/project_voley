@@ -328,6 +328,14 @@ const myObligationsEmptyE3TestPath = path.join(
   "emulator",
   "myObligationsEmptyE3.test.js"
 );
+const paymentVoidNoticeGateE3TestPath = path.join(
+  systemRoot,
+  "functions",
+  "test",
+  "emulator",
+  "paymentVoidNoticeGateE3.test.js"
+);
+const paymentVoidE3TestPath = path.join(systemRoot, "functions", "test", "emulator", "paymentVoidE3.test.js");
 const legacyJoinRetirementTestPath = path.join(
   systemRoot,
   "functions",
@@ -335,7 +343,11 @@ const legacyJoinRetirementTestPath = path.join(
   "emulator",
   "legacyJoinRetirementE2.test.js"
 );
-const command = process.env.E3_04_MY_OBLIGATIONS_FOCAL === "1"
+const command = process.env.E3_05_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${paymentVoidNoticeGateE3TestPath}" "${paymentVoidE3TestPath}"`
+  : process.env.E3_05_NOTICE_GATE_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${paymentVoidNoticeGateE3TestPath}"`
+  : process.env.E3_04_MY_OBLIGATIONS_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${myObligationsEmptyE3TestPath}"`
   : process.env.E3_04_SUMMARY_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${groupEconomySummaryE3TestPath}"`

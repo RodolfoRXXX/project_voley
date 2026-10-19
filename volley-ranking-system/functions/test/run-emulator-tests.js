@@ -336,6 +336,7 @@ const paymentVoidNoticeGateE3TestPath = path.join(
   "paymentVoidNoticeGateE3.test.js"
 );
 const paymentVoidE3TestPath = path.join(systemRoot, "functions", "test", "emulator", "paymentVoidE3.test.js");
+const paymentPrincipalCorrectionE3TestPath = path.join(systemRoot, "functions", "test", "emulator", "paymentPrincipalCorrectionE3.test.js");
 const legacyJoinRetirementTestPath = path.join(
   systemRoot,
   "functions",
@@ -343,7 +344,11 @@ const legacyJoinRetirementTestPath = path.join(
   "emulator",
   "legacyJoinRetirementE2.test.js"
 );
-const command = process.env.E3_05_FOCAL === "1"
+const command = process.env.E3_06_WRITER_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${paymentPrincipalCorrectionE3TestPath}"`
+  : process.env.E3_06_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${paymentPrincipalCorrectionE3TestPath}" "${paymentVoidE3TestPath}" "${paymentDeliveryE3TestPath}" "${administrativeReceiptE3TestPath}" "${treasuryE3TestPath}" "${paymentE3TestPath}"`
+  : process.env.E3_05_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${paymentVoidNoticeGateE3TestPath}" "${paymentVoidE3TestPath}"`
   : process.env.E3_05_NOTICE_GATE_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${paymentVoidNoticeGateE3TestPath}"`

@@ -15,6 +15,9 @@ const CODES = Object.freeze({
   PAYMENT_NOT_ACCESSIBLE: "permission-denied", PAYMENT_NOT_VOIDABLE: "failed-precondition",
   PAYMENT_PENDING_NOTICE: "failed-precondition", PAYMENT_VOID_STALE: "aborted",
   PAYMENT_NOT_PREARCHIVE: "failed-precondition",
+  PAYMENT_VOIDED: "failed-precondition", PRINCIPAL_AMOUNT_INVALID: "invalid-argument",
+  PRINCIPAL_UNCHANGED: "failed-precondition", PRINCIPAL_BELOW_NET_INCOME: "failed-precondition",
+  PAYMENT_PRINCIPAL_STALE: "aborted",
 });
 function toHttps(error) { if (error instanceof functions.https.HttpsError) return error; if (error instanceof PaymentError) return new functions.https.HttpsError(CODES[error.reason] || "internal", error.message, { reason: error.reason }); return new functions.https.HttpsError("internal", "Payment operation failed", { reason: "INTERNAL_ERROR" }); }
 function createPaymentCallable({ operation, validate }) { return async (data, context) => { try { if (!context?.auth?.uid) throw new PaymentUnauthenticatedError(); return await operation(context.auth.uid, validate(data)); } catch (error) { if (!(error instanceof PaymentError)) console.error("Payment callable failed", { name: error?.name, code: error?.code }); throw toHttps(error); } }; }

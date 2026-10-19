@@ -190,6 +190,10 @@ service cloud.firestore {
       match /deliveryApplications/{applicationId} {
         allow read, write: if false;
       }
+
+      match /principalCorrections/{correctionId} {
+        allow read, write: if false;
+      }
     }
 
     // E3-03 remains callable-only. Delivery declarations, decisions, reversal

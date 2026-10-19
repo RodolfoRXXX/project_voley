@@ -9,7 +9,7 @@ const { createPaymentPersonPresentationCapability } = require("../../persons/pub
 const { createGroupTreasuryAuthorizationCapability } = require("../../treasury/public/groupTreasuryAuthorizationCapability");
 const {
   conceptDto, exact, hash, hydrateConcept, hydrateOccurrence, iso, monthBounds, opaqueId, paymentDto,
-  normalizeConceptName, normalizeExceptionReason, requireAmount, requireDueDate, requireId, requireKind, requireVersion, stable,
+  normalizeConceptName, normalizeExceptionReason, normalizePrincipalCorrectionExplanation, requireAmount, requireDueDate, requireId, requireKind, requirePrincipalCorrectionReason, requireVersion, stable,
 } = require("../domain/payment");
 const {
   PaymentAccountRequiredError, PaymentConceptDeactivatedError, PaymentConceptNotAvailableError,
@@ -18,6 +18,7 @@ const {
   PaymentIncompatibleStateError, PaymentOccurrenceNotAvailableError, PaymentPersonRequiredError,
   PaymentTreasuryNotAuthorizedError, PaymentNotAccessibleError, PaymentNotVoidableError,
   PaymentPendingNoticeError, PaymentVoidStaleError, PaymentNotPrearchiveError,
+  PaymentVoidedError, PaymentPrincipalUnchangedError, PaymentPrincipalBelowNetIncomeError, PaymentPrincipalStaleError,
 } = require("../application/paymentErrors");
 
 function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHooks = Object.freeze({}) }) {
@@ -79,6 +80,27 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
       || !/^[a-f0-9]{64}$/.test(data.idempotencyKeyHash || "") || !/^[a-f0-9]{64}$/.test(data.requestHash || "")
       || !Number.isSafeInteger(data.fromEconomicRevision) || data.toEconomicRevision !== data.fromEconomicRevision + 1 || !iso(data.completedAt)) throw new PaymentIncompatibleStateError();
     return data;
+  }
+  function correctionReceipt(snapshot) {
+    if (!snapshot.exists) return null; const data = snapshot.data();
+    if (!exact(data, ["actorUserId", "groupId", "operation", "idempotencyKeyHash", "requestHash", "paymentId", "correctionId", "outcome", "fromEconomicRevision", "toEconomicRevision", "completedAt", "schemaVersion"])
+      || data.operation !== "CORRECT_PAYMENT_PRINCIPAL" || data.outcome !== "CORRECTED" || data.schemaVersion !== 3
+      || !/^[a-f0-9]{64}$/.test(data.idempotencyKeyHash || "") || !/^[a-f0-9]{64}$/.test(data.requestHash || "")
+      || !Number.isSafeInteger(data.fromEconomicRevision) || data.toEconomicRevision !== data.fromEconomicRevision + 1 || !iso(data.completedAt)) throw new PaymentIncompatibleStateError();
+    return data;
+  }
+  function hydrateCorrection(snapshot) {
+    if (!snapshot.exists) return null; const data = snapshot.data();
+    try {
+      const fields = ["correctionId", "paymentId", "groupId", "fromPrincipalMinor", "toPrincipalMinor", "deltaMinor", "reasonCode", "explanation", "correctedByAccountId", "fromEconomicRevision", "toEconomicRevision", "correctedAt", "schemaVersion"];
+      if (!exact(data, fields) || data.correctionId !== snapshot.id || data.schemaVersion !== 1) throw new Error();
+      for (const value of [data.correctionId, data.paymentId, data.groupId, data.correctedByAccountId]) requireId(value);
+      requireAmount(data.fromPrincipalMinor); requireAmount(data.toPrincipalMinor); requirePrincipalCorrectionReason(data.reasonCode);
+      if (data.deltaMinor !== data.toPrincipalMinor - data.fromPrincipalMinor || data.deltaMinor === 0 || !Number.isSafeInteger(data.deltaMinor)
+        || normalizePrincipalCorrectionExplanation(data.explanation) !== data.explanation || !Number.isSafeInteger(data.fromEconomicRevision)
+        || data.fromEconomicRevision < 1 || data.toEconomicRevision !== data.fromEconomicRevision + 1 || !iso(data.correctedAt)) throw new Error();
+      return Object.freeze(data);
+    } catch (cause) { throw new PaymentIncompatibleStateError({ cause }); }
   }
   async function mutateConcept(userId, input, operation) {
     const id = receiptId(userId, input.groupId, operation, input.idempotencyKey); const expectedHash = requestHash(input);
@@ -181,10 +203,11 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
     if (!doc.exists) return null; const data = doc.data();
     try {
       const hasPeriod = Object.hasOwn(data || {}, "periodKey"); const hasOccurrence = Object.hasOwn(data || {}, "occurrenceKey"); const hasException = Object.hasOwn(data || {}, "exceptionReason");
-      const economic = [2, 3].includes(data?.schemaVersion) ? ["confirmedIncomeMinor", "reversedIncomeMinor", "netConfirmedIncomeMinor", "balanceMinor", "economicState", "economicRevision"] : [];
-      const voided = data?.schemaVersion === 3 ? ["lifecycle", "voidedAmountMinor", "voidReasonCode", "voidExplanation", "voidedAt", "voidedByAccountId"] : [];
-      const fields = ["groupId", "membershipId", "personId", "seasonId", "conceptId", "conceptSnapshot", "amountMinor", "dueDate", "estado", "generationIntentId", "payloadHash", "createdAt", "schemaVersion", hasPeriod ? "periodKey" : "occurrenceKey", ...(hasException ? ["exceptionReason"] : []), ...economic, ...voided];
-      if (hasPeriod === hasOccurrence || !exact(data, fields) || ![1, 2, 3].includes(data.schemaVersion) || !/^[a-f0-9]{64}$/.test(data.payloadHash) || !iso(data.createdAt)) throw new Error();
+      const economic = [2, 3, 4].includes(data?.schemaVersion) ? ["confirmedIncomeMinor", "reversedIncomeMinor", "netConfirmedIncomeMinor", "balanceMinor", "economicState", "economicRevision"] : [];
+      const voided = data?.lifecycle === "VOIDED" ? ["lifecycle", "voidedAmountMinor", "voidReasonCode", "voidExplanation", "voidedAt", "voidedByAccountId"] : [];
+      const correction = data?.schemaVersion === 4 ? ["currentPrincipalMinor", "principalCorrectionCount", "lastPrincipalCorrectionId", "lastCorrectedAt"] : [];
+      const fields = ["groupId", "membershipId", "personId", "seasonId", "conceptId", "conceptSnapshot", "amountMinor", "dueDate", "estado", "generationIntentId", "payloadHash", "createdAt", "schemaVersion", hasPeriod ? "periodKey" : "occurrenceKey", ...(hasException ? ["exceptionReason"] : []), ...economic, ...correction, ...voided];
+      if (hasPeriod === hasOccurrence || !exact(data, fields) || ![1, 2, 3, 4].includes(data.schemaVersion) || !/^[a-f0-9]{64}$/.test(data.payloadHash) || !iso(data.createdAt)) throw new Error();
       for (const id of [data.groupId, data.membershipId, data.personId, data.seasonId, data.conceptId, data.generationIntentId]) requireId(id); requireAmount(data.amountMinor); requireDueDate(data.dueDate);
       if (!exact(data.conceptSnapshot, ["version", "name", "kind", "currency", "defaultAmountMinor"]) || data.conceptSnapshot.currency !== "ARS") throw new Error(); requireVersion(data.conceptSnapshot.version); requireKind(data.conceptSnapshot.kind); requireAmount(data.conceptSnapshot.defaultAmountMinor);
       if (normalizeConceptName(data.conceptSnapshot.name) !== data.conceptSnapshot.name) throw new Error();
@@ -196,22 +219,25 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
           netConfirmedIncomeMinor: 0, balanceMinor: data.amountMinor, economicState: "PENDING", economicRevision: 1 });
       }
       for (const field of ["confirmedIncomeMinor", "reversedIncomeMinor", "netConfirmedIncomeMinor", "balanceMinor", "economicRevision"]) if (!Number.isSafeInteger(data[field]) || data[field] < 0) throw new Error();
-      if (data.schemaVersion === 3) {
+      const currentPrincipalMinor = data.schemaVersion === 4 ? requireAmount(data.currentPrincipalMinor) : data.amountMinor;
+      if (data.schemaVersion === 4 && (!Number.isSafeInteger(data.principalCorrectionCount) || data.principalCorrectionCount < 1 || requireId(data.lastPrincipalCorrectionId) !== data.lastPrincipalCorrectionId || !iso(data.lastCorrectedAt))) throw new Error();
+      if (data.lifecycle === "VOIDED") {
         const { normalizeVoidExplanation, requireVoidReason } = require("../domain/payment");
-        if (data.lifecycle !== "VOIDED" || data.estado !== "VOIDED" || data.economicState !== "VOIDED" || data.voidedAmountMinor !== data.amountMinor
+        if (![3, 4].includes(data.schemaVersion) || data.estado !== "VOIDED" || data.economicState !== "VOIDED" || data.voidedAmountMinor !== currentPrincipalMinor
           || data.confirmedIncomeMinor !== 0 || data.reversedIncomeMinor !== 0 || data.netConfirmedIncomeMinor !== 0 || data.balanceMinor !== 0
           || requireVoidReason(data.voidReasonCode) !== data.voidReasonCode || normalizeVoidExplanation(data.voidExplanation) !== data.voidExplanation
           || !iso(data.voidedAt) || requireId(data.voidedByAccountId) !== data.voidedByAccountId) throw new Error();
-        return Object.freeze({ paymentId: doc.id, ...data });
+        return Object.freeze({ paymentId: doc.id, ...data, currentPrincipalMinor });
       }
       if (data.economicRevision < 2 || data.netConfirmedIncomeMinor !== data.confirmedIncomeMinor - data.reversedIncomeMinor
-        || data.balanceMinor !== data.amountMinor - data.netConfirmedIncomeMinor || data.balanceMinor < 0
+        || data.balanceMinor !== currentPrincipalMinor - data.netConfirmedIncomeMinor || data.balanceMinor < 0
         || !["PENDING", "PARTIAL", "SETTLED"].includes(data.economicState) || data.estado !== data.economicState) throw new Error();
-      return Object.freeze({ paymentId: doc.id, ...data });
+      return Object.freeze({ paymentId: doc.id, ...data, currentPrincipalMinor });
     } catch (cause) { if (cause instanceof PaymentIncompatibleStateError) throw cause; throw new PaymentIncompatibleStateError({ cause }); }
   }
   function economicShape(payment) { const { paymentId, createdAt, generationIntentId, payloadHash, schemaVersion, estado,
-    confirmedIncomeMinor, reversedIncomeMinor, netConfirmedIncomeMinor, balanceMinor, economicState, economicRevision, ...shape } = payment; return shape; }
+    confirmedIncomeMinor, reversedIncomeMinor, netConfirmedIncomeMinor, balanceMinor, economicState, economicRevision,
+    currentPrincipalMinor, principalCorrectionCount, lastPrincipalCorrectionId, lastCorrectedAt, ...shape } = payment; return shape; }
   function expectedPayment(intent, row, eligibility) { return { groupId: intent.groupId, membershipId: row.membershipId, personId: eligibility.personId, seasonId: eligibility.seasonId, conceptId: intent.conceptSnapshot.conceptId, conceptSnapshot: { version: intent.conceptSnapshot.version, name: intent.conceptSnapshot.name, kind: intent.conceptSnapshot.kind, currency: "ARS", defaultAmountMinor: intent.conceptSnapshot.defaultAmountMinor }, amountMinor: row.appliedAmountMinor, ...(row.exceptionReason ? { exceptionReason: row.exceptionReason } : {}), dueDate: intent.dueDate, ...(intent.kind === "MONTHLY" ? { periodKey: intent.periodKey } : { occurrenceKey: intent.occurrenceKey }) };
   }
 
@@ -314,7 +340,7 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
   }
 
   function prearchive(payment, group) { return group.estado === "activo" || (group.estado === "archivado" && iso(group.archivedAt) && payment.createdAt.toMillis() <= group.archivedAt.toMillis() && typeof payment.generationIntentId === "string" && /^[a-f0-9]{64}$/.test(payment.payloadHash)); }
-  function voidResource(payment) { return Object.freeze({ paymentId: payment.paymentId, groupId: payment.groupId, membershipId: payment.membershipId, amountMinor: payment.amountMinor, balanceMinor: 0, estado: "VOIDED", lifecycle: "VOIDED", economicRevision: payment.economicRevision, voidedAmountMinor: payment.voidedAmountMinor, voidReasonCode: payment.voidReasonCode, voidExplanation: payment.voidExplanation, voidedAt: iso(payment.voidedAt) }); }
+  function voidResource(payment) { return Object.freeze({ paymentId: payment.paymentId, groupId: payment.groupId, membershipId: payment.membershipId, amountMinor: payment.amountMinor, currentPrincipalMinor: payment.currentPrincipalMinor ?? payment.amountMinor, balanceMinor: 0, estado: "VOIDED", lifecycle: "VOIDED", economicRevision: payment.economicRevision, voidedAmountMinor: payment.voidedAmountMinor, voidReasonCode: payment.voidReasonCode, voidExplanation: payment.voidExplanation, voidedAt: iso(payment.voidedAt) }); }
   async function voidPayment(userId, input) {
     const operation = "VOID_PAYMENT_OBLIGATION"; const rid = receiptId(userId, input.groupId, operation, input.idempotencyKey); const receiptRef = receipts.doc(rid); const expectedHash = requestHash(input);
     try {
@@ -325,13 +351,14 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
         if (!payment || payment.groupId !== input.groupId) throw new PaymentNotAccessibleError();
         if (stored) {
           if (stored.actorUserId !== userId || stored.groupId !== input.groupId || stored.paymentId !== input.paymentId || stored.requestHash !== expectedHash) throw new PaymentIdempotencyConflictError();
-          if (payment.lifecycle !== "VOIDED" || payment.economicRevision !== stored.toEconomicRevision || payment.voidedByAccountId !== userId) throw new PaymentIncompatibleStateError();
+          if (payment.lifecycle !== "VOIDED" || payment.economicRevision < stored.toEconomicRevision || payment.voidedByAccountId !== userId) throw new PaymentIncompatibleStateError();
           return Object.freeze({ outcome: "EXISTING", recovered: true, resource: voidResource(payment) });
         }
         if (payment.lifecycle === "VOIDED") throw new PaymentIncompatibleStateError();
         if (!prearchive(payment, group)) throw new PaymentNotPrearchiveError();
         if (payment.economicRevision !== input.expectedEconomicRevision) throw new PaymentVoidStaleError();
-        if (payment.economicState !== "PENDING" || payment.confirmedIncomeMinor !== 0 || payment.reversedIncomeMinor !== 0 || payment.netConfirmedIncomeMinor !== 0 || payment.balanceMinor !== payment.amountMinor) throw new PaymentNotVoidableError();
+        const principalBase = payment.currentPrincipalMinor ?? payment.amountMinor;
+        if (payment.economicState !== "PENDING" || payment.confirmedIncomeMinor !== 0 || payment.reversedIncomeMinor !== 0 || payment.netConfirmedIncomeMinor !== 0 || payment.balanceMinor !== principalBase) throw new PaymentNotVoidableError();
         const applications = await transaction.get(payments.doc(input.paymentId).collection("deliveryApplications"));
         if (!applications.empty) throw new PaymentNotVoidableError();
         const guardRef = db.collection("paymentReceiptCandidateGuards").doc(opaqueId("payment-receipt-candidate-guard", input.groupId, payment.membershipId)); const guardSnapshot = await transaction.get(guardRef); const guard = guardSnapshot.data();
@@ -339,7 +366,7 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
         const notices = await transaction.get(db.collection("paymentDeliveries").where("membershipId", "==", payment.membershipId).where("decisionState", "==", "REPORTED").orderBy("__name__", "asc"));
         for (const doc of notices.docs) { const notice = doc.data(); if (notice?.groupId !== input.groupId || notice.membershipId !== payment.membershipId || notice.decisionState !== "REPORTED" || !Array.isArray(notice.lines)) throw new PaymentIncompatibleStateError(); if (notice.lines.some((line) => line?.paymentId === input.paymentId)) throw new PaymentPendingNoticeError(); }
         if (typeof testHooks.afterVoidReads === "function") await testHooks.afterVoidReads({ transaction, payment, guardRef });
-        const at = now(); const changes = { lifecycle: "VOIDED", voidedAmountMinor: payment.amountMinor, voidReasonCode: input.reasonCode, voidExplanation: input.explanation, voidedAt: at, voidedByAccountId: userId, balanceMinor: 0, economicState: "VOIDED", estado: "VOIDED", economicRevision: payment.economicRevision + 1, confirmedIncomeMinor: 0, reversedIncomeMinor: 0, netConfirmedIncomeMinor: 0, schemaVersion: 3 };
+        const at = now(); const changes = { lifecycle: "VOIDED", voidedAmountMinor: principalBase, voidReasonCode: input.reasonCode, voidExplanation: input.explanation, voidedAt: at, voidedByAccountId: userId, balanceMinor: 0, economicState: "VOIDED", estado: "VOIDED", economicRevision: payment.economicRevision + 1, confirmedIncomeMinor: 0, reversedIncomeMinor: 0, netConfirmedIncomeMinor: 0, schemaVersion: payment.schemaVersion === 4 ? 4 : 3 };
         transaction.update(payments.doc(input.paymentId), changes);
         transaction.set(guardRef, guardSnapshot.exists ? { ...guard, revision: guard.revision + 1, updatedAt: at } : { guardId: guardRef.id, groupId: input.groupId, membershipId: payment.membershipId, revision: 1, createdAt: at, updatedAt: at, schemaVersion: 1 });
         transaction.create(receiptRef, { actorUserId: userId, groupId: input.groupId, operation, idempotencyKeyHash: hash(input.idempotencyKey), requestHash: expectedHash, paymentId: input.paymentId, outcome: "VOIDED", fromEconomicRevision: payment.economicRevision, toEconomicRevision: payment.economicRevision + 1, completedAt: at, schemaVersion: 2 });
@@ -348,6 +375,113 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
       if (typeof testHooks.afterVoidCommit === "function") await testHooks.afterVoidCommit(result);
       return result;
     } catch (error) { const mapped = map(error); if (mapped instanceof PaymentDependencyUnavailableError) return Object.freeze({ outcome: "PENDING_RECOVERY" }); throw mapped; }
+  }
+
+  function correctionResource(payment, correction) {
+    return Object.freeze({ paymentId: payment.paymentId, groupId: payment.groupId, originalPrincipalMinor: payment.amountMinor,
+      currentPrincipalMinor: payment.currentPrincipalMinor, netConfirmedIncomeMinor: payment.netConfirmedIncomeMinor,
+      balanceMinor: payment.balanceMinor, estado: payment.economicState, economicRevision: payment.economicRevision,
+      correction: { correctionId: correction.correctionId, fromPrincipalMinor: correction.fromPrincipalMinor,
+        toPrincipalMinor: correction.toPrincipalMinor, reasonCode: correction.reasonCode, correctedAt: iso(correction.correctedAt) } });
+  }
+  async function correctPaymentPrincipal(userId, input) {
+    const operation = "CORRECT_PAYMENT_PRINCIPAL"; const rid = receiptId(userId, input.groupId, operation, input.idempotencyKey);
+    const receiptRef = receipts.doc(rid); const expectedHash = requestHash(input); const paymentRef = payments.doc(input.paymentId);
+    try {
+      const result = await db.runTransaction(async (transaction) => {
+        const [receiptSnapshot, paymentSnapshot] = await Promise.all([transaction.get(receiptRef), transaction.get(paymentRef)]);
+        const stored = correctionReceipt(receiptSnapshot); const payment = persistedPayment(paymentSnapshot);
+        const group = await ownedGroup(transaction, userId, input.groupId, { active: false });
+        if (!payment || payment.groupId !== input.groupId) throw new PaymentNotAccessibleError();
+        if (stored) {
+          if (stored.actorUserId !== userId || stored.groupId !== input.groupId || stored.paymentId !== input.paymentId || stored.requestHash !== expectedHash) throw new PaymentIdempotencyConflictError();
+          const correction = hydrateCorrection(await transaction.get(paymentRef.collection("principalCorrections").doc(stored.correctionId)));
+          if (!correction || correction.paymentId !== payment.paymentId || correction.groupId !== input.groupId || correction.correctedByAccountId !== userId
+            || correction.fromEconomicRevision !== stored.fromEconomicRevision || correction.toEconomicRevision !== stored.toEconomicRevision
+            || correction.toPrincipalMinor !== input.newPrincipalMinor || correction.reasonCode !== input.reasonCode || correction.explanation !== input.explanation
+            || payment.economicRevision < stored.toEconomicRevision || (payment.schemaVersion === 4 && payment.principalCorrectionCount < 1)) throw new PaymentIncompatibleStateError();
+          return Object.freeze({ outcome: "EXISTING", recovered: true, resource: correctionResource(payment, correction) });
+        }
+        if (payment.lifecycle === "VOIDED") throw new PaymentVoidedError();
+        if (!prearchive(payment, group)) throw new PaymentNotPrearchiveError();
+        if (payment.economicRevision !== input.expectedEconomicRevision) throw new PaymentPrincipalStaleError();
+        const currentPrincipalMinor = payment.currentPrincipalMinor ?? payment.amountMinor;
+        if (input.newPrincipalMinor === currentPrincipalMinor) throw new PaymentPrincipalUnchangedError();
+        if (input.newPrincipalMinor < payment.netConfirmedIncomeMinor) throw new PaymentPrincipalBelowNetIncomeError();
+        const guardRef = db.collection("paymentReceiptCandidateGuards").doc(opaqueId("payment-receipt-candidate-guard", input.groupId, payment.membershipId));
+        const guardSnapshot = await transaction.get(guardRef); const guard = guardSnapshot.data();
+        if (guardSnapshot.exists && (guard?.guardId !== guardRef.id || guard.groupId !== input.groupId || guard.membershipId !== payment.membershipId || guard.schemaVersion !== 1 || !Number.isSafeInteger(guard.revision) || guard.revision < 1)) throw new PaymentIncompatibleStateError();
+        const notices = await transaction.get(db.collection("paymentDeliveries").where("membershipId", "==", payment.membershipId).where("decisionState", "==", "REPORTED").orderBy("__name__", "asc"));
+        for (const doc of notices.docs) { const notice = doc.data(); if (notice?.deliveryId !== doc.id || notice.groupId !== input.groupId || notice.membershipId !== payment.membershipId || notice.decisionState !== "REPORTED" || !Array.isArray(notice.lines)) throw new PaymentIncompatibleStateError(); if (notice.lines.some((line) => line?.paymentId === input.paymentId)) throw new PaymentPendingNoticeError(); }
+        const correctionId = opaqueId("payment-principal-correction", userId, input.groupId, input.paymentId, input.idempotencyKey);
+        const correctionRef = paymentRef.collection("principalCorrections").doc(correctionId);
+        if ((await transaction.get(correctionRef)).exists) throw new PaymentIncompatibleStateError();
+        if (typeof testHooks.afterCorrectionReads === "function") await testHooks.afterCorrectionReads({ transaction, payment, guardRef, correctionRef });
+        const at = now(); const balanceMinor = input.newPrincipalMinor - payment.netConfirmedIncomeMinor;
+        const economicState = payment.netConfirmedIncomeMinor === 0 ? "PENDING" : balanceMinor === 0 ? "SETTLED" : "PARTIAL";
+        const correction = { correctionId, paymentId: payment.paymentId, groupId: payment.groupId, fromPrincipalMinor: currentPrincipalMinor,
+          toPrincipalMinor: input.newPrincipalMinor, deltaMinor: input.newPrincipalMinor - currentPrincipalMinor, reasonCode: input.reasonCode,
+          explanation: input.explanation, correctedByAccountId: userId, fromEconomicRevision: payment.economicRevision,
+          toEconomicRevision: payment.economicRevision + 1, correctedAt: at, schemaVersion: 1 };
+        const changes = { currentPrincipalMinor: input.newPrincipalMinor, principalCorrectionCount: (payment.principalCorrectionCount || 0) + 1,
+          lastPrincipalCorrectionId: correctionId, lastCorrectedAt: at, balanceMinor, economicState, estado: economicState,
+          confirmedIncomeMinor: payment.confirmedIncomeMinor, reversedIncomeMinor: payment.reversedIncomeMinor, netConfirmedIncomeMinor: payment.netConfirmedIncomeMinor,
+          economicRevision: payment.economicRevision + 1, schemaVersion: 4 };
+        transaction.create(correctionRef, correction); transaction.update(paymentRef, changes);
+        transaction.set(guardRef, guardSnapshot.exists ? { ...guard, revision: guard.revision + 1, updatedAt: at } : { guardId: guardRef.id, groupId: input.groupId, membershipId: payment.membershipId, revision: 1, createdAt: at, updatedAt: at, schemaVersion: 1 });
+        transaction.create(receiptRef, { actorUserId: userId, groupId: input.groupId, operation, idempotencyKeyHash: hash(input.idempotencyKey), requestHash: expectedHash,
+          paymentId: input.paymentId, correctionId, outcome: "CORRECTED", fromEconomicRevision: payment.economicRevision, toEconomicRevision: payment.economicRevision + 1, completedAt: at, schemaVersion: 3 });
+        const updated = { ...payment, ...changes }; return Object.freeze({ outcome: "CORRECTED", recovered: false, resource: correctionResource(updated, correction) });
+      });
+      if (typeof testHooks.afterCorrectionCommit === "function") await testHooks.afterCorrectionCommit(result);
+      return result;
+    } catch (error) { const mapped = map(error); if (mapped instanceof PaymentDependencyUnavailableError) return Object.freeze({ outcome: "PENDING_RECOVERY" }); throw mapped; }
+  }
+
+  function correctionDto(correction, audience) {
+    return Object.freeze({ correctionId: correction.correctionId, fromPrincipalMinor: correction.fromPrincipalMinor,
+      toPrincipalMinor: correction.toPrincipalMinor, deltaMinor: correction.deltaMinor, reasonCode: correction.reasonCode,
+      fromEconomicRevision: correction.fromEconomicRevision, toEconomicRevision: correction.toEconomicRevision,
+      correctedAt: iso(correction.correctedAt), ...(audience === "OWNER" ? { explanation: correction.explanation, actor: { label: "Owner del Grupo" } } : {}) });
+  }
+  async function authorizeCorrectionHistory(transaction, userId, payment) {
+    const user = await account(transaction, userId, false); const groupSnapshot = await transaction.get(db.collection("groups").doc(payment.groupId));
+    if (!groupSnapshot.exists) throw new PaymentNotAccessibleError();
+    let group; try { group = hydrateGroup(groupSnapshot.id, groupSnapshot.data()); } catch (cause) { throw new PaymentIncompatibleStateError({ cause }); }
+    if (group.ownerId === userId) return "OWNER";
+    if (!user.personaId || payment.personId !== user.personaId) throw new PaymentNotAccessibleError();
+    const membership = await transaction.get(db.collection("memberships").doc(payment.membershipId)); const data = membership.data();
+    if (!membership.exists || data?.personId !== payment.personId || data.groupId !== payment.groupId || data.seasonId !== payment.seasonId || !["activa", "finalizada"].includes(data.estado)) throw new PaymentNotAccessibleError();
+    return "SUBJECT";
+  }
+  async function correctionPage(transaction, userId, payment, input, audience) {
+    const scope = { contract: "payment-principal-corrections-v1", userId, audience, paymentId: payment.paymentId, order: "revision-desc-id-desc", pageSize: input.pageSize };
+    const anchor = readCursor(input.cursor, scope); let seen = 0; let query = payments.doc(payment.paymentId).collection("principalCorrections").orderBy("toEconomicRevision", "desc").orderBy("__name__", "desc");
+    if (anchor) {
+      if (!exact(anchor, ["revision", "id", "seen", "total", "headId"]) || !Number.isSafeInteger(anchor.seen) || anchor.seen < 1
+        || !Number.isSafeInteger(anchor.total) || anchor.total < anchor.seen || typeof anchor.headId !== "string" || !anchor.headId) throw new PaymentConcurrentModificationError();
+      if (payment.schemaVersion !== 4) throw new PaymentIncompatibleStateError();
+      if (payment.principalCorrectionCount !== anchor.total || payment.lastPrincipalCorrectionId !== anchor.headId) {
+        if (payment.principalCorrectionCount > anchor.total && payment.lastPrincipalCorrectionId !== anchor.headId) throw new PaymentConcurrentModificationError();
+        throw new PaymentIncompatibleStateError();
+      }
+      const anchorSnapshot = await transaction.get(payments.doc(payment.paymentId).collection("principalCorrections").doc(anchor.id)); const item = hydrateCorrection(anchorSnapshot);
+      if (!item || item.paymentId !== payment.paymentId || item.toEconomicRevision !== anchor.revision) throw new PaymentConcurrentModificationError();
+      seen = anchor.seen; query = query.startAfter(anchor.revision, anchor.id);
+    }
+    const snapshot = await transaction.get(query.limit(input.pageSize + 1)); const docs = snapshot.docs.slice(0, input.pageSize);
+    const corrections = docs.map((doc) => hydrateCorrection(doc));
+    for (const item of corrections) if (item.paymentId !== payment.paymentId || item.groupId !== payment.groupId) throw new PaymentIncompatibleStateError();
+    if (!input.cursor && payment.schemaVersion === 4) {
+      const newest = corrections[0];
+      if (!newest || newest.correctionId !== payment.lastPrincipalCorrectionId || newest.toEconomicRevision > payment.economicRevision || payment.principalCorrectionCount < corrections.length) throw new PaymentIncompatibleStateError();
+    } else if (!input.cursor && payment.schemaVersion !== 4 && corrections.length) throw new PaymentIncompatibleStateError();
+    if (payment.schemaVersion === 4 && snapshot.size <= input.pageSize && payment.principalCorrectionCount !== seen + corrections.length) throw new PaymentIncompatibleStateError();
+    const last = corrections.at(-1); return Object.freeze({ audience, items: Object.freeze(corrections.map((item) => correctionDto(item, audience))),
+      ...(snapshot.size > input.pageSize ? { nextCursor: cursor(scope, { revision: last.toEconomicRevision, id: last.correctionId, seen: seen + corrections.length, total: payment.principalCorrectionCount, headId: payment.lastPrincipalCorrectionId }) } : {}) });
+  }
+  async function listPaymentPrincipalCorrections(userId, input) {
+    try { return await db.runTransaction(async (transaction) => { const payment = persistedPayment(await transaction.get(payments.doc(input.paymentId))); if (!payment) throw new PaymentNotAccessibleError(); const audience = await authorizeCorrectionHistory(transaction, userId, payment); return correctionPage(transaction, userId, payment, input, audience); }); } catch (error) { throw map(error); }
   }
 
   async function getMyPaymentObligationDetail(userId, input) {
@@ -359,7 +493,8 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
       const presentedGroup = await groupPresentation.get({ unitOfWork: transaction, groupId: payment.groupId }); if (presentedGroup.status !== "AVAILABLE") throw new PaymentIncompatibleStateError();
       const season = await transaction.get(db.collection("seasons").doc(payment.seasonId)); if (!season.exists || season.data()?.groupId !== payment.groupId || typeof season.data()?.nombre !== "string") throw new PaymentIncompatibleStateError();
       const { overdue, createdAt, ...dto } = paymentDto(payment, { owner: false, groupName: presentedGroup.name });
-      return Object.freeze({ ...dto, context: { groupName: presentedGroup.name, seasonName: season.data().nombre } });
+      const corrections = await correctionPage(transaction, userId, payment, { pageSize: 20 }, "SUBJECT");
+      return Object.freeze({ ...dto, context: { groupName: presentedGroup.name, seasonName: season.data().nombre }, principalCorrections: corrections.items, ...(corrections.nextCursor ? { correctionNextCursor: corrections.nextCursor } : {}) });
     }); } catch (error) { throw map(error); }
   }
 
@@ -399,7 +534,7 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
     listGroupObligations: (userId, input) => listPayments(userId, input, false),
     listMyObligations: (userId, input) => listPayments(userId, input, true),
     getOwnerGroupEconomySummary,
-    voidPayment, getMyPaymentObligationDetail,
+    voidPayment, correctPaymentPrincipal, listPaymentPrincipalCorrections, getMyPaymentObligationDetail,
     evaluateMembership,
   });
 }

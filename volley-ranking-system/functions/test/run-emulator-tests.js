@@ -361,6 +361,8 @@ const command = process.env.E3_05_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${administrativeReceiptRelationsE3TestPath}" "${administrativeReceiptPaginationE3TestPath}"`
   : process.env.E3_04_PAGINATION_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${administrativeReceiptPaginationE3TestPath}"`
+  : process.env.E3_04_HISTORY_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${administrativeReceiptE3TestPath}"`
   : process.env.E3_04_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${administrativeReceiptE3TestPath}" "${administrativeReceiptRelationsE3TestPath}" "${administrativeReceiptPaginationE3TestPath}" "${paymentDeliveryE3TestPath}"`
   : process.env.E3_03_FOCAL === "1"

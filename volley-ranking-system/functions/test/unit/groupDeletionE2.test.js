@@ -83,9 +83,10 @@ test("persistence, recovery and Rules preserve the E2-24 boundaries", () => {
 
 test("Owner menu replaces large triggers and implements keyboard, focus and destructive semantics", () => {
   const detail = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/page.tsx");
+  const frame = read("volley-ranking-frontend/src/components/groups/GroupFrame.tsx");
   const menu = read("volley-ranking-frontend/src/components/groups/GroupActionsMenu.tsx");
   const deletion = read("volley-ranking-frontend/src/components/groups/DeleteGroupDialog.tsx");
-  assert.match(detail, /GroupActionsMenu/); assert.doesNotMatch(detail, /<EditGroupNameDialog|<ArchiveGroupDialog|<DeleteGroupDialog/);
+  assert.match(frame, /GroupActionsMenu/); assert.doesNotMatch(detail, /<EditGroupNameDialog|<ArchiveGroupDialog|<DeleteGroupDialog/);
   for (const pattern of [/Acciones del grupo/g, /aria-haspopup="menu"/, /aria-expanded/, /role="menu"/, /role="menuitem"/g, /ArrowDown/, /ArrowUp/, /Home/, /End/, /Escape/, /Tab/, /pointerdown/, /<svg aria-hidden="true"/, /circle cx="12" cy="5"[\s\S]*circle cx="12" cy="12"[\s\S]*circle cx="12" cy="19"/, /M4 7h16M9 7V4h6v3/, /border-t/]) assert.match(menu, pattern);
   assert.ok((menu.match(/role="menuitem"/g) || []).length === 3);
   assert.match(menu, /Editar nombre[\s\S]*Archivar grupo[\s\S]*Eliminar grupo/);

@@ -4,6 +4,7 @@ const assert = require("node:assert/strict"); const test = require("node:test");
 const { assertSafeFirebaseTestEnvironment } = require("../guards/firebaseTestGuard"); const { SYNTHETIC_DATA } = require("../fixtures/syntheticData");
 const { createFirestoreTreasuryStore } = require("../../src/treasury/infrastructure/firestoreTreasuryStore");
 const { createFirestorePaymentStore } = require("../../src/payments/infrastructure/firestorePaymentStore");
+const { createFirestorePaymentDeliveryStore } = require("../../src/paymentDeliveries/infrastructure/firestorePaymentDeliveryStore");
 const { membershipValidityPeriodId } = require("../../src/memberships/application/membershipHashing");
 function ts(admin, value) { return admin.firestore.Timestamp.fromDate(new Date(value)); }
 async function signUp(host, email) { const response = await fetch(`http://${host}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=e3-02-key`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "E3-02-password!", returnSecureToken: true }) }); const body = await response.json(); assert.equal(response.status, 200, JSON.stringify(body)); return { uid: body.localId, idToken: body.idToken, email }; }
@@ -97,5 +98,32 @@ test("E3-02 concede, revalida lifecycle y reutiliza readers E3-01 sin escritura 
   } finally {
     for (const name of ["groupCapabilityCommandReceipts", "groupCapabilityGrantSlots", "groupCapabilityGrants", "payments", "paymentGenerationIntents", "paymentCommandReceipts", "groupChargeOccurrences", "groupChargeConcepts", "memberships", "seasons", "groups", "personas"]) { const snapshot = await db.collection(name).get(); for (const doc of snapshot.docs.filter((item) => item.id.startsWith(prefix))) { if (name === "memberships") { const periods = await doc.ref.collection("validityPeriods").get(); for (const period of periods.docs) await period.ref.delete(); } await doc.ref.delete(); } }
     for (const actor of [owner, member, ownerB]) { await db.doc(`users/${actor.uid}`).delete().catch(() => {}); await auth.deleteUser(actor.uid).catch(() => {}); } await app.delete();
+  }
+});
+
+test("E3-02 admite dos tesoreros distintos con Owner sin Persona", async () => {
+  const { projectId } = assertSafeFirebaseTestEnvironment(process.env); assert.equal(projectId, SYNTHETIC_DATA.projectId);
+  const admin = require("firebase-admin"); const app = admin.initializeApp({ projectId }, "e3-02-multiple-treasurers"); const db = app.firestore(); const auth = app.auth();
+  const prefix = "e3-02-multi-"; const base = ts(admin, "2026-10-20T12:00:00Z"); const owner = await signUp(process.env.FIREBASE_AUTH_EMULATOR_HOST, `${prefix}owner@example.invalid`); const first = await signUp(process.env.FIREBASE_AUTH_EMULATOR_HOST, `${prefix}first@example.invalid`); const second = await signUp(process.env.FIREBASE_AUTH_EMULATOR_HOST, `${prefix}second@example.invalid`); const store = createFirestoreTreasuryStore({ db, now: () => base });
+  try {
+    await db.doc(`users/${owner.uid}`).set({ email: owner.email, createdAt: base });
+    for (const [actor, suffix] of [[first, "first"], [second, "second"]]) { const personId = `${prefix}person-${suffix}`; await db.doc(`users/${actor.uid}`).set({ email: actor.email, personaId: personId, createdAt: base }); await db.doc(`personas/${personId}`).set({ nombre: suffix === "first" ? "Primera" : "Segunda", apellido: "Sintética", emailContacto: `${suffix}@example.invalid`, createdAt: base }); await db.doc(`memberships/${prefix}${suffix}`).set({ personId, groupId: `${prefix}group`, seasonId: `${prefix}season`, estado: "activa", fechaIngreso: base, createdAt: base, schemaVersion: 1 }); }
+    await db.doc(`groups/${prefix}group`).set({ nombre: "Grupo múltiple", deporte: "voleibol", ownerId: owner.uid, ownershipRevision: 1, estado: "activo", createdAt: base, schemaVersion: 3 });
+    await db.doc(`seasons/${prefix}season`).set({ groupId: `${prefix}group`, nombre: "2026", fechaInicio: "2026-01-01", estado: "abierta", createdAt: base, schemaVersion: 1 });
+    const one = await store.grant(owner.uid, { groupId: `${prefix}group`, membershipId: `${prefix}first`, idempotencyKey: `${prefix}grant-first-01` });
+    const two = await store.grant(owner.uid, { groupId: `${prefix}group`, membershipId: `${prefix}second`, idempotencyKey: `${prefix}grant-second01` });
+    assert.equal(one.outcome, "GRANTED"); assert.equal(two.outcome, "GRANTED"); const page = await store.listForOwner(owner.uid, { groupId: `${prefix}group`, pageSize: 20 }); assert.equal(page.items.length, 2); assert.equal(page.items.every((item) => item.state === "ACTIVE"), true); assert.equal(new Set(page.items.map((item) => item.membershipId)).size, 2);
+
+    const reviewStore = createFirestorePaymentDeliveryStore({ db, now: () => base });
+    const reviewGrant = await reviewStore.grantReview(owner.uid, { groupId: `${prefix}group`, membershipId: `${prefix}first`, idempotencyKey: `${prefix}review-first-01` });
+    assert.equal(reviewGrant.outcome, "GRANTED");
+    const shared = await db.collection("groupCapabilityGrants").where("groupId", "==", `${prefix}group`).get();
+    assert.deepEqual(new Set(shared.docs.map((doc) => doc.data().capabilityId)), new Set(["GROUP_TREASURY", "GROUP_PAYMENT_NOTICE_REVIEW"]));
+    const treasuryOnly = await store.listForOwner(owner.uid, { groupId: `${prefix}group`, pageSize: 20 });
+    assert.equal(treasuryOnly.items.length, 2);
+    assert.equal(treasuryOnly.items.every((item) => item.capabilityId === "GROUP_TREASURY"), true);
+  } finally {
+    for (const name of ["groupCapabilityCommandReceipts", "groupCapabilityGrantSlots", "groupCapabilityGrants", "memberships", "seasons", "groups", "personas"]) { const snapshot = await db.collection(name).get(); for (const doc of snapshot.docs.filter((item) => item.id.startsWith(prefix))) await doc.ref.delete(); }
+    for (const actor of [owner, first, second]) { await db.doc(`users/${actor.uid}`).delete().catch(() => {}); await auth.deleteUser(actor.uid).catch(() => {}); } await app.delete();
   }
 });

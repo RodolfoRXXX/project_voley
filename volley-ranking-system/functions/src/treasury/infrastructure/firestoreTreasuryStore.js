@@ -146,8 +146,8 @@ function createFirestoreTreasuryStore({ db, now = () => Timestamp.now(), testHoo
     try { return await db.runTransaction(async (transaction) => {
       const group = await currentGroup(transaction, accountId, input.groupId, false);
       const scope = { contract: "group-treasury-grants", accountId, groupId: input.groupId, capabilityId: CAPABILITY_ID, pageSize: input.pageSize };
-      const anchor = readCursor(input.cursor, scope); let query = grants.where("groupId", "==", input.groupId).orderBy("grantedAt", "desc").orderBy("__name__", "desc");
-      if (anchor) { const doc = await transaction.get(grants.doc(anchor.id)); if (!doc.exists || doc.data()?.groupId !== input.groupId || doc.data()?.grantedAt?.toMillis?.() !== anchor.grantedAt) throw new TreasuryDataIncompatibleError(); query = query.startAfter(doc.data().grantedAt, anchor.id); }
+      const anchor = readCursor(input.cursor, scope); let query = grants.where("groupId", "==", input.groupId).where("capabilityId", "==", CAPABILITY_ID).orderBy("grantedAt", "desc").orderBy("__name__", "desc");
+      if (anchor) { const doc = await transaction.get(grants.doc(anchor.id)); if (!doc.exists || doc.data()?.groupId !== input.groupId || doc.data()?.capabilityId !== CAPABILITY_ID || doc.data()?.grantedAt?.toMillis?.() !== anchor.grantedAt) throw new TreasuryDataIncompatibleError(); query = query.startAfter(doc.data().grantedAt, anchor.id); }
       const snapshot = await transaction.get(query.limit(input.pageSize + 1)); const docs = snapshot.docs.slice(0, input.pageSize); const items = [];
       for (const doc of docs) { const grant = hydrateGrant(doc); const person = await presentation.get(transaction, grant.personId); const projection = await projectedState(transaction, group, grant); items.push(grantDto(grant, person, projection.state, projection.lapseReason)); }
       const last = docs.at(-1); return Object.freeze({ items: Object.freeze(items), ...(snapshot.size > input.pageSize ? { nextCursor: cursor(scope, { grantedAt: last.data().grantedAt.toMillis(), id: last.id }) } : {}) });

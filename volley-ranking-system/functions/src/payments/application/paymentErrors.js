@@ -33,6 +33,15 @@ const PaymentPrincipalUnchangedError = error("PaymentPrincipalUnchangedError", "
 const PaymentPrincipalBelowNetIncomeError = error("PaymentPrincipalBelowNetIncomeError", "PRINCIPAL_BELOW_NET_INCOME", "Payment principal is below net confirmed income");
 const PaymentPrincipalStaleError = error("PaymentPrincipalStaleError", "PAYMENT_PRINCIPAL_STALE", "Payment principal revision is stale");
 const PaymentPrincipalAmountInvalidError = error("PaymentPrincipalAmountInvalidError", "PRINCIPAL_AMOUNT_INVALID", "Payment principal amount is invalid");
+const PaymentHasWaiverHistoryError = error("PaymentHasWaiverHistoryError", "PAYMENT_HAS_WAIVER_HISTORY", "Payment with waiver history cannot be voided");
+const PaymentHasNoBalanceError = error("PaymentHasNoBalanceError", "PAYMENT_HAS_NO_BALANCE", "Payment has no balance to waive");
+const PaymentWaiverAmountInvalidError = error("PaymentWaiverAmountInvalidError", "WAIVER_AMOUNT_INVALID", "Waiver amount is invalid");
+const PaymentWaiverExceedsBalanceError = error("PaymentWaiverExceedsBalanceError", "WAIVER_EXCEEDS_BALANCE", "Waiver exceeds payment balance");
+const PaymentWaiverTotalMismatchError = error("PaymentWaiverTotalMismatchError", "WAIVER_TOTAL_MISMATCH", "Total waiver does not match confirmed balance");
+const PaymentEconomyStaleError = error("PaymentEconomyStaleError", "PAYMENT_ECONOMY_STALE", "Payment economy revision is stale");
+const PaymentWaiverHistoryStaleError = error("PaymentWaiverHistoryStaleError", "WAIVER_HISTORY_STALE", "Payment waiver history revision is stale");
+const PaymentWaiverNotAccessibleError = error("PaymentWaiverNotAccessibleError", "WAIVER_NOT_ACCESSIBLE", "Payment waiver is not accessible");
+const PaymentWaiverAlreadyReversedError = error("PaymentWaiverAlreadyReversedError", "WAIVER_ALREADY_REVERSED", "Payment waiver is already reversed");
 
 module.exports = {
   PaymentError, PaymentUnauthenticatedError, PaymentAccountRequiredError, PaymentPersonRequiredError,
@@ -44,4 +53,7 @@ module.exports = {
   PaymentPendingNoticeError, PaymentVoidStaleError, PaymentNotPrearchiveError,
   PaymentVoidedError, PaymentPrincipalUnchangedError, PaymentPrincipalBelowNetIncomeError, PaymentPrincipalStaleError,
   PaymentPrincipalAmountInvalidError,
+  PaymentHasWaiverHistoryError, PaymentHasNoBalanceError, PaymentWaiverAmountInvalidError,
+  PaymentWaiverExceedsBalanceError, PaymentWaiverTotalMismatchError, PaymentEconomyStaleError,
+  PaymentWaiverHistoryStaleError, PaymentWaiverNotAccessibleError, PaymentWaiverAlreadyReversedError,
 };

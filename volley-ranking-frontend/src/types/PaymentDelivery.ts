@@ -1,4 +1,4 @@
-import type { PersonPresentation, PrincipalCorrection } from "./Payment";
+import type { PaymentWaiverEvent, PersonPresentation, PrincipalCorrection } from "./Payment";
 
 export type DeliveryDecisionState = "REPORTED" | "CONFIRMED" | "REJECTED" | "RESOLVED_BY_ADMINISTRATIVE_RECEIPT";
 export type DeliveryApplicationState = "APPLIED" | "REVERSED";
@@ -11,11 +11,11 @@ export type ReportedPaymentDeliveryMatch = PaymentDelivery & { matchingPaymentId
 type PaymentObligationDetailBase = {
   person: PersonPresentation;
   context: { groupName?: string; seasonName?: string };
-  obligation: { concept: { name: string; kind: "MONTHLY" | "ONE_TIME"; version: number; defaultAmountMinor: number }; periodKey?: string; occurrenceName?: string; amountMinor?: number; currentPrincipalMinor: number; lastCorrectedAt?: string; dueDate: string; netConfirmedIncomeMinor: number; balanceMinor: number; estado: "PENDING" | "PARTIAL" | "SETTLED" | "VOIDED"; economicRevision: number; lifecycle?: "VOIDED"; voidedAmountMinor?: number; voidedAt?: string; voidReasonCode?: import("./Payment").VoidReasonCode; voidExplanation?: string; voidedBy?: { label: string } };
+  obligation: { concept: { name: string; kind: "MONTHLY" | "ONE_TIME"; version: number; defaultAmountMinor: number }; periodKey?: string; occurrenceName?: string; amountMinor?: number; currentPrincipalMinor: number; lastCorrectedAt?: string; dueDate: string; netConfirmedIncomeMinor: number; grossWaivedAmountMinor: number; reversedWaivedAmountMinor: number; currentWaivedAmountMinor: number; waiverHistoryRevision: number; balanceMinor: number; estado: "PENDING" | "PARTIAL" | "SETTLED" | "VOIDED"; economicRevision: number; lifecycle?: "VOIDED"; voidedAmountMinor?: number; voidedAt?: string; voidReasonCode?: import("./Payment").VoidReasonCode; voidExplanation?: string; voidedBy?: { label: string } };
   nextCursor?: string;
 };
 type PaymentObligationApplication = { origin: "INFORMED" | "ADMINISTRATIVE"; eventLabel: "Confirmado" | "Registrado"; effectiveOn: string; eventAt: string; amountMinor: number; applicationState: DeliveryApplicationState; reversedAt?: string; reversalReason?: string };
-export type OwnerPaymentObligationDetail = PaymentObligationDetailBase & { audience: "OWNER"; applications: Array<PaymentObligationApplication & { actor: { label: string } }>; pendingNotices: Array<{ deliveryId: string; declaredPaidOn: string; declaredTotalMinor: number; reportedAt: string }>; principalCorrections: PrincipalCorrection[]; correctionNextCursor?: string };
+export type OwnerPaymentObligationDetail = PaymentObligationDetailBase & { audience: "OWNER"; applications: Array<PaymentObligationApplication & { actor: { label: string } }>; pendingNotices: Array<{ deliveryId: string; declaredPaidOn: string; declaredTotalMinor: number; reportedAt: string }>; principalCorrections: PrincipalCorrection[]; correctionNextCursor?: string; waiverHistory: PaymentWaiverEvent[]; waiverNextCursor?: string };
 export type TreasuryPaymentObligationDetail = PaymentObligationDetailBase & { audience: "TREASURY"; applications: Array<PaymentObligationApplication & { actor: { label: "la administración" } }> };
 export type PaymentObligationDetail = OwnerPaymentObligationDetail | TreasuryPaymentObligationDetail;
 export type ReviewGrant = { grantId: string; membershipId: string; capabilityId: "GROUP_PAYMENT_NOTICE_REVIEW"; state: "ACTIVE" | "REVOKED" | "LAPSED"; grantedAt: string; revokedAt?: string; person?: PersonPresentation };

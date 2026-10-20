@@ -18,6 +18,11 @@ const CODES = Object.freeze({
   PAYMENT_VOIDED: "failed-precondition", PRINCIPAL_AMOUNT_INVALID: "invalid-argument",
   PRINCIPAL_UNCHANGED: "failed-precondition", PRINCIPAL_BELOW_NET_INCOME: "failed-precondition",
   PAYMENT_PRINCIPAL_STALE: "aborted",
+  PAYMENT_HAS_WAIVER_HISTORY: "failed-precondition", PAYMENT_HAS_NO_BALANCE: "failed-precondition",
+  WAIVER_AMOUNT_INVALID: "invalid-argument", WAIVER_EXCEEDS_BALANCE: "failed-precondition",
+  WAIVER_TOTAL_MISMATCH: "failed-precondition", PAYMENT_ECONOMY_STALE: "aborted",
+  WAIVER_HISTORY_STALE: "aborted", WAIVER_NOT_ACCESSIBLE: "permission-denied",
+  WAIVER_ALREADY_REVERSED: "failed-precondition",
 });
 function toHttps(error) { if (error instanceof functions.https.HttpsError) return error; if (error instanceof PaymentError) return new functions.https.HttpsError(CODES[error.reason] || "internal", error.message, { reason: error.reason }); return new functions.https.HttpsError("internal", "Payment operation failed", { reason: "INTERNAL_ERROR" }); }
 function createPaymentCallable({ operation, validate }) { return async (data, context) => { try { if (!context?.auth?.uid) throw new PaymentUnauthenticatedError(); return await operation(context.auth.uid, validate(data)); } catch (error) { if (!(error instanceof PaymentError)) console.error("Payment callable failed", { name: error?.name, code: error?.code }); throw toHttps(error); } }; }

@@ -48,14 +48,14 @@ function economicPayment(snapshot) {
   try {
     required.forEach((field) => { if (!Object.hasOwn(data, field)) throw new Error(); });
     [snapshot.id, data.groupId, data.membershipId, data.personId, data.seasonId].forEach(id); amount(data.amountMinor);
-    if (!iso(data.createdAt) || ![1, 2, 3, 4].includes(data.schemaVersion)) throw new Error();
+    if (!iso(data.createdAt) || ![1, 2, 3, 4, 5].includes(data.schemaVersion)) throw new Error();
     if (data.schemaVersion === 1) {
       if (data.estado !== "PENDING") throw new Error();
       return Object.freeze({ paymentId: snapshot.id, ...data, confirmedIncomeMinor: 0, reversedIncomeMinor: 0,
         netConfirmedIncomeMinor: 0, balanceMinor: data.amountMinor, economicState: "PENDING", economicRevision: 1 });
     }
     for (const field of ["confirmedIncomeMinor", "reversedIncomeMinor", "netConfirmedIncomeMinor", "balanceMinor", "economicRevision"]) if (!Number.isSafeInteger(data[field]) || data[field] < 0) throw new Error();
-    const currentPrincipalMinor = data.schemaVersion === 4 ? data.currentPrincipalMinor : data.amountMinor;
+    const currentPrincipalMinor = [4, 5].includes(data.schemaVersion) ? data.currentPrincipalMinor : data.amountMinor;
     if (data.schemaVersion === 4) {
       amount(currentPrincipalMinor);
       if (!Number.isSafeInteger(data.principalCorrectionCount) || data.principalCorrectionCount < 1 || !id(data.lastPrincipalCorrectionId) || !iso(data.lastCorrectedAt)) throw new Error();
@@ -67,21 +67,33 @@ function economicPayment(snapshot) {
         || text(data.voidExplanation) !== data.voidExplanation || !iso(data.voidedAt) || id(data.voidedByAccountId) !== data.voidedByAccountId) throw new Error();
       return Object.freeze({ paymentId: snapshot.id, ...data, currentPrincipalMinor });
     }
+    let currentWaivedAmountMinor = 0;
+    if (data.schemaVersion === 5) {
+      amount(currentPrincipalMinor);
+      for (const field of ["principalCorrectionCount", "grossWaivedAmountMinor", "reversedWaivedAmountMinor", "currentWaivedAmountMinor", "waiverEventCount", "waiverHistoryRevision"]) if (!Number.isSafeInteger(data[field]) || data[field] < 0) throw new Error();
+      if (data.principalCorrectionCount > 0 && (!id(data.lastPrincipalCorrectionId) || !iso(data.lastCorrectedAt))) throw new Error();
+      if (data.waiverEventCount < 1 || data.waiverHistoryRevision !== data.waiverEventCount || !id(data.latestWaiverEventId) || !iso(data.latestWaiverEventAt)
+        || data.reversedWaivedAmountMinor > data.grossWaivedAmountMinor || data.currentWaivedAmountMinor !== data.grossWaivedAmountMinor - data.reversedWaivedAmountMinor) throw new Error();
+      currentWaivedAmountMinor = data.currentWaivedAmountMinor;
+    }
     if (data.economicRevision < 2 || data.netConfirmedIncomeMinor !== data.confirmedIncomeMinor - data.reversedIncomeMinor
-      || data.balanceMinor !== currentPrincipalMinor - data.netConfirmedIncomeMinor || data.balanceMinor < 0
+      || data.balanceMinor !== currentPrincipalMinor - data.netConfirmedIncomeMinor - currentWaivedAmountMinor || data.balanceMinor < 0
       || !["PENDING", "PARTIAL", "SETTLED"].includes(data.economicState) || data.estado !== data.economicState) throw new Error();
-    return Object.freeze({ paymentId: snapshot.id, ...data, currentPrincipalMinor });
+    return Object.freeze({ paymentId: snapshot.id, ...data, currentPrincipalMinor, currentWaivedAmountMinor,
+      grossWaivedAmountMinor: data.grossWaivedAmountMinor || 0, reversedWaivedAmountMinor: data.reversedWaivedAmountMinor || 0,
+      waiverEventCount: data.waiverEventCount || 0, waiverHistoryRevision: data.waiverHistoryRevision || 0 });
   } catch (cause) { throw new DeliveryIncompatibleStateError({ cause }); }
 }
 function paymentUpdate(payment, appliedDelta, reversedDelta) {
   const confirmedIncomeMinor = payment.confirmedIncomeMinor + appliedDelta;
   const reversedIncomeMinor = payment.reversedIncomeMinor + reversedDelta;
   const netConfirmedIncomeMinor = confirmedIncomeMinor - reversedIncomeMinor;
-  const balanceMinor = (payment.currentPrincipalMinor ?? payment.amountMinor) - netConfirmedIncomeMinor;
+  const currentWaivedAmountMinor = payment.currentWaivedAmountMinor || 0;
+  const balanceMinor = (payment.currentPrincipalMinor ?? payment.amountMinor) - netConfirmedIncomeMinor - currentWaivedAmountMinor;
   if (netConfirmedIncomeMinor < 0 || balanceMinor < 0) throw new DeliveryIncompatibleStateError();
-  const economicState = netConfirmedIncomeMinor === 0 ? "PENDING" : balanceMinor === 0 ? "SETTLED" : "PARTIAL";
+  const economicState = netConfirmedIncomeMinor + currentWaivedAmountMinor === 0 ? "PENDING" : balanceMinor === 0 ? "SETTLED" : "PARTIAL";
   return { confirmedIncomeMinor, reversedIncomeMinor, netConfirmedIncomeMinor, balanceMinor, economicState,
-    estado: economicState, economicRevision: payment.economicRevision + 1, schemaVersion: payment.schemaVersion === 4 ? 4 : 2 };
+    estado: economicState, economicRevision: payment.economicRevision + 1, schemaVersion: [4, 5].includes(payment.schemaVersion) ? payment.schemaVersion : 2 };
 }
 function principalCorrection(snapshot) {
   if (!snapshot.exists) return null; const data = snapshot.data();

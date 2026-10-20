@@ -337,6 +337,7 @@ const paymentVoidNoticeGateE3TestPath = path.join(
 );
 const paymentVoidE3TestPath = path.join(systemRoot, "functions", "test", "emulator", "paymentVoidE3.test.js");
 const paymentPrincipalCorrectionE3TestPath = path.join(systemRoot, "functions", "test", "emulator", "paymentPrincipalCorrectionE3.test.js");
+const paymentWaiverE3TestPath = path.join(systemRoot, "functions", "test", "emulator", "paymentWaiverE3.test.js");
 const legacyJoinRetirementTestPath = path.join(
   systemRoot,
   "functions",
@@ -344,7 +345,13 @@ const legacyJoinRetirementTestPath = path.join(
   "emulator",
   "legacyJoinRetirementE2.test.js"
 );
-const command = process.env.E3_06_WRITER_FOCAL === "1"
+const command = process.env.E3_07_WRITER_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${paymentWaiverE3TestPath}"`
+  : process.env.E3_02_TREASURY_STORE_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${treasuryE3TestPath}"`
+  : process.env.E3_07_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${paymentWaiverE3TestPath}" "${paymentPrincipalCorrectionE3TestPath}" "${paymentVoidE3TestPath}" "${paymentDeliveryE3TestPath}" "${administrativeReceiptE3TestPath}" "${treasuryE3TestPath}" "${paymentE3TestPath}"`
+  : process.env.E3_06_WRITER_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${paymentPrincipalCorrectionE3TestPath}"`
   : process.env.E3_06_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${paymentPrincipalCorrectionE3TestPath}" "${paymentVoidE3TestPath}" "${paymentDeliveryE3TestPath}" "${administrativeReceiptE3TestPath}" "${treasuryE3TestPath}" "${paymentE3TestPath}"`
@@ -428,7 +435,7 @@ const command = process.env.E3_06_WRITER_FOCAL === "1"
       ? `node --test --test-concurrency=1 "${membershipTestPath}"`
       : process.env.E2_04_FOCAL === "1"
         ? `node --test --test-concurrency=1 "${membershipListTestPath}"`
-        : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${groupNameUpdateTestPath}" "${groupArchiveTestPath}" "${groupDeletionTestPath}" "${seasonTestPath}" "${seasonClosureTestPath}" "${seasonHistoryTestPath}" "${seasonUpdateTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${groupJoinRequestTestPath}" "${groupJoinRequestDecisionTestPath}" "${groupJoinRequestDecisionGapsTestPath}" "${membershipReactivationTestPath}" "${membershipSelfExitTestPath}" "${membershipOwnerRosterTestPath}" "${membershipAdministrativeFinalizationTestPath}" "${membershipRenewalTestPath}" "${membershipCargoTestPath}" "${ownGroupMembershipHistoryTestPath}" "${legacyJoinRetirementTestPath}" "${paymentE3TestPath}" "${paymentE3CallableTestPath}" "${paymentE3SerializationTestPath}" "${treasuryE3TestPath}" "${treasuryE3CallableTestPath}" "${paymentDeliveryE3TestPath}" "${administrativeReceiptE3TestPath}" "${administrativeReceiptPaginationE3TestPath}" "${administrativeReceiptConcurrencyE3TestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
+        : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${groupNameUpdateTestPath}" "${groupArchiveTestPath}" "${groupDeletionTestPath}" "${seasonTestPath}" "${seasonClosureTestPath}" "${seasonHistoryTestPath}" "${seasonUpdateTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${groupJoinRequestTestPath}" "${groupJoinRequestDecisionTestPath}" "${groupJoinRequestDecisionGapsTestPath}" "${membershipReactivationTestPath}" "${membershipSelfExitTestPath}" "${membershipOwnerRosterTestPath}" "${membershipAdministrativeFinalizationTestPath}" "${membershipRenewalTestPath}" "${membershipCargoTestPath}" "${ownGroupMembershipHistoryTestPath}" "${legacyJoinRetirementTestPath}" "${paymentE3TestPath}" "${paymentE3CallableTestPath}" "${paymentE3SerializationTestPath}" "${treasuryE3TestPath}" "${treasuryE3CallableTestPath}" "${paymentDeliveryE3TestPath}" "${administrativeReceiptE3TestPath}" "${administrativeReceiptPaginationE3TestPath}" "${administrativeReceiptConcurrencyE3TestPath}" "${paymentWaiverE3TestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}"`;
 const args = [
   "emulators:exec",
   "--project",

@@ -16,7 +16,9 @@ test("E3-02 publica sólo la capacidad fija y conserva deny-all", () => {
   const rules = fs.readFileSync(path.resolve(root, "../firestore.rules"), "utf8");
   for (const collection of ["groupCapabilityGrants", "groupCapabilityGrantSlots", "groupCapabilityCommandReceipts"]) assert.match(rules, new RegExp(`match /${collection}.*[\\s\\S]*?allow read, write: if false`));
   const store = fs.readFileSync(path.join(root, "src/treasury/infrastructure/firestoreTreasuryStore.js"), "utf8");
-  assert.match(store, /CAPABILITY_ID/); for (const forbidden of ["updatePagoEstado", "transferGroupOwnership", "pagoEstado", "cargo ===", "cargo =="]) assert.doesNotMatch(store, new RegExp(forbidden));
+  assert.match(store, /grants\.where\("groupId", "==", input\.groupId\)\.where\("capabilityId", "==", CAPABILITY_ID\)/);
+  assert.match(store, /doc\.data\(\)\?\.capabilityId !== CAPABILITY_ID/);
+  for (const forbidden of ["updatePagoEstado", "transferGroupOwnership", "pagoEstado", "cargo ===", "cargo =="]) assert.doesNotMatch(store, new RegExp(forbidden));
 });
 
 test("E3-02 cruza módulos sólo por capacidades públicas", () => {
@@ -40,4 +42,9 @@ test("E3-02 separa autorizacion Owner por Cuenta de contexto delegado", () => {
   assert.match(store, /async function listForOwner[\s\S]*?ensureOwnedContext\(/);
   assert.match(store, /async function grant[\s\S]*?ensureOwnedContext\(/);
   assert.match(store, /resolveUniqueAccountForPerson\(/);
+});
+
+test("E3-02 UI distingue comando, roster e historia al diagnosticar", () => {
+  const ui = fs.readFileSync(path.resolve(root, "../../volley-ranking-frontend/src/components/treasury/OwnerTreasuryAccessSection.tsx"), "utf8");
+  for (const marker of ["Concesión de Tesorería", "Revocación de Tesorería", "Integrantes elegibles:", "Historia de Tesorería:", "confirmada; falló la recarga"]) assert.match(ui, new RegExp(marker));
 });

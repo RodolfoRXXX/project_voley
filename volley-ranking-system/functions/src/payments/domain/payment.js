@@ -29,8 +29,12 @@ function normalizeOccurrenceName(value) { return normalizeText(value, { maxPoint
 function normalizeExceptionReason(value) { return normalizeText(value, { maxPoints: 240, maxBytes: 480 }); }
 function normalizeVoidExplanation(value) { return normalizeText(value, { maxPoints: 240, maxBytes: 480 }); }
 function normalizePrincipalCorrectionExplanation(value) { return normalizeText(value, { maxPoints: 240, maxBytes: 480 }); }
+function normalizeWaiverExplanation(value) { return normalizeText(value, { maxPoints: 240, maxBytes: 480 }); }
 function requireVoidReason(value) { if (!["DUPLICATE", "WRONG_MEMBERSHIP", "WRONG_CONCEPT_OR_PERIOD", "NOT_OWED", "OTHER"].includes(value)) throw new PaymentValidationError(); return value; }
 function requirePrincipalCorrectionReason(value) { if (!["AMOUNT_ENTRY_ERROR", "WRONG_APPROVED_BASE_AMOUNT", "MEMBERSHIP_EXCEPTION_AMOUNT_ERROR", "ARITHMETIC_ERROR"].includes(value)) throw new PaymentValidationError(); return value; }
+function requireWaiverReason(value) { if (!["FINANCIAL_ASSISTANCE", "ORGANIZATIONAL_WAIVER", "EXCEPTIONAL_WAIVER"].includes(value)) throw new PaymentValidationError(); return value; }
+function requireWaiverReversalReason(value) { if (!["WAIVER_DUPLICATE_ENTRY", "WAIVER_WRONG_AMOUNT", "WAIVER_WRONG_PAYMENT", "WAIVER_NOT_AUTHORIZED_AS_RECORDED"].includes(value)) throw new PaymentValidationError(); return value; }
+function requireWaiverMode(value) { if (!["PARTIAL", "TOTAL"].includes(value)) throw new PaymentValidationError(); return value; }
 function requireAmount(value) { if (!Number.isSafeInteger(value) || value < 1 || value > MAX_AMOUNT_MINOR) throw new PaymentValidationError(); return value; }
 function requireVersion(value) { if (!Number.isSafeInteger(value) || value < 1) throw new PaymentValidationError(); return value; }
 function requireIdempotencyKey(value) { if (typeof value !== "string" || !IDEMPOTENCY_PATTERN.test(value)) throw new PaymentValidationError(); return value; }
@@ -94,12 +98,15 @@ function conceptDto(concept) { return Object.freeze({ conceptId: concept.concept
 function occurrenceDto(item) { return Object.freeze({ occurrenceKey: item.occurrenceKey, name: item.name, estado: item.estado, createdAt: iso(item.createdAt) }); }
 function paymentDto(payment, { owner = false, treasury = false, now = new Date(), person, groupName } = {}) {
   const currentPrincipalMinor = payment.currentPrincipalMinor ?? payment.amountMinor;
+  const currentWaivedAmountMinor = payment.currentWaivedAmountMinor ?? 0;
   const dto = {
     paymentId: payment.paymentId, groupId: payment.groupId, membershipId: payment.membershipId,
     seasonId: payment.seasonId,
     concept: { conceptId: payment.conceptId, ...payment.conceptSnapshot }, amountMinor: payment.amountMinor, currentPrincipalMinor, dueDate: payment.dueDate,
     estado: payment.economicState || payment.estado,
     balanceMinor: payment.balanceMinor ?? payment.amountMinor,
+    netConfirmedIncomeMinor: payment.netConfirmedIncomeMinor ?? 0,
+    currentWaivedAmountMinor,
     economicRevision: payment.economicRevision ?? 1,
     overdue: !["SETTLED", "VOIDED"].includes(payment.economicState || payment.estado) && payment.dueDate < new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(now),
     ...(payment.periodKey ? { periodKey: payment.periodKey } : { occurrenceKey: payment.occurrenceKey }),
@@ -121,6 +128,8 @@ module.exports = {
   MAX_AMOUNT_MINOR, conceptDto, currentPeriodKey, exact, hash, hydrateConcept, hydrateOccurrence, iso, occurrenceDto,
   monthBounds, normalizeConceptName, normalizeExceptionReason, normalizeOccurrenceName, normalizeVoidExplanation, opaqueId,
   normalizePrincipalCorrectionExplanation,
+  normalizeWaiverExplanation,
   paymentDto, requireAmount, requireDueDate, requireExact, requireId, requireIdempotencyKey, requireKind,
-  requirePageSize, requirePeriodKey, requirePrincipalCorrectionReason, requireVersion, requireVoidReason, stable,
+  requirePageSize, requirePeriodKey, requirePrincipalCorrectionReason, requireVersion, requireVoidReason,
+  requireWaiverMode, requireWaiverReason, requireWaiverReversalReason, stable,
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { listActiveGroupMembersForOwnedGroup } from "@/services/membershipsService";
+import { getMembershipErrorMessage, getMembershipErrorReason, listActiveGroupMembersForOwnedGroup } from "@/services/membershipsService";
 import { getTreasuryErrorMessage, getTreasuryErrorReason, grantGroupTreasury, listGroupTreasuryGrants, newTreasuryKey, revokeGroupTreasury } from "@/services/treasuryService";
 import type { ActiveGroupMember } from "@/types/ActiveGroupMember";
 import type { TreasuryGrant } from "@/types/Treasury";
@@ -9,23 +9,30 @@ import type { TreasuryGrant } from "@/types/Treasury";
 type Intent = { kind: "grant"; membershipId: string; name: string; idempotencyKey: string } | { kind: "revoke"; grantId: string; name: string; idempotencyKey: string };
 const nameOf = (person: ActiveGroupMember["person"] | TreasuryGrant["person"]) => person.status === "AVAILABLE" ? `${person.firstName} ${person.lastName}` : "Persona no disponible";
 const stateLabel = (state: TreasuryGrant["state"]) => ({ ACTIVE: "Vigente", REVOKED: "Revocado", LAPSED: "Sin vigencia" })[state];
+async function readTreasuryAccess(groupId: string) {
+  const roster = await listActiveGroupMembersForOwnedGroup({ groupId, pageSize: 20 }).catch((cause: unknown) => Promise.reject({ source: "roster" as const, cause }));
+  const history = await listGroupTreasuryGrants({ groupId, pageSize: 20 }).catch((cause: unknown) => Promise.reject({ source: "history" as const, cause }));
+  return { roster, history };
+}
+function treasuryLoadMessage(cause: unknown) { if (typeof cause === "object" && cause && "source" in cause && "cause" in cause) { const tagged = cause as { source: "roster" | "history"; cause: unknown }; return tagged.source === "roster" ? `Integrantes elegibles: ${getMembershipErrorMessage(getMembershipErrorReason(tagged.cause))}` : `Historia de Tesorería: ${getTreasuryErrorMessage(getTreasuryErrorReason(tagged.cause))}`; } return getTreasuryErrorMessage(getTreasuryErrorReason(cause)); }
 
 export function OwnerTreasuryAccessSection({ groupId }: { groupId: string }) {
   const [members, setMembers] = useState<ActiveGroupMember[]>([]); const [memberCursor, setMemberCursor] = useState<string | null>(null);
   const [grants, setGrants] = useState<TreasuryGrant[]>([]); const [grantCursor, setGrantCursor] = useState<string>();
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading"); const [error, setError] = useState(""); const [notice, setNotice] = useState("");
   const [intent, setIntent] = useState<Intent | null>(null); const busy = useRef(false); const feedback = useRef<HTMLDivElement>(null); const cancel = useRef<HTMLButtonElement>(null);
-  const load = useCallback(async () => { setStatus("loading"); setError(""); try { const [roster, history] = await Promise.all([listActiveGroupMembersForOwnedGroup({ groupId, pageSize: 20 }), listGroupTreasuryGrants({ groupId, pageSize: 20 })]); setMembers(roster.items.filter((item) => !item.isOwner)); setMemberCursor(roster.nextCursor); setGrants(history.items); setGrantCursor(history.nextCursor); setStatus("ready"); } catch (cause) { setError(getTreasuryErrorMessage(getTreasuryErrorReason(cause))); setStatus("error"); } }, [groupId]);
+  const load = useCallback(async () => { setStatus("loading"); setError(""); try { const { roster, history } = await readTreasuryAccess(groupId); setMembers(roster.items.filter((item) => !item.isOwner)); setMemberCursor(roster.nextCursor); setGrants(history.items); setGrantCursor(history.nextCursor); setStatus("ready"); } catch (cause) { setError(treasuryLoadMessage(cause)); setStatus("error"); } }, [groupId]);
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { if (intent) queueMicrotask(() => cancel.current?.focus()); }, [intent]);
 
   async function confirm() {
     if (!intent || busy.current) return; busy.current = true; setError("");
+    let commandConfirmed = false;
     try {
       if (intent.kind === "grant") { await grantGroupTreasury({ groupId, membershipId: intent.membershipId, idempotencyKey: intent.idempotencyKey }); setNotice(`Concediste acceso de sólo consulta a ${intent.name}.`); }
       else { await revokeGroupTreasury({ groupId, grantId: intent.grantId, idempotencyKey: intent.idempotencyKey }); setNotice(`Revocaste el acceso de ${intent.name}.`); }
-      setIntent(null); await load(); queueMicrotask(() => feedback.current?.focus());
-    } catch (cause) { setError(getTreasuryErrorMessage(getTreasuryErrorReason(cause))); queueMicrotask(() => feedback.current?.focus()); }
+      commandConfirmed = true; const { roster, history } = await readTreasuryAccess(groupId); setMembers(roster.items.filter((item) => !item.isOwner)); setMemberCursor(roster.nextCursor); setGrants(history.items); setGrantCursor(history.nextCursor); setStatus("ready"); setIntent(null); queueMicrotask(() => feedback.current?.focus());
+    } catch (cause) { const operation = intent.kind === "grant" ? "Concesión de Tesorería" : "Revocación de Tesorería"; setError(commandConfirmed ? `${operation} confirmada; falló la recarga. ${treasuryLoadMessage(cause)}` : `${operation}: ${getTreasuryErrorMessage(getTreasuryErrorReason(cause))}`); queueMicrotask(() => feedback.current?.focus()); }
     finally { busy.current = false; }
   }
   async function loadMoreMembers() { if (!memberCursor || busy.current) return; const page = await listActiveGroupMembersForOwnedGroup({ groupId, pageSize: 20, cursor: memberCursor }); setMembers((items) => [...items, ...page.items.filter((item) => !item.isOwner)]); setMemberCursor(page.nextCursor); }

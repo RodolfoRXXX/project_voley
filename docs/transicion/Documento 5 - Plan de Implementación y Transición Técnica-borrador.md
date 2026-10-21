@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - E3-08 formalizada documentalmente - 21 de octubre de 2026*
+*Borrador consolidado - E3-08 enmendada por D5-054 - 21 de octubre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -2317,6 +2317,24 @@ El siguiente incremento funcional es:
     antes de adoptar dependencias, persistencia, cache, proyecciones o cambios de writers. E3-08 no
     crea Caja, no cubre todos los casos de Caja/balance y no incorpora egresos, devolución,
     conciliación, exportación, delegación de condonación ni retiro legacy.
+- Enmienda de entrega E3-08 adoptada por D5-054: conserva D5-053 y sus resultados como antecedente
+    técnicamente correcto, pero sustituye su mecanismo únicamente para entrega, paginación y
+    frecuencia de autorización. `listGroupRegisteredIncomeMovements` recibe
+    `{ groupId, from?, to? }`; cada apertura, refresh o cambio de rango autoriza y ejecuta una única
+    transacción read-only que produce hasta 1.000 movimientos mínimos, manifiesto, presentación y
+    totales exactos bajo un corte común. El hecho 1.001 falla sin filas ni totales. No hay
+    paginación backend, cursor, `nextCursor` ni errores exclusivos de continuación. Frontend conserva
+    la respuesta sólo en memoria volátil, pagina visualmente 20/50, renderiza sólo filas visibles,
+    no recalcula economía, muestra el corte de actualización, limpia al cerrar sesión/cambiar
+    Cuenta o Grupo/detectar pérdida de acceso y descarta respuestas tardías de otro contexto. La
+    detección de revocación usa mecanismos existentes y no se promete instantánea; revocar impide
+    nuevas consultas, pero no recupera datos ya entregados. Permanecen pendientes transporte con
+    callable real local, heap/render/accesibilidad de navegador y evaluación operativa sin
+    presupuesto productivo aprobado. Las fuentes actualizadas son la
+    [ficha E3-08](../implementacion/etapa-3/E3-08-ficha-consulta-movimientos-ingresos.md),
+    [DEC-E3-08](../implementacion/etapa-3/DEC-E3-08-consulta-movimientos-ingresos.md) y el
+    [addendum E3-08](../arquitectura/Documento-2-3-4-addendum-E3-08-consulta-movimientos-ingresos.md);
+    no se agregan persistencia, cache, proyecciones, writers, dependencias ni permisos.
 - Coordinación E3/E4: el gate de retiro económico permanece en E3. Los contratos deportivos E4
     pueden definirse de forma delimitada bajo D5-027, pero cada incremento futuro requiere
     autorización propia y no adelanta catálogos o tombstones D5-044.
@@ -2511,6 +2529,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-051 | E3-06 adopta DEC-E3-06 y el addendum conjunto de Documentos 2/3/4; incorpora corrección individual Owner-only del principal exigible, preserva evidencia original e historia y armoniza anulación posterior estricta | APROBADA | Etapa 3 / E3-06 | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; condonación, Caja, devolución, restablecimiento/reemplazo y permisos nuevos siguen fuera; D5-044, D5-045, Auth/UAT y gate económico legacy no cambian |
 | D5-052 | E3-07 adopta DEC-E3-07, D01–D11, R01, R02=A y el addendum conjunto de Documentos 2/3/4; incorpora condonación individual Owner-only total/parcial y reversión completa de un hecho erróneo dentro de Pago | APROBADA | Etapa 3 / E3-07 | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; los gates ejecutables permanecen no comprobados y no se autorizan código, producción o cierre; D5-044, D5-045, Auth/UAT y gate económico legacy no cambian |
 | D5-053 | E3-08 adopta DEC-E3-08, D01–D04=A y el addendum conjunto de Documentos 2/3/4; incorpora consulta derivada read-only de movimientos de ingresos registrados y amplía `GROUP_TREASURY` explícitamente sólo para esa lectura | APROBADA | Etapa 3 / E3-08 | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; los gates A/B permanecen no comprobados, no se declara Caja/balance completo y D5-044, D5-045, Auth/UAT, baseline y gate económico legacy no cambian |
+| D5-054 | E3-08 adopta la alternativa B y sustituye D5-053 sólo en entrega, paginación y frecuencia de autorización: respuesta única de hasta 1.000 movimientos mínimos y totales exactos, paginación visual 20/50 y autorización por apertura/refresh/cambio de rango | APROBADA | Etapa 3 / E3-08 | D5-053 y la evidencia A permanecen históricos; ficha, DEC y addendum actualizados quedan adoptados y `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; siguen pendientes callable real local, heap/render/accesibilidad de navegador y evaluación operativa sin presupuesto productivo aprobado; D5-044, D5-045, Auth/UAT, baseline y gate económico legacy no cambian |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -2655,10 +2674,12 @@ primer incremento.
 
 Etapas 0 y 1 permanecen cerradas y Etapa 2 cerrada con el riesgo residual aceptado por D5-045.
 E3-08 es el último incremento formalizado de Etapa 3 y queda
-`LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA` por D5-053.
+`LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA` por D5-053 y su enmienda D5-054.
 
-No existe autorización de implementación. Antes de afirmar viabilidad deben ejecutarse bajo una
-autorización futura los gates A/B definidos por DEC-E3-08: comprobar el mecanismo read-only y medir
-su reconstrucción completa por página. Un resultado inviable detiene ese trabajo y exige presentar
-alternativas antes de modificar dependencias o arquitectura. E3-08 no está implementado, verificado
-o cerrado y no cierra Etapa 3; el gate de retiro económico legacy permanece pendiente.
+No existe autorización de implementación completa. Los gates A/B locales conservaron evidencia de
+corrección de A y motivaron D5-054 sin presentarlo como fallido. Para B permanecen transporte con
+callable real local, heap/render/accesibilidad en navegador y evaluación operativa con límites
+explícitos; no existe presupuesto productivo aprobado. Un resultado inviable detiene ese trabajo y
+exige presentar alternativas antes de modificar dependencias o arquitectura. E3-08 no está
+implementado, verificado o cerrado y no cierra Etapa 3; el gate de retiro económico legacy
+permanece pendiente.

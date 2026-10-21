@@ -2,17 +2,21 @@
 
 ## Estado
 
-- **Tipo:** decisión normativa adoptada para E3-08.
+- **Tipo:** decisión normativa adoptada para E3-08 con enmienda arquitectónica B integrada.
 - **Decisiones funcionales aprobadas:** `E3-08-D01=A`, `D02=A`, `D03=A`, `D04=A`.
-- **Decisión de Documento 5:** `D5-053`.
+- **Decisión histórica de Documento 5:** `D5-053` (mecanismo A).
+- **Decisión complementaria:** `D5-054`.
 - **Estado:** `APROBADA`.
 - **Estado del incremento:** `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`.
 - **Base:** `dev` en `39135a830a1e5bf17eca18cd46569715c04cce1a`, verificada el 21 de octubre
   de 2026 sin `fetch` ni cambio de rama.
 
-Esta decisión adopta el corte y el addendum E3-08 a Documentos 2/3/4. Documento 5 incorpora la
-continuidad mínima y D5-053. La adopción documental no autoriza implementación, pruebas,
-configuración, Rules, índices, dependencias, Firebase remoto o deploy, y no acredita los gates A/B.
+Esta DEC conserva el corte funcional y D01–D04=A. D5-053 permanece como antecedente histórico del
+mecanismo A, técnicamente correcto según los gates ejecutados. La aprobación expresa de B sustituye
+prospectivamente a A sólo en entrega, paginación y frecuencia de autorización de la consulta.
+D5-054 integra esa enmienda en Documento 5. Esta actualización documental no autoriza
+implementación, configuración, Rules, índices, dependencias,
+Firebase remoto o deploy.
 
 Paquete relacionado: [ficha E3-08](./E3-08-ficha-consulta-movimientos-ingresos.md) y
 [addendum a Documentos 2/3/4](../../arquitectura/Documento-2-3-4-addendum-E3-08-consulta-movimientos-ingresos.md).
@@ -47,8 +51,9 @@ saldo de caja.
 ### E3-08-D02=A — Owner y ampliación read-only de `GROUP_TREASURY`
 
 Owner consulta su Grupo activo o archivado. Una Cuenta con `GROUP_TREASURY` efectivo recibe
-expresamente esta consulta sólo sobre Grupo activo, con DTO mínimo, reautorización por página y sin
-acciones, detalle general, actores internos, motivos, líneas o permisos adicionales.
+expresamente esta consulta sólo sobre Grupo activo, con DTO mínimo y autorización en cada apertura,
+refresh o cambio de rango, sin acciones, detalle general, actores internos, motivos, líneas o
+permisos adicionales.
 
 La ampliación no habilita registrar/revertir Recepciones, condonar, corregir, anular, administrar
 grants distintos ni operar en archivo. Cargo, rol global, otras capabilities e IDs conocidos no
@@ -81,104 +86,98 @@ Líneas y aplicaciones explican distribución y efecto sobre Pago, pero no vuelv
 `RESOLVED_BY_ADMINISTRATIVE_RECEIPT` sin aplicación propia aportan cero. Deuda, condonación,
 reversión de condonación, corrección y anulación no integran estos totales.
 
-## 4. Consistencia sin persistencia adicional
+## 4. Consistencia y entrega única sin persistencia adicional
 
-### 4.1 Lo que no se adopta
+### 4.1 Antecedente A y sustitución prospectiva
 
-Un timestamp `asOf` y cursores por stream no acreditan consistencia entre consultas independientes.
-Tampoco se promete conservar una transacción Firestore entre páginas ni leer un snapshot histórico
-fuera de las garantías disponibles.
+D5-053 definió reconstrucción completa por página. Los gates demostraron que era técnicamente
+correcta: transacción read-only disponible, `readTime` común, corte exclusivo, continuidad mediante
+digest/conteo/ancla y rechazo ante divergencia. La medición operativa observó, para recorrer 1.000
+filas, 50.000 resultados de movimiento con página 20 o 20.000 con página 50. Esos resultados se
+conservan; A no se declara fallido.
 
-### 4.2 Gate de disponibilidad estática
+B queda aprobado para sustituir A, al integrarse normativamente, sólo en contrato de entrega,
+paginación y autorización. No hay continuaciones backend ni snapshot histórico entre requests.
 
-El árbol instalado permite expresar el mecanismo sin cambiar dependencias:
+### 4.2 Mecanismo B aprobado
 
-- `volley-ranking-system/functions/package.json:21` declara `firebase-admin ^11.11.1`;
-- `volley-ranking-system/functions/package-lock.json:145-147` resuelve
-  `@google-cloud/firestore 6.8.0` y `:1280-1298` resuelve `firebase-admin 11.11.1` con Firestore
-  opcional `^6.8.0`;
-- `volley-ranking-system/functions/node_modules/@google-cloud/firestore/types/firestore.d.ts:304-312`
-  define `ReadOnlyTransactionOptions`, `readOnly: true` y `readTime?: Timestamp`;
-- el mismo archivo `:475-497` expone `runTransaction(..., transactionOptions)` y documenta el
-  snapshot consistente de una transacción read-only;
-- el mismo archivo `:1405` y `:1794` expone `readTime` en `DocumentSnapshot` y `QuerySnapshot`.
+Cada apertura, refresh o cambio de rango ejecuta una única transacción read-only:
 
-Esto acredita disponibilidad estática en el checkpoint, no funcionamiento ejecutado. El gate de
-implementación futuro debe compilar y ejercitar la combinación exacta, verificar que las queries
-comparten el `readTime` transaccional y comprobar el corte exclusivo. Si la API no funciona en el
-runtime/Emulator efectivo o exige cambiar dependencias, se detiene E3-08 y se presentan antes de
-adoptarlas estas alternativas: autorizar la actualización, reformular consulta/UX o reabrir la
-arquitectura. Este DEC no elige ninguna.
+1. autentica y autoriza Owner o `GROUP_TREASURY` efectivo desde autoridades vigentes;
+2. la lectura de Grupo fija su `readTime` de servidor como `readCutoffExclusive`;
+3. lee secuencialmente, con presupuesto acumulado máximo 1.001, los streams informado confirmado,
+   administrativo y reversión;
+4. aplica rango civil y `eventAt < readCutoffExclusive`; igualdad con el corte queda fuera;
+5. normaliza, valida y ordena por `eventAt DESC, movementId DESC`;
+6. ante el hecho 1.001 falla con `MOVEMENT_LIMIT_EXCEEDED` antes de presentación o respuesta, sin
+   filas ni totales;
+7. para hasta 1.000 hechos construye manifiesto y digest, calcula totales exactos y obtiene la
+   presentación autorizada dentro de la misma transacción;
+8. devuelve el conjunto completo minimizado, su corte, digest y totales.
 
-### 4.3 Mecanismo adoptado, sujeto a gates ejecutables
+La transacción produce coherentemente manifiesto, totales y presentación autorizada. Backend es la
+única autoridad de inclusión, importes, orden, estado al corte y totales. Frontend no recompone
+streams ni recalcula economía: sólo divide en memoria el array recibido para mostrar 20 o 50 filas.
 
-La primera página usa una única transacción read-only. La lectura de Grupo fija el `readTime` de
-servidor como `readCutoffExclusive`. Dentro de esa transacción se reautoriza y se leen completamente,
-con tope acumulado 1.001, los streams:
+Los campos originales de Recepción permanecen inmutables y una reversión agrega `reversedAt` sin
+borrar el ingreso. `receiptStateAtCutoff` es `REVERSED` sólo con reversión válida estrictamente
+anterior al corte; una igual o posterior queda fuera. Refresh crea otra vista completa bajo un corte
+nuevo y sustituye conjuntamente filas y totales.
 
-1. `INFORMED + CONFIRMED` por `confirmedAt`;
-2. `ADMINISTRATIVE` por `recordedAt`;
-3. reversiones por `reversedAt`.
+### 4.3 Autorización, memoria y respuestas tardías
 
-Todos aplican el rango civil y `eventAt < readCutoffExclusive`. Igualdad con el corte queda fuera.
-Los hechos se normalizan, validan y ordenan por `eventAt DESC, movementId DESC`. Sobre el manifiesto
-completo aceptado se calculan totales y un digest determinista; sólo entonces se corta la página.
+Se autoriza cada apertura, refresh y cambio de rango. Pérdida de acceso detectada impide nuevas
+consultas y exige limpiar la vista. No se crean listeners ni sondeos: la detección ocurre mediante
+los mecanismos existentes de sesión/contexto y al recibir un rechazo en una nueva consulta. Por
+ello no se promete detección instantánea.
 
-Cada continuación abre otra transacción read-only, reautoriza, relee el mismo conjunto acotado con
-el mismo corte, reconstruye manifiesto/totales/digest y valida `emittedCount` más el ancla exacta. El
-cursor transporta scope, corte, digest, conteo y ancla, pero ninguno de esos valores sustituye la
-reconstrucción canónica ni aporta totales confiables. Divergencia produce `MOVEMENT_VIEW_CHANGED` y
-obliga a refrescar; nunca mezcla páginas.
+Los datos viven sólo en memoria del frontend: no se usa `localStorage`, `sessionStorage`, IndexedDB
+ni cache persistente. Cerrar sesión, cambiar Cuenta o Grupo, o detectar pérdida de acceso limpia
+filas, totales, corte y selección visual. Cada request queda ligado a un identificador de contexto y
+generación; una respuesta tardía sólo puede aplicarse si todavía coincide con Cuenta, Grupo, rango y
+generación activos. En otro caso se descarta para que no repueble una vista limpiada.
 
-La reconstrucción funciona sin historia física porque los campos originales de Recepción son
-inmutables y la reversión agrega `reversedAt` sin borrar el ingreso. Para
-`receiptStateAtCutoff`, sólo una reversión válida con `reversedAt < readCutoffExclusive` produce
-`REVERSED`; una posterior se ignora en esa vista. Nuevos commits usan timestamps de servidor y no
-entran antes del corte exclusivo. Borrado, backfill anterior o reescritura incompatible hacen fallar
-el digest; no se inventa recuperación histórica.
+Revocar acceso impide nuevas consultas, pero no recupera bytes ya entregados al navegador ni copias
+que el usuario hubiera conservado. Tesorería puede recibir hasta 1.000 DTO mínimos en una apertura
+válidamente autorizada, sin `receiptId` ni permisos adicionales.
 
-### 4.4 Costo y gate de medición
+### 4.4 Evidencia y gates residuales
 
-Primera página: autorización/contexto, hasta 1.001 resultados de movimiento y hasta 50
-presentaciones. Continuación: autorización/contexto, relectura de hasta 1.000 resultados para
-reconstruir el manifiesto y hasta 50 presentaciones. No hay cache autoritativa ni proyección.
+Gate A acreditó localmente la API read-only, `readTime` común y corte exclusivo. Gate B acreditó
+corrección y costo de A. La comparación focal de B observó, para 1.000 hechos, JSON sin compresión de
+384.397 B Owner y 332.400 B Tesorería; transacción local de 1.307,574 ms y transferencia HTTP
+loopback mediana de 3,439/3,640 ms. Parseo Node y loopback no acreditan callable productivo ni
+comportamiento del navegador, y resultados retornados no equivalen a lecturas facturadas.
 
-Con 1.000 hechos aceptados, el recorrido completo tiene 50 requests y una cota de 50.000 resultados
-de movimiento releídos para `pageSize=20`; con `pageSize=50`, 20 requests y una cota de 20.000.
-Estas cotas excluyen autorización/contexto, queries vacías, metadata y presentaciones, y no se
-declaran equivalentes a facturación. El máximo por request no debe confundirse con el costo
-acumulado.
-
-La medición futura debe informar por separado primera página, continuación representativa y
-recorrido completo para ambos page sizes: entorno/versiones/dataset; páginas y hechos; igualdad de
-digest/totales; resultados o lecturas por categoría; duración; bytes; CPU/memoria observable;
-fallos/retries; y detección acotada de 1.001 sin filas ni totales. No hay presupuesto productivo
-aprobado. Con la evidencia, la revisión decidirá si el mecanismo es viable, si requiere otra
-decisión sobre rango/límite/UX o si debe reabrirse la arquitectura; no se habilitan implícitamente
-persistencia, cache, proyección ni cambios de writers.
+Permanecen dos gates antes de considerar completa la implementación: transporte mediante el
+callable real elegido, y heap/render/accesibilidad en navegador manteniendo sólo 20/50 filas
+renderizadas. No existe presupuesto productivo aprobado. Si alguno resulta inviable, se detiene y
+se presenta una decisión; no se introducen implícitamente dependencias, persistencia, cache,
+proyecciones, cambios de writers, límites distintos ni totales aproximados.
 
 ## 5. Contrato y privacidad
 
 Se define `listGroupRegisteredIncomeMovements` con input cerrado:
 
 ```text
-{ groupId, from?, to?, pageSize?, cursor? }
+{ groupId, from?, to? }
 ```
 
-`pageSize` tiene default 20 y máximo 50. La salida común incluye audiencia, scope civil/moneda,
-`readCutoffExclusive`, digest, cuatro totales, filas y cursor opcional.
+La salida común incluye audiencia, scope civil/moneda, `readCutoffExclusive`, digest, cuatro
+totales y el conjunto completo de hasta 1.000 filas. No admite `pageSize` ni `cursor` y no devuelve
+`nextCursor`.
 
 - Owner recibe sujeto presentable y `receiptId` para reutilizar detalle autorizado.
 - Tesorería recibe sujeto presentable y `movementId`; omite `receiptId`, actor, motivos/notas,
   líneas, aplicaciones, avisos, receipts técnicos y acciones.
 
-Rules permanecen deny-all; el cliente no accede directamente a raíces. Cada página revalida Cuenta,
-Grupo, ownership o grant, Persona, Membresía, ancla y Temporada según E3-02.
+Rules permanecen deny-all; el cliente no accede directamente a raíces. Cada apertura, refresh o
+cambio de rango revalida Cuenta, Grupo, ownership o grant, Persona, Membresía y Temporada según
+E3-02. La UI mantiene los DTO sólo en memoria y renderiza exclusivamente 20/50 filas visibles.
 
 Errores mínimos: `UNAUTHENTICATED`, `GROUP_NOT_ACCESSIBLE`,
 `GROUP_TREASURY_NOT_AUTHORIZED`, `INVALID_DATE_RANGE`, `RANGE_TOO_WIDE`,
-`MOVEMENT_LIMIT_EXCEEDED`, `CURSOR_SCOPE_MISMATCH`, `MOVEMENT_VIEW_CHANGED`,
-`DATA_INCOMPATIBLE` y `DEPENDENCY_UNAVAILABLE`.
+`MOVEMENT_LIMIT_EXCEEDED`, `DATA_INCOMPATIBLE` y `DEPENDENCY_UNAVAILABLE`.
 
 ## 6. Consultas e índices previstos
 
@@ -198,14 +197,15 @@ ingresos**. Muestra fechas registral/efectiva separadas, ingresos, registros rev
 neto registrado. No muestra “saldo de caja”, controles de escritura, exportación o conciliación.
 
 Una implementación futura debe probar semántica, no doble conteo, v1/v2, fronteras exactas,
-timestamps iguales, digest, relectura, cursor/ancla/conteo, concurrentes antes/igual/después del
-corte, privacidad, lifecycle, 999/1.000/1.001, costo, accesibilidad y regresión E3-01–E3-07. UAT
-debe cubrir Owner, Tesorería mínima, reversión posterior, multilínea, neto negativo, pérdida de
-acceso, límites y refresco. No se ejecuta evidencia mediante este DEC.
+timestamps iguales, manifiesto/digest/totales en una transacción, concurrentes antes/igual/después
+del corte, privacidad, lifecycle, 999/1.000/1.001, costo, respuesta tardía descartada, memoria sólo
+volátil, paginación visual, accesibilidad y regresión E3-01–E3-07. UAT debe cubrir Owner, Tesorería
+mínima, reversión posterior, multilínea, neto negativo, pérdida de acceso, cambios de contexto,
+límites y refresh coherente.
 
-## 8. Continuidad mínima integrada en Documento 5
+## 8. Trazabilidad normativa y propuesta de sustitución
 
-### 8.1 Texto incorporado a §7.5
+### 8.1 Antecedente incorporado por D5-053
 
 > E3-08 incorpora una consulta privada y read-only de movimientos de ingresos registrados por
 > Grupo y período para Owner y `GROUP_TREASURY` efectivo. Usa eje temporal registral
@@ -219,23 +219,46 @@ acceso, límites y refresco. No se ejecuta evidencia mediante este DEC.
 > cuentas, crédito, devolución, conciliación, exportación, contabilidad, delegación de condonación
 > ni retiro legacy.
 
+El texto anterior se conserva como historia de A y no se reescribe en Documento 5 durante esta
+actualización. La enmienda B requiere sustituir únicamente la frase relativa a totales/páginas por
+una entrega única de hasta 1.000 DTO mínimos bajo una transacción read-only, seguida de paginación
+visual 20/50 y autorización en cada apertura, refresh o cambio de rango.
+
 ### 8.2 Registro D5 adoptado
 
 | Identificador | Decisión | Estado | Alcance | Consecuencia |
 |---|---|---|---|---|
-| `D5-053` | E3-08 adopta D01–D04=A y el addendum conjunto para consulta derivada de movimientos de ingresos registrados, con ampliación read-only explícita de `GROUP_TREASURY`. | APROBADA | Etapa 3 / E3-08 | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; los gates A/B permanecen pendientes y no se autoriza implementación ni cierre. |
+| `D5-053` | E3-08 adopta D01–D04=A y el addendum conjunto para consulta derivada de movimientos de ingresos registrados, con ampliación read-only explícita de `GROUP_TREASURY`. | APROBADA — HISTÓRICA PARA MECANISMO A | Etapa 3 / E3-08 | Conserva el fundamento y la evidencia de A; no se modifica en este paquete. |
 
 D5-053 fue verificado como siguiente identificador disponible después de D5-052 antes de su
-integración. No se incorpora ninguna otra decisión a Documento 5.
+integración.
+
+### 8.3 Decisión complementaria adoptada — `D5-054`
+
+> E3-08 sustituye el mecanismo de reconstrucción por página de D5-053 únicamente para entrega,
+> paginación y frecuencia de autorización. Cada apertura, refresh o cambio de rango autoriza y usa
+> una transacción read-only que devuelve hasta 1.000 movimientos mínimos y totales exactos bajo un
+> corte común; el hecho 1.001 falla sin filas ni totales. Frontend conserva la respuesta sólo en
+> memoria, pagina visualmente 20/50, no recalcula economía y descarta respuestas tardías de otro
+> contexto. Revocación impide nuevas consultas, pero no recupera datos ya entregados. Persisten los
+> gates de transporte callable real y heap/render de navegador. D01–D04=A y las restantes
+> exclusiones de D5-053 no cambian.
+
+Esta decisión queda adoptada por D5-054 sin reescribir D5-053.
 
 ## 9. Riesgo residual y gate de implementación
 
-No queda una decisión funcional o arquitectónica adicional indispensable para formalizar. Persisten
-dos gates ejecutables: A, comprobar la API read-only, el `readTime` común y la frontera exclusiva
-con las dependencias instaladas; B, medir primera página, continuación y recorrido completo de
-1.000 hechos con pageSize 20/50. Si cualquiera resulta inviable, la implementación se detiene y se
-presentan alternativas antes de adoptarlas; no se preaprueban cambios de dependencia, snapshots
-persistidos, proyecciones, cache autoritativa, cambios de writers o totales aproximados.
+No queda una decisión funcional o arquitectónica adicional indispensable. Los gates A/B locales ya
+acreditaron corrección y motivaron B sin invalidar A. Persisten la autorización separada de
+implementación, los gates de transporte callable real local y heap/render/accesibilidad de
+navegador, y la evaluación operativa explícita. Si alguno resulta inviable, la implementación se detiene y se presentan alternativas;
+no se preaprueban cambios de dependencia, snapshots persistidos, proyecciones, cache autoritativa,
+cambios de writers o totales aproximados.
+
+El rollback documental de esta enmienda revierte conjuntamente D5-054 en Documento 5, ficha, DEC,
+addendum e informe al contrato A; D5-053 y sus mediciones permanecen intactos. Como B no agrega persistencia ni writers,
+no existe migración de datos. Un rollback de implementación futuro deberá retirar la superficie B y
+limpiar estado volátil antes de reabrir una decisión; no podrá recuperar datos ya transferidos.
 
 ## 10. Preservaciones y no efectos
 
@@ -252,8 +275,8 @@ persistidos, proyecciones, cache autoritativa, cambios de writers o totales apro
 
 ## Resultado
 
-**DEC-E3-08 ADOPTADA — E3-08 LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA**
+**DEC-E3-08 ACTUALIZADA Y ADOPTADA — E3-08 LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA**
 
-El corte, D01–D04=A y el addendum quedan adoptados, con D5-053 integrado. Los gates A/B permanecen
-ejecutables y no comprobados. La decisión no autoriza implementación ni declara implementado,
-verificado o cerrado E3-08 o Etapa 3.
+D01–D04=A y D5-053 se conservan. D5-054 adopta B como único contrato futuro y sustituye A sólo en
+entrega, paginación y frecuencia de autorización. La implementación completa y
+los gates residuales requieren autorización. No se declara implementado o cerrado E3-08 ni Etapa 3.

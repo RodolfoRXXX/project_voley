@@ -84,6 +84,7 @@ exports.grantGroupTreasuryCapability = require("./callables/grantGroupTreasuryCa
 exports.revokeGroupTreasuryCapability = require("./callables/revokeGroupTreasuryCapability");
 exports.listGroupTreasuryGrantsForOwner = require("./callables/listGroupTreasuryGrantsForOwner");
 exports.getMyGroupTreasuryContext = require("./callables/getMyGroupTreasuryContext");
+exports.listGroupRegisteredIncomeMovements = require("./callables/listGroupRegisteredIncomeMovements");
 exports.reportOwnPaymentDelivery = require("./callables/reportOwnPaymentDelivery");
 exports.listMyPaymentDeliveries = require("./callables/listMyPaymentDeliveries");
 exports.getMyPaymentDelivery = require("./callables/getMyPaymentDelivery");

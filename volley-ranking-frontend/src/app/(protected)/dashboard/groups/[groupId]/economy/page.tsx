@@ -10,6 +10,7 @@ import { OwnerPaymentReceiptHistorySection } from "@/components/administrativeRe
 import { useGroupFrame } from "@/components/groups/GroupFrame";
 import { PaymentDeliveriesAdminSection } from "@/components/paymentDeliveries/PaymentDeliveriesAdminSection";
 import { OwnerEconomySection } from "@/components/payments/OwnerEconomySection";
+import { RegisteredIncomeMovementsSection } from "@/components/registeredIncomeMovements/RegisteredIncomeMovementsSection";
 import { TreasuryDebtSection } from "@/components/treasury/TreasuryDebtSection";
 
 type Tab = "debts" | "notices" | "history";
@@ -62,6 +63,7 @@ export default function GroupEconomyPage() {
       {access.owner && access.group?.estado === "activo" ? <OwnerAccessManagementSection groupId={groupId} compact /> : null}
     </div>
     <nav className="mb-5 flex gap-2 overflow-x-auto" aria-label="Vistas de Economía" role="tablist">{tabs.map((item) => <Link key={item.id} role="tab" aria-selected={tab === item.id} className={`shrink-0 rounded-lg border px-4 py-2 font-semibold ${tab === item.id ? "border-orange-500 bg-orange-50 text-orange-800" : ""}`} href={`?tab=${item.id}`}>{item.label}</Link>)}</nav>
+    {tab === "debts" && (access.owner || access.treasury) ? <div className="mb-5"><RegisteredIncomeMovementsSection key={groupId} groupId={groupId} onAccessLost={lost} /></div> : null}
     {tab === "debts" && access.owner ? <OwnerEconomySection groupId={groupId} readOnly={access.group?.estado === "archivado"} refreshVersion={refreshVersion} onPendingChange={setPendingOperation} onRecoveryChange={setRecoveryBlocked} onEconomyChanged={() => setRefreshVersion((value) => value + 1)} onReviewPayment={(deliveryId, trigger) => { reviewTrigger.current = trigger ?? null; setRequestedDeliveryId(deliveryId); router.push("?tab=notices"); }} /> : null}
     {tab === "debts" && !access.owner && access.treasury ? <TreasuryDebtSection groupId={groupId} onAccessLost={lost} /> : null}
     {tab === "debts" && !access.owner && access.record ? <div className={access.treasury ? "mt-5" : ""}><AdministrativeReceiptsSection groupId={groupId} owner={false} onPendingChange={setPendingOperation} onRecoveryChange={setRecoveryBlocked} /></div> : null}

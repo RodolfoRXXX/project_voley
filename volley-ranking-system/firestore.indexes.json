@@ -397,7 +397,8 @@
       "fields": [
         { "fieldPath": "groupId", "mode": "ASCENDING" },
         { "fieldPath": "decisionState", "mode": "ASCENDING" },
-        { "fieldPath": "confirmedAt", "mode": "DESCENDING" }
+        { "fieldPath": "confirmedAt", "mode": "DESCENDING" },
+        { "fieldPath": "__name__", "mode": "DESCENDING" }
       ]
     },
     {
@@ -455,7 +456,17 @@
       "fields": [
         { "fieldPath": "groupId", "mode": "ASCENDING" },
         { "fieldPath": "origin", "mode": "ASCENDING" },
-        { "fieldPath": "recordedAt", "mode": "DESCENDING" }
+        { "fieldPath": "recordedAt", "mode": "DESCENDING" },
+        { "fieldPath": "__name__", "mode": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "paymentDeliveries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "reversedAt", "mode": "DESCENDING" },
+        { "fieldPath": "__name__", "mode": "DESCENDING" }
       ]
     },
     {

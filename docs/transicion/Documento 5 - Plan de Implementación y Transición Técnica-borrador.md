@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - E3-07 formalizada documentalmente - 20 de octubre de 2026*
+*Borrador consolidado - E3-08 formalizada documentalmente - 21 de octubre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -14,8 +14,7 @@ partir de ella.
 # Estado del documento
 
 Este borrador conserva el contenido aprobado hasta la FASE 2 del Documento 5 y actualiza su estado
-operativo con el cierre de la Etapa 2 y la formalización documental de E3-01, E3-02, E3-03, E3-04 y
-E3-05.
+operativo con el cierre de la Etapa 2 y la formalización documental de E3-01 a E3-08.
 Incluye:
 - Capítulo 1 - Propósito y alcance;
 - Capítulo 2 - Estado inicial y activos reutilizables;
@@ -38,7 +37,7 @@ Estado operativo del plan:
 - `ETAPA 0 CERRADA`;
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
-- `ETAPA 3 HABILITADA PARA DEFINICIÓN`;
+- `ETAPA 3 EN CURSO DOCUMENTAL — E3-08 LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -1989,7 +1988,7 @@ el plan, pero no obliga a ejecutarlas en una cascada rígida ni a publicarlas co
 | 0 | Estabilización y red de seguridad | `CERRADA` | Arquitectura congelada y repositorio auditado | Seguridad implementada y probada, entorno reproducible y reinicialización preparada |
 | 1 | Usuario, Persona y autorización | `CERRADA` | Cierre de Etapa 0 | Identidad separada y autorización contextual inicial |
 | 2 | Grupo, Membresía, Solicitud y Temporada | `CERRADA CON RIESGO RESIDUAL ACEPTADO` | Persona y actor identificables | Fuentes de verdad organizativas separadas |
-| 3 | Pago deportivo | `E3-07 LISTO PARA IMPLEMENTAR; EJECUCIÓN NO AUTORIZADA` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
+| 3 | Pago deportivo | `E3-08 LISTO PARA IMPLEMENTAR; EJECUCIÓN NO AUTORIZADA` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
 | 4 | Partido-Torneo y CU-075 | `ROADMAP` | Modelo de Partido, contratos y pruebas | Resultado original y estado competitivo separados |
 | 5 | Estadísticas, Rendimiento, Actividad y recuperación | `ROADMAP` | Cada fuente original correspondiente | Proyecciones reconstruibles y procesos recuperables |
 | 6 | Comercial | `ROADMAP` | Usuario estable y consultas deportivas públicas | Capacidades y límites sin otorgar permisos deportivos |
@@ -2198,7 +2197,7 @@ El siguiente incremento funcional es:
 
 ## 7.5 Etapa 3 - Pago deportivo independiente
 
-- Estado: `E3-07 LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; su ejecución, preparación
+- Estado: `E3-08 LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; su ejecución, preparación
     productiva y deploy requieren autorización separada.
 - Objetivo: establecer Pago como única fuente económica deportiva.
 - Fuente de verdad: Pago.
@@ -2299,6 +2298,25 @@ El siguiente incremento funcional es:
     deuda/composición debe incorporar condonación. Devolución, crédito, saldo a favor, intereses,
     recargos, pasarela, permisos nuevos, restablecimiento/reemplazo y retiro económico legacy
     permanecen pendientes.
+- Consulta de movimientos de ingresos registrados adoptada por D5-053: E3-08 incorpora una consulta
+    privada y read-only por Grupo y período para Owner y `GROUP_TREASURY` efectivo, ampliado de modo
+    explícito sólo para esta lectura. D01–D04=A fijan eje temporal registral; fecha efectiva
+    informativa; mes civil actual por defecto y máximo 92 días; y máximo 1.000 hechos, contando
+    ingreso y reversión por separado, con fallo completo ante el hecho 1.001. Cada request usa una
+    transacción read-only, deriva un corte exclusivo del `readTime` del servidor, reautoriza y
+    reconstruye el manifiesto completo acotado; recalcula totales, digest, conteo y ancla antes de
+    paginar. La reversión posterior no borra el ingreso original; streams v1/v2 y DTOs por audiencia
+    evitan doble conteo y exposición lateral. Las fuentes complementarias son el
+    [addendum E3-08 a Documentos 2/3/4](../arquitectura/Documento-2-3-4-addendum-E3-08-consulta-movimientos-ingresos.md),
+    adoptado por [DEC-E3-08](../implementacion/etapa-3/DEC-E3-08-consulta-movimientos-ingresos.md).
+    Permanecen pendientes dos gates ejecutables: A, comprobar API read-only, `readTime` común y
+    frontera exclusiva con las dependencias instaladas; B, medir primera página, continuación y
+    recorrido completo de 1.000 hechos con pageSize 20 y 50. Las cotas acumuladas de hasta
+    50.000/20.000 resultados de movimiento no son lecturas facturadas verificadas ni presupuesto
+    aprobado. Si la solución resulta inviable, la implementación se detiene y presenta alternativas
+    antes de adoptar dependencias, persistencia, cache, proyecciones o cambios de writers. E3-08 no
+    crea Caja, no cubre todos los casos de Caja/balance y no incorpora egresos, devolución,
+    conciliación, exportación, delegación de condonación ni retiro legacy.
 - Coordinación E3/E4: el gate de retiro económico permanece en E3. Los contratos deportivos E4
     pueden definirse de forma delimitada bajo D5-027, pero cada incremento futuro requiere
     autorización propia y no adelanta catálogos o tombstones D5-044.
@@ -2492,6 +2510,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-050 | E3-05 adopta DEC-E3-05 y el addendum conjunto de Documentos 2/3/4; incorpora anulación Owner-only de obligación indebida sin aplicaciones ni aviso pendiente, preservando identidad, principal, snapshots y generación | APROBADA | Etapa 3 / E3-05 / CU-081 focal | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; el gate ejecutable de avisos es el primero de una futura implementación y puede detener esa parte; corrección, condonación, obligaciones con aplicaciones, devolución, permisos nuevos y Caja siguen fuera; D5-044, D5-045, Auth/UAT y gate económico legacy no cambian |
 | D5-051 | E3-06 adopta DEC-E3-06 y el addendum conjunto de Documentos 2/3/4; incorpora corrección individual Owner-only del principal exigible, preserva evidencia original e historia y armoniza anulación posterior estricta | APROBADA | Etapa 3 / E3-06 | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; condonación, Caja, devolución, restablecimiento/reemplazo y permisos nuevos siguen fuera; D5-044, D5-045, Auth/UAT y gate económico legacy no cambian |
 | D5-052 | E3-07 adopta DEC-E3-07, D01–D11, R01, R02=A y el addendum conjunto de Documentos 2/3/4; incorpora condonación individual Owner-only total/parcial y reversión completa de un hecho erróneo dentro de Pago | APROBADA | Etapa 3 / E3-07 | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; los gates ejecutables permanecen no comprobados y no se autorizan código, producción o cierre; D5-044, D5-045, Auth/UAT y gate económico legacy no cambian |
+| D5-053 | E3-08 adopta DEC-E3-08, D01–D04=A y el addendum conjunto de Documentos 2/3/4; incorpora consulta derivada read-only de movimientos de ingresos registrados y amplía `GROUP_TREASURY` explícitamente sólo para esa lectura | APROBADA | Etapa 3 / E3-08 | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; los gates A/B permanecen no comprobados, no se declara Caja/balance completo y D5-044, D5-045, Auth/UAT, baseline y gate económico legacy no cambian |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -2634,15 +2653,12 @@ primer incremento.
 
 # 12. Estado de redacción posterior
 
-Etapa 0 y Etapa 1 se encuentran cerradas. El siguiente trabajo autorizado es preparar la Ficha de
-Incremento Implementable de:
+Etapas 0 y 1 permanecen cerradas y Etapa 2 cerrada con el riesgo residual aceptado por D5-045.
+E3-08 es el último incremento formalizado de Etapa 3 y queda
+`LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA` por D5-053.
 
-`E2-01 — Creación de Grupo mínimo y ownership contextual`.
-
-La ficha deberá confirmar CU-011, actor y objetivo, ownership inicial, contrato de identidad, ausencia
-temporal o evaluación real de habilitación comercial, fuente de verdad Grupo, Servicio de Aplicación,
-Repositorio, diseño físico mínimo, consulta del Grupo propio, reglas, frontend, pruebas, rollback y
-retiro del escritor directo legado.
-
-No se diseñarán anticipadamente todas las colecciones de Etapa 2 ni el detalle completo de las Etapas
-3 a 9. Cada decisión física continuará adoptándose en el incremento que la necesite.
+No existe autorización de implementación. Antes de afirmar viabilidad deben ejecutarse bajo una
+autorización futura los gates A/B definidos por DEC-E3-08: comprobar el mecanismo read-only y medir
+su reconstrucción completa por página. Un resultado inviable detiene ese trabajo y exige presentar
+alternativas antes de modificar dependencias o arquitectura. E3-08 no está implementado, verificado
+o cerrado y no cierra Etapa 3; el gate de retiro económico legacy permanece pendiente.

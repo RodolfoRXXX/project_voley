@@ -10,6 +10,7 @@
 
 Paquete documental adoptado por `D5-055`: [DEC-E3-09](./DEC-E3-09-retiro-economia-legacy-partidos-sociales.md)
 y [addendum conjunto a Documentos 2/3/4](../../arquitectura/Documento-2-3-4-addendum-E3-09-retiro-economia-legacy-partidos-sociales.md).
+La separación entre cierre técnico local y habilitación productiva queda enmendada por `D5-056`.
 La preparación anterior mantuvo Documento 5 intacto; la formalización ahora autorizada integra allí
 la continuidad y decisión de E3-09, sin autorizar implementación.
 
@@ -281,7 +282,17 @@ queda integrada normativamente por `D5-055`; no equivale a autorización de impl
 
 ## 13. Aceptación futura del corte
 
-Una implementación futura deberá demostrar, sin considerar esta lista como ejecución actual:
+La aceptación se divide, exclusivamente para E3-09, en dos gates independientes:
+
+- **cierre técnico local:** exige evidencia de repositorio para los criterios 1 a 14 y para el retiro
+  local de código/export del criterio 15;
+- **habilitación productiva:** exige además UAT humana ejecutada y aprobada, eliminación o
+  deshabilitación remota de `onMatchClose` durante un rollout autorizado y verificación de su
+  ausencia operativa.
+
+El cierre técnico local no acredita producción, no aprueba UAT y no permite inferir el estado del
+entorno desplegado. Esta separación fue aprobada por `D5-056` y no modifica las reglas generales de
+otros incrementos.
 
 1. cero UI, mensajes o acciones económicas en partidos sociales;
 2. cero writers productivos de `participations.pagoEstado`;
@@ -304,19 +315,21 @@ Una implementación futura deberá demostrar, sin considerar esta lista como eje
 13. una búsqueda estructural limita `pagoEstado` a compatibilidad histórica/test y prohíbe usos
     productivos; UI no conserva imports, textos, estilos o props económicos;
 14. D5-044, D5-045, Auth/UAT aislada, baseline y el gate residual de Torneo quedan preservados.
-15. el código/export versionado de `onMatchClose` está retirado y el rollout autorizado elimina o
-    deshabilita explícitamente la función remota ya desplegada, verificando luego su ausencia; no se
-    considera suficiente omitir el export.
+15. para cierre técnico local, el código/export versionado de `onMatchClose` está retirado; para
+    habilitación productiva, el rollout autorizado elimina o deshabilita explícitamente la función
+    remota ya desplegada y verifica su ausencia operativa. No se considera suficiente omitir el
+    export.
 
-Pruebas futuras mínimas: unitarias de dominio/servicio, arquitectura por búsqueda/imports, Emulator
-para altas/reemplazos/ranking/cierre/tombstone y UAT visual de Partido sin economía. Deben incluir
+Pruebas técnicas mínimas: unitarias de dominio/servicio, arquitectura por búsqueda/imports y Emulator
+para altas/reemplazos/ranking/cierre/tombstone. La UAT visual de Partido sin economía permanece
+obligatoria antes de habilitar o rehabilitar el recorrido de partidos sociales a usuarios; puede
+seguir diferida y no aprobada al cerrar sólo el alcance técnico local. Las pruebas deben incluir
 errores de autenticación/autorización del tombstone, actor autorizado, campos históricos presentes/
-ausentes, cierre con titulares insuficientes/suficientes y reemplazo post-deadline. No se ejecutó ni
-creó ninguna prueba durante esta preparación documental.
+ausentes, cierre con titulares insuficientes/suficientes y reemplazo post-deadline.
 
-Esta ficha no crea pruebas ni autoriza su ejecución. Tampoco declara cerrado E3-09 o Etapa 3.
+Esta ficha no convierte la UAT diferida en aprobada, no acredita retiro remoto y no cierra Etapa 3.
 
 El retiro residual de autoridad económica en inscripciones/equipos de Torneo permanece separado y
 obligatorio. E3-09 no lo implementa, no lo redefine y no cierra el gate económico completo ni Etapa 3.
 
-**LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA**
+**E3-09 CERRADO EN SU ALCANCE TÉCNICO LOCAL — HABILITACIÓN PRODUCTIVA PENDIENTE — E3-10 HABILITADO ÚNICAMENTE PARA DEFINICIÓN**

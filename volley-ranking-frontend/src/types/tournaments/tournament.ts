@@ -50,7 +50,6 @@ export type Tournament = {
     maxTeams?: number;
     minPlayers?: number;
     maxPlayers?: number;
-    paymentPerPlayer?: number;
     setsToWin?: number;
     pointsWin?: number;
     pointsDraw?: number;
@@ -67,7 +66,6 @@ export type Tournament = {
   maxTeams: number;
   minPlayers: number;
   maxPlayers: number;
-  paymentForPlayer: number;
   acceptedTeamsCount?: number;
   podiumTeamIds?: [string, string, string] | null;
   startDate?: { seconds: number };

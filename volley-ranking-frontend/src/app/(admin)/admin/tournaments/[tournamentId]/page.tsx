@@ -104,7 +104,6 @@ export default function AdminTournamentDetailPage() {
     maxTeams: 0,
     minPlayers: 0,
     maxPlayers: 0,
-    paymentForPlayer: 0,
     startDate: "",
     rules: {
       setsToWin: 3,
@@ -246,7 +245,6 @@ export default function AdminTournamentDetailPage() {
       maxTeams: tournament.maxTeams,
       minPlayers: tournament.minPlayers || 1,
       maxPlayers: tournament.maxPlayers || 1,
-      paymentForPlayer: tournament.paymentForPlayer || 0,
       startDate: tournament.startDate?.seconds ? new Date(tournament.startDate.seconds * 1000).toISOString().slice(0, 16) : "",
       rules: {
         setsToWin: tournament.rules?.setsToWin || 3,
@@ -412,7 +410,7 @@ export default function AdminTournamentDetailPage() {
     const maxPlayers = tournament?.maxPlayers;
     const meetsMinPlayers = typeof minPlayers === "number" ? teamMembersCount >= minPlayers : true;
     const meetsMaxPlayers = typeof maxPlayers === "number" ? teamMembersCount <= maxPlayers : true;
-    return item.paymentStatus === "pagado" && meetsMinPlayers && meetsMaxPlayers;
+    return meetsMinPlayers && meetsMaxPlayers;
   };
 
   if (loading) {

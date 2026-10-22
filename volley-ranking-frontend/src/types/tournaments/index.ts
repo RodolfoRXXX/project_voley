@@ -26,7 +26,6 @@ export type {
 export type {
   ProfileTournamentEntry,
   TournamentEntrySource,
-  TournamentPaymentStatus,
   TournamentRegistration,
   TournamentRegistrationStatus,
   TournamentTeam,

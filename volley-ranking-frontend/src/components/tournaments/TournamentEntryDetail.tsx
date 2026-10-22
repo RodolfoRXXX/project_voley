@@ -19,9 +19,9 @@ import {
   type GroupedTournamentMatches,
 } from "@/components/tournaments/admin/TournamentMatchSections";
 
-import type { TournamentEntrySource as EntrySource, TournamentPaymentStatus as PaymentStatus, TournamentRegistration as EntryDoc, TournamentRegistrationStatus as RegistrationStatus } from "@/types/tournaments";
+import type { TournamentEntrySource as EntrySource, TournamentRegistration as EntryDoc, TournamentRegistrationStatus as RegistrationStatus } from "@/types/tournaments";
 import { getGroupById, getPublicTournamentDetailView, getTournamentById, getTournamentRegistrationById, getUserTournamentGroupIds, getUsersByIds, type PublicTournamentDetailView } from "@/services/tournaments/tournamentQueries";
-import { buildTournamentEntryPaymentSummary, updateTournamentEntryPlayers } from "@/services/tournaments/tournamentMutations";
+import { updateTournamentEntryPlayers } from "@/services/tournaments/tournamentMutations";
 
 type GroupDoc = {
   nombre?: string;
@@ -51,18 +51,6 @@ const registrationStatusLabel: Record<RegistrationStatus, string> = {
   pendiente: "Pendiente",
   aceptado: "Aceptado",
   rechazado: "Rechazado",
-};
-
-const paymentStatusClass: Record<PaymentStatus, string> = {
-  pendiente: "bg-yellow-100 text-yellow-700",
-  parcial: "bg-orange-100 text-orange-700",
-  pagado: "bg-green-100 text-green-700",
-};
-
-const paymentStatusLabel: Record<PaymentStatus, string> = {
-  pendiente: "Pendiente",
-  parcial: "Parcial",
-  pagado: "Pagado",
 };
 
 const EMPTY_GROUPED_MATCHES: GroupedTournamentMatches = {
@@ -191,7 +179,6 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
         })
         .filter((alert) => (
           alert.kind === "group_tournament_team_missing_players"
-          || alert.kind === "group_tournament_team_payment_pending"
         ))
         .filter((alert) => alert.resource?.tournamentId === entryData.tournamentId)
         .filter((alert) => source !== "registration" || alert.link?.path === detailPath)
@@ -216,11 +203,6 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
     return selectedCount >= Number(tournament.minPlayers || 0) && selectedCount <= Number(tournament.maxPlayers || 0);
   }, [selectedCount, tournament]);
 
-  const expectedAmount = useMemo(() => {
-    if (!tournament) return 0;
-    return selectedCount * Number(tournament.paymentForPlayer || 0);
-  }, [selectedCount, tournament]);
-
   const togglePlayer = async (playerId: string) => {
     if (!entry || !tournament || !isGroupAdmin || isTournamentLocked) return;
 
@@ -233,26 +215,18 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
     if (exists && current.length <= minPlayers) return;
 
     const next = exists ? current.filter((id) => id !== playerId) : [...current, playerId];
-    const paymentSummary = buildTournamentEntryPaymentSummary({
-      playerIds: next,
-      paymentForPlayer: Number(tournament.paymentForPlayer || 0),
-      paidAmount: Number(entry.paidAmount ?? 0),
-    });
-
     setSaving(playerId);
 
     await updateTournamentEntryPlayers({
       source,
       entryId: entry.id,
       playerIds: next,
-      paymentForPlayer: Number(tournament.paymentForPlayer || 0),
-      paidAmount: Number(entry.paidAmount ?? 0),
     });
 
     setEntry((prev) => (prev ? {
       ...prev,
       playerIds: next,
-      ...paymentSummary,
+      teamMembersCount: next.length,
     } : prev));
     setSaving(null);
   };
@@ -266,10 +240,6 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
   }
 
   const registrationStatus = entry.status || "pendiente";
-  const paymentStatus = entry.paymentStatus || "pendiente";
-  const paidAmount = Number(entry.paidAmount ?? 0);
-  const storedExpectedAmount = Number(entry.expectedAmount ?? expectedAmount);
-  const pendingAmount = Number(entry.pendingAmount ?? Math.max(storedExpectedAmount - paidAmount, 0));
   const groupedMatches = developmentView ? groupTournamentMatches(developmentView.matches) : EMPTY_GROUPED_MATCHES;
   const teamStanding = developmentView?.standings.find((standing) => standing.teamId === entry.id) || null;
   const teamNames = (developmentView?.teams || []).reduce<Record<string, string>>((acc, team) => {
@@ -352,43 +322,6 @@ export default function TournamentEntryDetail({ source, entryId }: TournamentEnt
           </ul>
         )}
       </article>
-
-      {isGroupAdmin && (source === "registration" || source === "team") && (
-        <article className="relative rounded-md border border-neutral-200 bg-white p-5 space-y-2 text-sm">
-
-          <span
-            className={`absolute top-4 right-4 text-xs rounded-full px-2 py-1 ${paymentStatusClass[paymentStatus]}`}
-          >
-            {paymentStatusLabel[paymentStatus]}
-          </span>
-
-          <h2 className="text-base font-semibold text-neutral-900">
-            Pago de inscripción
-          </h2>
-          {isTournamentLocked ? (
-            <p className="text-xs font-medium text-amber-700">
-              Torneo {tournament.status}. Las acciones de edición están inhabilitadas.
-            </p>
-          ) : null}
-
-          <p>
-            <b>Pago por jugador:</b> ${Number(tournament.paymentForPlayer || entry.paymentForPlayer || 0)}
-          </p>
-
-          <p>
-            <b>Monto total:</b> ${storedExpectedAmount}
-          </p>
-
-          <p>
-            <b>Pagado:</b> ${paidAmount}
-          </p>
-
-          <p>
-            <b>Falta pagar:</b> ${pendingAmount}
-          </p>
-
-        </article>
-      )}
 
       {source === "team" && developmentView && (
         <article className="rounded-md border border-neutral-200 bg-white p-5 space-y-4">

@@ -1,6 +1,6 @@
 import type { Tournament, TournamentRegistration } from "@/types/tournaments";
 
-export type UserTournamentStateStatus = "NOT_READY" | "READY_PENDING_PAYMENT" | "UNDER_REVIEW" | "ACCEPTED" | "REJECTED";
+export type UserTournamentStateStatus = "NOT_READY" | "UNDER_REVIEW" | "ACCEPTED" | "REJECTED";
 
 export type UserTournamentState = {
   status: UserTournamentStateStatus;
@@ -9,11 +9,6 @@ export type UserTournamentState = {
   players: {
     current: number;
     required: number;
-  };
-  payment: {
-    paid: number;
-    expected: number;
-    status: "pending" | "partial" | "complete";
   };
   nextAction: string;
 };
@@ -32,32 +27,11 @@ export function getUserTournamentState(params: {
 
   const requiredPlayers = Number(params.tournament.minPlayers || 0);
   const currentPlayers = playerIds.length;
-  const paid = Number(entry?.paidAmount ?? 0);
-  const expectedFromEntry = typeof entry?.expectedAmount === "number" ? entry.expectedAmount : undefined;
-  const paymentForPlayer = Number(
-    entry?.paymentForPlayer
-    ?? params.tournament.paymentForPlayer
-    ?? params.tournament.settings?.paymentPerPlayer
-    ?? 0
-  );
-  const expected = typeof expectedFromEntry === "number"
-    ? expectedFromEntry
-    : currentPlayers * paymentForPlayer;
-
-  const paymentStatus: UserTournamentState["payment"]["status"] = expected <= 0
-    ? "complete"
-    : paid <= 0
-      ? "pending"
-      : paid >= expected
-        ? "complete"
-        : "partial";
-
   const registrationStatus = params.registration?.status;
   const teamStatus = params.team?.status;
   const isRejected = teamStatus === "rechazado" || registrationStatus === "rechazado";
   const hasAcceptedTeam = teamStatus !== "rechazado" && (Boolean(params.team) || registrationStatus === "aceptado");
   const hasRequiredPlayers = currentPlayers >= requiredPlayers;
-  const isPaymentComplete = paymentStatus === "complete";
 
   if (isRejected) {
     return {
@@ -65,7 +39,6 @@ export function getUserTournamentState(params: {
       label: "Rechazado",
       sublabel: "La inscripción de este equipo fue rechazada para este torneo.",
       players: { current: currentPlayers, required: requiredPlayers },
-      payment: { paid, expected, status: paymentStatus },
       nextAction: "Revisar el estado de la inscripción",
     };
   }
@@ -74,12 +47,9 @@ export function getUserTournamentState(params: {
     return {
       status: "ACCEPTED",
       label: "Aceptado en el torneo",
-      sublabel: isPaymentComplete
-        ? "Tu equipo ya está confirmado y habilitado para competir."
-        : "Tu equipo fue aceptado, pero todavía queda completar el pago.",
+      sublabel: "Tu equipo ya está confirmado y habilitado para competir.",
       players: { current: currentPlayers, required: requiredPlayers },
-      payment: { paid, expected, status: paymentStatus },
-      nextAction: isPaymentComplete ? "Ver detalle del equipo" : "Completar el pago pendiente",
+      nextAction: "Ver detalle del equipo",
     };
   }
 
@@ -91,19 +61,7 @@ export function getUserTournamentState(params: {
         ? "La inscripción necesita correcciones antes de volver a revisión."
         : "Todavía no alcanzan el mínimo de jugadores para quedar listos.",
       players: { current: currentPlayers, required: requiredPlayers },
-      payment: { paid, expected, status: paymentStatus },
       nextAction: "Completar jugadores del equipo",
-    };
-  }
-
-  if (!isPaymentComplete) {
-    return {
-      status: "READY_PENDING_PAYMENT",
-      label: paymentStatus === "partial" ? "Pago parcial" : "Pago pendiente",
-      sublabel: "El equipo ya cumple roster mínimo, pero falta completar el pago para avanzar.",
-      players: { current: currentPlayers, required: requiredPlayers },
-      payment: { paid, expected, status: paymentStatus },
-      nextAction: "Registrar o completar el pago",
     };
   }
 
@@ -111,10 +69,9 @@ export function getUserTournamentState(params: {
     status: "UNDER_REVIEW",
     label: isRejected ? "Requiere nueva revisión" : "Bajo revisión",
     sublabel: isRejected
-      ? "Ya cumplen roster y pago, pero la inscripción fue observada y debe reenviarse."
+      ? "Ya cumplen el roster, pero la inscripción fue observada y debe reenviarse."
       : "El equipo está listo y espera la aprobación del torneo.",
     players: { current: currentPlayers, required: requiredPlayers },
-    payment: { paid, expected, status: paymentStatus },
     nextAction: isRejected ? "Revisar observaciones y volver a enviar" : "Esperar revisión del torneo",
   };
 }

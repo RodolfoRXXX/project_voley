@@ -5,6 +5,10 @@ const { getKnockoutBracketSize } = require("./tournamentFixtureService");
 const { buildDefaultAdvancementRules, validateMixedAdvancement } = require("./tournamentAdvancementService");
 const { emitDomainEvent } = require("../events/domainEventBus");
 const { DOMAIN_EVENTS } = require("../events/domainEvents");
+const {
+  assertNoRetiredTournamentEconomy,
+  getTournamentEconomicFields,
+} = require("./tournamentEconomyRetirement");
 
 const TOURNAMENT_STATUS = {
   DRAFT: "draft",
@@ -133,7 +137,6 @@ function validateTournamentPayload(data) {
     minPlayers,
     maxPlayers,
     startDateMillis,
-    paymentForPlayer,
     rules,
     adminIds,
   } = data;
@@ -147,7 +150,6 @@ function validateTournamentPayload(data) {
   if (typeof minPlayers !== "number" || minPlayers < 1) throw new functions.https.HttpsError("invalid-argument", "minPlayers inválido");
   if (typeof maxPlayers !== "number" || maxPlayers < minPlayers) throw new functions.https.HttpsError("invalid-argument", "maxPlayers inválido");
   if (typeof startDateMillis !== "number") throw new functions.https.HttpsError("invalid-argument", "Fecha de inicio inválida");
-  if (typeof paymentForPlayer !== "number" || paymentForPlayer < 0) throw new functions.https.HttpsError("invalid-argument", "paymentForPlayer inválido");
   if (!rules || typeof rules !== "object") throw new functions.https.HttpsError("invalid-argument", "rules inválido");
 
   const numericRules = ["pointsWin", "pointsDraw", "pointsLose", "setsToWin"];
@@ -189,7 +191,6 @@ function validateTournamentPayload(data) {
     minTeams,
     minPlayers,
     maxPlayers,
-    paymentForPlayer,
     startDate: Timestamp.fromMillis(startDateMillis),
     ...(typeof data.endDateMillis === "number" ? { endDate: Timestamp.fromMillis(data.endDateMillis) } : {}),
     rules: {
@@ -203,7 +204,6 @@ function validateTournamentPayload(data) {
       maxTeams,
       minPlayers,
       maxPlayers,
-      paymentPerPlayer: paymentForPlayer,
       setsToWin: rules.setsToWin,
       pointsWin: rules.pointsWin,
       pointsDraw: rules.pointsDraw,
@@ -290,10 +290,6 @@ function validateTournamentUpdate(data) {
     assertNumber(data.maxPlayers, "maxPlayers", (value) => value >= 1);
     update.maxPlayers = data.maxPlayers;
   }
-  if (Object.prototype.hasOwnProperty.call(data, "paymentForPlayer")) {
-    assertNumber(data.paymentForPlayer, "paymentForPlayer", (value) => value >= 0);
-    update.paymentForPlayer = data.paymentForPlayer;
-  }
   if (Object.prototype.hasOwnProperty.call(data, "startDateMillis")) {
     assertNumber(data.startDateMillis, "Fecha de inicio");
     update.startDate = Timestamp.fromMillis(data.startDateMillis);
@@ -339,7 +335,6 @@ function buildTournamentStateAfterUpdate(tournament, restrictedPayload) {
   const maxTeams = restrictedPayload.maxTeams ?? getTournamentNumber(tournament, "maxTeams");
   const minPlayers = restrictedPayload.minPlayers ?? getTournamentNumber(tournament, "minPlayers");
   const maxPlayers = restrictedPayload.maxPlayers ?? getTournamentNumber(tournament, "maxPlayers");
-  const paymentForPlayer = restrictedPayload.paymentForPlayer ?? getTournamentNumber(tournament, "paymentForPlayer", "paymentPerPlayer");
   const rules = { ...(tournament.rules || {}) };
   if (typeof tournament.settings?.setsToWin === "number" && rules.setsToWin === undefined) rules.setsToWin = tournament.settings.setsToWin;
   if (typeof tournament.settings?.pointsWin === "number" && rules.pointsWin === undefined) rules.pointsWin = tournament.settings.pointsWin;
@@ -360,7 +355,6 @@ function buildTournamentStateAfterUpdate(tournament, restrictedPayload) {
     maxTeams,
     minPlayers,
     maxPlayers,
-    paymentForPlayer,
     startDate: restrictedPayload.startDate || tournament.startDate,
     endDate: restrictedPayload.endDate || tournament.endDate,
     rules,
@@ -377,7 +371,6 @@ function validateCompleteTournamentState(nextTournament) {
   assertNumber(nextTournament.minTeams, "minTeams", (value) => value > 1 && value <= nextTournament.maxTeams);
   assertNumber(nextTournament.minPlayers, "minPlayers", (value) => value >= 1);
   assertNumber(nextTournament.maxPlayers, "maxPlayers", (value) => value >= nextTournament.minPlayers);
-  assertNumber(nextTournament.paymentForPlayer, "paymentForPlayer", (value) => value >= 0);
   if (!nextTournament.startDate || typeof nextTournament.startDate.toMillis !== "function") throw new functions.https.HttpsError("invalid-argument", "Fecha de inicio inválida");
   if (nextTournament.endDate && typeof nextTournament.endDate.toMillis !== "function") throw new functions.https.HttpsError("invalid-argument", "Fecha de fin inválida");
   if (nextTournament.endDate && timestampToMillis(nextTournament.endDate) < timestampToMillis(nextTournament.startDate)) throw new functions.https.HttpsError("invalid-argument", "La fecha de fin no puede ser anterior a la fecha de inicio");
@@ -403,7 +396,6 @@ function restrictUpdateByStatus(status, updatePayload) {
     if (typeof updatePayload.maxTeams === "number") next.maxTeams = updatePayload.maxTeams;
     if (typeof updatePayload.minPlayers === "number") next.minPlayers = updatePayload.minPlayers;
     if (typeof updatePayload.maxPlayers === "number") next.maxPlayers = updatePayload.maxPlayers;
-    if (typeof updatePayload.paymentForPlayer === "number") next.paymentForPlayer = updatePayload.paymentForPlayer;
     if (updatePayload.startDate) next.startDate = updatePayload.startDate;
     if (updatePayload.rules?.setsToWin != null) next.rules = { setsToWin: updatePayload.rules.setsToWin };
     if (updatePayload.structure) next.structure = updatePayload.structure;
@@ -415,7 +407,6 @@ function restrictUpdateByStatus(status, updatePayload) {
     if (updatePayload.startDate) next.startDate = updatePayload.startDate;
     if (typeof updatePayload.minPlayers === "number") next.minPlayers = updatePayload.minPlayers;
     if (typeof updatePayload.maxPlayers === "number") next.maxPlayers = updatePayload.maxPlayers;
-    if (typeof updatePayload.paymentForPlayer === "number") next.paymentForPlayer = updatePayload.paymentForPlayer;
     return next;
   }
 
@@ -458,7 +449,6 @@ async function createTournament({ data, uid }) {
     maxTeams: payload.maxTeams,
     minPlayers: payload.minPlayers,
     maxPlayers: payload.maxPlayers,
-    paymentForPlayer: payload.paymentForPlayer,
     phaseOrder: payload.phaseOrder,
     currentPhaseType: payload.phaseOrder[registrationPhaseIndex >= 0 ? registrationPhaseIndex : 0]?.type || PHASE_TYPES.REGISTRATION,
     currentPhaseId: registrationPhaseRef.id,
@@ -512,8 +502,6 @@ async function createTournament({ data, uid }) {
 
 async function editTournament({ uid, tournamentId, data }) {
   if (typeof tournamentId !== "string" || !tournamentId) throw new functions.https.HttpsError("invalid-argument", "tournamentId inválido");
-  const updatePayload = validateTournamentUpdate(data);
-  if (!Object.keys(updatePayload).length) throw new functions.https.HttpsError("invalid-argument", "No hay datos válidos para actualizar");
 
   const tournamentRef = db.collection("tournaments").doc(tournamentId);
   let tournamentName = "Torneo";
@@ -523,6 +511,10 @@ async function editTournament({ uid, tournamentId, data }) {
     const tournament = tournamentSnap.data();
     tournamentName = tournament?.name || tournament?.nombre || "Torneo";
     assertTournamentAdmin(tournament, uid);
+
+    assertNoRetiredTournamentEconomy(getTournamentEconomicFields(data));
+    const updatePayload = validateTournamentUpdate(data);
+    if (!Object.keys(updatePayload).length) throw new functions.https.HttpsError("invalid-argument", "No hay datos válidos para actualizar");
 
     if (![TOURNAMENT_STATUS.DRAFT, TOURNAMENT_STATUS.OPEN, TOURNAMENT_STATUS.CLOSED].includes(tournament.status)) {
       throw new functions.https.HttpsError("failed-precondition", "El torneo no se puede editar en su estado actual");
@@ -546,19 +538,15 @@ async function editTournament({ uid, tournamentId, data }) {
       nextPayload.structure = nextTournament.structure;
     }
 
-    if (restrictedPayload.minTeams || restrictedPayload.maxTeams || restrictedPayload.minPlayers || restrictedPayload.maxPlayers || restrictedPayload.paymentForPlayer || restrictedPayload.rules) {
-      nextPayload.settings = {
-        ...(tournament.settings || {}),
-        minTeams: nextTournament.minTeams,
-        maxTeams: nextTournament.maxTeams,
-        minPlayers: nextTournament.minPlayers,
-        maxPlayers: nextTournament.maxPlayers,
-        paymentPerPlayer: nextTournament.paymentForPlayer,
-        setsToWin: nextTournament.rules.setsToWin,
-        pointsWin: nextTournament.rules.pointsWin,
-        pointsDraw: nextTournament.rules.pointsDraw,
-        pointsLose: nextTournament.rules.pointsLose,
-      };
+    for (const field of ["minTeams", "maxTeams", "minPlayers", "maxPlayers"]) {
+      if (Object.prototype.hasOwnProperty.call(restrictedPayload, field)) {
+        nextPayload[`settings.${field}`] = nextTournament[field];
+      }
+    }
+    for (const field of ["setsToWin", "pointsWin", "pointsDraw", "pointsLose"]) {
+      if (Object.prototype.hasOwnProperty.call(restrictedPayload.rules || {}, field)) {
+        nextPayload[`settings.${field}`] = nextTournament.rules[field];
+      }
     }
 
     if (!restrictedPayload.phaseDefinitions && (restrictedPayload.structure || restrictedPayload.format)) {

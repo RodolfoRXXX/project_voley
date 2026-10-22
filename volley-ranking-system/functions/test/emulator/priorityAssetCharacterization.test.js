@@ -104,14 +104,10 @@ async function updateRegistrationPlayers({
   registrationId,
   actor,
   playerIds,
-  expectedAmount,
 }) {
   const masks = [
     "playerIds",
     "teamMembersCount",
-    "expectedAmount",
-    "pendingAmount",
-    "paymentStatus",
   ].map((field) => `updateMask.fieldPaths=${encodeURIComponent(field)}`).join("&");
   const response = await fetch(
     `${firestoreUrl(host, projectId, `/tournamentRegistrations/${registrationId}`)}?${masks}`,
@@ -125,9 +121,6 @@ async function updateRegistrationPlayers({
         fields: {
           playerIds: stringArray(playerIds),
           teamMembersCount: { integerValue: String(playerIds.length) },
-          expectedAmount: { integerValue: String(expectedAmount) },
-          pendingAmount: { integerValue: String(expectedAmount) },
-          paymentStatus: { stringValue: "pendiente" },
         },
       }),
     }
@@ -292,7 +285,6 @@ test("caracteriza activos prioritarios sin convertir legados en contratos", asyn
         minPlayers: 1,
         maxPlayers: 6,
         startDateMillis: Date.now() + 7 * 24 * 60 * 60 * 1000,
-        paymentForPlayer: 100,
         rules: { setsToWin: 2, pointsWin: 3, pointsDraw: 0, pointsLose: 0 },
       };
 
@@ -331,7 +323,7 @@ test("caracteriza activos prioritarios sin convertir legados en contratos", asyn
       );
     });
 
-    await t.test("[B/C] inscripción y pago deportivo permanecen embebidos y observables", async () => {
+    await t.test("[B/C] inscripción y roster deportivos omiten economía legacy", async () => {
       const opened = await callFunction(
         functionsHost,
         projectId,
@@ -361,7 +353,6 @@ test("caracteriza activos prioritarios sin convertir legados en contratos", asyn
           registrationId,
           actor: adminActor,
           playerIds: [player.uid],
-          expectedAmount: 100,
         });
         assert.equal(selected.status, 200, JSON.stringify(selected.body));
 
@@ -372,8 +363,6 @@ test("caracteriza activos prioritarios sin convertir legados en contratos", asyn
           {
             registrationId,
             status: "aceptado",
-            paymentStatus: "pendiente",
-            paidAmountInput: 0,
             source: "registration",
           },
           adminActor.idToken
@@ -388,12 +377,12 @@ test("caracteriza activos prioritarios sin convertir legados en contratos", asyn
         { registrationId: registrations[0], paidAmountToAdd: 40, source: "team" },
         adminActor.idToken
       );
-      assert.equal(payment.status, 200, JSON.stringify(payment.body));
+      assert.equal(payment.body?.error?.status, "FAILED_PRECONDITION");
+      assert.equal(payment.body?.error?.details?.code, "TOURNAMENT_REGISTRATION_PAYMENT_RETIRED");
       const paidTeam = (await db.collection("tournamentTeams").doc(registrations[0]).get()).data();
-      assert.equal(paidTeam.expectedAmount, 100);
-      assert.equal(paidTeam.paidAmount, 40);
-      assert.equal(paidTeam.pendingAmount, 60);
-      assert.equal(paidTeam.paymentStatus, "parcial");
+      for (const field of ["paymentForPlayer", "expectedAmount", "paidAmount", "pendingAmount", "paymentStatus", "paymentDate", "paymentVerifiedBy", "paymentVerifiedAt"]) {
+        assert.equal(Object.hasOwn(paidTeam, field), false, field);
+      }
     });
 
     await t.test("[A/B] fixture confirmado persiste partidos y standings deterministas", async () => {

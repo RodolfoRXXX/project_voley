@@ -13,14 +13,8 @@ module.exports = functions
   const uid = context.auth.uid;
   await assertIsAdmin(uid);
 
-  const { registrationId, status, paymentStatus, paidAmountInput, source } = data;
-
   return reviewTournamentRegistration({
     uid,
-    registrationId,
-    status,
-    paymentStatus,
-    paidAmountInput,
-    source,
+    data,
   });
 });

@@ -69,7 +69,6 @@ function getTournamentDetailHref(row: ProfileTournamentListRow) {
 function getPendingReviewCount(row: ProfileTournamentListRow) {
   const pendingChecks = [
     row.userState.players.current < row.userState.players.required,
-    row.userState.payment.status !== "complete",
     row.registrationStatus === "pendiente",
   ];
 

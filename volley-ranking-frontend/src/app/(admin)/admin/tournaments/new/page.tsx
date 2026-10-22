@@ -20,7 +20,6 @@ type TournamentForm = {
   maxTeams: number;
   minPlayers: number;
   maxPlayers: number;
-  paymentForPlayer: number;
   startDate: string;
   rules: {
     setsToWin: number;
@@ -62,7 +61,6 @@ export default function NewTournamentPage() {
     maxTeams: 12,
     minPlayers: 6,
     maxPlayers: 12,
-    paymentForPlayer: 0,
     startDate: "",
     rules: {
       setsToWin: 3,
@@ -223,7 +221,6 @@ export default function NewTournamentPage() {
         maxTeams: Number(form.maxTeams),
         minPlayers: Number(form.minPlayers),
         maxPlayers: Number(form.maxPlayers),
-        paymentForPlayer: Number(form.paymentForPlayer),
         startDateMillis: new Date(form.startDate).getTime(),
         rules: {
           setsToWin: Number(form.rules.setsToWin),
@@ -435,31 +432,6 @@ export default function NewTournamentPage() {
               }
             />
           </div>
-        </div>
-
-        {/* Monto pago */}
-
-        <div>
-          <label className="text-sm font-medium">
-            Pago por jugador
-          </label>
-
-          <input
-            type="number"
-            min={0}
-            className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            value={form.paymentForPlayer}
-            onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                paymentForPlayer: Number(e.target.value),
-              }))
-            }
-          />
-
-          <p className="text-xs text-neutral-500 mt-1">
-            Monto que paga cada jugador para participar
-          </p>
         </div>
 
         {/* fecha */}
@@ -828,10 +800,6 @@ export default function NewTournamentPage() {
 
             <p>
               <b>Jugadores por equipo:</b> {form.minPlayers} - {form.maxPlayers}
-            </p>
-
-            <p>
-              <b>Pago por jugador:</b> ${form.paymentForPlayer}
             </p>
 
             {isLeague ? (

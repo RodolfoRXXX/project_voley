@@ -8,6 +8,11 @@ const {
 const { emitDomainEvent } = require("../events/domainEventBus");
 const { DOMAIN_EVENTS } = require("../events/domainEvents");
 const { createGroupTournamentRejectionAlert } = require("./pendingAlertsService");
+const {
+  assertNoRetiredTournamentEconomy,
+  getTournamentRegistrationEconomicFields,
+  tournamentPaymentRetiredError,
+} = require("./tournamentEconomyRetirement");
 
 
 async function requestTournamentRegistration({ uid, tournamentId, groupId, nameTeam }) {
@@ -77,23 +82,13 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId, nameT
       );
     }
 
-    const paymentForPlayer = Number(tournament.settings?.paymentPerPlayer || tournament.paymentForPlayer || 0);
-    const expectedAmount = 0;
-    const paidAmount = 0;
-    const pendingAmount = expectedAmount;
-
     trx.set(registrationRef, {
       tournamentId,
       groupId,
       nameTeam: cleanTeamName,
       playerIds: [],
-      paymentForPlayer,
-      expectedAmount,
-      paidAmount,
-      pendingAmount,
       teamMembersCount,
       status: "pendiente",
-      paymentStatus: "pendiente",
       registeredAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       decidedByUserId: null,
@@ -104,20 +99,14 @@ async function requestTournamentRegistration({ uid, tournamentId, groupId, nameT
   return { registrationId };
 }
 
-async function reviewTournamentRegistration({ uid, registrationId, status, paymentStatus, paidAmountInput, source = "registration" }) {
-  if (!["aceptado", "rechazado"].includes(status)) {
-    throw new functions.https.HttpsError("invalid-argument", "status inválido");
+async function reviewTournamentRegistration({ uid, data }) {
+  const { registrationId, status } = data || {};
+  const source = data?.source ?? "registration";
+  if (typeof registrationId !== "string" || !registrationId.trim()) {
+    throw new functions.https.HttpsError("invalid-argument", "registrationId inválido");
   }
-
   if (!["registration", "team"].includes(source)) {
     throw new functions.https.HttpsError("invalid-argument", "source inválido");
-  }
-
-  if (source === "team" && status === "aceptado") {
-    throw new functions.https.HttpsError(
-      "failed-precondition",
-      "No se puede aceptar un equipo desde la fuente team"
-    );
   }
 
   const sourceCollection = source === "team" ? "tournamentTeams" : "tournamentRegistrations";
@@ -148,6 +137,17 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
     acceptedTournamentName = tournament?.name || tournament?.nombre || "Torneo";
     rejectedTournamentName = acceptedTournamentName;
     assertTournamentAdmin(tournament, uid);
+
+    assertNoRetiredTournamentEconomy(getTournamentRegistrationEconomicFields(data));
+    if (!["aceptado", "rechazado"].includes(status)) {
+      throw new functions.https.HttpsError("invalid-argument", "status inválido");
+    }
+    if (source === "team" && status === "aceptado") {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "No se puede aceptar un equipo desde la fuente team"
+      );
+    }
 
     const isPendingRegistration = registration.status === "pendiente";
     const isAcceptedRegistration = registration.status === "aceptado";
@@ -220,14 +220,6 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
         nameTeam: registration.nameTeam || "Sin nombre",
         playerIds: Array.isArray(registration.playerIds) ? registration.playerIds : [],
         teamMembersCount: Number(registration.teamMembersCount || 0),
-        paymentForPlayer: Number(registration.paymentForPlayer || 0),
-        expectedAmount: Number(registration.expectedAmount || 0),
-        paidAmount: Number(registration.paidAmount || 0),
-        pendingAmount: Number(registration.pendingAmount || 0),
-        paymentStatus: registration.paymentStatus || "pendiente",
-        paymentDate: registration.paymentDate || null,
-        paymentVerifiedBy: registration.paymentVerifiedBy || null,
-        paymentVerifiedAt: registration.paymentVerifiedAt || null,
         status: "aceptado",
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
@@ -266,20 +258,8 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
       );
     }
 
-    const paidAmount = typeof paidAmountInput === "number" ? paidAmountInput : Number(registration.paidAmount || 0);
-    const expectedAmount = Number(registration.expectedAmount || 0);
-    const pendingAmount = Math.max(expectedAmount - paidAmount, 0);
-    const computedPaymentStatus = paidAmount <= 0 ? "pendiente" : pendingAmount === 0 ? "pagado" : "parcial";
-
-    const nextPaymentStatus = paymentStatus === "pagado" ? "pagado" : computedPaymentStatus;
-
     const updatePayload = {
       status,
-      paymentStatus: nextPaymentStatus,
-      paidAmount,
-      expectedAmount,
-      pendingAmount: nextPaymentStatus === "pagado" ? 0 : pendingAmount,
-      paymentDate: nextPaymentStatus === "pagado" ? FieldValue.serverTimestamp() : null,
       decidedByUserId: uid,
       updatedAt: FieldValue.serverTimestamp(),
     };
@@ -311,13 +291,9 @@ async function reviewTournamentRegistration({ uid, registrationId, status, payme
   return { ok: true };
 }
 
-async function updateTournamentRegistrationPayment({ uid, registrationId, paidAmountToAdd, source = "registration" }) {
-  if (typeof registrationId !== "string" || !registrationId) {
+async function updateTournamentRegistrationPayment({ uid, registrationId, source = "registration" }) {
+  if (typeof registrationId !== "string" || !registrationId.trim()) {
     throw new functions.https.HttpsError("invalid-argument", "registrationId inválido");
-  }
-
-  if (typeof paidAmountToAdd !== "number" || paidAmountToAdd < 0) {
-    throw new functions.https.HttpsError("invalid-argument", "paidAmountToAdd inválido");
   }
 
   if (!["registration", "team"].includes(source)) {
@@ -327,41 +303,22 @@ async function updateTournamentRegistrationPayment({ uid, registrationId, paidAm
   const sourceCollection = source === "team" ? "tournamentTeams" : "tournamentRegistrations";
   const registrationRef = db.collection(sourceCollection).doc(registrationId);
 
-  await db.runTransaction(async (trx) => {
-    const registrationSnap = await trx.get(registrationRef);
-    if (!registrationSnap.exists) {
-      throw new functions.https.HttpsError("not-found", "La inscripción no existe");
-    }
+  const registrationSnap = await registrationRef.get();
+  if (!registrationSnap.exists) {
+    throw new functions.https.HttpsError("not-found", "La inscripción no existe");
+  }
 
-    const registration = registrationSnap.data();
-    const tournamentRef = db.collection("tournaments").doc(registration.tournamentId);
-    const tournamentSnap = await trx.get(tournamentRef);
+  const tournamentId = registrationSnap.get("tournamentId");
+  if (typeof tournamentId !== "string" || !tournamentId) {
+    throw new functions.https.HttpsError("not-found", "El torneo no existe");
+  }
+  const tournamentSnap = await db.collection("tournaments").doc(tournamentId).get();
+  if (!tournamentSnap.exists) {
+    throw new functions.https.HttpsError("not-found", "El torneo no existe");
+  }
 
-    if (!tournamentSnap.exists) {
-      throw new functions.https.HttpsError("not-found", "El torneo no existe");
-    }
-
-    const tournament = tournamentSnap.data();
-    assertTournamentAdmin(tournament, uid);
-
-    const currentPaidAmount = Number(registration.paidAmount || 0);
-    const paidAmount = currentPaidAmount + paidAmountToAdd;
-    const expectedAmount = Number(registration.expectedAmount || 0);
-    const pendingAmount = Math.max(expectedAmount - paidAmount, 0);
-    const paymentStatus = paidAmount <= 0 ? "pendiente" : pendingAmount === 0 ? "pagado" : "parcial";
-
-    trx.update(registrationRef, {
-      paidAmount,
-      expectedAmount,
-      pendingAmount,
-      paymentStatus,
-      paymentVerifiedBy: uid,
-      paymentVerifiedAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-  });
-
-  return { ok: true };
+  assertTournamentAdmin(tournamentSnap.data(), uid);
+  throw tournamentPaymentRetiredError();
 }
 
 

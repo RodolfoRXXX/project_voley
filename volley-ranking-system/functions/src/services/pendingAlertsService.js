@@ -12,7 +12,6 @@ const TOURNAMENT_GROUP_PENDING_ALERT_KINDS = new Set([
   "group_accepted_in_tournament",
   "group_rejected_from_tournament",
   "group_tournament_team_missing_players",
-  "group_tournament_team_payment_pending",
 ]);
 
 function isTournamentPendingAlertKind(kind) {
@@ -33,7 +32,6 @@ function logTournamentPendingAlertChange(action, { userId, alertId, kind, severi
     groupId: resource?.groupId || null,
     pendingCount: typeof meta?.pendingCount === "number" ? meta.pendingCount : null,
     missingPlayersCount: typeof meta?.missingPlayersCount === "number" ? meta.missingPlayersCount : null,
-    paymentStatus: meta?.paymentStatus || null,
   });
 }
 

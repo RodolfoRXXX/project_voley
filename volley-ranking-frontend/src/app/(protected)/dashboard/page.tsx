@@ -22,7 +22,7 @@ import PublicTournamentDetailModal from "@/components/tournaments/public/PublicT
 import AlertsPanel from "@/components/dashboard/AlertsPanel";
 import UpcomingActivitiesSection from "@/components/dashboard/UpcomingActivitiesSection";
 import type { PendingAlert } from "@/types/pendingAlerts";
-import { isRetiredLegacyGroupAuthorityAlert, pendingAlertPriority } from "@/types/pendingAlerts";
+import { isRetiredLegacyGroupAuthorityAlert, isRetiredTournamentEconomyAlert, pendingAlertPriority } from "@/types/pendingAlerts";
 import { getOwnGroupsDashboard } from "@/services/groupsService";
 
 type TournamentDashboardMatch = {
@@ -374,7 +374,9 @@ export default function DashboardPage() {
       });
 
       const normalized = loaded.filter(
-        (alert) => alert.kind !== "complete_profile" && !isRetiredLegacyGroupAuthorityAlert(alert)
+        (alert) => alert.kind !== "complete_profile"
+          && !isRetiredLegacyGroupAuthorityAlert(alert)
+          && !isRetiredTournamentEconomyAlert(alert)
       );
 
       const sorted = normalized.sort((a, b) => a.priority - b.priority || (b.updatedAt || 0) - (a.updatedAt || 0));

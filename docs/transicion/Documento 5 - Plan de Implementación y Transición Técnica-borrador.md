@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - cierre técnico local E3-09 formalizado por D5-056 - 22 de octubre de 2026*
+*Borrador consolidado - definición E3-10 adoptada por D5-057 - 22 de octubre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -14,7 +14,7 @@ partir de ella.
 # Estado del documento
 
 Este borrador conserva el contenido aprobado hasta la FASE 2 del Documento 5 y actualiza su estado
-operativo con el cierre de la Etapa 2 y la formalización documental de E3-01 a E3-09.
+operativo con el cierre de la Etapa 2 y la formalización documental de E3-01 a E3-10.
 Incluye:
 - Capítulo 1 - Propósito y alcance;
 - Capítulo 2 - Estado inicial y activos reutilizables;
@@ -37,7 +37,7 @@ Estado operativo del plan:
 - `ETAPA 0 CERRADA`;
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
-- `ETAPA 3 ABIERTA — E3-09 CERRADO EN ALCANCE TÉCNICO LOCAL; HABILITACIÓN PRODUCTIVA PENDIENTE; E3-10 HABILITADO SÓLO PARA DEFINICIÓN`;
+- `ETAPA 3 ABIERTA — E3-09 CERRADO EN ALCANCE TÉCNICO LOCAL CON HABILITACIÓN PRODUCTIVA PENDIENTE; E3-10 LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -1988,7 +1988,7 @@ el plan, pero no obliga a ejecutarlas en una cascada rígida ni a publicarlas co
 | 0 | Estabilización y red de seguridad | `CERRADA` | Arquitectura congelada y repositorio auditado | Seguridad implementada y probada, entorno reproducible y reinicialización preparada |
 | 1 | Usuario, Persona y autorización | `CERRADA` | Cierre de Etapa 0 | Identidad separada y autorización contextual inicial |
 | 2 | Grupo, Membresía, Solicitud y Temporada | `CERRADA CON RIESGO RESIDUAL ACEPTADO` | Persona y actor identificables | Fuentes de verdad organizativas separadas |
-| 3 | Pago deportivo | `E3-09 CERRADO TÉCNICAMENTE; PRODUCTIVO PENDIENTE; E3-10 SÓLO DEFINICIÓN` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
+| 3 | Pago deportivo | `E3-09 CERRADO TÉCNICAMENTE; PRODUCTIVO PENDIENTE; E3-10 LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
 | 4 | Partido-Torneo y CU-075 | `ROADMAP` | Modelo de Partido, contratos y pruebas | Resultado original y estado competitivo separados |
 | 5 | Estadísticas, Rendimiento, Actividad y recuperación | `ROADMAP` | Cada fuente original correspondiente | Proyecciones reconstruibles y procesos recuperables |
 | 6 | Comercial | `ROADMAP` | Usuario estable y consultas deportivas públicas | Capacidades y límites sin otorgar permisos deportivos |
@@ -2198,7 +2198,7 @@ El siguiente incremento funcional es:
 ## 7.5 Etapa 3 - Pago deportivo independiente
 
 - Estado: `E3-09 CERRADO EN SU ALCANCE TÉCNICO LOCAL — HABILITACIÓN PRODUCTIVA PENDIENTE — E3-10
-    HABILITADO ÚNICAMENTE PARA DEFINICIÓN`; Etapa 3 permanece abierta.
+    LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; Etapa 3 permanece abierta.
 - Objetivo: establecer Pago como única fuente económica deportiva.
 - Fuente de verdad: Pago.
 - Dependencias: identificadores estables y comprensión de referencias de Grupo, Persona y
@@ -2360,6 +2360,28 @@ El siguiente incremento funcional es:
     operativa permanecen como requisito obligatorio del rollout. D5-044, D5-045, Auth/UAT aislada y
     baseline permanecen, y el retiro económico de inscripciones/equipos de Torneo sigue como gate
     obligatorio separado.
+- Retiro económico legacy de Torneos adoptado por D5-057: E3-10 elimina de Torneo, inscripción y
+    equipo toda autoridad económica sin construir un reemplazo vinculado a Pago ni rediseñar reglas
+    deportivas. D01=A conserva `updateTournamentRegistrationPayment` como tombstone autenticado y
+    autorizado con `failed-precondition`, `TOURNAMENT_REGISTRATION_PAYMENT_RETIRED` y cero efectos.
+    D02=A rechaza atómicamente los requests de `createTournament`, `editTournament` o
+    `reviewTournamentRegistration` que presenten campos económicos retirados —incluidos `null` y
+    cero— antes de cualquier efecto deportivo; los requests que los omiten continúan normalmente.
+    D03=A retira sólo ramas económicas de triggers compartidos y exige durante rollout reconciliar
+    alertas económicas activas a `resolved` mediante lotes idempotentes y reanudables, preservando
+    contenido y alertas deportivas. D04=A separa por decisión propia de E3-10 el cierre técnico local
+    integrado de la habilitación productiva; no deriva de D5-056 y mantiene UAT y rollout obligatorios
+    antes de usuarios. D05=A conserva el tombstone y documenta incompatibilidad e incertidumbre de
+    clientes antiguos sin presumir ausencia ni exigir búsqueda indefinida. Inspección remota,
+    reconciliación real y resolución operativa de compatibilidad son gates de rollout, no de entrada
+    para implementación local. Historia económica permanece intacta e inerte; Rules dejan inmutables
+    esos campos sin bloquear roster deportivo. Las fuentes adoptadas son la
+    [ficha E3-10](../implementacion/etapa-3/E3-10-ficha-retiro-economia-legacy-torneos.md),
+    [DEC-E3-10](../implementacion/etapa-3/DEC-E3-10-retiro-economia-legacy-torneos.md) y el
+    [addendum E3-10](../arquitectura/Documento-2-3-4-addendum-E3-10-retiro-economia-legacy-torneos.md).
+    E3-10 queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; no acredita retiro
+    productivo, no cierra el gate económico completo ni Etapa 3 y preserva pendientes de E3-09,
+    D5-044, D5-045 y Auth/UAT aislada.
 - Coordinación E3/E4: el gate de retiro económico permanece en E3. Los contratos deportivos E4
     pueden definirse de forma delimitada bajo D5-027, pero cada incremento futuro requiere
     autorización propia y no adelanta catálogos o tombstones D5-044.
@@ -2557,6 +2579,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-054 | E3-08 adopta la alternativa B y sustituye D5-053 sólo en entrega, paginación y frecuencia de autorización: respuesta única de hasta 1.000 movimientos mínimos y totales exactos, paginación visual 20/50 y autorización por apertura/refresh/cambio de rango | APROBADA | Etapa 3 / E3-08 | D5-053 y la evidencia A permanecen históricos; ficha, DEC y addendum actualizados quedan adoptados y `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; siguen pendientes callable real local, heap/render/accesibilidad de navegador y evaluación operativa sin presupuesto productivo aprobado; D5-044, D5-045, Auth/UAT, baseline y gate económico legacy no cambian |
 | D5-055 | E3-09 adopta DEC-E3-09, D01=A, D02=A, D03=A y el addendum conjunto de Documentos 2/3/4; retira la autoridad económica de `participations.pagoEstado` en partidos sociales sin reemplazo vinculado a Pago, conserva historia inerte, cierre explícito deportivo y `updatePagoEstado` como tombstone estable sin efectos | APROBADA | Etapa 3 / E3-09 / partidos sociales | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; el rollout futuro debe retirar código/export y eliminar o deshabilitar explícitamente la función remota `onMatchClose`, sin inferirlo de la omisión del export; no cambia Pago ni crea asociaciones retroactivas; D5-044, D5-045, Auth/UAT y baseline permanecen, y el retiro económico de inscripciones/equipos de Torneo sigue como gate obligatorio separado |
 | D5-056 | Separa exclusivamente para E3-09 el cierre técnico local integrado de la habilitación productiva; adopta la evidencia técnica existente sin reducir verificaciones ni extender la regla a otros incrementos | APROBADA | Etapa 3 / cierre E3-09 / continuidad E3-10 | E3-09 queda cerrado sólo en su alcance técnico local y E3-10 habilitado únicamente para definición; UAT humana continúa no ejecutada/no aprobada y es obligatoria antes de habilitar el recorrido a usuarios; el rollout debe eliminar o deshabilitar `onMatchClose` remoto y verificar su ausencia operativa antes de afirmar retiro efectivo desplegado; gate económico residual de Torneo y Etapa 3 permanecen abiertos |
+| D5-057 | E3-10 adopta D01–D05=A, DEC-E3-10 y el addendum conjunto a Documentos 2/3/4; retira economía legacy de Torneo, inscripciones y equipos sin reemplazo vinculado a Pago, conserva historia inerte, tombstone estable, rechazo atómico de campos retirados, Rules deportivas granulares y reconciliación de alertas | APROBADA | Etapa 3 / E3-10 / Torneos | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; cierre técnico local y habilitación productiva se separan por decisión propia de E3-10 sin extender D5-056; acceso remoto, reconciliación real, compatibilidad externa, UAT y rollout permanecen productivos; no cierra el gate completo ni Etapa 3 y preserva E3-09, D5-044, D5-045 y Auth/UAT aislada |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -2701,8 +2724,9 @@ primer incremento.
 
 Etapas 0 y 1 permanecen cerradas y Etapa 2 cerrada con el riesgo residual aceptado por D5-045.
 E3-09 es el último incremento implementado de Etapa 3 y queda, por D5-056,
-`CERRADO EN SU ALCANCE TÉCNICO LOCAL — HABILITACIÓN PRODUCTIVA PENDIENTE`. E3-10 queda habilitado
-únicamente para definición; este documento no anticipa su alcance.
+`CERRADO EN SU ALCANCE TÉCNICO LOCAL — HABILITACIÓN PRODUCTIVA PENDIENTE`. E3-10 queda, por D5-057,
+`LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; todavía no fue implementado, probado o
+desplegado.
 
 No existe autorización de implementación completa. Los gates A/B locales conservaron evidencia de
 corrección de A y motivaron D5-054 sin presentarlo como fallido. Para B permanecen transporte con
@@ -2718,3 +2742,11 @@ debe aprobar antes de habilitar el recorrido a usuarios. La eliminación o desha
 `onMatchClose` y la verificación de su ausencia operativa son obligatorias durante el rollout antes de
 afirmar retiro efectivo en el entorno desplegado. El retiro de autoridad económica en inscripciones/
 equipos de Torneo permanece pendiente como gate obligatorio separado y Etapa 3 permanece abierta.
+
+D5-057 adopta el retiro económico legacy de Torneo, inscripciones y equipos sin reemplazo vinculado
+a Pago y sin rediseño deportivo. El futuro cierre técnico local de E3-10 se separa por decisión propia
+de su habilitación productiva, sin extender D5-056. UAT, inspección remota, reconciliación real de
+alertas, tratamiento operativo de clientes antiguos y rollout continúan pendientes antes de habilitar
+el recorrido a usuarios. La adopción documental no acredita retiro desplegado, no cierra el gate
+económico completo ni Etapa 3 y preserva los pendientes productivos de E3-09, D5-044, D5-045 y
+Auth/UAT aislada.

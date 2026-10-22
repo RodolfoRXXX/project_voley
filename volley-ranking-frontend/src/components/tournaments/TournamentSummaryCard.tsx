@@ -33,16 +33,9 @@ type TournamentSummaryCardProps = {
 
 const userStateBadgeClass: Record<UserTournamentState["status"], string> = {
   NOT_READY: "bg-red-100 text-red-700",
-  READY_PENDING_PAYMENT: "bg-amber-100 text-amber-700",
   UNDER_REVIEW: "bg-blue-100 text-blue-700",
   ACCEPTED: "bg-green-100 text-green-700",
   REJECTED: "bg-red-100 text-red-700",
-};
-
-const paymentStatusLabel: Record<UserTournamentState["payment"]["status"], string> = {
-  pending: "Pendiente",
-  partial: "Parcial",
-  complete: "Completo",
 };
 
 function getTournamentStatusVariant(status: Tournament["status"]) {
@@ -259,20 +252,6 @@ export function TournamentSummaryCard({
               <span className="font-medium">
                 {userState.players.current}/{userState.players.required}
               </span>
-            </li>
-
-            <li className="flex items-center justify-between gap-3">
-              <span className="text-neutral-500">Pago</span>
-
-              <div className="text-right">
-                <span className="font-medium">
-                  ${userState.payment.paid} / ${userState.payment.expected}
-                </span>
-
-                <p className="text-[11px] text-neutral-500">
-                  {paymentStatusLabel[userState.payment.status]}
-                </p>
-              </div>
             </li>
 
             <li className="pt-1 border-t border-neutral-200/70 dark:border-white/10">

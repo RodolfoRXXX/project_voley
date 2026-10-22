@@ -12,7 +12,6 @@ export type TournamentFormValues = {
   maxTeams: number;
   minPlayers: number;
   maxPlayers: number;
-  paymentForPlayer: number;
   startDate: string;
   rules: {
     setsToWin: number;
@@ -60,7 +59,6 @@ export function TournamentEditForm({
   const canEditAll = isDraft;
   const canEditTeams = isDraft || isOpen;
   const canEditPlayers = isDraft || isOpen || isClosed;
-  const canEditPayment = isDraft || isOpen || isClosed;
   const canEditStartDate = isDraft || isOpen || isClosed;
   const canEditRules = isDraft || isOpen;
   const canEditStructure = isDraft || isOpen;
@@ -234,18 +232,7 @@ export function TournamentEditForm({
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <label className="text-sm font-medium">Pago por jugador</label>
-            <input
-              type="number"
-              value={values.paymentForPlayer}
-              disabled={!canEditPayment}
-              onChange={(e) => onChange({ ...values, paymentForPlayer: Number(e.target.value) })}
-              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            />
-          </div>
-
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="text-sm font-medium">Sets máximos por partido</label>
             <input

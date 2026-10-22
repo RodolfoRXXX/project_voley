@@ -1,10 +1,9 @@
 import type {
-  TournamentPaymentStatus as PaymentStatus,
   TournamentRegistration as TournamentRegistrationItem,
   TournamentRegistrationStatus as RegistrationStatus,
 } from "@/types/tournaments";
 
-export type { PaymentStatus, RegistrationStatus, TournamentRegistrationItem };
+export type { RegistrationStatus, TournamentRegistrationItem };
 
 export type TournamentRegistrationStatusModalProps = {
   open: boolean;

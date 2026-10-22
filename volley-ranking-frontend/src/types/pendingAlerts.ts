@@ -9,7 +9,6 @@ export type PendingAlertKind =
   | "group_accepted_in_tournament"
   | "group_rejected_from_tournament"
   | "group_tournament_team_missing_players"
-  | "group_tournament_team_payment_pending"
   | "group_join_requests_pending"
   | "group_admin_requests_pending"
   | "tournament_draft_open_registrations"
@@ -57,8 +56,6 @@ export type PendingAlert = {
     minPlayers?: number;
     selectedPlayersCount?: number;
     missingPlayersCount?: number;
-    paymentStatus?: "pendiente" | "parcial" | "pagado";
-    pendingAmount?: number;
     fixtureReady?: boolean;
   };
 };
@@ -71,6 +68,10 @@ export const pendingAlertPriority: Record<PendingAlertSeverity, number> = {
 
 export function isRetiredLegacyGroupAuthorityAlert(alert: Pick<PendingAlert, "kind" | "meta">): boolean {
   return isRetiredLegacyGroupAuthorityAlertValue(alert);
+}
+
+export function isRetiredTournamentEconomyAlert(alert: { kind?: unknown }): boolean {
+  return alert.kind === "group_tournament_team_payment_pending";
 }
 
 export const pendingAlertSeverityLabel: Record<PendingAlertSeverity, string> = {

@@ -11,7 +11,8 @@
     "seed:dev": "node src/scripts/seedDevelopmentData.js",
     "seed:dev:dry": "node src/scripts/seedDevelopmentData.js --dry-run",
     "backfill:pending-alerts": "node src/scripts/backfillPendingAlerts.js",
-    "backfill:pending-alerts:write": "node src/scripts/backfillPendingAlerts.js --write"
+    "backfill:pending-alerts:write": "node src/scripts/backfillPendingAlerts.js --write",
+    "e3-10:alerts:reconcile": "node src/scripts/reconcileTournamentPaymentAlerts.js"
   },
   "keywords": [],
   "author": "",

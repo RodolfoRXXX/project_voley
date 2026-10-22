@@ -2,8 +2,6 @@ export type TournamentEntrySource = "registration" | "team";
 
 export type TournamentRegistrationStatus = "pendiente" | "aceptado" | "rechazado";
 
-export type TournamentPaymentStatus = "pendiente" | "parcial" | "pagado";
-
 export type TournamentRegistration = {
   id: string;
   source?: TournamentEntrySource;
@@ -17,13 +15,6 @@ export type TournamentRegistration = {
   playerIds?: string[];
   playersIds?: string[];
   status?: TournamentRegistrationStatus;
-  paymentStatus?: TournamentPaymentStatus;
-  expectedAmount?: number;
-  paidAmount?: number;
-  pendingAmount?: number;
-  paymentForPlayer?: number;
-  paymentVerifiedBy?: string | null;
-  paymentVerifiedAt?: { seconds?: number };
   decidedByUserId?: string | null;
   registeredAt?: { seconds?: number };
   updatedAt?: { seconds?: number };
@@ -42,11 +33,6 @@ export type ProfileTournamentEntry = {
   status?: TournamentRegistrationStatus;
   playerIds?: string[];
   playersIds?: string[];
-  paymentStatus?: TournamentPaymentStatus;
-  expectedAmount?: number;
-  paidAmount?: number;
-  pendingAmount?: number;
-  paymentForPlayer?: number;
   teamMembersCount?: number;
   source: TournamentEntrySource;
 };

@@ -306,9 +306,6 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "playerIds",
           "teamMembersCount",
-          "expectedAmount",
-          "pendingAmount",
-          "paymentStatus",
           "updatedAt",
         ]);
       allow create, delete: if false;
@@ -326,9 +323,6 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "playerIds",
           "teamMembersCount",
-          "expectedAmount",
-          "pendingAmount",
-          "paymentStatus",
           "updatedAt",
         ]);
       allow create, delete: if false;

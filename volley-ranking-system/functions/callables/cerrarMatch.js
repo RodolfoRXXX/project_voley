@@ -35,7 +35,8 @@ module.exports = functions.https.onCall(async (data, context) => {
         );
 
       case "INVALID_MATCH_STATE":
-      case "PENDING_PAYMENTS":
+      case "MATCH_LOCKED":
+      case "INCOMPLETE_ROSTER":
         throw new functions.https.HttpsError(
           "failed-precondition",
           err.message

@@ -141,20 +141,6 @@
       "count": 1
     },
     {
-      "file": "src/components/pagoModal/pagoModal.tsx",
-      "severity": "error",
-      "ruleId": "@typescript-eslint/no-explicit-any",
-      "message": "Unexpected any. Specify a different type.",
-      "count": 3
-    },
-    {
-      "file": "src/components/pagoModal/pagoModal.tsx",
-      "severity": "error",
-      "ruleId": "react-hooks/rules-of-hooks",
-      "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?",
-      "count": 1
-    },
-    {
       "file": "src/components/profile/ProfileHeader.tsx",
       "severity": "warning",
       "ruleId": "@typescript-eslint/no-unused-vars",

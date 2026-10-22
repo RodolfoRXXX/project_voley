@@ -1,7 +1,6 @@
-// Modificar estado de pago
+// Tombstone estable de la gestión económica legacy de partidos sociales
 
 const functions = require("firebase-functions/v1");
-const { actualizarPago } = require("../src/services/adminMatchService");
 const {
   assertIsAdmin,
   assertParticipationMatchAdmin,
@@ -27,22 +26,17 @@ module.exports = functions.https.onCall(async (data, context) => {
   await assertIsAdmin(context.auth.uid);
   await assertParticipationMatchAdmin(participationId, context.auth.uid);
 
-  try {
-    await actualizarPago(participationId, estado);
-  } catch (err) {
-    if (err.code === "INVALID_PAGO_ESTADO") {
-      throw new functions.https.HttpsError(
-        "failed-precondition",
-        err.message
-      );
-    }
-
+  if (!["confirmado", "pendiente", "pospuesto"].includes(estado)) {
     throw new functions.https.HttpsError(
-      "internal",
-      "No se pudo actualizar el pago"
+      "failed-precondition",
+      "Estado de pago inválido"
     );
   }
 
-  return { ok: true };
+  throw new functions.https.HttpsError(
+    "failed-precondition",
+    "La gestión económica de partidos sociales fue retirada",
+    { code: "SOCIAL_MATCH_PAYMENT_RETIRED" }
+  );
 });
 

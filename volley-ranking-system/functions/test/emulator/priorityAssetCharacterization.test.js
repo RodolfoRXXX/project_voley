@@ -232,7 +232,7 @@ test("caracteriza activos prioritarios sin convertir legados en contratos", asyn
       ]);
     });
 
-    await t.test("[B/C] Partido crea participación determinista y conserva pago embebido legado", async () => {
+    await t.test("[B/C] Partido crea participación deportiva y el callable económico es tombstone", async () => {
       const createResult = await callFunction(
         functionsHost,
         projectId,
@@ -267,7 +267,7 @@ test("caracteriza activos prioritarios sin convertir legados en contratos", asyn
       assert.equal(participation.matchId, socialMatchId);
       assert.equal(participation.userId, playerA.uid);
       assert.equal(participation.estado, "pendiente");
-      assert.equal(participation.pagoEstado, "pendiente");
+      assert.equal(Object.hasOwn(participation, "pagoEstado"), false);
 
       const paymentResult = await callFunction(
         functionsHost,
@@ -276,8 +276,9 @@ test("caracteriza activos prioritarios sin convertir legados en contratos", asyn
         { participationId, estado: "confirmado" },
         adminActor.idToken
       );
-      assert.equal(paymentResult.status, 200, JSON.stringify(paymentResult.body));
-      assert.equal((await participationRef.get()).data().pagoEstado, "confirmado");
+      assert.equal(paymentResult.body?.error?.status, "FAILED_PRECONDITION");
+      assert.equal(paymentResult.body?.error?.details?.code, "SOCIAL_MATCH_PAYMENT_RETIRED");
+      assert.equal(Object.hasOwn((await participationRef.get()).data(), "pagoEstado"), false);
     });
 
     await t.test("[B] Torneo crea fases y rechaza administración sin rol legado", async () => {

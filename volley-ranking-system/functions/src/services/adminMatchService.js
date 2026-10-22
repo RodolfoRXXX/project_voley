@@ -159,25 +159,6 @@ async function actualizarMatch(matchId, cambios) {
 }
 
 /* =========================
-   PAGOS
-========================= */
-
-async function actualizarPago(participationId, estado) {
-  if (!["confirmado", "pendiente", "pospuesto"].includes(estado)) {
-    const err = new Error("Estado de pago inválido");
-    err.code = "INVALID_PAGO_ESTADO";
-    throw err;
-  }
-
-  await db
-    .collection("participations")
-    .doc(participationId)
-    .update({
-      pagoEstado: estado,
-    });
-}
-
-/* =========================
    ELIMINAR JUGADOR
 ========================= */
 
@@ -320,25 +301,29 @@ async function cerrarMatch(matchId) {
       throw err;
     }
 
+    if (match.lock === true) {
+      const err = new Error(
+        "El roster del partido se está actualizando"
+      );
+      err.code = "MATCH_LOCKED";
+      throw err;
+    }
+
     const participationsSnap = await tx.get(
       db.collection("participations")
         .where("matchId", "==", matchId)
         .where("estado", "==", "titular")
     );
 
-    const hayPendientes = participationsSnap.docs.some((d) => {
-      const p = d.data();
-      return (
-        p.pagoEstado !== "confirmado" &&
-        p.pagoEstado !== "pospuesto"
-      );
-    });
+    const titularesEsperados = Object.values(
+      match.posicionesObjetivo || {}
+    ).reduce((total, cantidad) => total + Number(cantidad || 0), 0);
 
-    if (hayPendientes) {
+    if (participationsSnap.size < titularesEsperados) {
       const err = new Error(
-        "Aún hay pagos pendientes en titulares"
+        "No hay titulares suficientes para cerrar el partido"
       );
-      err.code = "PENDING_PAYMENTS";
+      err.code = "INCOMPLETE_ROSTER";
       throw err;
     }
 
@@ -390,7 +375,6 @@ module.exports = {
   crearMatch,
   actualizarMatch,
   reabrirMatch,
-  actualizarPago,
   eliminarJugador,
   cerrarMatch,
   reincorporarJugador,

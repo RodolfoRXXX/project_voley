@@ -4,7 +4,7 @@
 
 - **Naturaleza:** complemento normativo focal adoptado.
 - **Decisiones incorporadas:** `E3-09-D01=A`, `D02=A`, `D03=A`.
-- **Estado:** `ADOPTADO POR D5-055`.
+- **Estado:** `ADOPTADO POR D5-055; ENMENDADO POR D5-056`.
 - **Implementación:** no autorizada.
 - **Documento 5:** continuidad y decisión E3-09 integradas por `D5-055`.
 - **Base comprobada:** `dev` en `7b7cac9671d1f18f533a1382feed85a2498e06fd`.
@@ -211,8 +211,9 @@ Estas pruebas se definen, no se crean ni ejecutan en este paquete.
 4. suplentes faltantes no agregan un gate nuevo.
 5. actualizar cualquier Participación no produce cierre automático.
 6. `onMatchStart` conserva cancelación/procesamiento según estado deportivo.
-7. el código/export de `onMatchClose` queda ausente y el rollout autorizado demuestra eliminación o
-   deshabilitación de la función remota, sin inferirla de la omisión del export.
+7. para cierre técnico local, el código/export de `onMatchClose` queda ausente; para habilitación
+   productiva, el rollout autorizado demuestra eliminación o deshabilitación de la función remota y
+   verifica su ausencia operativa, sin inferirla de la omisión del export.
 
 ### 4.3 Tombstone y autorización
 
@@ -231,9 +232,13 @@ Estas pruebas se definen, no se crean ni ejecutan en este paquete.
 2. ningún valor histórico genera correlación o asociación retroactiva;
 3. UI no contiene columna, modal, pill, icono, mensaje, estilo, prop o callable económico;
 4. UAT confirma que las acciones deportivas conservadas siguen disponibles y que no se presenta una
-   equivalencia “sin estado = gratis/pagado”.
+   equivalencia “sin estado = gratis/pagado”. Exclusivamente para E3-09 puede permanecer diferida, no
+   ejecutada y no aprobada al cerrar el alcance técnico local, pero debe ejecutarse y aprobarse antes
+   de habilitar el recorrido de partidos sociales a usuarios.
 
 Auth/UAT real sigue aislada. Emulator, suites y evidencia ejecutable requieren autorización futura.
+La separación adoptada por `D5-056` no reduce verificaciones técnicas, no acredita producción y no
+modifica las reglas generales de otros incrementos.
 
 ## 5. Preservaciones, exclusiones y gate residual
 
@@ -256,10 +261,14 @@ la ficha lista para implementar con autorización separada; no autoriza código,
 acceso remoto. Un rollback documental futuro requeriría una nueva decisión y no tocaría código o
 datos.
 
+`D5-056` enmienda exclusivamente el cierre de E3-09: permite cerrar el alcance técnico local
+integrado, pero mantiene UAT aprobada y retiro remoto verificado de `onMatchClose` como gates de
+habilitación productiva.
+
 Después de una implementación futura, rollback nunca puede reinterpretar o borrar datos históricos.
 Rehabilitar economía legacy requeriría una decisión funcional nueva; no es un rollback técnico
 automático.
 
 ## Resultado
 
-**ADDENDUM E3-09 ADOPTADO POR D5-055 — IMPLEMENTACIÓN REQUIERE AUTORIZACIÓN SEPARADA**
+**ADDENDUM E3-09 ADOPTADO POR D5-055 Y ENMENDADO POR D5-056 — CIERRE TÉCNICO LOCAL SEPARADO DE HABILITACIÓN PRODUCTIVA**

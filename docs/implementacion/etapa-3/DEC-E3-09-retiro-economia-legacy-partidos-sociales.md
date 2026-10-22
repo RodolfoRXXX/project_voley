@@ -4,7 +4,7 @@
 
 - **Decisiones funcionales aprobadas:** `E3-09-D01=A`, `D02=A`, `D03=A`.
 - **Aprobación funcional:** recibida por instrucción expresa.
-- **Estado documental:** `ADOPTADA POR D5-055`.
+- **Estado documental:** `ADOPTADA POR D5-055; ENMENDADA POR D5-056`.
 - **Estado del incremento:** `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`.
 - **Documento 5:** continuidad y decisión E3-09 integradas por `D5-055`.
 - **Base comprobada:** rama `dev`, HEAD
@@ -148,12 +148,20 @@ Sin ejecutarlas ni crearlas en este paquete, la evidencia mínima deberá cubrir
    ranking y cierres;
 9. búsqueda estructural demuestra cero writers/readers productivos de `pagoEstado`, permitiendo sólo
    fixtures históricos o aserciones negativas identificadas;
-10. UAT comprueba que el Partido conserva sus acciones deportivas y no presenta economía.
-11. el código/export de `onMatchClose` queda ausente y el procedimiento de rollout exige eliminar o
-    deshabilitar y verificar la función remota, sin asumir que la omisión del export la elimina.
+10. UAT comprueba que el Partido conserva sus acciones deportivas y no presenta economía. Para E3-09
+    puede permanecer expresamente diferida, no ejecutada y no aprobada al cerrar sólo el alcance
+    técnico local, pero debe ejecutarse y aprobarse antes de habilitar el recorrido de partidos
+    sociales a usuarios. La ausencia de navegación no constituye evidencia ni aprobación.
+11. la ausencia local del código/export de `onMatchClose` acredita sólo retiro en repositorio. El
+    rollout productivo exige eliminar o deshabilitar la función remota y verificar su ausencia
+    operativa, sin asumir que omitir el export la elimina.
 
 Auth/UAT real permanece aislada. Las pruebas futuras no convierten estados legacy en fixtures
 económicas canónicas.
+
+`D5-056` separa exclusivamente para E3-09 el cierre técnico local de la habilitación productiva. No
+reduce ninguna verificación técnica, no aprueba UAT, no acredita retiro remoto y no modifica las
+reglas generales de aceptación de otros incrementos.
 
 ## 7. Exclusiones y gates residuales
 
@@ -174,6 +182,9 @@ La revisión conjunta de ficha, DEC y addendum no encontró contradicción susta
 vigentes ni con D01=A, D02=A y D03=A. `D5-055` adopta el paquete. Esta integración no autoriza
 código, pruebas, despliegue ni acceso remoto.
 
+`D5-056` enmienda exclusivamente el gate de cierre de E3-09 para separar aceptación técnica local de
+habilitación productiva, conservando pendientes UAT y retiro remoto verificado de `onMatchClose`.
+
 ## Resultado
 
-**DEC-E3-09 ADOPTADA POR D5-055 — IMPLEMENTACIÓN REQUIERE AUTORIZACIÓN SEPARADA**
+**DEC-E3-09 ADOPTADA POR D5-055 Y ENMENDADA POR D5-056 — CIERRE TÉCNICO LOCAL SEPARADO DE HABILITACIÓN PRODUCTIVA**

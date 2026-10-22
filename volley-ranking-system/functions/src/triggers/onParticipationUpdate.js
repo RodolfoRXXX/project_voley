@@ -78,11 +78,6 @@ module.exports = functions.firestore
         groupId: match.groupId || "",
       });
 
-      const diffHoras =
-        (match.horaInicio.toDate() - new Date()) / 36e5;
-
-      const postDeadline = diffHoras <= 3;
-
       /* =========================
          LOCK GLOBAL DEL MATCH
       ========================= */
@@ -112,7 +107,6 @@ module.exports = functions.firestore
         await reemplazarTitular({
           matchId: after.matchId,
           posicionLiberada: before.posicionAsignada,
-          postDeadline,
           manageLock: false,
         });
 

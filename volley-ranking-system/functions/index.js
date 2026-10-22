@@ -22,7 +22,6 @@ if (ENABLE_ON_MATCH_DEADLINE) {
 if (ENABLE_ON_MATCH_START) {
   exports.onMatchStart = require("./src/triggers/onMatchStart");
 }
-exports.onMatchClose = require("./src/triggers/onMatchClose");
 exports.onGroupPendingAlertsSync = require("./src/triggers/onGroupPendingAlertsSync");
 exports.onTournamentPendingAlertsSync = require("./src/triggers/onTournamentPendingAlertsSync");
 exports.onTournamentRegistrationPendingAlertsSync = require("./src/triggers/onTournamentRegistrationPendingAlertsSync");

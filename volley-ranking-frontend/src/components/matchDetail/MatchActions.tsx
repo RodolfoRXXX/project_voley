@@ -11,8 +11,6 @@ type MatchActionsProps = {
   isEliminado: boolean;
   match: Match;
 
-  hayPagosPendientes?: boolean;
-
   loading?: {
     join?: boolean;
     leave?: boolean;
@@ -35,7 +33,6 @@ export default function MatchActions({
   isEliminado,
   match,
   loading,
-  hayPagosPendientes,
   onJoin,
   onCancel,
   onClose,
@@ -121,7 +118,6 @@ export default function MatchActions({
             <>
               <ActionButton
                 onClick={onClose}
-                disabled={hayPagosPendientes}
                 variant="success"
                 loading={loading?.close}
                 compact

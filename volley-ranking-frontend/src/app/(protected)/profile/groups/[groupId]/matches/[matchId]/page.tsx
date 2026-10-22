@@ -24,7 +24,6 @@ import useToast from "@/components/ui/toast/useToast";
 import { handleFirebaseError } from "@/lib/errors/handleFirebaseError";
 import TeamsModal from "@/components/teamsModal/TeamsModal";
 import UserAvatar from "@/components/ui/avatar/UserAvatar";
-import PagoModal from "@/components/pagoModal/pagoModal";
 import MatchHeader from "@/components/matchDetail/MatchHeader";
 import MatchInfoCard from "@/components/matchDetail/MatchInfoCard";
 import MatchEditForm from "@/components/matchDetail/MatchEditForm";
@@ -32,7 +31,6 @@ import MatchPositions from "@/components/matchDetail/MatchPositions";
 import PlayersTable from "@/components/matchDetail/PlayersTable";
 import MatchActions from "@/components/matchDetail/MatchActions";
 import type { Match } from "@/types/match";
-import StatusPill from "@/components/ui/status/StatusPill";
 import { SkeletonSoft, Skeleton } from "@/components/ui/skeleton/Skeleton";
 import ShareOptionsButton from "@/components/ui/share/ShareOptionsButton";
 import { getPublicMatchDetailUrl } from "@/lib/share/publicShareUrls";
@@ -47,10 +45,6 @@ const leaveMatch = httpsCallable(functions, "leaveMatch");
 const cerrarMatchFn = httpsCallable(functions, "cerrarMatch");
 const eliminarMatchFn = httpsCallable(functions, "eliminarMatch");
 const reabrirMatchFn = httpsCallable(functions, "reabrirMatch");
-const updatePagoEstadoFn = httpsCallable(
-  functions,
-  "updatePagoEstado"
-);
 const eliminarJugadorFn = httpsCallable(
   functions,
   "eliminarJugador"
@@ -82,16 +76,6 @@ type Group = {
 type GroupAdminProfile = GroupAdmin & {
   nombre: string;
   photoURL?: string | null;
-};
-
-/* =====================
-   Pagos Estilos
-===================== */
-
-const pagoStyles: Record<string, string> = {
-  confirmado: "bg-green-100 text-green-700 border-green-400",
-  pendiente: "bg-yellow-100 text-yellow-700 border-yellow-400",
-  pospuesto: "bg-blue-100 text-blue-700 border-blue-400",
 };
 
 /* =====================
@@ -172,7 +156,6 @@ export default function MatchDetailPage() {
   const [participations, setParticipations] = useState<any[]>([]);
   const [editMode, setEditMode] = useState(false);
   const [usersMap, setUsersMap] = useState<Record<string, any>>({});
-  const [pagoModal, setPagoModal] = useState<null | any>(null);
   const [groupAdminProfiles, setGroupAdminProfiles] = useState<GroupAdminProfile[]>([]);
   const [teamsModalOpen, setTeamsModalOpen] = useState(false);
 
@@ -193,14 +176,6 @@ export default function MatchDetailPage() {
     !!firebaseUser?.uid &&
     !!group?.adminIds?.includes(firebaseUser.uid);
   const isMatchAdmin = !!firebaseUser?.uid && isAdmin && isGroupAdmin;
-
-  const updatePagoEstado = async (
-    participationId: string,
-    estado: "confirmado" | "pendiente" | "pospuesto"
-  ) => {
-    await updatePagoEstadoFn({ participationId, estado });
-    setPagoModal(null);
-  };
 
   /* =====================
      Guards
@@ -536,18 +511,6 @@ export default function MatchDetailPage() {
   );
 
   /* =====================
-     PAGOS PENDIENTES
-  ===================== */
-
-  const titularesConPagoPendiente = titulares.filter(
-    (p) =>
-      p.pagoEstado !== "confirmado" &&
-      p.pagoEstado !== "pospuesto"
-  );
-
-  const hayPagosPendientes = titularesConPagoPendiente.length > 0;
-
-  /* =====================
     HANDLERS
   ===================== */
 
@@ -758,8 +721,8 @@ ${url}`}
             title="Titulares"
             players={titulares}
             columns="
-              grid-cols-[1fr_48px_48px]
-              sm:grid-cols-[72px_1fr_128px_96px_60px]
+              grid-cols-[1fr_48px]
+              sm:grid-cols-[72px_1fr_128px_60px]
             "
             highlightUserId={firebaseUser?.uid}
             usersMap={usersMap}
@@ -768,7 +731,6 @@ ${url}`}
                 <span className="hidden sm:block">Ranking</span>
                 <span>Nombre</span>
                 <span className="hidden sm:block">Posición</span>
-                <span className="flex justify-center">Pago</span>
                 {isMatchAdmin && <span />}
               </>
             )}
@@ -799,35 +761,6 @@ ${url}`}
                   {p.posicionAsignada}
                 </span>
 
-                {/* Pago (desktop texto / mobile icono) */}
-                <div className="flex justify-center">
-                  <StatusPill
-                    label={
-                      p.pagoEstado === "confirmado"
-                        ? "Confirmado"
-                        : p.pagoEstado === "pospuesto"
-                        ? "Pospuesto"
-                        : "Pendiente"
-                    }
-                    variant={
-                      p.pagoEstado === "confirmado"
-                        ? "success"
-                        : p.pagoEstado === "pospuesto"
-                        ? "info"
-                        : "warning"
-                    }
-                    icon={
-                      p.pagoEstado === "confirmado"
-                        ? "✓"
-                        : p.pagoEstado === "pospuesto"
-                        ? "⏱"
-                        : "$"
-                    }
-                    responsive
-                    onClick={() => setPagoModal(p)}
-                  />
-                </div>
-
                 {/* Acciones */}
                 <div className="flex justify-end">
                   {isMatchAdmin ? (
@@ -852,12 +785,6 @@ ${url}`}
           />
         )}
 
-        {match.estado === "verificando" && hayPagosPendientes && (
-          <p className="mt-2 text-sm text-red-600">
-            Todos los titulares deben tener un pago confirmado o pospuesto
-            para cerrar el partido.
-          </p>
-        )}
       </section>
 
       {/* ================= SUPLENTES ================= */}
@@ -870,8 +797,8 @@ ${url}`}
             title="Suplentes"
             players={suplentes}
             columns="
-              grid-cols-[1fr_48px_48px]
-              sm:grid-cols-[72px_1fr_128px_96px_60px]
+              grid-cols-[1fr_48px]
+              sm:grid-cols-[72px_1fr_128px_60px]
             "
             highlightUserId={firebaseUser?.uid}
             usersMap={usersMap}
@@ -880,7 +807,6 @@ ${url}`}
                 <span className="hidden sm:block">Ranking</span>
                 <span>Nombre</span>
                 <span className="hidden sm:block">Posición</span>
-                <span className="flex justify-center">Pago</span>
                 {isMatchAdmin && <span />}
               </>
             )}
@@ -910,35 +836,6 @@ ${url}`}
                 <span className="capitalize hidden sm:block text-xs text-gray-500">
                   {usersMap[p.userId]?.posicionesPreferidas?.join(", ")}
                 </span>
-
-                {/* Pago (desktop texto / mobile icono) */}
-                <div className="flex justify-center">
-                  <StatusPill
-                    label={
-                      p.pagoEstado === "confirmado"
-                        ? "Confirmado"
-                        : p.pagoEstado === "pospuesto"
-                        ? "Pospuesto"
-                        : "Pendiente"
-                    }
-                    variant={
-                      p.pagoEstado === "confirmado"
-                        ? "success"
-                        : p.pagoEstado === "pospuesto"
-                        ? "info"
-                        : "warning"
-                    }
-                    icon={
-                      p.pagoEstado === "confirmado"
-                        ? "✓"
-                        : p.pagoEstado === "pospuesto"
-                        ? "⏱"
-                        : "$"
-                    }
-                    responsive
-                    onClick={() => setPagoModal(p)}
-                  />
-                </div>
 
                 {/* Acciones */}
                 <div className="flex justify-end">
@@ -975,8 +872,8 @@ ${url}`}
             title="Eliminados"
             players={eliminados}
             columns="
-              grid-cols-[1fr_48px_48px]
-              sm:grid-cols-[72px_1fr_128px_96px_60px]
+              grid-cols-[1fr_48px]
+              sm:grid-cols-[72px_1fr_128px_60px]
             "
             highlightUserId={firebaseUser?.uid}
             usersMap={usersMap}
@@ -985,7 +882,6 @@ ${url}`}
                 <span className="hidden sm:block">Ranking</span>
                 <span>Nombre</span>
                 <span className="hidden sm:block">Posición</span>
-                <span className="flex justify-center">Pago</span>
                 {isMatchAdmin && <span />}
               </>
             )}
@@ -1016,33 +912,6 @@ ${url}`}
                   {usersMap[p.userId]?.posicionesPreferidas?.join(", ")}
                 </span>
 
-                {/* Pago (desktop texto / mobile icono) */}
-                <div className="flex justify-center">
-                  <StatusPill
-                    label={
-                      p.pagoEstado === "confirmado"
-                        ? "Confirmado"
-                        : p.pagoEstado === "pospuesto"
-                        ? "Pospuesto"
-                        : "Pendiente"
-                    }
-                    variant={
-                      p.pagoEstado === "confirmado"
-                        ? "success"
-                        : p.pagoEstado === "pospuesto"
-                        ? "info"
-                        : "warning"
-                    }
-                    icon={
-                      p.pagoEstado === "confirmado"
-                        ? "✓"
-                        : p.pagoEstado === "pospuesto"
-                        ? "⏱"
-                        : "$"
-                    }
-                    responsive
-                  />
-                </div>
                 {/* Acciones */}
                 <div className="flex justify-end">
                   {isMatchAdmin && (
@@ -1074,7 +943,6 @@ ${url}`}
         isJoined={isJoined}
         isEliminado={isEliminado}
         match={match}
-        hayPagosPendientes={hayPagosPendientes}
         loading={{
           join: isLoading("join"),
           leave: isLoading("leave"),
@@ -1090,17 +958,6 @@ ${url}`}
       />
 
       {/* ================ MODALES ================ */}
-
-      <PagoModal
-        open={!!pagoModal}
-        onClose={() => setPagoModal(null)}
-        participation={pagoModal}
-        user={usersMap[pagoModal?.userId]}
-        isAdmin={isMatchAdmin}
-        matchEstado={match.estado}
-        pagoStyles={pagoStyles}
-        onUpdatePago={updatePagoEstado}
-      />
 
       <TeamsModal
         open={teamsModalOpen}

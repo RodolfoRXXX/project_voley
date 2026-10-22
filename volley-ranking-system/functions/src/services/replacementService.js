@@ -11,7 +11,6 @@ const db = admin.firestore();
 async function reemplazarTitular({
   matchId,
   posicionLiberada,
-  postDeadline = false,
   manageLock = true,
 }) {
   if (!matchId || !posicionLiberada) {
@@ -80,8 +79,6 @@ async function reemplazarTitular({
       rankingSuplente: null,
       rankingTitular: null, // se define luego en recalcularRanking
     };
-
-    if (postDeadline) updates.pagoEstado = "pospuesto";
 
     tx.update(
       db.collection("participations").doc(suplenteElegido.id),

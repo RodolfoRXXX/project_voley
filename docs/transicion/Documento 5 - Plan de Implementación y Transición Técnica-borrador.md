@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - definición E3-10 adoptada por D5-057 - 22 de octubre de 2026*
+*Borrador consolidado - arquitectura IUX adoptada por D5-061 - 25 de octubre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -14,7 +14,8 @@ partir de ella.
 # Estado del documento
 
 Este borrador conserva el contenido aprobado hasta la FASE 2 del Documento 5 y actualiza su estado
-operativo con el cierre de la Etapa 2 y la formalización documental de E3-01 a E3-10.
+operativo con el cierre de la Etapa 2, la evidencia local de E3-01 a E3-10 y la incorporación acotada
+de la interetapa IUX entre E3 y E4.
 Incluye:
 - Capítulo 1 - Propósito y alcance;
 - Capítulo 2 - Estado inicial y activos reutilizables;
@@ -30,14 +31,15 @@ Incluye:
 - cierre consolidado de la Etapa 0;
 - detalle operativo y cierre consolidado de las Etapas 1 y 2;
 - mapa implementable y decisiones de salida de la Etapa 2;
-- roadmap general de las Etapas 3 a 9.
+- roadmap general de las Etapas 3 a 9 y la interetapa IUX sin renumeración.
 
 Estado operativo del plan:
 
 - `ETAPA 0 CERRADA`;
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
-- `ETAPA 3 ABIERTA — E3-09 CERRADO EN ALCANCE TÉCNICO LOCAL CON HABILITACIÓN PRODUCTIVA PENDIENTE; E3-10 LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA`;
+- `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
+- `INTERETAPA IUX INCORPORADA ENTRE E3 Y E4 — IUX-01/IUX-02 LISTOS PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -1988,7 +1990,8 @@ el plan, pero no obliga a ejecutarlas en una cascada rígida ni a publicarlas co
 | 0 | Estabilización y red de seguridad | `CERRADA` | Arquitectura congelada y repositorio auditado | Seguridad implementada y probada, entorno reproducible y reinicialización preparada |
 | 1 | Usuario, Persona y autorización | `CERRADA` | Cierre de Etapa 0 | Identidad separada y autorización contextual inicial |
 | 2 | Grupo, Membresía, Solicitud y Temporada | `CERRADA CON RIESGO RESIDUAL ACEPTADO` | Persona y actor identificables | Fuentes de verdad organizativas separadas |
-| 3 | Pago deportivo | `E3-09 CERRADO TÉCNICAMENTE; PRODUCTIVO PENDIENTE; E3-10 LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
+| 3 | Pago deportivo | `ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; HABILITACIÓN PRODUCTIVA PENDIENTE; ETAPA ABIERTA` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
+| IUX | Interetapa UX móvil | `IUX-01/IUX-02 LISTOS PARA IMPLEMENTAR — REQUIEREN AUTORIZACIÓN SEPARADA` | Preservar contratos, autorizaciones y gates E3; no habilita E4 | Dashboard mobile-first por incrementos acotados, sin renumeración |
 | 4 | Partido-Torneo y CU-075 | `ROADMAP` | Modelo de Partido, contratos y pruebas | Resultado original y estado competitivo separados |
 | 5 | Estadísticas, Rendimiento, Actividad y recuperación | `ROADMAP` | Cada fuente original correspondiente | Proyecciones reconstruibles y procesos recuperables |
 | 6 | Comercial | `ROADMAP` | Usuario estable y consultas deportivas públicas | Capacidades y límites sin otorgar permisos deportivos |
@@ -2197,8 +2200,8 @@ El siguiente incremento funcional es:
 
 ## 7.5 Etapa 3 - Pago deportivo independiente
 
-- Estado: `E3-09 CERRADO EN SU ALCANCE TÉCNICO LOCAL — HABILITACIÓN PRODUCTIVA PENDIENTE — E3-10
-    LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; Etapa 3 permanece abierta.
+- Estado: `ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO — E3-09 Y E3-10 CON HABILITACIÓN
+    PRODUCTIVA PENDIENTE`; Etapa 3 permanece abierta y E4 no queda habilitada.
 - Objetivo: establecer Pago como única fuente económica deportiva.
 - Fuente de verdad: Pago.
 - Dependencias: identificadores estables y comprensión de referencias de Grupo, Persona y
@@ -2379,12 +2382,78 @@ El siguiente incremento funcional es:
     [ficha E3-10](../implementacion/etapa-3/E3-10-ficha-retiro-economia-legacy-torneos.md),
     [DEC-E3-10](../implementacion/etapa-3/DEC-E3-10-retiro-economia-legacy-torneos.md) y el
     [addendum E3-10](../arquitectura/Documento-2-3-4-addendum-E3-10-retiro-economia-legacy-torneos.md).
-    E3-10 queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; no acredita retiro
-    productivo, no cierra el gate económico completo ni Etapa 3 y preserva pendientes de E3-09,
-    D5-044, D5-045 y Auth/UAT aislada.
+    El [cierre técnico local E3-10](../implementacion/etapa-3/E3-10-cierre.md) posterior a D5-057
+    acredita la implementación local integrada. No acredita retiro productivo, no cierra el gate
+    económico completo ni Etapa 3 y preserva los pendientes de E3-09, D5-044, D5-045 y Auth/UAT
+    aislada.
 - Coordinación E3/E4: el gate de retiro económico permanece en E3. Los contratos deportivos E4
     pueden definirse de forma delimitada bajo D5-027, pero cada incremento futuro requiere
     autorización propia y no adelanta catálogos o tombstones D5-044.
+
+
+## 7.5A Interetapa UX móvil (IUX)
+
+- Ubicación: entre E3 y E4, sin renumerar ninguna etapa, sin declarar cerrada E3 y sin habilitar E4.
+- Objetivo: mejorar de forma incremental la experiencia móvil de las superficies existentes,
+    conservando comportamiento, contratos y autorizaciones vigentes.
+- Primer incremento: `IUX-01 — Dashboard mobile-first y adaptación de pendientes existentes`.
+- Estado de IUX-01: `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; no está
+    implementado. La semántica, N20+N31, consulta global y entrega coordinada están definidas.
+- Estado de IUX-02: `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; es una única ficha
+    con cortes internos IUX-02A/IUX-02B y tampoco está implementado.
+- Alcance IUX-01: saludo con fallback explícito, rótulo Dashboard subordinado, adaptación de la
+    sección de Pendientes a un bloque inicialmente contraído, contador de tareas con unidad y
+    cobertura explícitas, navegación sin mutaciones, accesos a Crear Grupo, Mis grupos y
+    `/profile/person`, estados independientes y validación móvil/escritorio. No debe mostrarse cero
+    mientras la consulta disponible no permita afirmar ausencia para toda la cobertura declarada.
+- Semántica aprobada por D5-059: Pendientes reúne tareas vigentes y accionables por el usuario en
+    todos sus Grupos relevantes, según sus autorizaciones efectivas. Una notificación o un destacado
+    puede referenciar una tarea, pero leerlo u ocultarlo no la resuelve; sólo la fuente de verdad de la
+    tarea determina que fue resuelta o que ya no corresponde actuar. Los hechos informativos no
+    integran el contador y toda acción se ejecuta en su sección contextual.
+- Trazabilidad técnica: `pendingAlerts` queda registrado como fuente del panel legacy observado, no
+    como fuente obligatoria del nuevo bloque. D5-059 descarta para IUX-01 el allowlist de nueve tipos
+    de Torneos, la paginación suplementaria, el techo de 100 documentos y los textos que limitaban
+    Pendientes a avisos de Torneos. Las tareas deportivas legacy de Torneos se revisarán después.
+- Cobertura funcional inicial aprobada por D5-060: una tarea por solicitud de ingreso accionable
+    (`IUX-N20`) y una por entrega de pago revisable (`IUX-N31`). `IUX-N30` y todos los demás
+    candidatos quedan fuera. La selección no asigna campana, destacados, prioridad ni vigencia y no
+    autoriza implementación. Las consultas existentes son contextuales o paginadas y no acreditan
+    hoy un total global completo para el dashboard.
+- Arquitectura adoptada por D5-061: proyección derivada por usuario; scope/revisión y outbox
+    atómicos en writers canónicos; proyector idempotente con avance contiguo; contadores por
+    usuario/Grupo; reconstrucción/reconciliación; y consulta backend autorizada para listado y total.
+    Solicitud, Entrega y los módulos originales conservan autoridad. IUX-02 es una sola ficha con
+    cortes internos IUX-02A e IUX-02B.
+- Secuencia adoptada: IUX-02A, luego IUX-02B y finalmente integración visual IUX-01. El diseño puede
+    revisarse con fixtures controlados, pero eso no permite publicar datos ficticios, un bloque
+    aparente ni cero sin consulta real. Toda implementación requiere autorización posterior separada.
+- Operación adoptada: consulta de pantalla al entrar, regresar desde el contexto y actualizar
+    manualmente, sin polling, listeners ni refresh por focus. Retención operativa de 30 días sólo
+    para procesados/inactivos y generaciones sustituidas; las tareas vigentes nunca expiran por edad.
+    Objetivos provisionales de medición: 30 segundos, degradación a 5 minutos y reconciliación en 24
+    horas. Presupuesto/rendimiento, backfill, seguridad, pruebas y UAT son gates de habilitación; las
+    mediciones no bloquean iniciar el trabajo autorizado necesario para obtenerlas.
+- Habilitación: IUX-01/IUX-02 se habilitan coordinadamente sólo tras los gates anteriores. La
+    adopción documental no autoriza código, Rules, índices, datos, migración, despliegue o producción,
+    no satisface gates productivos E3 y no habilita E4.
+- Retiro acotado del dashboard: se eliminan allí los bloques y consultas de Torneos destacados y
+    actividades por carecer de una fuente relevante y autorizada para el objetivo. No se retiran
+    rutas ni funcionalidades de Torneos fuera del dashboard.
+- Exclusiones IUX-01: “Requiere tu atención”, Agenda, campana/historial, leído/oculto, nuevos
+    productores o tipos, navbar/sidebar, roles, permisos y prioridades nuevas.
+- Trabajo posterior IUX: selección de tareas destacadas para “Requiere tu atención”, Agenda,
+    notificaciones/campana y navegación global. Su registro como objetivo posterior no selecciona
+    candidatos, canales, prioridad, vigencia, persistencia ni autoriza implementación automática.
+- Continuidad E3: permanecen íntegros los gates productivos de E3-09/E3-10 —UAT, retiro remoto
+    verificado de `onMatchClose`, compatibilidad, despliegue coordinado, reconciliación real,
+    smoke/UAT y rollback—. IUX no los satisface ni los relaja.
+- Fuente de detalle: [ficha IUX-01](../implementacion/interetapa-ux-movil/IUX-01-ficha-dashboard-mobile-first-pendientes.md),
+    [relevamiento](../implementacion/interetapa-ux-movil/IUX-relevamiento-dashboard-mobile-first.md),
+    [inventario](../implementacion/interetapa-ux-movil/IUX-inventario-candidatos-notificacion.md) y
+    [ficha IUX-02](../implementacion/interetapa-ux-movil/IUX-02-ficha-consulta-global-tareas-dashboard.md),
+    [evaluación arquitectónica](../implementacion/interetapa-ux-movil/IUX-evaluacion-arquitectura-proyeccion-dashboard.md)
+    y [addendum IUX-02](../arquitectura/Documento-2-3-4-addendum-IUX-02-proyeccion-dashboard.md).
 
 
 ## 7.6 Etapa 4 - Partido, Torneo y CU-075
@@ -2580,6 +2649,10 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-055 | E3-09 adopta DEC-E3-09, D01=A, D02=A, D03=A y el addendum conjunto de Documentos 2/3/4; retira la autoridad económica de `participations.pagoEstado` en partidos sociales sin reemplazo vinculado a Pago, conserva historia inerte, cierre explícito deportivo y `updatePagoEstado` como tombstone estable sin efectos | APROBADA | Etapa 3 / E3-09 / partidos sociales | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; el rollout futuro debe retirar código/export y eliminar o deshabilitar explícitamente la función remota `onMatchClose`, sin inferirlo de la omisión del export; no cambia Pago ni crea asociaciones retroactivas; D5-044, D5-045, Auth/UAT y baseline permanecen, y el retiro económico de inscripciones/equipos de Torneo sigue como gate obligatorio separado |
 | D5-056 | Separa exclusivamente para E3-09 el cierre técnico local integrado de la habilitación productiva; adopta la evidencia técnica existente sin reducir verificaciones ni extender la regla a otros incrementos | APROBADA | Etapa 3 / cierre E3-09 / continuidad E3-10 | E3-09 queda cerrado sólo en su alcance técnico local y E3-10 habilitado únicamente para definición; UAT humana continúa no ejecutada/no aprobada y es obligatoria antes de habilitar el recorrido a usuarios; el rollout debe eliminar o deshabilitar `onMatchClose` remoto y verificar su ausencia operativa antes de afirmar retiro efectivo desplegado; gate económico residual de Torneo y Etapa 3 permanecen abiertos |
 | D5-057 | E3-10 adopta D01–D05=A, DEC-E3-10 y el addendum conjunto a Documentos 2/3/4; retira economía legacy de Torneo, inscripciones y equipos sin reemplazo vinculado a Pago, conserva historia inerte, tombstone estable, rechazo atómico de campos retirados, Rules deportivas granulares y reconciliación de alertas | APROBADA | Etapa 3 / E3-10 / Torneos | La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; cierre técnico local y habilitación productiva se separan por decisión propia de E3-10 sin extender D5-056; acceso remoto, reconciliación real, compatibilidad externa, UAT y rollout permanecen productivos; no cierra el gate completo ni Etapa 3 y preserva E3-09, D5-044, D5-045 y Auth/UAT aislada |
+| D5-058 | Incorpora la interetapa UX móvil `IUX` entre E3 y E4 sin renumeración y aprueba el alcance funcional y las exclusiones de `IUX-01 — Dashboard mobile-first y adaptación de pendientes existentes` | APROBADA | IUX / IUX-01 / dashboard | Al registrarse D5-058 quedó pendiente una propuesta no adoptada de listener inicial + allowlist + paginación frontend hasta 100 documentos; D5-059 la descarta. Roles/permisos, navbar/sidebar, “Requiere tu atención”, Agenda y notificaciones quedan fuera; no cierra E3, no habilita E4 ni altera sus gates productivos |
+| D5-059 | Precisa Pendientes como tareas vigentes y accionables por el usuario en todos sus Grupos relevantes, separa tarea, notificación y destacado, y descarta la estrategia basada en contenido legacy de Torneos | APROBADA | IUX / IUX-01 / Pendientes | Sustituye la propuesta técnica pendiente registrada en D5-058: no se adoptan allowlist de nueve tipos, paginación suplementaria, techo de 100 documentos ni textos de avisos de Torneos; `pendingAlerts` no es fuente obligatoria. La selección de tipos quedó entonces pendiente y fue resuelta después por D5-060; al registrarse esta decisión, la división con IUX-02 todavía estaba pendiente y fue resuelta por D5-061. No autoriza implementación ni altera E3/E4 |
+| D5-060 | Selecciona para la cobertura inicial de Pendientes una tarea por solicitud de ingreso accionable (`IUX-N20`) y una por entrega de pago revisable (`IUX-N31`) | APROBADA | IUX / IUX-01 / IUX-02 | `IUX-N30` y todos los demás candidatos quedan fuera; campana, destacados, prioridad y vigencia permanecen sin asignar. La selección fue funcional y no aprobó por sí sola implementación, consulta física, índices, persistencia ni despliegue; D5-061 resuelve posteriormente la arquitectura |
+| D5-061 | Adopta para IUX-02 la arquitectura B y su addendum: proyección derivada por usuario N20+N31, scope/revisión y outbox atómicos, proyector idempotente con avance contiguo, contadores por usuario/Grupo, consulta backend autorizada, reconstrucción/reconciliación, retención operativa y cadencia de pantalla | APROBADA | IUX / IUX-01 / IUX-02 / Documentos 2-3-4 | IUX-02 permanece una ficha con cortes internos IUX-02A/IUX-02B y se ejecuta antes de la integración visual IUX-01. Adopta retención de 30 días sin expirar tareas vigentes y objetivos provisionales 30 s / 5 min / 24 h sujetos a medición. IUX-01/IUX-02 quedan `LISTOS PARA IMPLEMENTAR — REQUIEREN AUTORIZACIÓN SEPARADA`; habilitación coordinada exige backfill, seguridad, rendimiento, pruebas y UAT. No autoriza código/producción, no satisface gates E3 ni habilita E4 |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -2723,10 +2796,10 @@ primer incremento.
 # 12. Estado de redacción posterior
 
 Etapas 0 y 1 permanecen cerradas y Etapa 2 cerrada con el riesgo residual aceptado por D5-045.
-E3-09 es el último incremento implementado de Etapa 3 y queda, por D5-056,
-`CERRADO EN SU ALCANCE TÉCNICO LOCAL — HABILITACIÓN PRODUCTIVA PENDIENTE`. E3-10 queda, por D5-057,
-`LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; todavía no fue implementado, probado o
-desplegado.
+E3-09 y E3-10 quedan `CERRADOS EN SU ALCANCE TÉCNICO LOCAL — HABILITACIÓN PRODUCTIVA PENDIENTE`.
+La [evaluación consolidada de salida](../implementacion/etapa-3/E3-evaluacion-salida-consolidada.md)
+clasifica el alcance funcional y técnico local de E3 como completo, pero Etapa 3 permanece abierta:
+la evidencia no acredita los gates productivos ni habilita E4.
 
 No existe autorización de implementación completa. Los gates A/B locales conservaron evidencia de
 corrección de A y motivaron D5-054 sin presentarlo como fallido. Para B permanecen transporte con
@@ -2740,13 +2813,27 @@ sociales, y D5-056 cierra su alcance técnico local integrado sin afirmar retiro
 históricos quedan inertes y el tombstone permanece. La UAT humana sigue no ejecutada y no aprobada;
 debe aprobar antes de habilitar el recorrido a usuarios. La eliminación o deshabilitación remota de
 `onMatchClose` y la verificación de su ausencia operativa son obligatorias durante el rollout antes de
-afirmar retiro efectivo en el entorno desplegado. El retiro de autoridad económica en inscripciones/
-equipos de Torneo permanece pendiente como gate obligatorio separado y Etapa 3 permanece abierta.
+afirmar retiro efectivo en el entorno desplegado. El retiro efectivo en ambientes desplegados de la
+autoridad económica en inscripciones/equipos de Torneo permanece pendiente como gate obligatorio
+separado y Etapa 3 permanece abierta.
 
 D5-057 adopta el retiro económico legacy de Torneo, inscripciones y equipos sin reemplazo vinculado
-a Pago y sin rediseño deportivo. El futuro cierre técnico local de E3-10 se separa por decisión propia
-de su habilitación productiva, sin extender D5-056. UAT, inspección remota, reconciliación real de
-alertas, tratamiento operativo de clientes antiguos y rollout continúan pendientes antes de habilitar
-el recorrido a usuarios. La adopción documental no acredita retiro desplegado, no cierra el gate
-económico completo ni Etapa 3 y preserva los pendientes productivos de E3-09, D5-044, D5-045 y
-Auth/UAT aislada.
+a Pago y sin rediseño deportivo; el cierre posterior acredita sólo el alcance técnico local. UAT,
+inspección remota, reconciliación real de alertas, tratamiento operativo de clientes antiguos y
+rollout continúan pendientes antes de habilitar el recorrido a usuarios. La evidencia local no
+acredita retiro desplegado, no cierra el gate económico completo ni Etapa 3 y preserva los pendientes
+productivos de E3-09, D5-044, D5-045 y Auth/UAT aislada.
+
+D5-058 incorpora IUX entre E3 y E4 sin renumeración y confirma el alcance funcional de IUX-01:
+dashboard, Pendientes existentes, retiro de consultas/bloques de Torneos destacados/actividades y
+tres accesos rápidos. D5-059 precisa que Pendientes significa tareas vigentes y accionables, no
+avisos informativos ni contenido legacy de Torneos, y descarta la propuesta anterior de allowlist y
+paginación frontend hasta 100 documentos. D5-060 selecciona sólo N20+N31 para la cobertura inicial
+y excluye N30, sin asignar canales de notificación, destacados, prioridad o vigencia. D5-061 adopta
+posteriormente la arquitectura B, su addendum y la entrega coordinada: IUX-02A, IUX-02B e integración
+visual IUX-01. Las fichas quedan `LISTAS PARA IMPLEMENTAR — REQUIEREN AUTORIZACIÓN SEPARADA`; IUX-01
+no está implementado.
+“Requiere tu atención”, Agenda, notificaciones/campana, navbar/sidebar y roles o permisos permanecen
+fuera del incremento y sujetos a definición posterior. Presupuesto/rendimiento deben medirse durante
+la ejecución y son gates de habilitación, no decisiones de diseño pendientes. Esta adopción no
+autoriza código ni producción, no altera la evaluación de salida de E3 y no habilita E4.

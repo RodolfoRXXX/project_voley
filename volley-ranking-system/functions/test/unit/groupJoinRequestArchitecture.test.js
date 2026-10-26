@@ -25,6 +25,8 @@ test("Solicitud consume otros Agregados exclusivamente mediante capacidades púb
     const source = fs.readFileSync(file, "utf8");
     const foreignImports = [...source.matchAll(/require\(["'](\.\.\/\.\.\/(groups|persons|memberships|users)\/[^"']+)["']\)/g)];
     for (const match of foreignImports) assert.match(match[1], /\/public\/groupJoinRequest[A-Za-z]+Capability$/, `${path.relative(root, file)}: ${match[1]}`);
+    const dashboardImports = [...source.matchAll(/require\(["'](\.\.\/\.\.\/dashboardTasks\/[^"']+)["']\)/g)];
+    for (const match of dashboardImports) assert.equal(match[1], "../../dashboardTasks/public/dashboardTaskOutboxCapability", `${path.relative(root, file)}: ${match[1]}`);
   }
   for (const capability of ["groups/public/groupJoinRequestGroupCapability.js", "persons/public/groupJoinRequestPersonCapability.js", "memberships/public/groupJoinRequestMembershipCapability.js", "users/public/groupJoinRequestAccountCapability.js"]) assert.equal(fs.existsSync(path.join(root, "src", capability)), true, capability);
 });
@@ -42,5 +44,9 @@ test("reglas e índice declaran exclusivamente la persistencia aprobada", () => 
   for (const collection of ["groupJoinRequests", "pendingGroupJoinRequestGuards", "groupJoinRequestIntents", "groupJoinRequestDecisionIntents", "groupJoinRequestApprovalCoordinations"]) assert.match(rules, new RegExp(`match /${collection}`));
   const indexes = JSON.parse(fs.readFileSync(path.resolve(root, "../firestore.indexes.json"), "utf8"));
   assert.equal(indexes.indexes.length >= 11, true); assert.deepEqual(indexes.fieldOverrides, []);
-  const target = indexes.indexes.filter((item) => item.collectionGroup === "groupJoinRequests"); assert.equal(target.length, 1); assert.deepEqual(target[0].fields, [{ fieldPath: "groupId", mode: "ASCENDING" }, { fieldPath: "estado", mode: "ASCENDING" }, { fieldPath: "createdAt", mode: "DESCENDING" }]);
+  const target = indexes.indexes.filter((item) => item.collectionGroup === "groupJoinRequests"); assert.equal(target.length, 2);
+  for (const fields of [
+    [{ fieldPath: "groupId", mode: "ASCENDING" }, { fieldPath: "estado", mode: "ASCENDING" }, { fieldPath: "createdAt", mode: "DESCENDING" }],
+    [{ fieldPath: "groupId", mode: "ASCENDING" }, { fieldPath: "estado", mode: "ASCENDING" }, { fieldPath: "__name__", mode: "ASCENDING" }],
+  ]) assert.equal(target.some((item) => JSON.stringify(item.fields) === JSON.stringify(fields)), true, JSON.stringify(fields));
 });

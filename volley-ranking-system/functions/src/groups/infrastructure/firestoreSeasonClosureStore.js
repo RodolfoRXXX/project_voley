@@ -16,6 +16,7 @@ const {
 const { hydrateOpenSeasonGuard } = require("./firestoreOpenSeasonGuard");
 const { hydrateClosureReceipt, hydrateOpeningReceipt, sameTimestamp } = require("./seasonReceipts");
 const { isTransactionConflict, isUnavailable } = require("./firestoreGroupCreationGuard");
+const { createDashboardTaskOutboxCapability } = require("../../dashboardTasks/public/dashboardTaskOutboxCapability");
 
 function accountCompatible(snapshot, userId) {
   if (!snapshot.exists || snapshot.id !== userId) return false;
@@ -30,6 +31,7 @@ function isMissingIndex(error) { return [9, "9", "failed-precondition", "FAILED_
 
 function createFirestoreSeasonClosureStore({ db, groupRepository, seasonRepository, membershipCapability, approvalCapability, now = () => Timestamp.now() }) {
   if (!db || !groupRepository || !seasonRepository || !membershipCapability || !approvalCapability || typeof now !== "function") throw new TypeError("Season closure dependencies are required");
+  const dashboardTasks = createDashboardTaskOutboxCapability({ db, now });
   return Object.freeze({
     async close(command) {
       const receiptRef = db.collection("seasonClosureReceipts").doc(command.receiptId);
@@ -97,10 +99,13 @@ function createFirestoreSeasonClosureStore({ db, groupRepository, seasonReposito
           }
 
           const closedAt = now(); const closed = closeSeason(season, { closedAt, closedBy: command.userId });
+          const projection = await dashboardTasks.prepare(transaction, { kind: "N31_AUDIENCE_CONTEXT_CHANGED", idempotencyIdentity: command.receiptId,
+            groupId: command.groupId, resourceType: "SEASON", resourceIds: [command.seasonId], fingerprintParts: [command.seasonId, "cerrada"] });
           seasonRepository.persistClosed(transaction, closed);
           if (createLegacyReceipt) transaction.create(legacyReceiptRef, { action: "OPEN_SEASON", groupId: command.groupId, seasonId: command.seasonId, idempotencyKeyHash: guard.idempotencyKeyHash, requestHash: guard.requestHash, outcome: "OPENED", openedAt: guard.createdAt, confirmedAt: guard.createdAt, receiptVersion: 1 });
           transaction.create(receiptRef, { action: "CLOSE_SEASON", actorUserId: command.userId, groupId: command.groupId, seasonId: command.seasonId, idempotencyKeyHash: command.idempotencyKeyHash, requestHash: command.requestHash, outcome: "CLOSED", closedAt, confirmedAt: closedAt, receiptVersion: 1 });
           transaction.delete(db.collection("openSeasonGuards").doc(command.groupId));
+          projection.commit();
           return Object.freeze({ outcome: "CLOSED", season: toClosedSeasonDto(closed) });
         });
       } catch (error) {

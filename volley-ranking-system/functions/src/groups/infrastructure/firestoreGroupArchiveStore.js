@@ -17,6 +17,7 @@ const { hydrateActiveMembershipGuard } = require("../../memberships/infrastructu
 const { hydrateGuard, hydrateCoordination, hydrateDecisionIntent } = require("../../groupJoinRequests/infrastructure/firestoreGroupJoinRequestStore");
 const { isTransactionConflict, isUnavailable } = require("./firestoreGroupCreationGuard");
 const { hydrateGroupArchiveReceipt } = require("./groupArchiveReceipts");
+const { createDashboardTaskOutboxCapability } = require("../../dashboardTasks/public/dashboardTaskOutboxCapability");
 
 const BLOCKER_ORDER = Object.freeze([
   "ACTIVE_MEMBERSHIPS_EXIST", "OPEN_SEASON_EXISTS", "PENDING_REQUESTS_EXIST", "APPROVAL_IN_PROGRESS",
@@ -35,6 +36,7 @@ function createFirestoreGroupArchiveStore({ db, groupRepository, membershipRepos
     throw new TypeError("Group archive dependencies are required");
   }
 
+  const dashboardTasks = createDashboardTaskOutboxCapability({ db, now });
   async function inspectEligibility(transaction, groupId) {
     const openGuardRef = db.collection("openSeasonGuards").doc(groupId);
     const [openGuardSnapshot, openSeasons, activeMemberships, activeGuards, pendingRequests, pendingGuards, coordinations] = await Promise.all([
@@ -180,12 +182,15 @@ function createFirestoreGroupArchiveStore({ db, groupRepository, membershipRepos
           const blockers = await inspectEligibility(transaction, command.groupId);
           if (blockers.length) throw new GroupArchiveBlockedError(blockers[0]);
           const archivedAt = now(); const archived = archiveGroup(group, archivedAt);
+          const projection = await dashboardTasks.prepare(transaction, { kind: "DASHBOARD_TASK_CONTEXT_ARCHIVED", idempotencyIdentity: command.receiptId,
+            groupId: command.groupId, resourceType: "GROUP", resourceIds: [command.groupId], fingerprintParts: [command.groupId, "archivado"] });
           groupRepository.archive(transaction, command.groupId, archivedAt, archived.schemaVersion);
           transaction.create(receiptRef, {
             action: "ARCHIVE_GROUP", actorUserId: command.userId, groupId: command.groupId,
             requestHash: command.requestHash, appliedState: "archivado", archivedAt,
             outcome: "ARCHIVED", receiptVersion: 1,
           });
+          projection.commit();
           return Object.freeze({
             outcome: "ARCHIVED", recovered: false,
             appliedEffect: Object.freeze({ outcome: "ARCHIVED", archivedAt: archivedAt.toDate().toISOString() }),

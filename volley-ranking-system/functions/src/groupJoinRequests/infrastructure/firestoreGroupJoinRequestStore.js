@@ -3,6 +3,7 @@
 const { FieldPath, Timestamp } = require("firebase-admin/firestore");
 const { InvalidGroupJoinRequestStateError, buildGroupJoinRequest } = require("../domain/groupJoinRequest");
 const { isTransientDependencyError } = require("../../shared/application/transientDependencyError");
+const { createDashboardTaskOutboxCapability } = require("../../dashboardTasks/public/dashboardTaskOutboxCapability");
 const errors = require("../application/groupJoinRequestErrors");
 const { decodeGroupJoinRequestCursor, encodeGroupJoinRequestCursor } = require("../application/groupJoinRequestCursor");
 const {
@@ -116,6 +117,7 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
   const intentRef = (userId, key) => db.collection("groupJoinRequestIntents").doc(groupJoinRequestIntentId(userId, key));
   const decisionIntentRef = (userId, key) => db.collection("groupJoinRequestDecisionIntents").doc(groupJoinRequestDecisionIntentId(userId, key));
   const coordinationRef = (requestId) => db.collection("groupJoinRequestApprovalCoordinations").doc(requestId);
+  const dashboardTasks = createDashboardTaskOutboxCapability({ db });
   const membershipInput = (request, coordination, authorizedBy) => ({
     requestId: request.requestId, decisionIntentId: coordination.decisionIntentId, authorizedBy,
     personId: request.personId, groupId: request.groupId, seasonId: coordination.seasonId,
@@ -234,22 +236,29 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
           return { terminal: false, request, coordination };
         }
         const season = await seasonCapability.assertOpenSeasonForMembership({ unitOfWork: transaction, groupId, seasonId: coordination.seasonId });
+        const releaseProjection = season?.status === "open" ? null : await dashboardTasks.prepare(transaction, { kind: "N20_COORDINATION_RELEASED",
+          idempotencyIdentity: `${coordination.decisionIntentId}:season:${season?.status || "unknown"}`, groupId,
+          resourceType: "GROUP_JOIN_REQUEST", resourceIds: [requestId], fingerprintParts: [requestId, "pendiente"] });
         if (season?.status === "absent") {
           if (coordination.approvalEffect === "REACTIVATE_MEMBERSHIP") {
             consumeDecisionIntent(transaction, aliasRef, intent, "MEMBERSHIP_SEASON_NOT_REACTIVATABLE", Timestamp.now());
             transaction.delete(cRef);
+            releaseProjection.commit();
             return { terminal: false, failure: "MEMBERSHIP_SEASON_NOT_REACTIVATABLE" };
           }
           transaction.delete(cRef);
+          releaseProjection.commit();
           return { terminal: false, failure: "OPEN_SEASON_REQUIRED" };
         }
         if (season?.status !== "open") {
           if (coordination.approvalEffect === "REACTIVATE_MEMBERSHIP") {
             consumeDecisionIntent(transaction, aliasRef, intent, "MEMBERSHIP_SEASON_NOT_REACTIVATABLE", Timestamp.now());
             transaction.delete(cRef);
+            releaseProjection.commit();
             return { terminal: false, failure: "MEMBERSHIP_SEASON_NOT_REACTIVATABLE" };
           }
           transaction.delete(cRef);
+          releaseProjection.commit();
           return { terminal: false, failure: "SEASON_INCOMPATIBLE" };
         }
         observe({ stage: "claim", classification: "recovery" });
@@ -279,10 +288,13 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
       }
       const createdAt = Timestamp.now();
       const coordinationVersion = approvalEffect === "RENEW_MEMBERSHIP" ? 3 : 2;
+      const projection = await dashboardTasks.prepare(transaction, { kind: "N20_COORDINATION_STARTED", idempotencyIdentity: aliasRef.id,
+        groupId, resourceType: "GROUP_JOIN_REQUEST", resourceIds: [requestId], fingerprintParts: [requestId, "approval-in-progress"] });
       if (!alias) createDecisionIntent(transaction, aliasRef, request, "approve", userId, createdAt, coordinationVersion);
       else if (alias.intentVersion === 1) transaction.set(aliasRef, { ...alias, intentStatus: "pending", intentVersion: coordinationVersion });
       const coordinationData = { requestId, personId: request.personId, groupId, seasonId, decisionIntentId: aliasRef.id, requestedBy: userId, approvalEffect, membershipId, expectedActivationOrdinal, createdAt, ...(previousMembershipId ? { previousMembershipId } : {}), coordinationVersion };
       transaction.create(cRef, coordinationData);
+      projection.commit();
       observe({ stage: "claim", classification: alias ? "retry" : "first-attempt" });
       return { terminal: false, request, coordination: coordinationData };
     });
@@ -312,17 +324,21 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
       const activation = await membershipCapability.getActivationContext({ unitOfWork: transaction, personId: request.personId, groupId: request.groupId, seasonId: coordination.seasonId, membershipId: coordination.membershipId, expectedActivationOrdinal: coordination.expectedActivationOrdinal, ...(coordination.approvalEffect === "RENEW_MEMBERSHIP" ? { previousMembershipId: coordination.previousMembershipId } : {}) });
       if (receipt.outcome === "REACTIVATION_SUPERSEDED" || activation?.status === "activation-closed") {
         const superseded = coordination.approvalEffect === "RENEW_MEMBERSHIP" ? "MEMBERSHIP_RENEWAL_SUPERSEDED" : "MEMBERSHIP_REACTIVATION_SUPERSEDED";
-        const consumedAt = Timestamp.now(); consumeDecisionIntent(transaction, db.collection("groupJoinRequestDecisionIntents").doc(coordination.decisionIntentId), intent, superseded, consumedAt); transaction.delete(cRef);
+        const consumedAt = Timestamp.now(); const projection = await dashboardTasks.prepare(transaction, { kind: "N20_COORDINATION_RELEASED", idempotencyIdentity: `${coordination.decisionIntentId}:superseded`,
+          groupId: request.groupId, resourceType: "GROUP_JOIN_REQUEST", resourceIds: [requestId], fingerprintParts: [requestId, "pendiente"] }); consumeDecisionIntent(transaction, db.collection("groupJoinRequestDecisionIntents").doc(coordination.decisionIntentId), intent, superseded, consumedAt); transaction.delete(cRef); projection.commit();
         observe({ stage: "release", classification: "recovery" });
         return { failure: superseded };
       }
       if (activation?.status !== "activation-open") throw new GroupJoinRequestIncompatibleStateError();
       const decidedAt = Timestamp.now();
       const approved = request.approveAfterMembership({ decisionIntentId: coordination.decisionIntentId, decidedBy: intent.requestedBy, decidedAt, membershipId: coordination.membershipId, seasonId: coordination.seasonId, approvalEffect: coordination.approvalEffect, membershipActivationOrdinal: coordination.expectedActivationOrdinal });
+      const projection = await dashboardTasks.prepare(transaction, { kind: "N20_RESOLVED", idempotencyIdentity: coordination.decisionIntentId,
+        groupId: request.groupId, resourceType: "GROUP_JOIN_REQUEST", resourceIds: [requestId], fingerprintParts: [requestId, "aprobada"] });
       repository.updateApproved(transaction, approved);
       consumeDecisionIntent(transaction, db.collection("groupJoinRequestDecisionIntents").doc(coordination.decisionIntentId), intent, "APPROVED", decidedAt);
       transaction.delete(gRef);
       transaction.delete(cRef);
+      projection.commit();
       observe({ stage: "finalize", classification: receipt.outcome === "RECOVERED_ACTIVE" ? "recovery" : "first-attempt" });
       return { outcome: "APPROVED", request: approved, membership: { membershipId: coordination.membershipId, seasonId: coordination.seasonId } };
     });
@@ -345,8 +361,11 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
       const intent = await readCoordinationIntent(transaction, current, persistedCoordination);
       const membership = await membershipCapability.getActivationContext({ unitOfWork: transaction, personId: current.personId, groupId: current.groupId, seasonId: persistedCoordination.seasonId, membershipId: persistedCoordination.membershipId, expectedActivationOrdinal: persistedCoordination.expectedActivationOrdinal, ...(persistedCoordination.approvalEffect === "RENEW_MEMBERSHIP" ? { previousMembershipId: persistedCoordination.previousMembershipId } : {}) });
       if (membership?.status !== "activation-absent") throw new GroupJoinRequestIncompatibleStateError();
+      const projection = await dashboardTasks.prepare(transaction, { kind: "N20_COORDINATION_RELEASED", idempotencyIdentity: `${persistedCoordination.decisionIntentId}:release:${outcome || "retry"}`,
+        groupId: current.groupId, resourceType: "GROUP_JOIN_REQUEST", resourceIds: [current.requestId], fingerprintParts: [current.requestId, "pendiente"] });
       if (outcome) consumeDecisionIntent(transaction, db.collection("groupJoinRequestDecisionIntents").doc(persistedCoordination.decisionIntentId), intent, outcome, Timestamp.now());
       transaction.delete(cRef);
+      projection.commit();
       observe({ stage: "release", classification: "recovery" });
     });
   }
@@ -378,7 +397,10 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
           }
           if (pending) throw new GroupJoinRequestRequestAlreadyPendingError();
           const createdAt = Timestamp.now(); const request = buildGroupJoinRequest({ requestId, personId, groupId, createdAt });
+          const projection = await dashboardTasks.prepare(transaction, { kind: "N20_CREATED", idempotencyIdentity: requestId,
+            groupId, resourceType: "GROUP_JOIN_REQUEST", resourceIds: [requestId], fingerprintParts: [requestId, "pendiente"] });
           repository.createInitial(transaction, request); transaction.create(gRef, { requestId, personId, groupId, createdAt, guardVersion: 1 }); transaction.create(iRef, { requestId, personId, groupId, requestHash: requestedHash, createdAt, intentVersion: 1 });
+          projection.commit();
           return { outcome: "CREATED_PENDING", request, decisionStatus: "PENDING" };
         });
       } catch (error) { throw mapFailure(error); }
@@ -410,7 +432,10 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
           if (request.estado !== "pendiente") throw new GroupJoinRequestRequestNotPendingError();
           if (!guard || !pending || pending.requestId !== requestId) throw new GroupJoinRequestIncompatibleStateError();
           if (coordination) throw new GroupJoinRequestApprovalInProgressError();
-          const cancelled = request.cancel(Timestamp.now()); repository.updateCancelled(transaction, cancelled); transaction.delete(gRef); return { outcome: "CANCELLED", request: cancelled };
+          const cancelled = request.cancel(Timestamp.now());
+          const projection = await dashboardTasks.prepare(transaction, { kind: "N20_RESOLVED", idempotencyIdentity: `${requestId}:cancel`,
+            groupId, resourceType: "GROUP_JOIN_REQUEST", resourceIds: [requestId], fingerprintParts: [requestId, "cancelada"] });
+          repository.updateCancelled(transaction, cancelled); transaction.delete(gRef); projection.commit(); return { outcome: "CANCELLED", request: cancelled };
         });
       } catch (error) { throw mapFailure(error); }
     },
@@ -433,8 +458,12 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
           }
           if (!pending || pending.requestId !== requestId || !guard) throw new GroupJoinRequestIncompatibleStateError();
           if (coordination) { await readCoordinationIntent(transaction, request, coordination); throw new GroupJoinRequestApprovalInProgressError(); }
-          const decidedAt = Timestamp.now(); if (!alias) createDecisionIntent(transaction, aliasRef, request, "reject", userId, decidedAt);
-          const rejected = request.reject({ decisionIntentId: aliasRef.id, decidedBy: userId, decidedAt }); repository.updateRejected(transaction, rejected); transaction.delete(gRef); observe({ stage: "finalize", classification: alias ? "retry" : "first-attempt" }); return { outcome: "REJECTED", request: rejected };
+          const decidedAt = Timestamp.now();
+          const rejected = request.reject({ decisionIntentId: aliasRef.id, decidedBy: userId, decidedAt });
+          const projection = await dashboardTasks.prepare(transaction, { kind: "N20_RESOLVED", idempotencyIdentity: aliasRef.id,
+            groupId, resourceType: "GROUP_JOIN_REQUEST", resourceIds: [requestId], fingerprintParts: [requestId, "rechazada"] });
+          if (!alias) createDecisionIntent(transaction, aliasRef, request, "reject", userId, decidedAt);
+          repository.updateRejected(transaction, rejected); transaction.delete(gRef); projection.commit(); observe({ stage: "finalize", classification: alias ? "retry" : "first-attempt" }); return { outcome: "REJECTED", request: rejected };
         });
       } catch (error) { throw mapFailure(error); }
     },

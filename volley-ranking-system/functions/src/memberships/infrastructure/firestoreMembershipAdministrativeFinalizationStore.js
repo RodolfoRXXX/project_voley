@@ -26,6 +26,7 @@ const { annotateMembershipError } = require("../application/membershipObservabil
 const { assertMembershipCorrelated, hydrateActiveMembershipGuard, isAmbiguousTransactionFailure, isMembershipContention } = require("./firestoreActiveMembershipGuard");
 const { assertActiveLifecycleCorrelated, assertFinalizedMembershipCorrelated, hydrateMembershipLifecycleGuard } = require("./firestoreMembershipLifecycleGuard");
 const { createMembershipTransactionObserver } = require("./membershipTransactionObservability");
+const { createDashboardTaskOutboxCapability } = require("../../dashboardTasks/public/dashboardTaskOutboxCapability");
 
 const ACTION = "FINALIZE_ACTIVE_THIRD_PARTY_MEMBERSHIP";
 const SUCCESS = "MEMBERSHIP_FINALIZATION_CONFIRMED";
@@ -86,6 +87,7 @@ function createFirestoreMembershipAdministrativeFinalizationStore({
     throw new TypeError("Administrative Membership finalization dependencies are required");
   }
   const intentReference = (intentId) => db.collection("membershipAdministrativeFinalizationIntents").doc(intentId);
+  const dashboardTasks = createDashboardTaskOutboxCapability({ db, now });
 
   async function requireAccount(transaction, { actorUserId }) {
     const account = await personCapability.getAccount({ unitOfWork: transaction, userId: actorUserId });
@@ -223,6 +225,8 @@ function createFirestoreMembershipAdministrativeFinalizationStore({
           firstPeriod: target.periods.firstPeriod, latestPeriod: target.periods.latestPeriod,
         });
         const consumed = intentData(args, actorPerson, target, SUCCESS, completedAt, true);
+        const projection = await dashboardTasks.prepare(transaction, { kind: "N31_AUDIENCE_CHANGED", idempotencyIdentity: args.intentId,
+          groupId: args.groupId, resourceType: "MEMBERSHIP", resourceIds: [args.membershipId], fingerprintParts: [args.membershipId, "finalizada"] });
         membershipRepository.persistTransition(transaction, transition);
         transaction.delete(target.activeRef);
         const finalizedLifecycle = {
@@ -233,6 +237,7 @@ function createFirestoreMembershipAdministrativeFinalizationStore({
         if (target.lifecycle) transaction.set(target.lifecycleRef, finalizedLifecycle);
         else transaction.create(target.lifecycleRef, finalizedLifecycle);
         transaction.create(intentRef, consumed);
+        projection.commit();
         return Object.freeze({ intent: consumed });
       });
       return toResult(result.intent);

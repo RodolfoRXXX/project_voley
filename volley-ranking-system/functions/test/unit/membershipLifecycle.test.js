@@ -90,6 +90,7 @@ test("E2-05 usa una sola lectura del reloj inyectado para Membresía y lifecycle
       async runTransaction(callback) { return callback(transaction); },
     },
     groupRepository: { async getById() { return { id: "group-1", estado: "activo", ownerId: "uid" }; } },
+    dashboardTaskOutboxCapability: { async prepare() { return { commit() {} }; } },
     now() { clockCalls += 1; return egreso; },
   });
   const result = await guard.finalizeForOwner({

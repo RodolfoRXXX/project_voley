@@ -48,6 +48,102 @@
       ]
     },
     {
+      "collectionGroup": "paymentDeliveries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "decisionState", "mode": "ASCENDING" },
+        { "fieldPath": "__name__", "mode": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "groupJoinRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "estado", "mode": "ASCENDING" },
+        { "fieldPath": "__name__", "mode": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "dashboardTaskOutbox",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "mode": "ASCENDING" },
+        { "fieldPath": "availableAt", "mode": "ASCENDING" },
+        { "fieldPath": "createdAt", "mode": "ASCENDING" },
+        { "fieldPath": "__name__", "mode": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "dashboardTaskOutbox",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "mode": "ASCENDING" },
+        { "fieldPath": "leaseUntil", "mode": "ASCENDING" },
+        { "fieldPath": "createdAt", "mode": "ASCENDING" },
+        { "fieldPath": "__name__", "mode": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "dashboardTaskOutbox",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "scopeRevision", "mode": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "dashboardTaskOutbox",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "mode": "ASCENDING" },
+        { "fieldPath": "appliedAt", "mode": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "dashboardTaskManifests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "projectionState", "mode": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "dashboardTaskManifests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "__name__", "mode": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "groupCapabilityGrants",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "capabilityId", "mode": "ASCENDING" },
+        { "fieldPath": "state", "mode": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "dashboardTaskManifests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectionState", "mode": "ASCENDING" },
+        { "fieldPath": "purgeAfter", "mode": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "items",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "coverage", "mode": "ASCENDING" },
+        { "fieldPath": "projectionState", "mode": "ASCENDING" },
+        { "fieldPath": "purgeAfter", "mode": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "groupDeletionReceipts",
       "queryScope": "COLLECTION",
       "fields": [

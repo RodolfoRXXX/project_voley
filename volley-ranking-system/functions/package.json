@@ -12,7 +12,10 @@
     "seed:dev:dry": "node src/scripts/seedDevelopmentData.js --dry-run",
     "backfill:pending-alerts": "node src/scripts/backfillPendingAlerts.js",
     "backfill:pending-alerts:write": "node src/scripts/backfillPendingAlerts.js --write",
-    "e3-10:alerts:reconcile": "node src/scripts/reconcileTournamentPaymentAlerts.js"
+    "e3-10:alerts:reconcile": "node src/scripts/reconcileTournamentPaymentAlerts.js",
+    "iux-02a:backfill:emulator": "node src/scripts/manageDashboardTaskProjection.js backfill",
+    "iux-02a:rebuild:emulator": "node src/scripts/manageDashboardTaskProjection.js rebuild",
+    "iux-02a:rollback:emulator": "node src/scripts/manageDashboardTaskProjection.js rollback"
   },
   "keywords": [],
   "author": "",

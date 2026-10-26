@@ -88,6 +88,16 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow write: if false;
       }
+
+      // IUX-02A remains backend-only. IUX-02B will expose an authorized callable;
+      // clients never read the derived physical projection directly.
+      match /dashboardTaskProjection/{coverageId} {
+        allow read, write: if false;
+      }
+
+      match /dashboardTaskSets/{generationId}/{document=**} {
+        allow read, write: if false;
+      }
     }
 
     match /personas/{personaId} {
@@ -359,6 +369,22 @@ service cloud.firestore {
     }
 
     match /groupCapabilityCommandReceipts/{receiptId} {
+      allow read, write: if false;
+    }
+
+    match /dashboardTaskScopes/{groupId} {
+      allow read, write: if false;
+    }
+
+    match /dashboardTaskOutbox/{eventId} {
+      allow read, write: if false;
+    }
+
+    match /dashboardTaskManifests/{taskId} {
+      allow read, write: if false;
+    }
+
+    match /dashboardTaskHealth/{coverageId} {
       allow read, write: if false;
     }
 

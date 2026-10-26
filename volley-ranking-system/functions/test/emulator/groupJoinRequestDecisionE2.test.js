@@ -85,6 +85,13 @@ test("E2-07 decide Solicitudes con coordinación recuperable y cardinalidad auto
       const result = await call("getGroupJoinRequestDecisionResult", { groupId, requestId }); assert.deepEqual(result.body.result.membership, { id: membershipId, seasonId });
       const state = await cardinality(groupId, requestId); assert.equal(state.requests.size, 1); assert.equal(state.requests.docs[0].data().estado, "aprobada"); assert.equal(state.active.size, 1); assert.equal(state.claims.size, 0); assert.equal(state.decisionIntents.size, 1);
       assert.equal((await db.collection("pendingGroupJoinRequestGuards").doc(pendingGroupJoinRequestGuardId(groupId, personId)).get()).exists, false);
+      const projectionScope = (await db.collection("dashboardTaskScopes").doc(groupId).get()).data();
+      assert.deepEqual({ sourceRevision: projectionScope.sourceRevision, projectedRevision: projectionScope.projectedRevision, status: projectionScope.status },
+        { sourceRevision: 4, projectedRevision: 0, status: "DIRTY" });
+      const projectionEvents = await db.collection("dashboardTaskOutbox").where("groupId", "==", groupId).get();
+      assert.equal(projectionEvents.size, 4); assert.deepEqual(new Set(projectionEvents.docs.map((doc) => doc.data().kind)),
+        new Set(["N20_CREATED", "N20_COORDINATION_STARTED", "N31_AUDIENCE_CHANGED", "N20_RESOLVED"]));
+      assert.equal(projectionEvents.docs.every((doc) => doc.data().status === "PENDING"), true);
     });
 
     await t.test("rechazo es atómico, idempotente y nunca crea Membresía", async () => {

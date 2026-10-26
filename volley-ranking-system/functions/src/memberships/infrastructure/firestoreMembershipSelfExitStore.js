@@ -32,6 +32,7 @@ const {
   mapInfrastructureError,
 } = require("./firestoreActiveMembershipGuard");
 const { assertActiveLifecycleCorrelated, hydrateMembershipLifecycleGuard } = require("./firestoreMembershipLifecycleGuard");
+const { createDashboardTaskOutboxCapability } = require("../../dashboardTasks/public/dashboardTaskOutboxCapability");
 
 const INTENT_FIELDS = Object.freeze([
   "userId", "personId", "membershipId", "groupId", "seasonId", "activationOrdinal",
@@ -126,6 +127,7 @@ function createFirestoreMembershipSelfExitStore({
   function reference(intentId) {
     return db.collection("membershipSelfExitIntents").doc(intentId);
   }
+  const dashboardTasks = createDashboardTaskOutboxCapability({ db, now });
 
   async function execute(args) {
     let transactionAttempt = 0;
@@ -231,6 +233,8 @@ function createFirestoreMembershipSelfExitStore({
           completedAt: finalizedAt,
           intentVersion: 1,
         });
+        const projection = await dashboardTasks.prepare(transaction, { kind: "N31_AUDIENCE_CHANGED", idempotencyIdentity: args.intentId,
+          groupId: args.groupId, resourceType: "MEMBERSHIP", resourceIds: [membership.membershipId], fingerprintParts: [membership.membershipId, "finalizada"] });
         membershipRepository.persistTransition(transaction, transition);
         transaction.delete(activeRef);
         const finalizedLifecycle = {
@@ -246,6 +250,7 @@ function createFirestoreMembershipSelfExitStore({
         if (lifecycle) transaction.set(lifecycleRef, finalizedLifecycle);
         else transaction.create(lifecycleRef, finalizedLifecycle);
         transaction.create(intentRef, intentData);
+        projection.commit();
         return toResult(intentData);
       });
     } catch (error) {

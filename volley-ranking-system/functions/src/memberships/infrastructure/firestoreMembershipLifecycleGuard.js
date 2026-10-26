@@ -6,6 +6,7 @@ const { MembershipConflictError, MembershipIncompatibleStateError, MembershipNot
 const { activeMembershipGuardId, membershipLifecycleGuardId, membershipValidityPeriodId } = require("../application/membershipHashing");
 const { annotateMembershipError } = require("../application/membershipObservability");
 const { assertMembershipCorrelated, hydrateActiveMembershipGuard, isAmbiguousTransactionFailure, isMembershipContention, mapInfrastructureError, requireOwnedGroup } = require("./firestoreActiveMembershipGuard");
+const { createDashboardTaskOutboxCapability } = require("../../dashboardTasks/public/dashboardTaskOutboxCapability");
 
 const MEMBERSHIP_LIFECYCLE_GUARD_V1_FIELDS = Object.freeze(["membershipId", "personId", "groupId", "seasonId", "creationIdempotencyKeyHash", "creationRequestHash", "finalizedAt", "lifecycleGuardVersion"]);
 const MEMBERSHIP_LIFECYCLE_GUARD_FIELDS = Object.freeze(["membershipId", "personId", "groupId", "seasonId", "lastActivationOrdinal", "finalizedAt", "lifecycleGuardVersion"]);
@@ -52,9 +53,10 @@ function assertActiveLifecycleCorrelated(membership, lifecycle, activeGuard, lat
 function hydrateQuery(repository, snapshot) { return snapshot.docs.map((document) => repository.fromSnapshot(document)); }
 function requireOnlyMembership(memberships, expectedId, label) { if (memberships.length !== 1 || memberships[0]?.membershipId !== expectedId) throw new MembershipIncompatibleStateError(label); }
 
-function createFirestoreMembershipLifecycleGuard({ db, groupRepository, seasonCapability, now = () => Timestamp.now() }) {
+function createFirestoreMembershipLifecycleGuard({ db, groupRepository, seasonCapability, now = () => Timestamp.now(), dashboardTaskOutboxCapability }) {
   if (!db || !groupRepository || typeof now !== "function") throw new TypeError("Membership lifecycle dependencies are required");
   function reference(guardId) { return db.collection("membershipLifecycleGuards").doc(guardId); }
+  const dashboardTasks = dashboardTaskOutboxCapability || createDashboardTaskOutboxCapability({ db, now });
 
   async function requireFinalizedCurrent({ transaction, lifecycle, membershipRepository }) {
     const membership = await membershipRepository.getById(lifecycle.membershipId, transaction);
@@ -100,11 +102,15 @@ function createFirestoreMembershipLifecycleGuard({ db, groupRepository, seasonCa
           }
           const finalizedAt = now();
           const transition = finalizeMembership({ membership, finalizedAt, firstPeriodId: membershipValidityPeriodId(membership.membershipId, 1), firstPeriod: periodState.firstPeriod, latestPeriod: periodState.latestPeriod });
+          const projection = await dashboardTasks.prepare(transaction, { kind: "N31_AUDIENCE_CHANGED",
+            idempotencyIdentity: `${membership.membershipId}:owner-finalize:${transition.membership.periodCount}`,
+            groupId, resourceType: "MEMBERSHIP", resourceIds: [membership.membershipId], fingerprintParts: [membership.membershipId, "finalizada", transition.membership.periodCount] });
           membershipRepository.persistTransition(transaction, transition);
           transaction.delete(activeRef);
           const finalizedLifecycle = { membershipId: membership.membershipId, personId, groupId, seasonId: membership.seasonId, rootState: "finalized", lastActivationOrdinal: transition.membership.periodCount, finalizedAt, lifecycleGuardVersion: 3 };
           if (lifecycle) transaction.set(lifecycleRef, finalizedLifecycle);
           else transaction.create(lifecycleRef, finalizedLifecycle);
+          projection.commit();
           return { kind: "active-only", outcome: "FINALIZED", membership: transition.membership };
         }
         const activeForPair = await transaction.get(membershipRepository.activePairQuery({ personId, groupId }));

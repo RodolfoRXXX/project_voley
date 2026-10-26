@@ -155,12 +155,39 @@ function exitCodeForSpawnResult(result) {
   return result.status ?? 1;
 }
 
+function partitionTestPaths(paths, batchSize) {
+  if (!Array.isArray(paths) || !Number.isSafeInteger(batchSize) || batchSize < 1) throw new TypeError("Invalid emulator batch plan");
+  if (new Set(paths).size !== paths.length) throw new Error("Emulator batch plan contains duplicate test paths");
+  const batches = [];
+  for (let offset = 0; offset < paths.length; offset += batchSize) batches.push(paths.slice(offset, offset + batchSize));
+  return batches;
+}
+
+function assertBatchPlan(paths, batches, expectedCount, expectedBatches) {
+  if (paths.length !== expectedCount || batches.length !== expectedBatches || batches.flat().length !== paths.length
+    || new Set(batches.flat()).size !== paths.length || batches.flat().some((entry, index) => entry !== paths[index])) {
+    throw new Error("Canonical emulator batch plan is incomplete or reordered");
+  }
+}
+
+function runSequentialBatches(commands, execute, failed) {
+  let result;
+  for (let index = 0; index < commands.length; index += 1) {
+    result = execute(commands[index], index);
+    if (failed(result)) break;
+  }
+  return result;
+}
+
 module.exports = {
   copyFunctionsSource,
+  assertBatchPlan,
   exitCodeForSpawnResult,
   linkNodeModules,
   listTestFiles,
+  partitionTestPaths,
   removeTemporaryDirectory,
   resolveFirebaseCliEntrypoint,
+  runSequentialBatches,
   spawnFirebaseCli,
 };

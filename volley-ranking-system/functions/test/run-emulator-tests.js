@@ -9,10 +9,13 @@ const {
 } = require("./guards/firebaseTestGuard");
 const { SYNTHETIC_DATA } = require("./fixtures/syntheticData");
 const {
+  assertBatchPlan,
   copyFunctionsSource,
   exitCodeForSpawnResult,
   linkNodeModules,
+  partitionTestPaths,
   removeTemporaryDirectory,
+  runSequentialBatches,
   spawnFirebaseCli,
 } = require("./helpers/runnerTools");
 
@@ -68,6 +71,9 @@ const emulatorTestPath = path.join(
   "test",
   "emulator",
   "emulatorSmoke.test.js"
+);
+const dashboardTaskProjectionIux02aTestPath = path.join(
+  systemRoot, "functions", "test", "emulator", "dashboardTaskProjectionIux02a.test.js"
 );
 const autopromotionTestPath = path.join(
   systemRoot,
@@ -359,7 +365,9 @@ const tournamentEconomyRetirementE3TestPath = path.join(
   "emulator",
   "tournamentEconomyRetirementE3.test.js"
 );
-const command = process.env.E3_09_FOCAL === "1"
+const command = process.env.IUX_02A_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${dashboardTaskProjectionIux02aTestPath}"`
+  : process.env.E3_09_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${socialMatchEconomyRetirementE3TestPath}"`
   : process.env.E3_10_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${tournamentEconomyRetirementE3TestPath}" "${priorityAssetCharacterizationTestPath}"`
@@ -453,17 +461,35 @@ const command = process.env.E3_09_FOCAL === "1"
       ? `node --test --test-concurrency=1 "${membershipTestPath}"`
       : process.env.E2_04_FOCAL === "1"
         ? `node --test --test-concurrency=1 "${membershipListTestPath}"`
-        : `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${groupTestPath}" "${groupNameUpdateTestPath}" "${groupArchiveTestPath}" "${groupDeletionTestPath}" "${seasonTestPath}" "${seasonClosureTestPath}" "${seasonHistoryTestPath}" "${seasonUpdateTestPath}" "${membershipTestPath}" "${membershipListTestPath}" "${groupJoinRequestTestPath}" "${groupJoinRequestDecisionTestPath}" "${groupJoinRequestDecisionGapsTestPath}" "${membershipReactivationTestPath}" "${membershipSelfExitTestPath}" "${membershipOwnerRosterTestPath}" "${membershipAdministrativeFinalizationTestPath}" "${membershipRenewalTestPath}" "${membershipCargoTestPath}" "${ownGroupMembershipHistoryTestPath}" "${legacyJoinRetirementTestPath}" "${paymentE3TestPath}" "${paymentE3CallableTestPath}" "${paymentE3SerializationTestPath}" "${treasuryE3TestPath}" "${treasuryE3CallableTestPath}" "${paymentDeliveryE3TestPath}" "${administrativeReceiptE3TestPath}" "${administrativeReceiptPaginationE3TestPath}" "${administrativeReceiptConcurrencyE3TestPath}" "${paymentWaiverE3TestPath}" "${emulatorTestPath}" "${autopromotionTestPath}" "${minimumReadPolicyTestPath}" "${priorityAssetCharacterizationTestPath}" "${socialMatchEconomyRetirementE3TestPath}" "${tournamentEconomyRetirementE3TestPath}"`;
-const args = [
-  "emulators:exec",
-  "--project",
-  SYNTHETIC_DATA.projectId,
-  "--config",
-  "firebase.test.json",
-  "--only",
-  "auth,firestore,functions",
-  command,
-];
+        : null;
+
+const defaultTestPaths = [accountTestPath, personTestPath, groupTestPath, groupNameUpdateTestPath, groupArchiveTestPath, groupDeletionTestPath,
+  seasonTestPath, seasonClosureTestPath, seasonHistoryTestPath, seasonUpdateTestPath, membershipTestPath, membershipListTestPath,
+  groupJoinRequestTestPath, groupJoinRequestDecisionTestPath, groupJoinRequestDecisionGapsTestPath, membershipReactivationTestPath,
+  membershipSelfExitTestPath, membershipOwnerRosterTestPath, membershipAdministrativeFinalizationTestPath, membershipRenewalTestPath,
+  membershipCargoTestPath, ownGroupMembershipHistoryTestPath, legacyJoinRetirementTestPath, paymentE3TestPath, paymentE3CallableTestPath,
+  paymentE3SerializationTestPath, treasuryE3TestPath, treasuryE3CallableTestPath, paymentDeliveryE3TestPath, administrativeReceiptE3TestPath,
+  administrativeReceiptPaginationE3TestPath, administrativeReceiptConcurrencyE3TestPath, paymentWaiverE3TestPath,
+  dashboardTaskProjectionIux02aTestPath, emulatorTestPath, autopromotionTestPath, minimumReadPolicyTestPath,
+  priorityAssetCharacterizationTestPath, socialMatchEconomyRetirementE3TestPath, tournamentEconomyRetirementE3TestPath];
+const defaultTestBatches = partitionTestPaths(defaultTestPaths, 6);
+assertBatchPlan(defaultTestPaths, defaultTestBatches, 40, 7);
+const commands = command
+  ? [command]
+  : defaultTestBatches.map((paths) => `node --test --test-concurrency=1 ${paths.map((entry) => `"${entry}"`).join(" ")}`);
+
+function emulatorArgs(testCommand) {
+  return [
+    "emulators:exec",
+    "--project",
+    SYNTHETIC_DATA.projectId,
+    "--config",
+    "firebase.test.json",
+    "--only",
+    process.env.IUX_02A_FOCAL === "1" ? "auth,firestore" : "auth,firestore,functions",
+    testCommand,
+  ];
+}
 
 let result;
 let isolatedConfigHome;
@@ -509,35 +535,32 @@ try {
   environment.XDG_CONFIG_HOME = isolatedConfigHome;
   assertSafeFirebaseTestEnvironment(environment, { requireEmulators: false });
 
-  result = spawnFirebaseCli(args, {
-    cwd: isolatedWorkspace,
-    env: environment,
-    stdio: diagnosticOutput ? "pipe" : "inherit",
-    encoding: diagnosticOutput ? "utf8" : undefined,
-    maxBuffer: diagnosticOutput ? 128 * 1024 * 1024 : undefined,
-  });
+  result = runSequentialBatches(commands, (batchCommand, batchIndex) => {
+    if (commands.length > 1) {
+      process.stdout.write(`[emulator-runner] batch ${batchIndex + 1}/${commands.length}\n`);
+    }
+    const batchResult = spawnFirebaseCli(emulatorArgs(batchCommand), {
+      cwd: isolatedWorkspace,
+      env: environment,
+      stdio: diagnosticOutput ? "pipe" : "inherit",
+      encoding: diagnosticOutput ? "utf8" : undefined,
+      maxBuffer: diagnosticOutput ? 128 * 1024 * 1024 : undefined,
+    });
 
-  if (diagnosticOutput) {
-    const lines = `${result.stdout || ""}\n${result.stderr || ""}`.split(/\r?\n/);
-    const selected = new Set();
-    for (let index = 0; index < lines.length; index += 1) {
-      if (!/(?:not ok|AssertionError|failureType|ERR_|# fail [1-9]|^Error:)/i.test(lines[index])) {
-        continue;
+    if (diagnosticOutput) {
+      const lines = `${batchResult.stdout || ""}\n${batchResult.stderr || ""}`.split(/\r?\n/);
+      const selected = new Set();
+      for (let index = 0; index < lines.length; index += 1) {
+        if (!/(?:not ok|AssertionError|failureType|ERR_|# fail [1-9]|^Error:)/i.test(lines[index])) continue;
+        for (let contextIndex = Math.max(0, index - 12); contextIndex <= Math.min(lines.length - 1, index + 20); contextIndex += 1) selected.add(contextIndex);
       }
-      for (
-        let contextIndex = Math.max(0, index - 12);
-        contextIndex <= Math.min(lines.length - 1, index + 20);
-        contextIndex += 1
-      ) {
-        selected.add(contextIndex);
-      }
+      for (const index of [...selected].sort((left, right) => left - right)) process.stdout.write(`${lines[index]}\n`);
+      process.stdout.write("--- diagnostic tail ---\n");
+      process.stdout.write(`${lines.slice(-80).join("\n")}\n`);
     }
-    for (const index of [...selected].sort((left, right) => left - right)) {
-      process.stdout.write(`${lines[index]}\n`);
-    }
-    process.stdout.write("--- diagnostic tail ---\n");
-    process.stdout.write(`${lines.slice(-80).join("\n")}\n`);
-  }
+
+    return batchResult;
+  }, (batchResult) => exitCodeForSpawnResult(batchResult) !== 0);
 } finally {
   if (isolatedConfigHome) {
     removeTemporaryDirectory(isolatedConfigHome);

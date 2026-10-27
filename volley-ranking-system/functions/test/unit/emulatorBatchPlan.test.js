@@ -5,10 +5,10 @@ const test = require("node:test");
 const { assertBatchPlan, partitionTestPaths, runSequentialBatches } = require("../helpers/runnerTools");
 
 test("emulator runner partitions every canonical case exactly once in seven batches", () => {
-  const paths = Array.from({ length: 40 }, (_, index) => `case-${index}`);
+  const paths = Array.from({ length: 41 }, (_, index) => `case-${index}`);
   const batches = partitionTestPaths(paths, 6);
   assert.equal(batches.length, 7);
-  assert.doesNotThrow(() => assertBatchPlan(paths, batches, 40, 7));
+  assert.doesNotThrow(() => assertBatchPlan(paths, batches, 41, 7));
   assert.deepEqual(batches.flat(), paths);
   assert.equal(new Set(batches.flat()).size, paths.length);
 });

@@ -3,19 +3,21 @@
 ## Estado de la ficha
 
 - **Incremento:** `IUX-02`.
-- **Estado:** `EN IMPLEMENTACIÓN — IUX-02A IMPLEMENTADO Y VALIDADO LOCALMENTE; IUX-02B PENDIENTE`.
-- **Implementación:** IUX-02A autorizado, implementado y validado técnicamente en local; IUX-02B e
-  IUX-01 no implementados y sujetos a autorización separada.
-- **Fecha:** 2026-10-25.
+- **Estado:** `IMPLEMENTADO Y VALIDADO TÉCNICAMENTE EN LOCAL — HABILITACIÓN COORDINADA PENDIENTE`.
+- **Implementación:** IUX-02A e IUX-02B implementados y validados técnicamente en local; IUX-01,
+  despliegue y habilitación productiva permanecen pendientes y sujetos a autorización separada.
+- **Fecha:** 2026-10-26.
 - **Responsable:** pendiente de asignación.
-- **Rama/checkpoint de partida:** `dev` en `c02f0afea067dcf4a757c68a9ef5bcd590682c24`.
+- **Rama/checkpoint IUX-02B:** `feat/iux-02b-dashboard-task-query` sobre
+  `d34c91febb957a0dfe0fdc5172547e81b67091bd`.
 - **Etapa:** Interetapa UX móvil (`IUX`) entre E3 y E4.
 - **Selección funcional expresa:** `IUX-N20` + `IUX-N31`; `IUX-N30` y todos los demás tipos fuera.
 - **Dirección técnica adoptada por D5-061:** alternativa B, proyección derivada por usuario con
   outbox transaccional, contador contextual y lectura backend.
 - **Alcance vigente:** IUX-02A materializa la proyección interna, productores, procesamiento,
   seguridad, operación y health. No habilita lectores ni producción. IUX-02B conserva la consulta,
-  total, paginación y deep-links pendientes; IUX-01 conserva la integración visual pendiente.
+  total, paginación, servicio frontend técnico y deep-links, implementados localmente pero no
+  habilitados; IUX-01 conserva la integración visual pendiente.
 
 ## 1. Identificación
 
@@ -59,8 +61,8 @@ ningún acceso de este incremento.
 4. N31 exige Grupo compatible y ownership, o Grupo activo más slot/grant/cuenta/Persona/Membresía,
    Temporada, `validityAnchor` y `ownershipRevision` vigentes.
 5. La entrega de un reviewer no pertenece a su propia Persona.
-6. IUX-02-D01–D06 están adoptadas por D5-061. IUX-02A recibió autorización separada y quedó
-   implementado y validado localmente; iniciar IUX-02B requiere otra autorización.
+6. IUX-02-D01–D06 están adoptadas por D5-061. IUX-02A e IUX-02B recibieron autorizaciones separadas
+   y quedaron implementados y validados localmente; habilitarlos requiere otra autorización.
 7. Los gates productivos de E3 permanecen pendientes y no se satisfacen con esta consulta.
 
 ## 5. Flujo principal
@@ -301,9 +303,9 @@ prueba/observabilidad backend; no forman parte del DTO público.
 | `dashboardTaskScopes/{groupId}` | revisión/health por scope | Control derivado | Implementada en IUX-02A; no habilitada |
 | `dashboardTaskOutbox/{eventId}` | entrega durable mínima | Evidencia operativa | Implementada en IUX-02A; no habilitada |
 | `dashboardTaskManifests/{taskId}` | destinatarios proyectados | Nunca autoridad | Implementada en IUX-02A; no habilitada |
-| `users/{uid}/dashboardTaskProjection/N20_N31_V1` | generación activa | Nunca autoridad | Implementada en IUX-02A; sin reader público |
-| `users/{uid}/dashboardTaskSets/{generationId}/items/{taskId}` | tareas derivadas | Nunca autoridad | Implementada en IUX-02A; sin reader público |
-| `users/{uid}/dashboardTaskSets/{generationId}/contexts/{groupId}` | conteos N20/N31 por contexto | Nunca autoridad | Implementada en IUX-02A; sin reader público |
+| `users/{uid}/dashboardTaskProjection/N20_N31_V1` | generación activa | Nunca autoridad | Implementada en IUX-02A; reader backend IUX-02B deshabilitado |
+| `users/{uid}/dashboardTaskSets/{generationId}/items/{taskId}` | tareas derivadas | Nunca autoridad | Implementada en IUX-02A; reader backend IUX-02B deshabilitado |
+| `users/{uid}/dashboardTaskSets/{generationId}/contexts/{groupId}` | conteos N20/N31 por contexto | Nunca autoridad | Implementada en IUX-02A; reader backend IUX-02B deshabilitado |
 
 `pendingAlerts` no se lee ni migra como fuente.
 
@@ -327,7 +329,7 @@ generación, health y total son derivados/reconstruibles y nunca deciden el esta
 | Grupos por Owner | simple `ownerId` | Vigente automático |
 | Slots por cuenta | simple `accountId` y filtro backend | Vigente automático; costo a medir |
 | Slot por cuenta + capability | `accountId + capabilityId` | No vigente; optimización condicionada a medición, no bloquea iniciar |
-| Items activos ordenados | `projectionState ASC, actionableAt DESC, taskType ASC, taskId ASC` | Implementado en IUX-02A; sin reader habilitado |
+| Items activos ordenados | `projectionState ASC, actionableAt DESC, taskType ASC, resourceId ASC` | Implementado para IUX-02B; reader deshabilitado |
 | Outbox worker | `status ASC, availableAt ASC, createdAt ASC` | Implementado en IUX-02A |
 | Outbox por scope | `groupId ASC, status ASC, scopeRevision ASC` | Implementado en IUX-02A |
 | Manifests por scope | `groupId ASC, projectionState ASC, taskType ASC` | Implementado en IUX-02A |
@@ -454,10 +456,10 @@ No se borran `pendingAlerts`, productores, rutas ni funcionalidades fuera del da
 
 - IUX-02A conserva trazabilidad de D5-061, addendum adoptado, pruebas N20/N31, seguridad deny-all,
   mediciones locales y gates técnicos en su informe de implementación;
-- IUX-02B deberá completar medición de apertura, autorización, latencia, memoria y payload;
-- evidencia de total/paginación sin duplicados;
-- evidencia de cero writes y respuestas tardías descartadas;
-- deep-links y refresco post-destino;
+- IUX-02B registra medición local de apertura/página siguiente, autorización, reads, tiempo Emulator
+  y payload en su [informe de implementación](IUX-02B-informe-implementacion-consulta-tareas-dashboard.md);
+- evidencia local de total/paginación sin duplicados, cero writes y respuestas tardías descartadas;
+- deep-links exactos implementados; el refresco post-destino se integra visualmente en IUX-01;
 - validación visual móvil/escritorio coordinada con IUX-01;
 - gates de repositorio y aclaración de que E3 continúa con gates productivos pendientes.
 
@@ -491,16 +493,17 @@ autorización de implementación, despliegue ni producción.
 | IUX-02-D05 | Habilitación coordinada y retiro del consumidor legacy tras gates | **Adoptada por D5-061; ejecución pendiente** |
 | IUX-02-D06 | Consulta al entrar, al regresar desde contexto y manual; sin polling/listener/focus | **Adoptada por D5-061** |
 
-No quedan decisiones de diseño bloqueantes. IUX-02A está implementado y validado técnicamente en
-local, con `ENABLE_DASHBOARD_TASK_PROJECTION` deshabilitado por defecto. Permanecen pendientes
-IUX-02B, rendimiento y presupuesto productivos, activación, backfill autorizado, seguridad/UAT de
-habilitación y los gates productivos; nada de ello queda satisfecho por la validación local.
+No quedan decisiones de diseño bloqueantes. IUX-02A e IUX-02B están implementados y validados
+técnicamente en local, con `ENABLE_DASHBOARD_TASK_PROJECTION` deshabilitado por defecto. Permanecen
+pendientes IUX-01, rendimiento y presupuesto productivos, activación, backfill autorizado,
+seguridad/UAT de habilitación y los gates productivos; nada de ello queda satisfecho por la
+validación local.
 
 ## Declaración final
 
-- **Estado final:** `EN IMPLEMENTACIÓN — IUX-02A IMPLEMENTADO Y VALIDADO LOCALMENTE; IUX-02B PENDIENTE`.
-- **Implementación:** IUX-02A completo en código local; IUX-02B, IUX-01, despliegue, backfill y
-  habilitación requieren autorización separada.
+- **Estado final:** `IMPLEMENTADO Y VALIDADO TÉCNICAMENTE EN LOCAL — HABILITACIÓN COORDINADA PENDIENTE`.
+- **Implementación:** IUX-02A e IUX-02B completos en código local; IUX-01, despliegue, backfill y
+  habilitación requieren autorización separada. IUX-02 no se declara cerrado.
 - **Gates pendientes para habilitar:** mediciones de presupuesto/rendimiento, backfill, seguridad,
   pruebas técnicas y UAT.
 - **Deuda aceptada:** ninguna por esta ficha.

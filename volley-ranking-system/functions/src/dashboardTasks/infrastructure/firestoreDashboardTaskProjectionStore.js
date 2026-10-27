@@ -174,9 +174,11 @@ function createFirestoreDashboardTaskProjectionStore({ db, now = () => Timestamp
       for (const uid of metaUids) {
         const meta = byPath.get(projectionRef(db, uid).path)?.data() || {};
         const rebuilding = meta.activeGenerationId && meta.activeGenerationId !== generation;
+        const activated = meta.activeGenerationId === generation && ["READY", "ROLLED_BACK"].includes(meta.projectionState);
         transaction.set(projectionRef(db, uid), { coverage: COVERAGE,
           ...(rebuilding ? { buildingGenerationId: generation } : { activeGenerationId: generation }),
-          projectionState: rebuilding ? "REBUILDING" : "AVAILABLE", updatedAt: at, schemaVersion: 1 }, { merge: true });
+          projectionState: rebuilding ? "REBUILDING" : activated ? meta.projectionState : "AVAILABLE",
+          updatedAt: at, schemaVersion: 1 }, { merge: true });
       }
       for (const [taskIdentity, task] of desiredById) {
         const previous = oldById.get(taskIdentity);

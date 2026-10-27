@@ -33,6 +33,12 @@ function createPaymentReviewAudienceCapability({ db }) {
   }
 
   return Object.freeze({
+    async listCandidateGroupIds({ unitOfWork, accountId }) {
+      const snapshot = await unitOfWork.get(slots.where("accountId", "==", accountId));
+      return [...new Set(snapshot.docs.filter((doc) => doc.data()?.capabilityId === d.CAPABILITY_ID
+        && doc.data()?.schemaVersion === 1 && typeof doc.data()?.groupId === "string")
+        .map((doc) => doc.data().groupId))];
+    },
     async getGroupAudience({ unitOfWork, groupId }) {
       const group = await ownership.getOwnershipContext({ unitOfWork, groupId });
       if (group.status !== "READY") return { status: group.status, recipients: [] };

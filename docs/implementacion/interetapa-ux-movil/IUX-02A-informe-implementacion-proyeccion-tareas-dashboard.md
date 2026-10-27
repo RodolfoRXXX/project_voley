@@ -39,8 +39,9 @@ Se implementó el productor backend-only de la proyección derivada `N20_N31_V1`
   con `ENABLE_DASHBOARD_TASK_PROJECTION=true`.
 
 El flag queda en `false` por defecto: existe un mecanismo de ejecución completo, pero esta tarea no
-lo habilita ni despliega. No existe `listMyDashboardTasks`, integración frontend, deep-link nuevo,
-polling, listener de pantalla ni migración desde `pendingAlerts`.
+lo habilita ni despliega. Al cierre del corte IUX-02A no existían `listMyDashboardTasks`, integración
+frontend ni deep-links nuevos; fueron abordados después por IUX-02B sin agregar polling, listener de
+pantalla ni migración desde `pendingAlerts`.
 
 La revisión técnica posterior corrigió tres defectos dentro del alcance:
 
@@ -63,6 +64,11 @@ La revisión del límite de concentración y del gate integral agregó además:
 - idempotencia concurrente del outbox: después de leer evento+scope, el evento se confirma con
   `set` transaccional y no con una precondición `create` que podía filtrar `ALREADY_EXISTS` al
   comando de dominio ya confirmado.
+
+Durante la integración local de IUX-02B se detectó y corrigió una incompatibilidad acotada: un
+evento incremental sobre la generación activa no debe degradar el manifest de usuario ya activado
+de `READY`/`ROLLED_BACK` a `AVAILABLE`. El scope continúa expresando el avance real. La regresión se
+cubrió en el focal IUX-02A, que volvió a pasar 9/9.
 
 ## 2. Modelo físico y garantías
 
@@ -396,16 +402,17 @@ Durante el hueco `projectedRevision` permanece en cero y nunca aparece `READY`; 
 revisión 1 avanza contiguamente hasta la 3 y termina con 652 tareas Owner y una tarea reviewer, sin
 duplicar contadores ni sobrescribir manifests de revisión superior.
 
-IUX-02B deberá medir por separado autorización y apertura, suma del total, página/cursor,
-revalidación de items, payload/memoria, cambio de sesión y descarte de entradas stale. La duración del
-Emulator se informa sólo como medición local, no como latencia productiva ni evidencia del objetivo
-provisional de 30 segundos. Tampoco demuestra contención productiva, presupuesto mensual ni el
-umbral de degradación de cinco minutos.
+IUX-02B midió después, por separado, autorización y apertura, suma del total, página/cursor,
+revalidación de items, payload, cambio de sesión y descarte de entradas stale. Su
+[informe](IUX-02B-informe-implementacion-consulta-tareas-dashboard.md) conserva esa evidencia. Las
+duraciones del Emulator son sólo mediciones locales: no demuestran latencia/contención productiva,
+presupuesto mensual, el objetivo provisional de 30 segundos ni el umbral de degradación de cinco
+minutos.
 
 ## 10. Límites y pendientes operativos/productivos
 
-- IUX-02B, el callable autorizado, la suma/revalidación contextual, paginación pública, deep-links y
-  frontend no están implementados.
+- IUX-02B implementó después el callable, suma/revalidación contextual, paginación, deep-links y
+  servicio frontend técnico; permanecen deshabilitados y sin montaje en el dashboard.
 - Los triggers existen pero no se exportan sin flag; no hubo deploy ni configuración remota.
 - El scan de fuentes ocurre por cambio/reconciliación de un Grupo, no al abrir dashboard. Su costo
   crece con Solicitudes, Entregas y reviewers efectivos del Grupo y debe medirse con distribuciones
@@ -452,8 +459,9 @@ procedimiento de §6 y exige que la generación anterior siga retenida.
 
 ## 13. Estado del incremento
 
-**IUX-02A implementado y validado técnicamente en local.** IUX-02 completo sigue abierto: IUX-02B y
-la integración visual IUX-01 requieren autorización separada. `ENABLE_DASHBOARD_TASK_PROJECTION`
+**IUX-02A implementado y validado técnicamente en local.** IUX-02 completo sigue abierto: IUX-02B
+fue implementado y validado después, mientras la integración visual IUX-01 y la habilitación
+coordinada requieren autorización separada. `ENABLE_DASHBOARD_TASK_PROJECTION`
 permanece deshabilitado por defecto. No se habilitó el reemplazo del panel anterior, no se publicó
 un total, no se ejecutó backfill remoto y no se declaró producción apta ni satisfechos los gates
 productivos pendientes de E3.

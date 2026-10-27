@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { GroupEconomySummaryCard } from "@/components/groups/GroupEconomySummaryCard";
 import { GroupSeasonSummaryCard } from "@/components/groups/GroupSeasonSummaryCard";
@@ -12,6 +12,7 @@ import { PendingGroupJoinRequestsSection } from "@/components/groupJoinRequests/
 
 export default function OwnGroupDetailPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { owner, group, loseAccess } = useGroupFrame();
 
   const handleAccessLost = useCallback((message: string) => {
@@ -29,7 +30,7 @@ export default function OwnGroupDetailPage() {
         <h2 id="integrantes-title" className="sr-only">Integrantes</h2>
         <OwnMembershipSection groupId={group.id} onAccessLost={handleAccessLost} />
         <ActiveGroupMembersSection groupId={group.id} onAccessLost={handleAccessLost} />
-        <PendingGroupJoinRequestsSection groupId={group.id} onAccessLost={handleAccessLost} />
+        <PendingGroupJoinRequestsSection groupId={group.id} requestedRequestId={searchParams.get("joinRequestId") ?? undefined} onAccessLost={handleAccessLost} />
       </section> : null}
     </div>
   </>;

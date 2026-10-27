@@ -139,6 +139,11 @@ test("IUX-02A rebuild captures concurrent writes and rollback refreshes the reta
     const meta = (await db.doc(`users/${ownerId}/dashboardTaskProjection/N20_N31_V1`).get()).data();
     assert.equal(meta.activeGenerationId, generationId); assert.equal(meta.previousGenerationId, "live-v1");
     assert.equal((await db.doc(`users/${ownerId}/dashboardTaskSets/${generationId}`).get()).data().total, 2);
+    await db.doc(`groupJoinRequests/${prefix}request-c`).set({ groupId, personId: `${prefix}person-c`, estado: "pendiente", createdAt: at, schemaVersion: 1 });
+    await enqueue("GEN_AFTER_ACTIVATION", "after-activation", [`${prefix}request-c`]); await worker.run({ limit: 20 });
+    const afterIncremental = (await db.doc(`users/${ownerId}/dashboardTaskProjection/N20_N31_V1`).get()).data();
+    assert.equal(afterIncremental.activeGenerationId, generationId); assert.equal(afterIncremental.projectionState, "READY");
+    assert.equal((await db.doc(`users/${ownerId}/dashboardTaskSets/${generationId}`).get()).data().total, 3);
 
     const stalledWorker = { async run() { return { inspected: 0, processed: 0, results: [] }; } };
     await assert.rejects(rollback(db, operations, stalledWorker, at, [groupId]), /Cannot activate incomplete generation/);
@@ -147,7 +152,7 @@ test("IUX-02A rebuild captures concurrent writes and rollback refreshes the reta
     assert.equal(await rollback(db, operations, worker, at, [groupId]), 1);
     const rolledBack = (await db.doc(`users/${ownerId}/dashboardTaskProjection/N20_N31_V1`).get()).data();
     assert.equal(rolledBack.activeGenerationId, "live-v1"); assert.equal(rolledBack.projectionState, "ROLLED_BACK");
-    assert.equal((await db.doc(`users/${ownerId}/dashboardTaskSets/live-v1`).get()).data().total, 2);
+    assert.equal((await db.doc(`users/${ownerId}/dashboardTaskSets/live-v1`).get()).data().total, 3);
   } finally {
     for (const collection of ["dashboardTaskOutbox", "dashboardTaskScopes", "dashboardTaskManifests", "groupJoinRequests", "groups"]) {
       const snapshot = await db.collection(collection).get();

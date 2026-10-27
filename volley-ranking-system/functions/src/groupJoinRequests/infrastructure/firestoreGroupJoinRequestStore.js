@@ -182,6 +182,34 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
     assertCoordination(coordination, request, intent, coordination.decisionIntentId);
     return intent;
   }
+  async function composeOwnedPending(transaction, request, groupId) {
+    const gRef = guardRef(groupId, request.personId); const cRef = coordinationRef(request.requestId);
+    const [guardSnapshot, coordinationSnapshot] = await transaction.getAll(gRef, cRef);
+    const pendingSnapshot = await transaction.get(repository.pendingPairQuery({ personId: request.personId, groupId }));
+    const personContext = await personCapability.getOwnerProjection({ unitOfWork: transaction, personId: request.personId });
+    const guard = hydrateGuard(guardSnapshot, { guardId: gRef.id, personId: request.personId, groupId });
+    const authoritative = resolvePending(pendingSnapshot, guard, { repository, personId: request.personId, groupId });
+    const coordination = hydrateCoordination(coordinationSnapshot);
+    if (!authoritative || authoritative.requestId !== request.requestId || personContext?.status !== "found") throw new GroupJoinRequestIncompatibleStateError();
+    let approvalEffect;
+    if (coordination) { await readCoordinationIntent(transaction, request, coordination); approvalEffect = coordination.approvalEffect; }
+    else {
+      const membership = await membershipCapability.prepareForGroupJoinRequest({ unitOfWork: transaction, personId: request.personId, groupId });
+      if (membership?.status === "absent") approvalEffect = "CREATE_MEMBERSHIP";
+      else if (membership?.status === "finalized") {
+        const openSeason = await seasonCapability.getOpenContextForOwnedGroup({ unitOfWork: transaction, groupId });
+        if (openSeason?.status !== "open") throw new GroupJoinRequestIncompatibleStateError();
+        if (openSeason.seasonId === membership.seasonId) approvalEffect = "REACTIVATE_MEMBERSHIP";
+        else {
+          const predecessorSeason = await seasonCapability.getSeasonContext({ unitOfWork: transaction, groupId, seasonId: membership.seasonId });
+          if (predecessorSeason?.status !== "closed") throw new GroupJoinRequestIncompatibleStateError();
+          approvalEffect = "RENEW_MEMBERSHIP";
+        }
+      }
+      else throw new GroupJoinRequestIncompatibleStateError();
+    }
+    return { request, person: personContext.person, decisionStatus: coordination ? "APPROVAL_IN_PROGRESS" : "PENDING", approvalEffect };
+  }
 
   async function phaseA({ userId, groupId, requestId, idempotencyKey, observe }) {
     return db.runTransaction(async (transaction) => {
@@ -521,32 +549,23 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
         return await db.runTransaction(async (transaction) => {
           await ownedGroup(transaction, groupId, userId);
           const pageSnapshot = await transaction.get(repository.pendingGroupQuery({ groupId, pageSize, cursor: position, FieldPath, Timestamp })); const requests = pageSnapshot.docs.slice(0, pageSize).map((snapshot) => repository.fromSnapshot(snapshot)); const composed = [];
-          for (const request of requests) {
-            const gRef = guardRef(groupId, request.personId); const cRef = coordinationRef(request.requestId);
-            const [guardSnapshot, coordinationSnapshot] = await transaction.getAll(gRef, cRef); const pendingSnapshot = await transaction.get(repository.pendingPairQuery({ personId: request.personId, groupId })); const personContext = await personCapability.getOwnerProjection({ unitOfWork: transaction, personId: request.personId });
-            const guard = hydrateGuard(guardSnapshot, { guardId: gRef.id, personId: request.personId, groupId }); const authoritative = resolvePending(pendingSnapshot, guard, { repository, personId: request.personId, groupId }); const coordination = hydrateCoordination(coordinationSnapshot);
-            if (!authoritative || authoritative.requestId !== request.requestId || personContext?.status !== "found") throw new GroupJoinRequestIncompatibleStateError();
-            let approvalEffect;
-            if (coordination) { await readCoordinationIntent(transaction, request, coordination); approvalEffect = coordination.approvalEffect; }
-            else {
-              const membership = await membershipCapability.prepareForGroupJoinRequest({ unitOfWork: transaction, personId: request.personId, groupId });
-              if (membership?.status === "absent") approvalEffect = "CREATE_MEMBERSHIP";
-              else if (membership?.status === "finalized") {
-                const openSeason = await seasonCapability.getOpenContextForOwnedGroup({ unitOfWork: transaction, groupId });
-                if (openSeason?.status !== "open") throw new GroupJoinRequestIncompatibleStateError();
-                if (openSeason.seasonId === membership.seasonId) approvalEffect = "REACTIVATE_MEMBERSHIP";
-                else {
-                  const predecessorSeason = await seasonCapability.getSeasonContext({ unitOfWork: transaction, groupId, seasonId: membership.seasonId });
-                  if (predecessorSeason?.status !== "closed") throw new GroupJoinRequestIncompatibleStateError();
-                  approvalEffect = "RENEW_MEMBERSHIP";
-                }
-              }
-              else throw new GroupJoinRequestIncompatibleStateError();
-            }
-            composed.push({ request, person: personContext.person, decisionStatus: coordination ? "APPROVAL_IN_PROGRESS" : "PENDING", approvalEffect });
-          }
+          for (const request of requests) composed.push(await composeOwnedPending(transaction, request, groupId));
           let nextCursor = null; if (pageSnapshot.size > pageSize && requests.length) { const last = requests[requests.length - 1]; nextCursor = encodeGroupJoinRequestCursor({ groupId, seconds: last.createdAt.seconds, nanoseconds: last.createdAt.nanoseconds, lastRequestId: last.requestId }); }
           observe({ stage: "authoritative-reread", classification: "first-attempt" }); return { composed, nextCursor };
+        });
+      } catch (error) { throw mapFailure(error); }
+    },
+    async getOwnedPending({ userId, groupId, requestId, observe = () => {} }) {
+      try {
+        return await db.runTransaction(async (transaction) => {
+          await ownedGroup(transaction, groupId, userId);
+          const snapshot = await transaction.get(repository.reference(requestId));
+          if (!snapshot.exists || snapshot.data()?.groupId !== groupId) throw new GroupJoinRequestRequestNotFoundError();
+          const request = repository.fromSnapshot(snapshot);
+          if (request.estado !== "pendiente") throw new GroupJoinRequestRequestNotPendingError();
+          const composed = await composeOwnedPending(transaction, request, groupId);
+          observe({ stage: "authoritative-reread", classification: "first-attempt" });
+          return composed;
         });
       } catch (error) { throw mapFailure(error); }
     },

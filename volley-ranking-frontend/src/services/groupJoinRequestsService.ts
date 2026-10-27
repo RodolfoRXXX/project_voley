@@ -7,6 +7,7 @@ const createCallable = httpsCallable<{ groupId: string; idempotencyKey: string }
 const currentCallable = httpsCallable<{ groupId: string }, { request: OwnGroupJoinRequest | null }>(functions, "getMyCurrentGroupJoinRequest");
 const cancelCallable = httpsCallable<{ groupId: string; requestId: string }, { outcome: "CANCELLED" | "ALREADY_CANCELLED"; request: CancelledOwnGroupJoinRequest }>(functions, "cancelMyGroupJoinRequest");
 const listCallable = httpsCallable<{ groupId: string; pageSize?: number; cursor?: string }, { items: PendingGroupJoinRequestForOwner[]; nextCursor: string | null }>(functions, "listPendingGroupJoinRequestsForOwnedGroup");
+const getPendingForOwnerCallable = httpsCallable<{ groupId: string; requestId: string }, { item: PendingGroupJoinRequestForOwner }>(functions, "getPendingGroupJoinRequestForOwnedGroup");
 const approveCallable = httpsCallable<{ groupId: string; requestId: string; idempotencyKey: string }, ApproveGroupJoinRequestResult>(functions, "approveGroupJoinRequest");
 const rejectCallable = httpsCallable<{ groupId: string; requestId: string; idempotencyKey: string }, RejectGroupJoinRequestResult>(functions, "rejectGroupJoinRequest");
 const resultCallable = httpsCallable<{ groupId: string; requestId: string }, GroupJoinRequestDecisionResult>(functions, "getGroupJoinRequestDecisionResult");
@@ -16,6 +17,7 @@ export async function createMyGroupJoinRequest(input: { groupId: string; idempot
 export async function getMyCurrentGroupJoinRequest(groupId: string) { return (await currentCallable({ groupId })).data; }
 export async function cancelMyGroupJoinRequest(groupId: string, requestId: string) { return (await cancelCallable({ groupId, requestId })).data; }
 export async function listPendingGroupJoinRequestsForOwnedGroup(input: { groupId: string; pageSize?: number; cursor?: string }) { return (await listCallable(input)).data; }
+export async function getPendingGroupJoinRequestForOwnedGroup(input: { groupId: string; requestId: string }) { return (await getPendingForOwnerCallable(input)).data; }
 export async function approveGroupJoinRequest(input: { groupId: string; requestId: string; idempotencyKey: string }) { return (await approveCallable(input)).data; }
 export async function rejectGroupJoinRequest(input: { groupId: string; requestId: string; idempotencyKey: string }) { return (await rejectCallable(input)).data; }
 export async function getGroupJoinRequestDecisionResult(groupId: string, requestId: string) { return (await resultCallable({ groupId, requestId })).data; }

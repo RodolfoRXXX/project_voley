@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { approveGroupJoinRequest, getGroupJoinRequestDecisionResult, getGroupJoinRequestErrorMessage, getGroupJoinRequestErrorReason, listPendingGroupJoinRequestsForOwnedGroup, rejectGroupJoinRequest } from "@/services/groupJoinRequestsService";
+import { approveGroupJoinRequest, getGroupJoinRequestDecisionResult, getGroupJoinRequestErrorMessage, getGroupJoinRequestErrorReason, getPendingGroupJoinRequestForOwnedGroup, listPendingGroupJoinRequestsForOwnedGroup, rejectGroupJoinRequest } from "@/services/groupJoinRequestsService";
 import type { GroupJoinRequestErrorReason, PendingGroupJoinRequestForOwner } from "@/types/GroupJoinRequest";
 import { applyAuthoritativeDecision, createDecisionIntentRegistry, createRequestFlights, scheduleFocus, shouldConsultAfterDecisionError } from "./groupJoinRequestDecisionMachine.mjs";
 
@@ -10,7 +10,7 @@ const keyFactory = () => `group-join-decision-${crypto.randomUUID()}`;
 const effectLabel = (effect: PendingGroupJoinRequestForOwner["approvalEffect"]) => effect === "RENEW_MEMBERSHIP" ? "Renovar Membresía y aprobar Solicitud" : effect === "REACTIVATE_MEMBERSHIP" ? "Reactivar Membresía y aprobar Solicitud" : "Crear Membresía y aprobar Solicitud";
 const effectDescription = (effect: PendingGroupJoinRequestForOwner["approvalEffect"]) => effect === "RENEW_MEMBERSHIP" ? "Se creará una nueva Membresía para la Temporada abierta actual y se preservará íntegra la anterior. El backend revalidará la Temporada y la última Membresía al confirmar." : effect === "REACTIVATE_MEMBERSHIP" ? "Se reactivará la misma Membresía para la Temporada abierta actual. El backend revalidará la clasificación al confirmar." : "Se creará una Membresía en la Temporada abierta actual. El backend revalidará la clasificación al confirmar.";
 
-export function PendingGroupJoinRequestsSection({ groupId, onAccessLost }: { groupId: string; onAccessLost?: (message: string) => void }) {
+export function PendingGroupJoinRequestsSection({ groupId, requestedRequestId, onAccessLost }: { groupId: string; requestedRequestId?: string; onAccessLost?: (message: string) => void }) {
   const [items, setItems] = useState<PendingGroupJoinRequestForOwner[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -24,6 +24,7 @@ export function PendingGroupJoinRequestsSection({ groupId, onAccessLost }: { gro
   const region = useRef<HTMLDivElement>(null);
   const dialogInitial = useRef<HTMLButtonElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
+  const handledDeepLink = useRef("");
 
   const focusResult = () => scheduleFocus(region.current);
   const load = useCallback(async (nextCursor?: string, append = false) => {
@@ -33,12 +34,28 @@ export function PendingGroupJoinRequestsSection({ groupId, onAccessLost }: { gro
       const result = await listPendingGroupJoinRequestsForOwnedGroup({ groupId, pageSize: 20, ...(nextCursor ? { cursor: nextCursor } : {}) });
       setItems((current) => {
         for (const next of result.items) { const previous = current.find((item) => item.id === next.id); if (previous && previous.approvalEffect !== next.approvalEffect) intents.current.requireNewConfirmation("approve", next.id); }
-        return append ? [...current, ...result.items] : result.items;
+        return append ? [...current, ...result.items.filter((item) => !current.some((existing) => existing.id === item.id))] : result.items;
       }); setCursor(result.nextCursor); setStatus("ready"); focusResult();
     } catch (cause) { const reason = getGroupJoinRequestErrorReason(cause); if (reason === "GROUP_NOT_ACCESSIBLE") { setItems([]); setConfirmation(null); onAccessLost?.(getGroupJoinRequestErrorMessage(reason)); return; } setError(getGroupJoinRequestErrorMessage(reason)); setStatus("error"); focusResult(); }
     finally { listBusy.current = false; }
   }, [groupId, onAccessLost]);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (status !== "ready" || !requestedRequestId) return;
+    const key = `${groupId}:${requestedRequestId}`;
+    if (handledDeepLink.current === key) return;
+    handledDeepLink.current = key;
+    void getPendingGroupJoinRequestForOwnedGroup({ groupId, requestId: requestedRequestId }).then(({ item }) => {
+      setItems((current) => current.some((candidate) => candidate.id === item.id) ? current : [item, ...current]);
+      setNotice("Solicitud localizada. Revisá su estado antes de decidir.");
+      queueMicrotask(() => region.current?.focus());
+    }, (cause) => {
+      const reason = getGroupJoinRequestErrorReason(cause);
+      setNotice("");
+      setError(["REQUEST_NOT_FOUND", "REQUEST_NOT_PENDING", "GROUP_NOT_ACCESSIBLE"].includes(reason)
+        ? "La solicitud ya fue resuelta, no existe o no tenés acceso." : getGroupJoinRequestErrorMessage(reason));
+    });
+  }, [groupId, requestedRequestId, status]);
   useEffect(() => { const refresh = (event: Event) => { if ((event as CustomEvent<{ groupId?: string }>).detail?.groupId === groupId) void load(); }; window.addEventListener("season-context-changed", refresh); return () => window.removeEventListener("season-context-changed", refresh); }, [groupId, load]);
   useEffect(() => { if (confirmation) dialogInitial.current?.focus(); }, [confirmation]);
 

@@ -24,6 +24,7 @@ export default function GroupEconomyPage() {
   const [pendingOperation, setPendingOperation] = useState(false);
   const [recoveryBlocked, setRecoveryBlocked] = useState(false);
   const [requestedDeliveryId, setRequestedDeliveryId] = useState<string>();
+  const linkedDeliveryId = searchParams.get("deliveryId") ?? undefined;
   const reviewTrigger = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -67,7 +68,7 @@ export default function GroupEconomyPage() {
     {tab === "debts" && access.owner ? <OwnerEconomySection groupId={groupId} readOnly={access.group?.estado === "archivado"} refreshVersion={refreshVersion} onPendingChange={setPendingOperation} onRecoveryChange={setRecoveryBlocked} onEconomyChanged={() => setRefreshVersion((value) => value + 1)} onReviewPayment={(deliveryId, trigger) => { reviewTrigger.current = trigger ?? null; setRequestedDeliveryId(deliveryId); router.push("?tab=notices"); }} /> : null}
     {tab === "debts" && !access.owner && access.treasury ? <TreasuryDebtSection groupId={groupId} onAccessLost={lost} /> : null}
     {tab === "debts" && !access.owner && access.record ? <div className={access.treasury ? "mt-5" : ""}><AdministrativeReceiptsSection groupId={groupId} owner={false} onPendingChange={setPendingOperation} onRecoveryChange={setRecoveryBlocked} /></div> : null}
-    {tab === "notices" ? <PaymentDeliveriesAdminSection groupId={groupId} owner={access.owner} requestedDeliveryId={requestedDeliveryId} onRequestHandled={() => setRequestedDeliveryId(undefined)} onDetailClosed={() => queueMicrotask(() => reviewTrigger.current?.focus())} onEconomyChanged={() => setRefreshVersion((value) => value + 1)} /> : null}
+    {tab === "notices" ? <PaymentDeliveriesAdminSection groupId={groupId} owner={access.owner} requestedDeliveryId={requestedDeliveryId ?? linkedDeliveryId} onRequestHandled={() => setRequestedDeliveryId(undefined)} onDetailClosed={() => queueMicrotask(() => reviewTrigger.current?.focus())} onEconomyChanged={() => setRefreshVersion((value) => value + 1)} /> : null}
     {tab === "history" && access.owner ? <OwnerPaymentReceiptHistorySection groupId={groupId} refreshVersion={refreshVersion} initiallyExpanded onEconomyChanged={() => setRefreshVersion((value) => value + 1)} /> : null}
   </>;
 }

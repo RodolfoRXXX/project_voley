@@ -49,6 +49,7 @@ export function PaymentDeliveriesAdminSection({
   const section = useRef<HTMLElement>(null);
   const detailClose = useRef<HTMLButtonElement>(null);
   const intentCancel = useRef<HTMLButtonElement>(null);
+  const handledDeepLink = useRef("");
 
   const load = useCallback(async (append = false) => {
     if (busy.current) return;
@@ -96,6 +97,9 @@ export function PaymentDeliveriesAdminSection({
 
   useEffect(() => {
     if (!requestedDeliveryId || busy.current) return;
+    const key = `${groupId}:${requestedDeliveryId}`;
+    if (handledDeepLink.current === key) return;
+    handledDeepLink.current = key;
     busy.current = true; setError("");
     void getGroupPaymentDelivery({ groupId, deliveryId: requestedDeliveryId }).then(setDetail, (cause) => setError(deliveryErrorMessage(deliveryErrorReason(cause)))).finally(() => { busy.current = false; onRequestHandled?.(); });
   }, [groupId, onRequestHandled, requestedDeliveryId]);

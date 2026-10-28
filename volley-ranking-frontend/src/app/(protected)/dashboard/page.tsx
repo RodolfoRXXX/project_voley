@@ -1,616 +1,69 @@
-
-// -------------------
-// Dashboard
-// -------------------
-
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { collection, getDocs, limit, onSnapshot, orderBy, query, where, Timestamp } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
-import { db, functions } from "@/lib/firebase";
-import { useAuth } from "@/hooks/useAuth";
-import { Skeleton } from "@/components/ui/skeleton/Skeleton";
-import { tournamentPhaseTypeLabel, type TournamentPhaseType } from "@/types/tournaments/tournamentPhase";
-import { getTournamentFormatLabel, tournamentStatusLabel } from "@/types/tournaments/tournament";
-import useToast from "@/components/ui/toast/useToast";
-import { getAuthErrorMessage } from "@/services/authService";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { usePerson } from "@/hooks/usePerson";
-import PublicTournamentDetailModal from "@/components/tournaments/public/PublicTournamentDetailModal";
-import AlertsPanel from "@/components/dashboard/AlertsPanel";
-import UpcomingActivitiesSection from "@/components/dashboard/UpcomingActivitiesSection";
-import type { PendingAlert } from "@/types/pendingAlerts";
-import { isRetiredLegacyGroupAuthorityAlert, isRetiredTournamentEconomyAlert, pendingAlertPriority } from "@/types/pendingAlerts";
-import { getOwnGroupsDashboard } from "@/services/groupsService";
 
-type TournamentDashboardMatch = {
-  id: string;
-  tournamentId: string;
-  tournamentName: string;
-  tournamentType: string;
-  phaseType: TournamentPhaseType | "group_stage";
-  roundLabel?: string | null;
-  homeTeamName: string;
-  awayTeamName: string;
-};
+import { PendingTasksSection } from "@/components/dashboard/PendingTasksSection";
+import { useAuth } from "@/hooks/useAuth";
+import { dashboardGreeting } from "@/services/dashboardPresentation.mjs";
 
-type TournamentDashboardCard = {
-  id: string;
-  name: string;
-  format: string;
-  phaseType: TournamentPhaseType | "group_stage";
-  description: string;
-  teamsCount: number;
-  nextMatch: TournamentDashboardMatch | null;
-  standings: Array<{ id: string; teamId: string; teamName: string; position: number; points: number; played: number }>;
-  upcomingMatches: TournamentDashboardMatch[];
-  importantInfo: string[];
-};
+const quickActions = [
+  { href: "/dashboard/groups/new", title: "Crear grupo", description: "Empezá un nuevo espacio para tu equipo.", icon: "plus" },
+  { href: "/dashboard/groups", title: "Mis grupos", description: "Consultá y administrá tus grupos.", icon: "groups" },
+  { href: "/profile/person", title: "Ficha personal", description: "Revisá tus datos y preferencias.", icon: "person" },
+  { href: "/dashboard/obligations", title: "Mis obligaciones", description: "Consultá tus obligaciones personales.", icon: "obligations" },
+] as const;
 
-type TournamentMatchQueryRow = {
-  id: string;
-  tournamentId?: string;
-  phaseId?: string;
-  homeTeamId?: string;
-  awayTeamId?: string;
-  roundLabel?: string | null;
-  result?: unknown;
-};
-
-type TournamentPhaseQueryRow = {
-  id: string;
-  tournamentId?: string;
-  type?: TournamentPhaseType;
-};
-
-type TournamentQueryRow = {
-  id: string;
-  name?: string;
-  format?: string;
-};
-
-type UserDashboardStats = {
-  groupsCount: number;
-};
+function QuickActionIcon({ name }: { name: (typeof quickActions)[number]["icon"] }) {
+  if (name === "plus") return <path d="M12 5v14M5 12h14" />;
+  if (name === "groups") return <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></>;
+  if (name === "obligations") return <><path d="M6 3h12a2 2 0 0 1 2 2v16H4V5a2 2 0 0 1 2-2Z" /><path d="M8 8h8M8 12h8M8 16h5" /></>;
+  return <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>;
+}
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const { account, firebaseUser, login: authenticate, userDoc } = useAuth();
-  const { person, personStatus } = usePerson();
-  const { showToast } = useToast();
-
-  const [activeTournamentCards, setActiveTournamentCards] = useState<TournamentDashboardCard[]>([]);
-  const [selectedTournamentCard, setSelectedTournamentCard] = useState<TournamentDashboardCard | null>(null);
-  const [tournamentLoading, setTournamentLoading] = useState(true);
-  const [userStats, setUserStats] = useState<UserDashboardStats>({
-    groupsCount: 0,
-  });
-  const [userStatsLoading, setUserStatsLoading] = useState(false);
-  const [showQuickActionsMenu, setShowQuickActionsMenu] = useState(false);
-  const [pendingAlerts, setPendingAlerts] = useState<PendingAlert[]>([]);
-  const [pendingAlertsLoading, setPendingAlertsLoading] = useState(false);
-  const [dismissPendingAlertLoadingId, setDismissPendingAlertLoadingId] = useState<string | null>(null);
-
-  const quickActionsMenuRef = useRef<HTMLDivElement | null>(null);
-  const quickActionsButtonRef = useRef<HTMLButtonElement | null>(null);
-
-  const dismissPendingAlert = async (alertId: string) => {
-    if (!firebaseUser?.uid || !alertId) return;
-
-    setDismissPendingAlertLoadingId(alertId);
-    try {
-      const dismissPendingAlertFn = httpsCallable<{ alertId: string }, { ok: true }>(functions, "dismissPendingAlert");
-      await dismissPendingAlertFn({ alertId });
-      setPendingAlerts((current) => current.filter((alert) => alert.id !== alertId));
-    } catch (error) {
-      console.error("Error dismissing pending alert:", error);
-      showToast?.({
-        type: "error",
-        message: "No se pudo cerrar la alerta. Intentá de nuevo más tarde.",
-      });
-    } finally {
-      setDismissPendingAlertLoadingId(null);
-    }
-  };
-
-  useEffect(() => {
-    if (!showQuickActionsMenu) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        quickActionsMenuRef.current
-        && !quickActionsMenuRef.current.contains(event.target as Node)
-        && quickActionsButtonRef.current
-        && !quickActionsButtonRef.current.contains(event.target as Node)
-      ) {
-        setShowQuickActionsMenu(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showQuickActionsMenu]);
-
-  const quickActions = [
-    {
-      title: "Crear torneo",
-      desc: "Configurá uno nuevo",
-      icon: "🏆",
-      onClick: () => router.push("/admin/tournaments/new"),
-    },
-    {
-      title: "Crear grupo",
-      desc: "Sumá jugadores",
-      icon: "👥",
-      onClick: () => router.push("/dashboard/groups/new"),
-    },
-  ];
-
-  const login = async () => {
-    try {
-      await authenticate();
-      return true;
-    } catch (error) {
-      showToast({ type: "error", message: getAuthErrorMessage(error) });
-      return false;
-    }
-  };
-
-  useEffect(() => {
-    if (!firebaseUser?.uid) {
-      setUserStats({ groupsCount: 0 });
-      setUserStatsLoading(false);
-      return;
-    }
-
-    let active = true;
-    const loadUserStats = async () => {
-      setUserStatsLoading(true);
-      try {
-        const ownGroups = await getOwnGroupsDashboard();
-
-        if (!active) return;
-        setUserStats({
-          groupsCount: ownGroups.items.length,
-        });
-      } finally {
-        if (active) {
-          setUserStatsLoading(false);
-        }
-      }
-    };
-
-    loadUserStats();
-
-    return () => {
-      active = false;
-    };
-  }, [firebaseUser?.uid]);
-
-  useEffect(() => {
-    const loadTournamentCards = async () => {
-      const tournamentsSnap = await getDocs(query(collection(db, "tournaments"), where("status", "==", "activo")));
-
-      const cards = await Promise.all(
-        tournamentsSnap.docs.map(async (docSnap) => {
-          const tournamentData = docSnap.data() as Omit<TournamentQueryRow, "id"> & { description?: string; status?: string; currentPhaseId?: string };
-          const tournamentId = docSnap.id;
-
-          const [phasesSnap, teamsSnap, matchesSnap, standingsSnap] = await Promise.all([
-            getDocs(query(collection(db, "tournamentPhases"), where("tournamentId", "==", tournamentId))),
-            getDocs(query(collection(db, "tournamentTeams"), where("tournamentId", "==", tournamentId))),
-            getDocs(query(collection(db, "tournamentMatches"), where("tournamentId", "==", tournamentId), where("status", "==", "scheduled"))),
-            getDocs(query(collection(db, "tournamentStandings"), where("tournamentId", "==", tournamentId))),
-          ]);
-
-          const phaseDocs = phasesSnap.docs.map((phaseDoc): TournamentPhaseQueryRow => {
-            const data = phaseDoc.data() as Omit<TournamentPhaseQueryRow, "id">;
-            return { id: phaseDoc.id, ...data };
-          });
-          const currentPhase = phaseDocs.find((phase) => phase.id === tournamentData.currentPhaseId) || phaseDocs[0];
-
-          const teams = teamsSnap.docs.map((teamDoc) => ({
-            id: teamDoc.id,
-            name: String((teamDoc.data() as { nameTeam?: string; name?: string }).nameTeam || (teamDoc.data() as { name?: string }).name || "Equipo"),
-          }));
-          const teamsMap = new Map(teams.map((team) => [team.id, team.name]));
-
-          const pendingMatches = matchesSnap.docs
-            .map((matchDoc): TournamentMatchQueryRow => {
-              const data = matchDoc.data() as Omit<TournamentMatchQueryRow, "id"> & { round?: number; sequence?: number };
-              return { id: matchDoc.id, ...data };
-            })
-            .sort((a, b) => {
-              const roundA = Number((a as { round?: number }).round || 0);
-              const roundB = Number((b as { round?: number }).round || 0);
-              const seqA = Number((a as { sequence?: number }).sequence || 0);
-              const seqB = Number((b as { sequence?: number }).sequence || 0);
-              return roundA - roundB || seqA - seqB;
-            });
-
-          const mappedMatches = pendingMatches.map((match) => ({
-            id: String(match.id),
-            tournamentId,
-            tournamentName: String(tournamentData.name || "Torneo"),
-            tournamentType: String(tournamentData.format || "-"),
-            phaseType: (phaseDocs.find((phase) => phase.id === String(match.phaseId || ""))?.type || "group_stage") as TournamentPhaseType | "group_stage",
-            roundLabel: match.roundLabel || null,
-            homeTeamName: teamsMap.get(String(match.homeTeamId || "")) || "Equipo por definir",
-            awayTeamName: teamsMap.get(String(match.awayTeamId || "")) || "Equipo por definir",
-          }));
-
-          const standings = standingsSnap.docs
-            .map((standingDoc) => {
-              const standingData = standingDoc.data() as {
-                teamId?: string;
-                phaseId?: string;
-                position?: number;
-                stats?: { points?: number; played?: number };
-              };
-              return {
-                id: standingDoc.id,
-                teamId: String(standingData.teamId || ""),
-                phaseId: String(standingData.phaseId || ""),
-                teamName: teamsMap.get(String(standingData.teamId || "")) || "Equipo",
-                position: Number(standingData.position || 0),
-                points: Number(standingData.stats?.points || 0),
-                played: Number(standingData.stats?.played || 0),
-              };
-            })
-            .filter((standing) => !currentPhase?.id || standing.phaseId === currentPhase.id)
-            .reduce<Array<{ id: string; teamId: string; teamName: string; position: number; points: number; played: number }>>((acc, standing) => {
-              const existingIndex = acc.findIndex((item) => item.teamId === standing.teamId);
-
-              if (existingIndex === -1) {
-                acc.push({
-                  id: standing.id,
-                  teamId: standing.teamId,
-                  teamName: standing.teamName,
-                  position: standing.position,
-                  points: standing.points,
-                  played: standing.played,
-                });
-                return acc;
-              }
-
-              const currentItem = acc[existingIndex];
-              if (
-                standing.position < currentItem.position
-                || (standing.position === currentItem.position && standing.points > currentItem.points)
-              ) {
-                acc[existingIndex] = {
-                  id: standing.id,
-                  teamId: standing.teamId,
-                  teamName: standing.teamName,
-                  position: standing.position,
-                  points: standing.points,
-                  played: standing.played,
-                };
-              }
-
-              return acc;
-            }, [])
-            .sort((a, b) => b.points - a.points || a.position - b.position || a.teamName.localeCompare(b.teamName, "es"))
-            .map((standing, index) => ({
-              ...standing,
-              position: index + 1,
-            }))
-            .slice(0, 6);
-
-          const importantInfo = [
-            `Estado actual: ${tournamentStatusLabel[(tournamentData.status as keyof typeof tournamentStatusLabel) || "activo"] || "Activo"}`,
-            `Equipos confirmados: ${teams.length}`,
-            `Partidos pendientes: ${mappedMatches.length}`,
-          ];
-
-          return {
-            id: tournamentId,
-            name: String(tournamentData.name || "Torneo"),
-            format: getTournamentFormatLabel(tournamentData.format),
-            phaseType: (currentPhase?.type || "group_stage") as TournamentPhaseType | "group_stage",
-            description: String(tournamentData.description || "Sin descripción disponible."),
-            teamsCount: teams.length,
-            nextMatch: mappedMatches[0] || null,
-            standings,
-            upcomingMatches: mappedMatches.slice(0, 5),
-            importantInfo,
-          } as TournamentDashboardCard;
-        })
-      );
-
-      setActiveTournamentCards(cards);
-    };
-
-    loadTournamentCards().finally(() => setTournamentLoading(false));
-  }, []);
-
-
-  useEffect(() => {
-    if (!firebaseUser?.uid) {
-      setPendingAlerts([]);
-      setPendingAlertsLoading(false);
-      return;
-    }
-
-    setPendingAlerts([]);
-    setPendingAlertsLoading(true);
-
-    const alertsRef = collection(db, "users", firebaseUser.uid, "pendingAlerts");
-    const alertsQuery = query(
-      alertsRef,
-      where("status", "==", "active"),
-      orderBy("priority", "asc"),
-      orderBy("updatedAt", "desc"),
-      limit(20)
-    );
-
-    const unsub = onSnapshot(alertsQuery, (snap) => {
-      const loaded = snap.docs.map((docSnap) => {
-        const data = docSnap.data() as Partial<PendingAlert> & {
-          createdAt?: Timestamp;
-          updatedAt?: Timestamp;
-          expiresAt?: Timestamp | null;
-        };
-
-        return {
-          id: docSnap.id,
-          kind: (typeof data.kind === "string" ? data.kind : "unknown") as PendingAlert["kind"],
-          severity: (data.severity || "info") as PendingAlert["severity"],
-          title: String(data.title || "Pendiente"),
-          message: String(data.message || "Revisá esta acción pendiente."),
-          status: (data.status || "active") as PendingAlert["status"],
-          priority: Number(data.priority || pendingAlertPriority[(data.severity || "info") as PendingAlert["severity"]]),
-          dedupeKey: data.dedupeKey,
-          actorScope: data.actorScope,
-          createdAt: data.createdAt?.toMillis(),
-          updatedAt: data.updatedAt?.toMillis(),
-          expiresAt: data.expiresAt ? data.expiresAt.toMillis() : null,
-          link: data.link,
-          resource: data.resource,
-          meta: data.meta,
-        } satisfies PendingAlert;
-      });
-
-      const normalized = loaded.filter(
-        (alert) => alert.kind !== "complete_profile"
-          && !isRetiredLegacyGroupAuthorityAlert(alert)
-          && !isRetiredTournamentEconomyAlert(alert)
-      );
-
-      const sorted = normalized.sort((a, b) => a.priority - b.priority || (b.updatedAt || 0) - (a.updatedAt || 0));
-      setPendingAlerts(sorted);
-      setPendingAlertsLoading(false);
-    }, (error) => {
-      console.error("❌ pendingAlerts onSnapshot error:", error.code, error.message);
-      setPendingAlerts([]);
-      setPendingAlertsLoading(false);
-    });
-
-    return () => unsub();
-  }, [firebaseUser?.uid]);
-
-  const loading = tournamentLoading;
-
-  /* =====================
-     SKELETON
-  ===================== */
-
-  if (loading) {
-    return (
-      <main className="max-w-5xl mx-auto mt-6 sm:mt-10 md:px-0 space-y-6 pb-12">
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-10 w-72" />
-        </div>
-
-        <section className="rounded-md border border-neutral-200 bg-white p-6 sm:p-8 space-y-5">
-          <Skeleton className="h-6 w-44 rounded-full" />
-          <Skeleton className="h-12 w-full max-w-2xl" />
-          <Skeleton className="h-4 w-full max-w-xl" />
-          <Skeleton className="h-11 w-40 rounded-xl" />
-          <div className="grid gap-4 md:grid-cols-3">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="rounded-md border border-neutral-100 p-4 space-y-3">
-                <Skeleton className="h-10 w-10 rounded-2xl" />
-                <Skeleton className="h-5 w-2/3" />
-                <Skeleton className="h-4 w-full" />
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-64" />
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-40 rounded-md" />
-            ))}
-          </div>
-        </div>
-
-        <section className="space-y-3">
-          <Skeleton className="h-7 w-44" />
-          <div className="flex gap-4 overflow-hidden">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="min-w-[280px] sm:min-w-[330px] rounded-md border border-neutral-200 bg-white p-4 space-y-2">
-                <Skeleton className="h-5 w-40" />
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-24" />
-              </div>
-            ))}
-          </div>
-        </section>
-      </main>
-    );
-  }
+  const { account, firebaseUser } = useAuth();
+  const greeting = dashboardGreeting(account?.displayName, firebaseUser?.displayName);
 
   return (
-    <main className="max-w-5xl mx-auto mt-6 sm:mt-10 px-6 md:px-0 pb-12 space-y-8">
+    <main className="mx-auto w-full max-w-6xl px-4 pb-10 pt-6 sm:px-6 sm:pt-8 lg:px-8">
+      <header className="mb-6 sm:mb-8">
+        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-orange-600">Dashboard</p>
+        <h1 className="mt-1 text-3xl font-bold tracking-tight text-[var(--foreground)] sm:text-4xl">{greeting}</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)] sm:text-base">
+          Tus tareas y accesos principales, reunidos en un solo lugar.
+        </p>
+      </header>
 
-      {firebaseUser && (
-        <>
-          {userDoc?.roles === "admin" && (
-            <section className="space-y-3 hidden sm:block">
-              <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-                Acciones rápidas
-              </h3>
+      <div className="space-y-6 sm:space-y-8">
+        <PendingTasksSection sessionId={firebaseUser?.uid ?? null} />
 
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {quickActions.map((action) => (
-                  <button
-                    key={action.title}
-                    onClick={action.onClick}
-                    className="group rounded-md border border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4 text-left transition hover:-translate-y-[2px] hover:shadow-lg"
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 flex items-center justify-center rounded-md bg-gradient-to-br from-orange-100 to-amber-100 text-lg group-hover:scale-110 transition">
-                        {action.icon}
-                      </div>
-                      <p className="font-semibold text-sm">{action.title}</p>
-                    </div>
-                    <p className="text-xs text-neutral-500">{action.desc}</p>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Panel */}
-          <section className="space-y-4">
-            <header className="relative">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-bold">Tu panel</h2>
-                  <p className="text-sm text-neutral-600">Todo lo importante en un solo lugar.</p>
-                </div>
-
-                {userDoc?.roles === "admin" && (
-                  <div className="relative sm:hidden">
-                    <button
-                      ref={quickActionsButtonRef}
-                      type="button"
-                      onClick={() => setShowQuickActionsMenu((prev) => !prev)}
-                      aria-expanded={showQuickActionsMenu}
-                      className="flex h-10 w-10 text-xl cursor-pointer items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100"
-                      aria-label={showQuickActionsMenu ? "Cerrar menú de acciones" : "Abrir menú de acciones"}
-                    >
-                      +
-                    </button>
-
-                    {showQuickActionsMenu && (
-                      <div
-                        ref={quickActionsMenuRef}
-                        className="absolute right-0 z-20 mt-2 w-64 rounded-md border border-white/70 bg-white p-2 shadow-lg"
-                      >
-                        {quickActions.map((action) => (
-                          <button
-                            key={action.title}
-                            type="button"
-                            onClick={() => {
-                              setShowQuickActionsMenu(false);
-                              action.onClick();
-                            }}
-                            className="w-full rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100"
-                          >
-                            <div className="font-semibold">{action.title}</div>
-                            <p className="text-xs text-neutral-500">{action.desc}</p>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </header>
-
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-
-              <article className="rounded-md border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">
-                <p className="text-xs text-neutral-500">Perfil</p>
-                <p className="text-lg font-semibold">
-                  {account?.displayName || firebaseUser.displayName || "Cuenta"}
-                </p>
-                <p className="text-sm">
-                  {userDoc?.roles === "admin" ? "Administrador" : "Cuenta autenticada"}
-                </p>
-              </article>
-
-              <article className="rounded-md border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">
-                <p className="text-xs text-neutral-500">Ficha personal</p>
-                <p className="text-lg font-semibold">
-                  {personStatus === "ready" && person
-                    ? `${person.firstName} ${person.lastName}`
-                    : personStatus === "empty"
-                      ? "Pendiente"
-                      : personStatus === "inconsistent"
-                        ? "Requiere asistencia"
-                        : personStatus === "error"
-                          ? "No disponible"
-                          : "Consultando…"}
-                </p>
-                <Link href="/profile/person" className="mt-1 inline-block text-sm font-medium text-orange-600 hover:text-orange-700">
-                  {personStatus === "empty" ? "Crear ficha" : "Ver ficha"}
-                </Link>
-              </article>
-
-              <article className="rounded-md border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">
-                <p className="text-xs text-neutral-500">Grupos</p>
-                <p className="text-2xl font-bold">
-                  {userStatsLoading ? "..." : userStats.groupsCount}
-                </p>
-                <Link href="/dashboard/groups" className="text-sm font-medium text-orange-600 hover:text-orange-700">
-                  Ver Mis Grupos
-                </Link>
-              </article>
-
-              <article className="rounded-md border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur p-4">
-                <p className="text-xs text-neutral-500">Actividad</p>
-                <p className="text-2xl font-bold">
-                  {userStatsLoading ? "..." : activeTournamentCards.length}
-                </p>
-                <p className="text-sm text-neutral-500">
-                  torneos activos
-                </p>
-              </article>
-
-            </div>
-          </section>
-
-          <AlertsPanel
-            loading={pendingAlertsLoading}
-            alerts={pendingAlerts}
-            onDismissAlert={dismissPendingAlert}
-            dismissLoadingAlertId={dismissPendingAlertLoadingId}
-          />
-        </>
-      )}
-
-      <UpcomingActivitiesSection
-        matches={[]}
-        tournaments={activeTournamentCards}
-        groupsMap={{}}
-        userId={firebaseUser?.uid}
-        onSelectTournament={setSelectedTournamentCard}
-      />
-
-      <PublicTournamentDetailModal
-        open={selectedTournamentCard !== null}
-        tournamentCard={selectedTournamentCard}
-        onClose={() => setSelectedTournamentCard(null)}
-        onOpenDetail={async (tournamentId) => {
-          if (firebaseUser) {
-            router.push(`/tournaments/${tournamentId}`);
-            return;
-          }
-          const success = await login();
-          if (!success) return;
-          router.push(`/tournaments/${tournamentId}`);
-        }}
-      />
+        <section aria-labelledby="quick-actions-title">
+          <div className="mb-3">
+            <h2 id="quick-actions-title" className="text-xl font-semibold text-[var(--foreground)]">Accesos rápidos</h2>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">Abrí el flujo que necesitás sin ejecutar acciones automáticamente.</p>
+          </div>
+          <div className="flex flex-wrap gap-x-2 gap-y-3 sm:grid sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
+            {quickActions.map((action) => (
+              <Link
+                key={action.href}
+                href={action.href}
+                aria-label={action.title}
+                className="group inline-flex min-h-20 w-20 shrink-0 flex-col items-center justify-start gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-1 py-1.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] sm:h-auto sm:w-auto sm:min-h-28 sm:flex-row sm:items-start sm:justify-start sm:gap-4 sm:rounded-2xl sm:p-5 sm:text-left"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                    <QuickActionIcon name={action.icon} />
+                  </svg>
+                </span>
+                <span className="min-w-0 sm:block">
+                  <span className="block min-h-8 text-xs font-semibold leading-4 text-[var(--foreground)] group-hover:text-orange-700 dark:group-hover:text-orange-300 sm:min-h-0 sm:text-base sm:leading-normal">{action.title}</span>
+                  <span className="mt-1 hidden text-sm leading-5 text-[var(--text-muted)] sm:block">{action.description}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      </div>
     </main>
   );
 }

@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { COVERAGE, TASK_TYPES, eventId, itemId, taskId } = require("../../src/dashboardTasks/application/dashboardTaskModel");
+const { dashboardTaskProjectionEnabled } = require("../../src/dashboardTasks/application/dashboardTaskProjectionFlag");
 const { MAX_TRANSITION_WRITES, projectionWriteCount } = require("../../src/dashboardTasks/infrastructure/firestoreDashboardTaskProjectionStore");
 
 test("IUX-02A identities are stable and type/resource scoped", () => {
@@ -18,4 +19,10 @@ test("IUX-02A fan-out guard counts inactive items and terminal manifests", () =>
   const writes = projectionWriteCount({ itemWrites: 300, contextWrites: 1, userCount: 1, manifestWrites: 300 });
   assert.equal(writes, 605);
   assert.ok(writes > MAX_TRANSITION_WRITES);
+});
+
+test("IUX-02A consumers are disabled unless the runtime flag is explicitly true", () => {
+  assert.equal(dashboardTaskProjectionEnabled({}), false);
+  assert.equal(dashboardTaskProjectionEnabled({ ENABLE_DASHBOARD_TASK_PROJECTION: "false" }), false);
+  assert.equal(dashboardTaskProjectionEnabled({ ENABLE_DASHBOARD_TASK_PROJECTION: "TRUE" }), true);
 });

@@ -13,6 +13,7 @@ const {
 
 const PAGE_SIZE = 10;
 const SCAN_SIZE = PAGE_SIZE + 1;
+const EMPTY_GENERATION = "no-contexts-v1";
 const HEALTH = Object.freeze({ READY: "READY", UPDATING: "UPDATING", REBUILDING: "REBUILDING", DEGRADED: "DEGRADED" });
 
 function validCount(value) { return Number.isSafeInteger(value) && value >= 0; }
@@ -131,7 +132,14 @@ function createFirestoreDashboardTaskQuery({ db, cursorSecret, projectionEnabled
     return db.runTransaction(async (transaction) => {
       const metaRef = db.collection("users").doc(accountId).collection("dashboardTaskProjection").doc(COVERAGE);
       const metaSnapshot = await transaction.get(metaRef);
-      if (!metaSnapshot.exists) throw new DashboardTaskProjectionNotReadyError();
+      if (!metaSnapshot.exists) {
+        let authorized;
+        try { authorized = await contexts(transaction, accountId); } catch { throw new DashboardTaskProjectionNotReadyError(); }
+        if (authorized.size) throw new DashboardTaskProjectionNotReadyError();
+        cursorCodec.decode(input.cursor, { accountId, coverage: COVERAGE, generationId: EMPTY_GENERATION });
+        return Object.freeze({ coverage: { version: COVERAGE, complete: true, health: HEALTH.READY,
+          asOf: now().toDate().toISOString(), generationId: EMPTY_GENERATION }, totalTasks: 0, items: [] });
+      }
       const meta = metaSnapshot.data(); const generationId = meta.activeGenerationId;
       if (meta.coverage !== COVERAGE || typeof generationId !== "string" || !generationId) throw new DashboardTaskProjectionNotReadyError();
       const cursor = cursorCodec.decode(input.cursor, { accountId, coverage: COVERAGE, generationId });
@@ -167,4 +175,4 @@ function createFirestoreDashboardTaskQuery({ db, cursorSecret, projectionEnabled
   return Object.freeze({ list });
 }
 
-module.exports = { HEALTH, PAGE_SIZE, SCAN_SIZE, createFirestoreDashboardTaskQuery };
+module.exports = { EMPTY_GENERATION, HEALTH, PAGE_SIZE, SCAN_SIZE, createFirestoreDashboardTaskQuery };

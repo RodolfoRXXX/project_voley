@@ -35,8 +35,8 @@ Se implementó el productor backend-only de la proyección derivada `N20_N31_V1`
 - backfill, reconciliación, rebuild generacional, activación y rollback controlado;
 - health básico y limpieza de datos terminales conforme a la retención de 30 días;
 - Rules deny-all para toda la persistencia física y los índices requeridos;
-- trigger inmediato, barrido de recuperación cada minuto y reconciliación diaria, exportables sólo
-  con `ENABLE_DASHBOARD_TASK_PROJECTION=true`.
+- trigger inmediato, barrido de recuperación cada minuto y reconciliación diaria, siempre
+  descubribles por Firebase y con ejecución protegida por `ENABLE_DASHBOARD_TASK_PROJECTION=true`.
 
 El flag queda en `false` por defecto: existe un mecanismo de ejecución completo, pero esta tarea no
 lo habilita ni despliega. Al cierre del corte IUX-02A no existían `listMyDashboardTasks`, integración
@@ -69,6 +69,14 @@ Durante la integración local de IUX-02B se detectó y corrigió una incompatibi
 evento incremental sobre la generación activa no debe degradar el manifest de usuario ya activado
 de `READY`/`ROLLED_BACK` a `AVAILABLE`. El scope continúa expresando el avance real. La regresión se
 cubrió en el focal IUX-02A, que volvió a pasar 9/9.
+
+Durante la UAT local de IUX-01 del 2026-10-27 se detectó otro defecto acotado: condicionar los
+exports en `index.js` impedía que Firebase Emulator descubriera los consumidores aunque el proceso
+padre tuviera el flag en `true`. Los writers confirmaban outbox, pero los eventos quedaban
+`PENDING` con cero intentos. La corrección declara siempre los tres triggers y evalúa el flag al
+entrar a cada handler. Una alta N20 posterior avanzó automáticamente el scope de revisión 14 a 15;
+la resolución conjunta N20/N31 de otro Grupo avanzó de 10 a 14 y dejó `READY`, sin outbox pendiente
+y con `totalTasks=0`. No se usó backfill para esas convergencias normales.
 
 ## 2. Modelo físico y garantías
 
@@ -171,10 +179,13 @@ pantalla y reconciliación permanecen separados.
 
 ### Estado de `ENABLE_DASHBOARD_TASK_PROJECTION`
 
-Con `false` se omiten únicamente los exports de los consumidores: trigger `onCreate`, recovery
-programado y reconciliación/health/cleanup diarios. Los writers siguen confirmando fuente, scope y
-outbox en la misma transacción. Por lo tanto, los comandos ejecutados mientras está deshabilitado no
-pierden intención durable, pero acumulan eventos `PENDING`; tampoco se ejecutan cleanup ni health.
+Con `false` los exports continúan presentes para que Firebase pueda descubrir el mecanismo, pero
+los tres handlers retornan sin procesar: trigger `onCreate`, recovery programado y
+reconciliación/health/cleanup diarios no consumen ni escriben proyección. Los writers siguen
+confirmando fuente, scope y outbox en la misma transacción. Por lo tanto, los comandos ejecutados
+mientras está deshabilitado no pierden intención durable, pero acumulan eventos `PENDING`; tampoco
+se ejecutan cleanup ni health. Esto reemplaza la formulación anterior “se omiten los exports”, que
+resultó incompatible con el descubrimiento real del Emulator.
 
 Habilitar el flag no vuelve a disparar `onCreate` para documentos ya existentes. El recovery toma
 como máximo 40 eventos disponibles por corrida. Antes de habilitar cualquier reader se requiere:
@@ -288,6 +299,7 @@ leyeron ni modificaron datos remotos.
 | Typecheck | PASS tras regenerar `.next` mediante el build normal |
 | Rules de proyección | PASS — GET/PATCH cliente denegados en scopes, outbox, manifests, health, metadata, raíz de generación, items y contextos |
 | `git diff --check` | PASS en el checkpoint final de la implementación local |
+| Regresión UAT del flag (2026-10-27) | PASS — 82/82 archivos unitarios; alta N20 y resoluciones N20/N31 convergen por trigger normal |
 
 El primer typecheck del Stage 0 encontró referencias obsoletas dentro de `.next` a rutas ya
 retiradas. El build normal regeneró esos artefactos y tanto build como la repetición de typecheck
@@ -441,7 +453,7 @@ minutos.
 ### Modificados
 
 - writers canónicos enumerados en la matriz;
-- `functions/index.js` y `functions/package.json`;
+- `functions/index.js`, guard común de activación, tres handlers y `functions/package.json`;
 - `firestore.rules` y `firestore.indexes.json`;
 - runner Emulator y expectativas exactas de presupuesto afectadas;
 - un fixture unitario de lifecycle para inyectar el puerto de proyección sin mezclar agregados.
@@ -449,7 +461,7 @@ minutos.
 ## 12. Rollback del cambio local
 
 Antes de cualquier habilitación, el rollback consiste en descartar coordinadamente el módulo,
-integraciones de writers, exports condicionados, Rules, índices y pruebas. No hay migración que
+integraciones de writers, exports y guards de ejecución, Rules, índices y pruebas. No hay migración que
 revertir porque esta tarea no escribió datos remotos.
 
 Tras una futura habilitación, primero se deshabilitan productores/worker según runbook, se mantiene

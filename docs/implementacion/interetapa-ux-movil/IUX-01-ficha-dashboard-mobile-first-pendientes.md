@@ -2,17 +2,17 @@
 
 ## Estado de la ficha
 
-- Estado: **Listo para implementar — requiere autorización separada**.
+- Estado: **CIERRE TÉCNICO LOCAL CONFIRMADO Y VERSIONADO — INTEGRACIÓN EN DEV PENDIENTE**.
 - Responsable: pendiente de asignación.
-- Fecha: 2026-10-25.
-- Checkpoint de partida: `dev@c02f0afea067dcf4a757c68a9ef5bcd590682c24`.
+- Fecha de cierre técnico local: 2026-10-28.
+- Checkpoint de implementación: `dev@5def9ea5a7d4dd7472880f920032fa51843d00c8`.
 - Etapa: **Interetapa UX móvil (`IUX`) entre E3 y E4**; no renumera etapas, no cierra E3 y no habilita E4.
-- Naturaleza: ficha definida y adoptada documentalmente por D5-061; no autoriza implementación.
+- Naturaleza: ficha definida y adoptada documentalmente por D5-061; implementación versionada en
+  `f88f47f` y `52e20eb`, todavía sin despliegue ni habilitación productiva.
 
 El alcance visual, la cobertura funcional inicial `IUX-N20` + `IUX-N31` y la arquitectura global
-IUX-02 están adoptados por D5-061. `IUX-N30` queda fuera. IUX-01 no está implementado y requiere
-autorización posterior separada. No debe mostrarse un cero mientras la consulta real no exista o no
-haya completado su cobertura declarada.
+IUX-02 están adoptados por D5-061. `IUX-N30` queda fuera. IUX-01 consume localmente la consulta real
+de IUX-02B; no debe mostrarse un cero mientras esa consulta no haya completado su cobertura declarada.
 
 ## 1. Identificación y trazabilidad
 
@@ -21,7 +21,7 @@ haya completado su cobertura declarada.
 - Caso de uso: una cuenta autenticada abre un inicio global, consulta tareas vigentes que está autorizada a completar y navega a su contexto para actuar.
 - Cambios incluidos:
   - saludo y jerarquía mobile-first;
-  - tres accesos rápidos;
+  - cuatro accesos rápidos;
   - estructura plegable inicialmente contraída para Pendientes;
   - retiro del dashboard de bloques y consultas de Torneos destacados/actividades que no representan tareas del usuario;
   - estados independientes de carga, error con reintento y vacío verdadero cuando pueda afirmarse.
@@ -83,12 +83,16 @@ No se incorporan próximos Torneos, cambios de estado informativos ni candidatos
 ## 6. Flujo objetivo
 
 1. La cuenta abre `/dashboard`.
-2. Se muestra “Hola, [nombre]”; el nombre usa `account.displayName.trim()`, luego `firebaseUser.displayName.trim()` y finalmente `Cuenta`. “Dashboard” tiene menor jerarquía.
+2. Se muestra “Hola, [nombre]”; el nombre usa `account.displayName.trim()` y luego
+   `firebaseUser.displayName.trim()`. Si ambos faltan, muestra sólo “Hola”, sin inventar un nombre ni
+   exponer el correo. “Dashboard” tiene menor jerarquía.
 3. Pendientes comienza contraído con título, contador y chevron.
 4. El contador usa la unidad **tareas** y declara qué tipos cubre. No cuenta notificaciones, documentos técnicos ni acciones subyacentes agregadas sin regla explícita.
 5. Al expandir, una lista única identifica Grupo y Temporada cuando corresponde.
 6. Cada ítem navega al recurso contextual; el destino revalida autorización y allí se actúa.
-7. Crear Grupo, Mis grupos y Ficha personal navegan a `/dashboard/groups/new`, `/dashboard/groups` y `/profile/person`.
+7. Crear Grupo, Mis grupos, Ficha personal y Mis obligaciones navegan a `/dashboard/groups/new`,
+   `/dashboard/groups`, `/profile/person` y `/dashboard/obligations`. El último acceso no incorpora
+   `IUX-N30` a Pendientes ni cambia permisos.
 8. La pantalla consulta al entrar, al regresar desde una sección contextual y por acción manual. No
    usa polling, listener en tiempo real ni actualización automática por focus.
 
@@ -99,13 +103,13 @@ No se incorporan próximos Torneos, cambios de estado informativos ni candidatos
 | Consulta pendiente | Skeleton/estado de carga de la sección; sin contador definitivo |
 | Error | Mensaje específico y “Reintentar”; no convertir a vacío |
 | Cobertura parcial | Mostrar tareas encontradas y explicar qué cobertura falta; si no hay resultados, no mostrar cero |
-| Cobertura completa sin tareas | Sólo entonces mostrar `0 tareas` y un vacío que nombre los tipos cubiertos |
+| Cobertura completa sin tareas | Ocultar el badge y mostrar únicamente “No hay pendientes” |
 | Fuente todavía no conectada | No publicar el bloque ni un placeholder que aparente una consulta exitosa |
 | Pérdida de acceso detectada en una consulta | Limpiar datos y dejar que el destino/contexto informe no autorización |
 
-Ayuda: **“Incluye solicitudes de ingreso y entregas de pago por revisar.”** El vacío completo puede
-decir **“No tenés solicitudes de ingreso ni entregas de pago pendientes de revisión.”** No se aprueban
-textos que restrinjan Pendientes a Torneos.
+El bloque no agrega un texto explicativo de cobertura. **“No hay pendientes”** se reserva para una
+respuesta `READY`, completa y con total cero; carga, error, actualización, reconstrucción o degradación
+no pueden reutilizar ese vacío.
 
 ## 8. Criterios de aceptación
 
@@ -118,9 +122,11 @@ textos que restrinjan Pendientes a Torneos.
 7. Tras resolver en la sección contextual, el regreso inicia una consulta y la tarea desaparece
    cuando esa respuesta confirma el estado fuente; no por el mero hecho de navegar.
 8. Un fallo muestra error y reintento; nunca cero.
-9. Cero sólo aparece después de completar todas las consultas incluidas en la cobertura declarada.
+9. “No hay pendientes” sólo aparece después de completar todas las consultas incluidas en la
+   cobertura declarada; el estado vacío no muestra badge `0 tareas`.
 10. Owner, acciones personales y capabilities conservan sus reglas independientes, incluida la prohibición de auto-revisión.
-11. Los tres accesos rápidos navegan y no ejecutan operaciones inmediatas.
+11. Los cuatro accesos rápidos navegan y no ejecutan operaciones inmediatas. En móvil cada icono y
+    etiqueta forman un único enlace accesible, admiten dos líneas y hacen wrap sin overflow.
 12. No se renderizan “Requiere tu atención”, Agenda, campana ni destacados/actividades de Torneos.
 13. No se ejecutan desde el dashboard las consultas N+1 de Torneos retiradas.
 14. En 1280/1440 px el contenido aprovecha el espacio manteniendo orden DOM, legibilidad y ausencia de overflow.
@@ -151,8 +157,8 @@ Resolverlo sólo en frontend exigiría listar ownership y Membresías, probar ca
 
 ## 11. Incremento backend adoptado como dependencia
 
-**`IUX-02 — Consulta global de tareas accionables del dashboard`**, adoptado documentalmente por
-D5-061 y todavía no autorizado para implementación.
+**`IUX-02 — Consulta global de tareas accionables del dashboard`**, adoptado por D5-061 e integrado
+localmente en `dev@5def9ea5a7d4dd7472880f920032fa51843d00c8`.
 
 - Dirección técnica adoptada: proyección derivada por usuario, outbox
   transaccional, proyector idempotente, contadores por usuario/Grupo y callable read-only.
@@ -187,11 +193,10 @@ de habilitación. Nada se incorpora silenciosamente a IUX-01.
 - incremento backend mínimo si se aprueba;
 - integración, contador, estados, lista y navegación contextual.
 
-**Secuencia adoptada:** primero IUX-02A, después IUX-02B y finalmente la integración visual IUX-01.
+**Secuencia adoptada y cumplida localmente:** primero IUX-02A, después IUX-02B y finalmente la integración visual IUX-01.
 El diseño A puede revisarse con fixtures controlados en un entorno no productivo, pero eso no permite
 publicar datos ficticios, Pendientes aparentes ni `0 tareas`. La habilitación se realiza coordinadamente
-sólo cuando IUX-02 entregue una consulta real, autorizada y completa. Esta ficha no autoriza iniciar
-ninguno de los cortes.
+sólo después de la revisión/UAT y los gates operativos; los fixtures visuales locales no se publican.
 
 ## 13. Datos y reglas
 
@@ -231,12 +236,15 @@ ninguno de los cortes.
 | Unidad frontend A | fallback del saludo; links; orden visual; ausencia de consultas/bloques de Torneos |
 | Responsive A | 360×800, 390×844, 768×1024, 1280×800 y 1440×900 |
 | Accesibilidad A | headings, teclado, foco, targets, estados anunciados y reduced motion |
-| Contrato B futuro | una unidad por tarea seleccionada; información excluida; cobertura/contador/vacío coherentes |
-| Autorización B futura | Owner, reviewer, auto-revisión, revocación y Grupo ajeno |
-| Integración B futura | consultar al entrar/regresar/manual; resolver en destino y retirar tras nueva respuesta; sin polling/focus/listener; errores parciales nunca convertidos en cero |
+| Contrato B integrado | una unidad por tarea seleccionada; información excluida; cobertura/contador/vacío coherentes |
+| Autorización B integrada | Owner, reviewer, auto-revisión, revocación y Grupo ajeno |
+| Integración B integrada | consultar al entrar/regresar/manual; resolver en destino y retirar tras nueva respuesta; sin polling/focus/listener; errores parciales nunca convertidos en cero |
 | Regresión | dashboard, Grupo, Economía, `/admin/tournaments`, `/groups` y `/tournaments` autenticado |
 
-Gates futuros: `quality:lint` contra baseline, `quality:typecheck`, `quality:functions:syntax` cuando corresponda, `quality:test`, `quality:build`, `quality:diff` y UAT visual humana. No se instalan dependencias por esta ficha.
+Gates locales ejecutados y evidencia detallada: [informe IUX-01](./IUX-01-informe-implementacion-dashboard-mobile-first.md).
+El usuario informó que el recorrido UAT ejecutado funciona sin errores. Esa confirmación no cubre
+casos no recorridos ni reemplaza los gates y validaciones productivos. La dirección visual general
+y el arranque local corregido también fueron confirmados sólo para el entorno probado.
 
 ## 18. Estructuras retiradas del dashboard
 
@@ -288,11 +296,14 @@ presupuesto/rendimiento y habilitación coordinada.
 | IUX-01-D07 | Selección inicial N20 + N31; N30 fuera | **Resuelta** |
 | IUX-01-D08 | Entrega coordinada con IUX-02A/IUX-02B bajo una única ficha IUX-02 | **Resuelta por D5-061** |
 | IUX-01-D09 | Consulta al entrar, al regresar desde contexto y manual; sin polling, listener ni refresh por focus | **Resuelta** |
+| IUX-01-D10 | Mis obligaciones → `/dashboard/obligations`, sin incorporar N30 a Pendientes | **Resuelta** |
 
 ## 23. Declaración final
 
-- Estado final: **Listo para implementar — requiere autorización separada**.
-- Implementación: **no iniciada**.
-- No quedan decisiones de diseño bloqueantes. Las mediciones futuras son trabajo/gates de IUX-02,
-  no un impedimento para iniciar ese trabajo una vez autorizado.
-- Esta ficha no autoriza código, backend, persistencia, permisos, deploy ni cierre de E3.
+- Estado final: **CIERRE TÉCNICO LOCAL CONFIRMADO Y VERSIONADO — INTEGRACIÓN EN DEV PENDIENTE**.
+- Implementación: **correcciones UAT `f88f47f`; dashboard mobile-first `52e20eb`**.
+- No quedan decisiones de diseño bloqueantes para revisar el cambio. El recorrido UAT informado por
+  el usuario funciona sin errores y la dirección visual general es satisfactoria. Estas confirmaciones
+  no cubren casos no probados ni producción. Permanecen pendientes presupuesto/rendimiento productivo,
+  activación, backfill y habilitación coordinada.
+- La implementación local no autoriza deploy, datos productivos ni cierre de IUX/E3.

@@ -1,6 +1,6 @@
 # IUX-02B — Informe de implementación local de consulta de tareas del dashboard
 
-**Estado:** IUX-02B IMPLEMENTADO Y VALIDADO TÉCNICAMENTE EN LOCAL; HABILITACIÓN COORDINADA PENDIENTE
+**Estado:** IUX-02B IMPLEMENTADO, VALIDADO TÉCNICAMENTE EN LOCAL Y VERSIONADO; HABILITACIÓN COORDINADA PENDIENTE
 
 **Base normativa:** D5-061, ficha IUX-02 y addendum adoptado a Documentos 2/3/4
 
@@ -38,6 +38,12 @@ habilitarlo también exige configurar `DASHBOARD_TASK_CURSOR_SECRET` con al meno
 ausencia falla cerrada. El valor se inyecta exclusivamente por ambiente y no se documenta ni
 versiona. Con la proyección deshabilitada no se construye un codec; Emulator usa un secreto efímero
 por proceso cuando no se aporta uno sintético, por lo que reiniciar invalida sus cursores de prueba.
+
+Una Cuenta canónica sin ningún Grupo propio ni slot N31 vigente es una cobertura completa de cero
+contextos, aunque todavía no tenga metadata proyectada. En ese caso el reader revalida las fuentes
+de autorización, devuelve `READY`, `totalTasks=0` y generación lógica `no-contexts-v1`, sin writes ni
+backfill. La ausencia de metadata con al menos un contexto autorizado continúa siendo
+`PROJECTION_NOT_READY`; no se generaliza el vacío a una proyección incompleta.
 
 ### Frontend técnico
 
@@ -80,6 +86,7 @@ comprueba que el puntero/estado siguen activos y valida rollback con la tarea co
 | Auto-revisión N31 | Una copia stale de la entrega propia se omite y fuerza `UPDATING` sin total |
 | Owner+slot coincidentes no duplican | Contextos se deduplican por `groupId`; el escenario funcional conserva total e identidades únicas |
 | Lista/total/health coherentes | Cards stale o contador contradictorio se omiten y quitan `totalTasks`; cero sólo se prueba con generación completa sin items |
+| Cuenta sin contextos | Cuenta canónica sin Grupos/capabilities devuelve READY/0 sin metadata ni writes; cursor de otra generación se rechaza |
 | Paginación estable | 12 tareas con timestamps empatados, dos páginas y 12 identidades únicas |
 | Cursor protegido | Firma manipulada, otra cuenta y otra generación cubiertas |
 | Consulta sin mutaciones | Instrumentación de las tres escalas: cero writes en apertura y página siguiente |
@@ -123,16 +130,20 @@ Los milisegundos anteriores son del Emulator y no acreditan los objetivos 30 s/5
 
 | Gate/prueba | Resultado |
 | --- | --- |
-| Functions syntax | PASS — 482/482 |
-| Unitarias Functions | PASS — 81 archivos/suites del runner |
+| Functions syntax final | PASS — 484/484 |
+| Unitarias Functions finales | PASS — 82/82 archivos/suites del runner |
 | TypeScript | PASS |
-| Lint baseline | PASS — baseline sin ampliar; 10 hallazgos previos resueltos |
-| Build Next.js | PASS |
+| Lint baseline final | PASS — baseline sin ampliar; 31 errores/8 warnings conocidos y 11 hallazgos previos resueltos |
+| Build Next.js final | PASS — 22 páginas/rutas |
 | Focal IUX-02B | PASS — 3/3 |
 | Focal IUX-02A por corrección compartida | PASS — 9/9 |
 | Focal N20 exacto | PASS — E2-06 13/13 en entorno canónico aislado |
 | Gate integral de siete lotes | PASS — 331/331 (55 + 62 + 57 + 45 + 40 + 29 + 43), fail-fast y salida final 0 |
 | `git diff --check` | PASS |
+
+Correctivo de arranque UAT del 2026-10-28 (`f88f47f`): regresión focal del reader PASS, 1 caso ejecutado y 2
+omitidos por patrón; sintaxis de implementación/prueba PASS. La comprobación real en navegador
+obtuvo HTTP 200 de `listMyDashboardTasks` y el vacío verdadero para una Cuenta sintética sin Grupos.
 
 El runner canónico incorpora `dashboardTaskQueryIux02b.test.js` una sola vez: 41 paths, siete lotes,
 fail-fast y propagación de exit code permanecen cubiertos por su prueba unitaria. No se cambiaron
@@ -152,8 +163,8 @@ del Emulator, no como acreditación de rendimiento productivo.
 
 ## 6. Límites y pendientes productivos
 
-- IUX-01 todavía debe montar la presentación, disparar consulta al entrar/regresar/manual y limpiar
-  el estado visible al cambiar de cuenta. Los fixtures no autorizan publicar datos ficticios.
+- IUX-01 ya monta la presentación, consulta al entrar/regresar/manual y limpia el estado visible al
+  cambiar de cuenta. Su cierre técnico local no autoriza publicar fixtures ni habilitar producción.
 - La proyección y el reader siguen deshabilitados. Habilitar requiere backfill/reconciliación,
   índices, secreto de cursor, mediciones en un entorno representativo, seguridad, smoke y UAT.
 - El costo crece con Grupos y slots actuales aunque no crece con el total de tareas salvo la página
@@ -163,5 +174,5 @@ del Emulator, no como acreditación de rendimiento productivo.
 - No se desplegaron índices, Functions ni frontend; no se ejecutaron migraciones ni datos remotos.
 - Los gates productivos pendientes de E3 no cambian.
 
-IUX-02B queda listo para revisión local. IUX-02 completo permanece abierto hasta la validación
-coordinada con IUX-01 y la autorización separada de habilitación.
+IUX-02B queda implementado, validado técnicamente en local y versionado. IUX-02 completo permanece
+abierto hasta la habilitación y validación coordinada/productiva con IUX-01, autorizadas por separado.

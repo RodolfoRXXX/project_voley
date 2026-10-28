@@ -2,13 +2,14 @@
 
 ## Estado de la ficha
 
-- Estado: **CIERRE TÉCNICO LOCAL CONFIRMADO Y VERSIONADO — INTEGRACIÓN EN DEV PENDIENTE**.
+- Estado: **CIERRE TÉCNICO LOCAL CONFIRMADO, VERSIONADO E INTEGRADO EN DEV**.
 - Responsable: pendiente de asignación.
 - Fecha de cierre técnico local: 2026-10-28.
 - Checkpoint de implementación: `dev@5def9ea5a7d4dd7472880f920032fa51843d00c8`.
 - Etapa: **Interetapa UX móvil (`IUX`) entre E3 y E4**; no renumera etapas, no cierra E3 y no habilita E4.
 - Naturaleza: ficha definida y adoptada documentalmente por D5-061; implementación versionada en
-  `f88f47f` y `52e20eb`, todavía sin despliegue ni habilitación productiva.
+  `f88f47f` y `52e20eb`, e integrada mediante `21060db`; todavía sin despliegue ni habilitación
+  productiva.
 
 El alcance visual, la cobertura funcional inicial `IUX-N20` + `IUX-N31` y la arquitectura global
 IUX-02 están adoptados por D5-061. `IUX-N30` queda fuera. IUX-01 consume localmente la consulta real
@@ -300,7 +301,7 @@ presupuesto/rendimiento y habilitación coordinada.
 
 ## 23. Declaración final
 
-- Estado final: **CIERRE TÉCNICO LOCAL CONFIRMADO Y VERSIONADO — INTEGRACIÓN EN DEV PENDIENTE**.
+- Estado final: **CIERRE TÉCNICO LOCAL CONFIRMADO, VERSIONADO E INTEGRADO EN DEV**.
 - Implementación: **correcciones UAT `f88f47f`; dashboard mobile-first `52e20eb`**.
 - No quedan decisiones de diseño bloqueantes para revisar el cambio. El recorrido UAT informado por
   el usuario funciona sin errores y la dirección visual general es satisfactoria. Estas confirmaciones

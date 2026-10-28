@@ -2,11 +2,14 @@
 
 ## Estado
 
-- **Resultado:** cierre técnico local confirmado y versionado; integración en `dev` pendiente.
+- **Resultado:** cierre técnico local confirmado, versionado e integrado en `dev`.
 - **Rama:** `feat/iux-01-dashboard-mobile-first`.
 - **Checkpoint:** `dev@5def9ea5a7d4dd7472880f920032fa51843d00c8`, que contiene IUX-02A e IUX-02B.
 - **Fecha de cierre técnico local:** 2026-10-28.
 - **Commits de implementación:** `f88f47f` (correctivos UAT) y `52e20eb` (presentación IUX-01).
+- **Integración local:** merge `21060dbc82aaef4e5036f37e14fd4dfb3903676b`, padres
+  `5def9ea5a7d4dd7472880f920032fa51843d00c8` y
+  `8979ec41654f34f41e37f518d4962ac289350cad`.
 - **Límites:** sin despliegue, backfill remoto, datos productivos ni
   habilitación productiva. `ENABLE_DASHBOARD_TASK_PROJECTION` continúa deshabilitado por defecto.
 

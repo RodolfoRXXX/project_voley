@@ -84,6 +84,7 @@ test("IUX-02B lists authorized N20/N31 with exact total, stable pages, health an
   const { projectId } = assertSafeFirebaseTestEnvironment(process.env); assert.equal(projectId, SYNTHETIC_DATA.projectId);
   const admin = require("firebase-admin"); const app = admin.initializeApp({ projectId }, "iux-02b-query"); const db = app.firestore();
   const prefix = "iux-02b-q-"; const ownerId = `${prefix}owner`; const otherId = `${prefix}other`;
+  const noContextId = `${prefix}no-context`;
   const at = admin.firestore.Timestamp.fromDate(new Date("2026-10-26T12:00:00Z"));
   const contexts = [0, 1].map((index) => ({ groupId: `${prefix}g${index}`, seasonId: `${prefix}s${index}`, name: `Grupo ${index}` }));
   const tasks = Array.from({ length: 12 }, (_, index) => ({ kind: index % 2 ? "N31" : "N20", resourceId: `${prefix}r${String(index).padStart(2, "0")}`,
@@ -111,6 +112,12 @@ test("IUX-02B lists authorized N20/N31 with exact total, stable pages, health an
     const empty = await query.list(otherId, { coverage: "N20_N31_V1" });
     assert.equal(empty.coverage.health, "READY"); assert.equal(empty.totalTasks, 0); assert.deepEqual(empty.items, []);
     await assert.rejects(query.list(otherId, { coverage: "N20_N31_V1", cursor: first.nextCursor }), (error) => error.reason === "INVALID_CURSOR");
+    await db.doc(`users/${noContextId}`).set({ email: `${noContextId}@example.invalid`, createdAt: at });
+    const noContext = await query.list(noContextId, { coverage: "N20_N31_V1" });
+    assert.equal(noContext.coverage.health, "READY"); assert.equal(noContext.coverage.complete, true);
+    assert.equal(noContext.coverage.generationId, "no-contexts-v1"); assert.equal(noContext.totalTasks, 0);
+    assert.deepEqual(noContext.items, []);
+    await assert.rejects(query.list(noContextId, { coverage: "N20_N31_V1", cursor: first.nextCursor }), (error) => error.reason === "INVALID_CURSOR");
 
     await db.doc(`dashboardTaskScopes/${contexts[0].groupId}`).update({ status: "DIRTY" });
     let state = await query.list(ownerId, { coverage: "N20_N31_V1" });
@@ -141,7 +148,7 @@ test("IUX-02B lists authorized N20/N31 with exact total, stable pages, health an
     const disabled = createFirestoreDashboardTaskQuery({ db, cursorSecret: SECRET, projectionEnabled: false });
     await assert.rejects(disabled.list(ownerId, { coverage: "N20_N31_V1" }), (error) => error.reason === "PROJECTION_DISABLED");
     await assert.rejects(query.list(`${prefix}missing`, { coverage: "N20_N31_V1" }), (error) => error.reason === "PROJECTION_NOT_READY");
-  } finally { await cleanup(db, prefix, [ownerId, otherId]); await app.delete(); }
+  } finally { await cleanup(db, prefix, [ownerId, otherId, noContextId]); await app.delete(); }
 });
 
 test("IUX-02B revalidates delegated N31 audience, self-review and revocation without exposing stale items", async () => {

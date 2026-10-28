@@ -12,7 +12,6 @@ const envFlag = (name, defaultValue = true) => {
 const ENABLE_ON_MATCH_DEADLINE = envFlag("ENABLE_ON_MATCH_DEADLINE", true);
 const ENABLE_ON_MATCH_START = envFlag("ENABLE_ON_MATCH_START", true);
 const ENABLE_ON_PENDING_ALERTS_MAINTENANCE = envFlag("ENABLE_ON_PENDING_ALERTS_MAINTENANCE", true);
-const ENABLE_DASHBOARD_TASK_PROJECTION = envFlag("ENABLE_DASHBOARD_TASK_PROJECTION", false);
 
 // Exportar triggers directamente
 exports.onParticipationCreate = require("./src/triggers/onParticipationCreate");
@@ -31,11 +30,9 @@ exports.onTournamentTeamPendingAlertsSync = require("./src/triggers/onTournament
 if (ENABLE_ON_PENDING_ALERTS_MAINTENANCE) {
   exports.onPendingAlertsMaintenance = require("./src/triggers/onPendingAlertsMaintenance");
 }
-if (ENABLE_DASHBOARD_TASK_PROJECTION) {
-  exports.onDashboardTaskOutboxCreate = require("./src/triggers/onDashboardTaskOutboxCreate");
-  exports.onDashboardTaskProjection = require("./src/triggers/onDashboardTaskProjection");
-  exports.onDashboardTaskReconciliation = require("./src/triggers/onDashboardTaskReconciliation");
-}
+exports.onDashboardTaskOutboxCreate = require("./src/triggers/onDashboardTaskOutboxCreate");
+exports.onDashboardTaskProjection = require("./src/triggers/onDashboardTaskProjection");
+exports.onDashboardTaskReconciliation = require("./src/triggers/onDashboardTaskReconciliation");
 exports.ensureMyAccount = require("./callables/ensureMyAccount");
 exports.getMyAccount = require("./callables/getMyAccount");
 exports.ensureMyPerson = require("./callables/ensureMyPerson");

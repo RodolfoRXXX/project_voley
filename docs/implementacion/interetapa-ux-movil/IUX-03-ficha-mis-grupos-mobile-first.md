@@ -2,7 +2,7 @@
 
 ## Estado de la ficha
 
-- Estado: **LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA**.
+- Estado: **CERRADO EN SU ALCANCE LOCAL — UAT HUMANA APROBADA**.
 - Responsable: a designar.
 - Fecha: 2026-10-31.
 - Rama/checkpoint de relevamiento: `dev@0cd1a7782a01c3439eee812db95c942d1cb6b8fd`.
@@ -20,7 +20,7 @@ permisos, Agregados, persistencia, cierre de IUX/E3 o habilitación de E4.
 - Casos incluidos: consulta unificada de Grupos administrados y participados; filtros de relación;
   historial plegable; estados de carga/error/vacío/Persona; acceso secundario a creación; navegación
   sólo a destinos autorizados; ruta member-safe “Mi participación”; corrección acotada de paginación.
-- Exclusiones: búsqueda; pendientes por tarjeta; métricas o contadores globales; Plan/Suscripción;
+- Exclusiones: búsqueda; nuevas clases de pendientes fuera de N20/N31; métricas globales; Plan/Suscripción;
   cambio del límite de creación; navbar/sidebar; rediseño del detalle de Grupo; roles/permisos;
   nuevas capabilities; modificación de dominio; proyección/backend nuevo por defecto; despliegue.
 - Normativa relacionada: Documento 5 §§5.2–5.18, §7.5A, D5-025/026/033–036/040/058–062; E2-01,
@@ -116,7 +116,8 @@ No se modifica ningún Agregado, no hay persistencia nueva y no se producen efec
 - No cambia estado de dominio ni persistencia.
 - Ownership, Membresía, historia y capabilities conservan sus fuentes de verdad.
 - Las secciones actuales separadas dejan de ser la presentación principal, no su autoridad.
-- No se crean contadores, eventos, colecciones, índices ni permisos.
+- No se crean contadores, eventos, colecciones, índices ni permisos; los badges reutilizan los
+  contadores contextuales derivados de IUX-02.
 
 ### Criterios de aceptación
 
@@ -157,12 +158,13 @@ No se modifica ningún Agregado, no hay persistencia nueva y no se producen efec
 ### Composición aprobada
 
 - Encabezado: “Mis grupos”, sin explicación de ownership, roles globales ni detalles internos.
-- Filtros: `Todos` (inicial), `Administro`, `Participo`; sin contadores.
+- Filtros: `Todos` (inicial), `Administro`, `Participo`; sin contadores dentro de los filtros.
 - Tarjeta: nombre; deporte; estado (`Activo` o `Archivado` sólo en Historial); etiquetas de relación;
   chevron; enlace completo.
 - Historial: `details`/disclosure accesible o componente equivalente, contraído inicialmente.
 - Crear grupo: enlace secundario separado de la lista.
-- Sin búsqueda, pendientes por tarjeta ni métricas nuevas.
+- Sin búsqueda, N30, métricas nuevas ni acciones embebidas en tarjeta. La ampliación UAT agrega un
+  badge informativo N20/N31 cuando la cobertura contextual IUX-02 está completa.
 
 ### Destinos adoptados
 
@@ -382,7 +384,8 @@ que acciones, errores y accesos fueron preservados.
 
 Los nombres del helper/componente nuevo pueden ajustarse sin cambiar responsabilidades. No están
 previstos cambios en navbar/sidebar, Rules, índices, colecciones, detalle Owner, Economía interna,
-búsqueda, pendientes por tarjeta, métricas ni infraestructura de proyección.
+búsqueda, métricas ni infraestructura de proyección. El badge N20/N31 aprobado en UAT reutiliza
+la proyección IUX-02 y no altera esta exclusión de infraestructura.
 
 ## 21. Checkpoint y rollback
 
@@ -415,9 +418,52 @@ del error compatible— siempre que respeten contratos, autorización y resultad
 
 ### Declaración actual
 
-- Estado: **LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA**.
-- Criterios funcionales incumplidos: ninguno en definición.
-- Deuda a corregir dentro del incremento: dos consumidores con `pageSize: 50` contra máximo 20,
-  siempre con continuación de páginas.
-- La adopción y su versionado documental están autorizados; código, datos, deploy y cambio de dominio
-  requieren autorización separada.
+- Estado: **CERRADO EN SU ALCANCE LOCAL — UAT HUMANA APROBADA**.
+- La aprobación recibida cubre Mis grupos, Mi participación, historial, estados sin Persona,
+  separación de Economía personal/capabilities, pendientes N20/N31 por tarjeta y el recorrido local
+  con frontend compilado en `demo-iux01-uat`.
+- No se declara prueba en Android real, rendimiento productivo, ausencia definitiva de fugas,
+  habilitación productiva de IUX-02 ni despliegue.
+
+## 23. Ampliación aprobada durante UAT — resúmenes y pendientes contextuales
+
+### Resúmenes
+
+- Administración muestra `usados/límite`. `usados` es la cantidad de Grupos propios devueltos por
+  `listOwnGroups`, sin filtrar archivados; `límite` es el guard técnico provisional vigente (`1`).
+  Archivar no libera el guard. No se presenta Plan ni contratación.
+- Participación muestra la cantidad de `groupId` actuales únicos sólo al terminar todas las páginas.
+  Falta de Persona muestra `—` y una ayuda contextual discreta con acceso a Ficha personal. Loading,
+  error y ausencia de Persona no se convierten en cero.
+
+### Contrato mínimo de badges
+
+Se amplía la salida existente de `listMyDashboardTasks` con el campo opcional:
+
+```text
+groupTaskCounts?: Array<{ groupId: string, count: integer >= 0 }>
+```
+
+El campo existe únicamente cuando `coverage.complete == true` y `coverage.health == READY`; debe
+estar ausente junto con `totalTasks` para `UPDATING`, `REBUILDING` o `DEGRADED`. Cada cantidad es la
+suma autorizada N20+N31 del contador contextual de la generación activa. La unión de ownership y
+capability se resuelve antes de sumar, por lo que una tarea no se duplica. Los ceros pueden formar
+parte del contrato, pero la tarjeta sólo muestra badge para un valor positivo.
+
+La vista realiza una consulta bajo demanda al montar o al reintentar. Consume los contadores de
+todos los contextos autorizados sin paginar items ni agrupar la primera página; no hace llamadas por
+tarjeta, polling, listeners, barridos de solicitudes/pagos, writes ni proyección adicional. Ante
+carga, error o cobertura incompleta oculta badges sin agregar una caja global. El listado permanece
+utilizable y una actualización/reentrada a la vista vuelve a intentar la consulta independiente.
+El badge es texto dentro del único enlace de la tarjeta y no ejecuta decisiones.
+
+### Pruebas agregadas
+
+- más de una página global con conteos exactos por varios Grupos;
+- overlap Owner+capability sin duplicación;
+- capability revocada y cobertura actualizándose sin `groupTaskCounts`;
+- ausencia de contextos con arreglo vacío y total cero sólo bajo cobertura READY;
+- presentación móvil/escritorio, badge positivo y ausencia bajo incertidumbre;
+- Grupo activo y archivado consumen el cupo técnico;
+- participación completa, sin Persona y con error conservan estados distintos;
+- Historial vacío/multipágina y períodos CURRENT/HISTORICAL conservan cursor y `rowKey`.

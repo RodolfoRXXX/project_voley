@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { createMembershipCallableHandler, membershipIdentityFromCallableContext, toMembershipHttpsError } = require("../../src/memberships/infrastructure/membershipCallable");
-const { MembershipAlreadyExistsError, MembershipNotActiveError, MembershipNotFoundError, MembershipPersonRequiredError, MembershipReactivationRequiredError, MembershipSeasonNotModifiableError, MembershipUnauthenticatedError } = require("../../src/memberships/application/membershipErrors");
+const { MembershipAlreadyExistsError, MembershipCurrentNotAccessibleError, MembershipNotActiveError, MembershipNotFoundError, MembershipPersonRequiredError, MembershipReactivationRequiredError, MembershipSeasonNotModifiableError, MembershipUnauthenticatedError } = require("../../src/memberships/application/membershipErrors");
 
 test("UID se deriva sólo del token y el payload validado no lo sustituye", async () => {
   const handler = createMembershipCallableHandler({
@@ -21,6 +21,7 @@ test("reasons se mapean a códigos HTTPS normativos", () => {
   assert.equal(toMembershipHttpsError(new MembershipAlreadyExistsError()).code, "already-exists");
   assert.equal(toMembershipHttpsError(new MembershipUnauthenticatedError()).code, "unauthenticated");
   assert.equal(toMembershipHttpsError(new MembershipNotFoundError()).code, "not-found");
+  assert.equal(toMembershipHttpsError(new MembershipCurrentNotAccessibleError()).code, "not-found");
   assert.equal(toMembershipHttpsError(new MembershipReactivationRequiredError()).code, "failed-precondition");
   assert.equal(toMembershipHttpsError(new MembershipNotActiveError()).code, "failed-precondition");
   assert.equal(toMembershipHttpsError(new MembershipSeasonNotModifiableError()).code, "failed-precondition");

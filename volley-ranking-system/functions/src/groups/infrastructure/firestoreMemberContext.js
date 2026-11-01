@@ -72,7 +72,7 @@ function createFirestoreMemberContext({ db, groupRepository, seasonRepository })
             || season.groupId !== groupId || season.estado !== "abierta") {
             throw new MemberContextIncompatibleError("Open Season guard reference is inconsistent");
           }
-          return Object.freeze({ id: season.seasonId, groupId: season.groupId, estado: season.estado });
+          return Object.freeze({ id: season.seasonId, groupId: season.groupId, nombre: season.nombre, estado: season.estado });
         });
       } catch (error) {
         throw mapContextError(error);

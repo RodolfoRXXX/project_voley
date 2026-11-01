@@ -25,6 +25,7 @@ const MEMBERSHIP_HTTPS_CODES = Object.freeze({
   IDEMPOTENCY_CONFLICT: "aborted",
   INCOMPATIBLE_STATE: "failed-precondition",
   CONFLICT: "aborted",
+  CURRENT_MEMBERSHIP_NOT_ACCESSIBLE: "not-found",
   DEPENDENCY_NOT_CONFIGURED: "failed-precondition",
   DEPENDENCY_UNAVAILABLE: "unavailable",
   INTERNAL_ERROR: "internal",

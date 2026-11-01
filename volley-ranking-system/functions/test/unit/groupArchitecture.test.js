@@ -56,14 +56,15 @@ test("alta directa legada fue retirada y las superficies legadas excluyen schema
   assert.match(read("volley-ranking-system/firestore.rules"), /schemaVersion", null\) == null/);
 });
 
-test("frontend cubre vacío, loading, doble submit, errores, Owner y estado deportivo vacío", () => {
+test("frontend cubre vacío unificado, carga parcial, doble submit, errores y Owner", () => {
   const list = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/page.tsx");
   const form = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/new/page.tsx");
   const detail = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/page.tsx");
   const frame = read("volley-ranking-frontend/src/components/groups/GroupFrame.tsx");
   const navigation = read("volley-ranking-frontend/src/components/groups/GroupContextNavigation.tsx");
-  assert.match(list, /Todavía no tenés un Grupo propio/);
-  assert.match(list, /GroupLoading/);
+  assert.match(list, /Todavía no tenés grupos/);
+  assert.match(list, /SourceState/);
+  assert.match(list, /cobertura todavía es parcial/);
   assert.match(form, /sendingRef\.current|randomUUID|aria-live|role="alert"/);
   for (const reason of ["VALIDATION_FAILED", "PROVISIONAL_LIMIT_REACHED", "CONFLICT", "DEPENDENCY_UNAVAILABLE", "NOT_AUTHORIZED"]) {
     assert.match(read("volley-ranking-frontend/src/services/groupsService.ts"), new RegExp(reason));

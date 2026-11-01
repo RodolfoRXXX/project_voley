@@ -101,7 +101,7 @@ function createMemberGroupContextAdapter({ memberContext }) {
         const season = await memberContext.getOpenSeasonContextForMembership({ groupId });
         if (!season) return null;
         if (season.groupId !== groupId || season.estado !== "abierta" || typeof season.id !== "string"
-          || !season.id || season.id.includes("/")) {
+          || !season.id || season.id.includes("/") || typeof season.nombre !== "string" || !season.nombre) {
           throw new MembershipIncompatibleStateError("Member-safe open Season context is invalid");
         }
         return season;

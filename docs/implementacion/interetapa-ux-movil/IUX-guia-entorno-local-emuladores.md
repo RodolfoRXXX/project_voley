@@ -74,3 +74,72 @@ argumento `--project`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID` y `NEXT_PUBLIC_FUNCTION
 
 La proyección continúa deshabilitada por defecto fuera de este archivo local. Esta preparación no
 autoriza backfill remoto, despliegue ni uso de datos productivos.
+
+## UAT liviana con frontend compilado
+
+Esta variante reduce recompilaciones y evita mezclar el consumo del bundler con el de Functions.
+Usar un solo proyecto demo (por ejemplo `demo-iux01-uat`) en `.env.local`, `.env.<projectId>`, el
+argumento `--project` y `NEXT_PUBLIC_FUNCTIONS_BASE_URL`.
+
+1. Detener servidores Next, emuladores y suites anteriores. Confirmar que
+   `ENABLE_DASHBOARD_TASK_PROJECTION=true`; N20/N31 necesita sus productores y workers.
+2. Desde `volley-ranking-frontend`, ejecutar `npm run build`. Next incorpora las variables
+   `NEXT_PUBLIC_*` durante este paso: verificar antes del build el project ID, el host Emulator y
+   la URL de Functions. No cambiar esas variables entre `build` y `start`.
+3. Iniciar una única instancia de Auth, Firestore y Functions Emulator con el mismo `demo-*`. Para
+   preservar la UAT vigente, importar el snapshot y exportar sobre él al detener normalmente:
+
+   ```bash
+   cd volley-ranking-system
+   firebase emulators:start --project demo-iux01-uat \
+     --only auth,firestore,functions --config firebase.json \
+     --import /tmp/demo-iux01-uat-current \
+     --export-on-exit /tmp/demo-iux01-uat-current
+   ```
+
+   Esta terminal permanece abierta. No iniciar otra instancia Emulator sobre los mismos puertos.
+
+4. Después de que Functions informe que cargó `.env.demo-iux01-uat`, inicializar o reconciliar la
+   generación IUX-02. No existe un comando `tasks`: el operador canónico es el script de Functions
+   siguiente y termina por sí solo. Es idempotente sobre las fuentes N20/N31 y no reemplaza
+   contadores manualmente:
+
+   ```bash
+   cd volley-ranking-system/functions
+   FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 \
+   GCLOUD_PROJECT=demo-iux01-uat \
+   npm run iux-02a:backfill:emulator
+   ```
+
+   El resultado operativo debe mostrar `generationId: "live-v1"`, `dirtyScopes: 0`,
+   `degradedScopes: 0`, `failedEvents: 0` y `processingEvents: 0`. `users: 0` sólo es válido si
+   ninguna fuente canónica tiene destinatarios accionables. Si existen N20/N31 y sigue en cero,
+   revisar primero compatibilidad de ownership/cuentas y los errores del outbox; no editar la
+   proyección ni sus contadores.
+
+5. En otra terminal, iniciar solamente el artefacto compilado:
+
+   ```bash
+   cd volley-ranking-frontend
+   npm run start -- --hostname 127.0.0.1 --port 3000
+   ```
+
+   Esta terminal también permanece abierta durante la UAT.
+
+6. Usar perfiles aislados del navegador para las dos sesiones y datos sintéticos del mismo
+   Emulator. El procesamiento incremental de outbox y la reconciliación viven dentro de Functions
+   Emulator de la terminal 1; no requieren otro daemon. Mantener
+   `ENABLE_DASHBOARD_TASK_PROJECTION=true`.
+7. Recorrer una vez Dashboard, Mis grupos y Economía con ambas sesiones; repetir el mismo recorrido
+   y dejar 30 segundos de inactividad. No ejecutar simultáneamente build, suites o una segunda
+   instancia de Next/Emulator. La ejecución serial de depuración sirve para diagnóstico funcional,
+   no como prueba de rendimiento.
+
+Para detener, usar `Ctrl+C` primero en `next start` y después en Emulator. Esperar el mensaje
+`Export complete` antes de cerrar la terminal 1. También puede preservarse una sesión ya iniciada
+con `firebase emulators:export /tmp/demo-iux01-uat-current --project demo-iux01-uat` desde una tercera
+terminal; este comando no debe ejecutarse simultáneamente con otro export.
+
+Para acceso desde Android real, repetir el procedimiento con `--hostname 0.0.0.0` y la IP LAN en
+las variables indicadas anteriormente. El selector de fecha nativo y la simulación táctil deben
+validarse en el dispositivo; el modo adaptable de escritorio no sustituye esa comprobación.

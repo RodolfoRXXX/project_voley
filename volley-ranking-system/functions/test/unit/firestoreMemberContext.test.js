@@ -10,7 +10,7 @@ const {
 const { createFirestoreMemberContext } = require("../../src/groups/infrastructure/firestoreMemberContext");
 
 const createdAt = { toDate: () => new Date("2026-08-30T12:00:00.000Z") };
-function season(id, groupId = "group-1") { return { seasonId: id, groupId, estado: "abierta" }; }
+function season(id, groupId = "group-1") { return { seasonId: id, groupId, nombre: "Temporada 2026", estado: "abierta" }; }
 function setup({ seasons = [], guard = null, readError = null } = {}) {
   const calls = [];
   const query = {
@@ -52,7 +52,7 @@ function setup({ seasons = [], guard = null, readError = null } = {}) {
 test("contexto abierto consulta groupId + abierta + limit(2) y correlaciona uno con guard", async () => {
   const { calls, context } = setup({ seasons: [season("season-1")], guard: "season-1" });
   assert.deepEqual(await context.getOpenSeasonContextForMembership({ groupId: "group-1" }), {
-    id: "season-1", groupId: "group-1", estado: "abierta",
+    id: "season-1", groupId: "group-1", nombre: "Temporada 2026", estado: "abierta",
   });
   assert.deepEqual(calls.filter(([kind]) => kind === "where" || kind === "limit"), [
     ["where", "groupId", "==", "group-1"],

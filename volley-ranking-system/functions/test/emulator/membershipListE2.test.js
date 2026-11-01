@@ -118,6 +118,30 @@ test("E2-04 lista Grupos operativos propios con cursor, integridad y capacidades
       }
     });
 
+    await t.test("IUX-03 contexto por groupId acredita sólo el vínculo propio y no escribe", async () => {
+      const membershipBefore = await db.collection("memberships").doc(membershipIds[0]).get();
+      const activeGuardBefore = await db.collection("activeMembershipGuards").doc(activeMembershipGuardId(groupIds[0], memberPersonId)).get();
+      const result = await call(functionsHost, projectId, "getMyCurrentGroupMembershipContext", { groupId: groupIds[0] }, member.idToken);
+      assert.equal(result.status, 200, JSON.stringify(result.body));
+      assert.deepEqual(Object.keys(result.body.result).sort(), ["group", "membership", "season"]);
+      assert.deepEqual(Object.keys(result.body.result.group).sort(), ["deporte", "estado", "id", "nombre", "viewerIsOwner"]);
+      assert.deepEqual(Object.keys(result.body.result.season).sort(), ["estado", "id", "nombre"]);
+      assert.deepEqual(Object.keys(result.body.result.membership).sort(), ["estado", "fechaIngreso", "id"]);
+      assert.equal(result.body.result.group.id, groupIds[0]);
+      assert.equal(result.body.result.season.id, seasonIds[0]);
+      assert.equal(result.body.result.membership.id, membershipIds[0]);
+      assert.equal(JSON.stringify(result.body.result).includes(memberPersonId), false);
+      const membershipAfter = await db.collection("memberships").doc(membershipIds[0]).get();
+      const activeGuardAfter = await db.collection("activeMembershipGuards").doc(activeMembershipGuardId(groupIds[0], memberPersonId)).get();
+      assert.equal(membershipAfter.updateTime.isEqual(membershipBefore.updateTime), true);
+      assert.equal(activeGuardAfter.updateTime.isEqual(activeGuardBefore.updateTime), true);
+
+      const foreign = await call(functionsHost, projectId, "getMyCurrentGroupMembershipContext", { groupId: groupIds[0] }, globalAdmin.idToken);
+      assert.equal(foreign.body?.error?.details?.reason, "CURRENT_MEMBERSHIP_NOT_ACCESSIBLE");
+      const invalid = await call(functionsHost, projectId, "getMyCurrentGroupMembershipContext", { groupId: groupIds[0], personId: memberPersonId }, member.idToken);
+      assert.equal(invalid.body?.error?.details?.reason, "VALIDATION_FAILED");
+    });
+
     await t.test("cursor válido caller-crafted con checksum recalculado nunca cambia la Persona derivada", async () => {
       const craftedCursor = encodeMyGroupsCursor({
         seconds: joinedAt.seconds,

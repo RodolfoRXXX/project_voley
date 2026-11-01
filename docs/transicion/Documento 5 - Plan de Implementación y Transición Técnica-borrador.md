@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - IUX-03 adoptado por D5-062 - 31 de octubre de 2026*
+*Borrador consolidado - cierre local IUX-03 registrado por D5-063 - 1 de noviembre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -39,7 +39,7 @@ Estado operativo del plan:
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
 - `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
-- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01 E IUX-02A/B INTEGRADOS EN LOCAL; IUX-02 SIN HABILITACIÓN PRODUCTIVA; IUX-03 LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA`;
+- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01 E IUX-03 CERRADOS LOCALMENTE; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -1991,7 +1991,7 @@ el plan, pero no obliga a ejecutarlas en una cascada rígida ni a publicarlas co
 | 1 | Usuario, Persona y autorización | `CERRADA` | Cierre de Etapa 0 | Identidad separada y autorización contextual inicial |
 | 2 | Grupo, Membresía, Solicitud y Temporada | `CERRADA CON RIESGO RESIDUAL ACEPTADO` | Persona y actor identificables | Fuentes de verdad organizativas separadas |
 | 3 | Pago deportivo | `ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; HABILITACIÓN PRODUCTIVA PENDIENTE; ETAPA ABIERTA` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
-| IUX | Interetapa UX móvil | `IUX-01 E IUX-02A/B INTEGRADOS TÉCNICAMENTE EN LOCAL; IUX-02 ABIERTO SIN HABILITACIÓN PRODUCTIVA; IUX-03 LISTO PARA IMPLEMENTAR` | Preservar contratos, autorizaciones y gates E3; no habilita E4 | Superficies mobile-first por incrementos acotados, sin renumeración |
+| IUX | Interetapa UX móvil | `IUX-01 E IUX-03 CERRADOS LOCALMENTE; IUX-02A/B INTEGRADOS TÉCNICAMENTE EN LOCAL; IUX-02 ABIERTO SIN HABILITACIÓN PRODUCTIVA` | Preservar contratos, autorizaciones y gates E3; no habilita E4 | Superficies mobile-first por incrementos acotados, sin renumeración |
 | 4 | Partido-Torneo y CU-075 | `ROADMAP` | Modelo de Partido, contratos y pruebas | Resultado original y estado competitivo separados |
 | 5 | Estadísticas, Rendimiento, Actividad y recuperación | `ROADMAP` | Cada fuente original correspondiente | Proyecciones reconstruibles y procesos recuperables |
 | 6 | Comercial | `ROADMAP` | Usuario estable y consultas deportivas públicas | Capacidades y límites sin otorgar permisos deportivos |
@@ -2448,7 +2448,7 @@ El siguiente incremento funcional es:
     notificaciones/campana y navegación global. Su registro como objetivo posterior no selecciona
     candidatos, canales, prioridad, vigencia, persistencia ni autoriza implementación automática.
 - Tercer incremento: `IUX-03 — “Mis grupos” mobile-first y acceso “Mi participación”`, adoptado por
-    D5-062 y `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`. Unifica por `groupId` los
+    D5-062 y cerrado en su alcance local por D5-063, con UAT humana aprobada. Unifica por `groupId` los
     Grupos administrados y participados sin confundir ownership, Persona, Membresía o capabilities;
     publica fuentes independientes con cobertura parcial explícita; conserva el límite técnico
     provisional de creación; y presenta historial lazy sin colapsar cronología.
@@ -2460,10 +2460,15 @@ El siguiente incremento funcional es:
     Temporada y vínculo mínimos, no enumerable y sin persistencia nueva. Se requiere porque el
     listado paginado no aporta nombre de Temporada ni es un guard directo apropiado para deep-link.
     La ruta no puede depender de un guard Owner; resumen Owner y Economía conservan sus guards.
-- Exclusiones IUX-03: navbar/sidebar, rediseño del detalle Owner, búsqueda, pendientes por tarjeta,
-    contadores/métricas globales, Plan/contratación, permisos, Rules, proyección e infraestructura
-    nueva. Los consumidores que hoy piden 50 Membresías deberán usar el máximo 20 y continuar todos
-    los cursores; reducir el número sin paginar no acredita cobertura.
+- Ampliación UAT IUX-03: cada tarjeta puede mostrar un badge positivo N20/N31 sólo con cobertura
+    IUX-02 completa, usando `groupTaskCounts` de la consulta global autorizada. No hay consulta por
+    tarjeta, conteo desde una primera página, proyección adicional ni cero supuesto ante error.
+- Exclusiones IUX-03: navbar/sidebar, rediseño del detalle Owner, búsqueda, N30, contadores/métricas
+    globales, Plan/contratación, permisos, Rules, proyección e infraestructura nueva. Los consumidores
+    que pedían 50 Membresías usan el máximo 20 y continúan todos los cursores.
+- Cierre local IUX-03: implementación, evidencia técnica y UAT humana quedan acreditadas para el
+    entorno demo y frontend compilado. La mejora de velocidad y consumo observada es local; no
+    acredita rendimiento productivo, ausencia definitiva de fugas ni prueba en Android real.
 - Continuidad E3: permanecen íntegros los gates productivos de E3-09/E3-10 —UAT, retiro remoto
     verificado de `onMatchClose`, compatibilidad, despliegue coordinado, reconciliación real,
     smoke/UAT y rollback—. IUX no los satisface ni los relaja.
@@ -2675,6 +2680,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-060 | Selecciona para la cobertura inicial de Pendientes una tarea por solicitud de ingreso accionable (`IUX-N20`) y una por entrega de pago revisable (`IUX-N31`) | APROBADA | IUX / IUX-01 / IUX-02 | `IUX-N30` y todos los demás candidatos quedan fuera; campana, destacados, prioridad y vigencia permanecen sin asignar. La selección fue funcional y no aprobó por sí sola implementación, consulta física, índices, persistencia ni despliegue; D5-061 resuelve posteriormente la arquitectura |
 | D5-061 | Adopta para IUX-02 la arquitectura B y su addendum: proyección derivada por usuario N20+N31, scope/revisión y outbox atómicos, proyector idempotente con avance contiguo, contadores por usuario/Grupo, consulta backend autorizada, reconstrucción/reconciliación, retención operativa y cadencia de pantalla | APROBADA | IUX / IUX-01 / IUX-02 / Documentos 2-3-4 | IUX-02 permanece una ficha con cortes internos IUX-02A/IUX-02B y se ejecuta antes de la integración visual IUX-01. Adopta retención de 30 días sin expirar tareas vigentes y objetivos provisionales 30 s / 5 min / 24 h sujetos a medición. IUX-01/IUX-02 quedan `LISTOS PARA IMPLEMENTAR — REQUIEREN AUTORIZACIÓN SEPARADA`; habilitación coordinada exige backfill, seguridad, rendimiento, pruebas y UAT. No autoriza código/producción, no satisface gates E3 ni habilita E4 |
 | D5-062 | Adopta `IUX-03 — “Mis grupos” mobile-first y acceso “Mi participación”`, sus decisiones D01–D05 y el contrato contextual mínimo de Membresía propia por Grupo; corrige además la fotografía de integración técnica local de IUX-01 e IUX-02A/B | APROBADA | IUX / IUX-03 / `/dashboard/groups` | IUX-03 queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`: unifica relaciones sin inferencias, conserva resultados acreditados con cobertura parcial explícita, historial lazy por `rowKey`, orden español estable, límite técnico provisional y destinos según autorización; agrega la ruta member-safe sin administración ni permisos nuevos y resuelve capabilities sólo al abrir. No crea proyección/persistencia/Rules/Plan. IUX-01 e IUX-02A/B están integrados técnicamente en local, pero IUX-02 completo sigue abierto sin habilitación productiva. No cierra IUX/E3 ni habilita E4 |
+| D5-063 | Registra el cierre de `IUX-03` en su alcance local, la UAT humana aprobada y la ampliación de badges contextuales N20/N31 por tarjeta reutilizando los contadores autorizados de IUX-02 | APROBADA | IUX / IUX-03 / cierre local | IUX-03 queda implementado, validado y aprobado localmente; la observación de mejor velocidad/consumo con frontend compilado no caracteriza producción ni descarta fugas de larga duración. No acredita Android real. IUX-02 conserva pendientes backfill/seguridad/operación/rendimiento/rollout productivos; no cierra IUX/E3 ni habilita E4 |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -2862,9 +2868,11 @@ explícita, deduplicación por `groupId`, filtros sin contadores completos, hist
 member-safe “Mi participación”. La ruta acredita directamente la Membresía propia y Temporada
 vigente mediante un lector mínimo sin persistencia, conserva salida propia y resuelve capabilities
 económicas sólo al abrir. Ownership, Membresía y capability permanecen relaciones distintas; no se
-crean permisos, Plan, proyección, Rules ni infraestructura nueva. IUX-03 queda `LISTO PARA
-IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`.
+crean permisos, Plan, proyección, Rules ni infraestructura nueva. D5-063 registra la implementación,
+el cierre local y la UAT humana aprobada, incluida la ampliación de badges N20/N31 por tarjeta con
+los contadores contextuales existentes de IUX-02.
 “Requiere tu atención”, Agenda, notificaciones/campana, navbar/sidebar y roles o permisos permanecen
 fuera del incremento y sujetos a definición posterior. Presupuesto/rendimiento deben medirse durante
-la ejecución y son gates de habilitación, no decisiones de diseño pendientes. Esta adopción no
-autoriza código ni producción, no cierra IUX/E3 y no habilita E4.
+la ejecución y son gates de habilitación, no decisiones de diseño pendientes. La observación local
+de mejor velocidad y consumo no acredita Android real, rendimiento productivo ni ausencia definitiva
+de fugas. IUX-02 conserva sus gates productivos; el cierre no cierra IUX/E3 ni habilita E4.

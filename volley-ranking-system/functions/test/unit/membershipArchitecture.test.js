@@ -63,11 +63,22 @@ test("E2-04 usa puertos member-safe, un único callable y capacidades internas n
   assert.match(moduleSource, /groups\/infrastructure\/memberContextModule/);
   assert.doesNotMatch(readerSource, /firestore(Group|Season)Repository|openSeasonGuards|collection\("groups"\)|collection\("seasons"\)/);
   assert.match(indexSource, /listMyCurrentGroupMemberships/);
+  assert.match(indexSource, /getMyCurrentGroupMembershipContext/);
   assert.doesNotMatch(indexSource, /getMemberReadableGroupContext|getOpenSeasonContextForMembership/);
   const memberContext = read("volley-ranking-system/functions/src/groups/infrastructure/firestoreMemberContext.js");
   for (const pattern of [/collection\("seasons"\)/, /where\("groupId", "=="/, /where\("estado", "==", "abierta"\)/, /\.limit\(2\)/]) {
     assert.match(memberContext, pattern);
   }
+});
+
+test("IUX-03 lector contextual es callable read-only y no agrega persistencia ni reglas", () => {
+  const callable = read("volley-ranking-system/functions/callables/getMyCurrentGroupMembershipContext.js");
+  const service = read("volley-ranking-system/functions/src/memberships/application/membershipService.js");
+  const reader = read("volley-ranking-system/functions/src/memberships/infrastructure/firestoreMyCurrentGroupMembershipsReader.js");
+  for (const marker of [/validateGetMembershipPayload/, /getMyCurrentGroupMembershipContext/, /getCurrentForGroup/]) assert.match(`${callable}\n${service}\n${reader}`, marker);
+  assert.doesNotMatch(callable, /userId|personId|roles/);
+  assert.doesNotMatch(reader, /transaction\.(set|create|update|delete)|\.add\(/);
+  assert.doesNotMatch(read("volley-ranking-system/firestore.rules"), /currentMembershipContext/);
 });
 
 test("consulta e índice E2-04 conservan orden exacto y no declaran __name__", () => {
@@ -87,11 +98,11 @@ test("consulta e índice E2-04 conservan orden exacto y no declaran __name__", (
   assert.equal(JSON.stringify(membershipIndexes).includes("__name__"), false);
 });
 
-test("dashboard separa ownership y pertenencia sin Firestore ni navegación administrativa member-scoped", () => {
+test("dashboard unifica ownership y pertenencia sin Firestore ni navegación administrativa member-scoped", () => {
   const page = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/page.tsx");
   const section = read("volley-ranking-frontend/src/components/memberships/MyCurrentGroupMembershipsSection.tsx");
   const service = read("volley-ranking-frontend/src/services/membershipsService.ts");
-  assert.match(page, /Grupos que administrás/);
+  for (const marker of [/mergePresentableGroups/, /Administro/, /Participo/, /GroupCard/]) assert.match(page, marker);
   assert.match(section, /Grupos que integrás/);
   assert.match(section, /PERSON_REQUIRED/);
   assert.match(section, /Ver página siguiente/);

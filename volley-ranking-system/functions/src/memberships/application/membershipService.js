@@ -1,12 +1,13 @@
 "use strict";
 
 const { buildMembership, InvalidMembershipStateError } = require("../domain/membership");
-const { toAdministrativeFinalizationPreparation, toAdministrativeFinalizationResult, toFinalizedMembershipDto, toMembershipCargoDetail, toMembershipCargoUpdateResult, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem, toOwnGroupMembershipHistoryItem, toOwnerActiveGroupMemberItem } = require("./membershipDto");
+const { toAdministrativeFinalizationPreparation, toAdministrativeFinalizationResult, toFinalizedMembershipDto, toMembershipCargoDetail, toMembershipCargoUpdateResult, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipContext, toMyCurrentGroupMembershipItem, toOwnGroupMembershipHistoryItem, toOwnerActiveGroupMemberItem } = require("./membershipDto");
 const { decodeMyGroupsCursor, encodeMyGroupsCursor } = require("./membershipCursor");
 const { decodeOwnerGroupMembersCursor, encodeOwnerGroupMembersCursor } = require("./ownerGroupMembersCursor");
 const { encodeOwnGroupMembershipHistoryCursor } = require("./ownGroupMembershipHistoryCursor");
 const {
   MembershipAccountRequiredError,
+  MembershipCurrentNotAccessibleError,
   MembershipDependencyUnavailableError,
   MembershipError,
   MembershipInternalError,
@@ -229,6 +230,29 @@ function createMembershipService({ selfAccountReader, selfPersonContext, ownedGr
         if (error instanceof MembershipError) throw error;
         if (isTransientDependencyError(error)) throw new MembershipDependencyUnavailableError({ cause: error });
         throw new MembershipInternalError({ cause: error });
+      }
+    },
+
+    async getMyCurrentGroupMembershipContext(identity, input) {
+      const operation = "current-membership-context-get";
+      const userId = requireActor(identity);
+      await atStage(operation, "account", () => requireAccount(userId));
+      const person = await atStage(operation, "person", () => requirePerson(userId));
+      if (!myCurrentGroupMembershipsReader || !memberGroupContext) throw new MembershipDependencyUnavailableError();
+      try {
+        const membership = await atStage(operation, "membership", () => myCurrentGroupMembershipsReader.getCurrentForGroup({
+          personId: person.personId,
+          groupId: input.groupId,
+        }));
+        if (!membership) throw new MembershipCurrentNotAccessibleError();
+        const group = await atStage(operation, "group", () => memberGroupContext.getGroup({ groupId: input.groupId, userId }));
+        const season = await atStage(operation, "season", () => memberGroupContext.getOpenSeason({ groupId: input.groupId }));
+        if (!season || season.id !== membership.seasonId) throw new MembershipCurrentNotAccessibleError();
+        return await atStage(operation, "dto", async () => toMyCurrentGroupMembershipContext(membership, group, season));
+      } catch (error) {
+        if (error instanceof MembershipError) throw error;
+        if (isTransientDependencyError(error)) throw new MembershipDependencyUnavailableError({ cause: error });
+        throw internalAt(error, operation, "context");
       }
     },
 

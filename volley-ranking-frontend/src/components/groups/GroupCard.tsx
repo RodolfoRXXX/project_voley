@@ -1,20 +1,20 @@
 import Link from "next/link";
-import type { OwnGroup } from "@/types/OwnGroup";
+import type { PresentableGroup } from "@/services/groupsPresentation.mjs";
 
-export function GroupCard({ group }: { group: OwnGroup }) {
-  const archived = group.estado === "archivado";
+export function GroupCard({ group, actionableTaskCount }: { group: PresentableGroup; actionableTaskCount?: number }) {
+  const href = group.administers ? `/dashboard/groups/${group.groupId}` : `/dashboard/groups/${group.groupId}/membership`;
   return (
-    <article className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-orange-600">Vóley · {archived ? "Archivado" : "Activo"}</p>
-          <h2 className="mt-1 text-xl font-semibold">{group.nombre}</h2>
-          <p className="mt-2 text-sm text-[var(--text-muted)]">{archived ? `Archivado el ${new Date(group.archivedAt).toLocaleDateString("es-AR")}. Disponible sólo para consulta.` : "Sos Owner de este Grupo."}</p>
-        </div>
-        <Link className="inline-flex min-h-11 items-center justify-center rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 focus-visible:outline-2 focus-visible:outline-offset-2" href={`/dashboard/groups/${group.id}`}>
-          {archived ? "Consultar" : "Ver Grupo"}
-        </Link>
-      </div>
-    </article>
+    <Link className="group flex min-h-28 min-w-0 items-center justify-between gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm transition hover:border-orange-400 hover:shadow focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600" href={href}>
+      <span className="min-w-0">
+        <span className="block text-xs font-semibold uppercase tracking-wide text-orange-600">{group.sport === "voleibol" ? "Vóley" : group.sport} · {group.state === "activo" ? "Activo" : group.state}</span>
+        <span className="mt-1 block break-words text-lg font-semibold">{group.name}</span>
+        <span className="mt-3 flex flex-wrap gap-2">
+          {group.administers ? <span className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-semibold text-orange-800">Administrás</span> : null}
+          {group.participates ? <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">Integrás</span> : null}
+          {typeof actionableTaskCount === "number" && actionableTaskCount > 0 ? <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-800">{actionableTaskCount === 1 ? "1 pendiente" : `${actionableTaskCount} pendientes`}</span> : null}
+        </span>
+      </span>
+      <span aria-hidden="true" className="shrink-0 text-2xl text-[var(--text-muted)] transition group-hover:translate-x-0.5">›</span>
+    </Link>
   );
 }

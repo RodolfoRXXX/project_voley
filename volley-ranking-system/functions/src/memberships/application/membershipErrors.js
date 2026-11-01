@@ -20,6 +20,7 @@ class MembershipSeasonIncompatibleError extends MembershipError { constructor(op
 class MembershipValidationError extends MembershipError { constructor(message = "Membership request is invalid", options = {}) { super("VALIDATION_FAILED", message, options); } }
 class MembershipAlreadyExistsError extends MembershipError { constructor() { super("MEMBERSHIP_ALREADY_EXISTS", "An active Membership already exists"); } }
 class MembershipNotFoundError extends MembershipError { constructor() { super("MEMBERSHIP_NOT_FOUND", "Membership was not found"); } }
+class MembershipCurrentNotAccessibleError extends MembershipError { constructor() { super("CURRENT_MEMBERSHIP_NOT_ACCESSIBLE", "Current Membership is not accessible"); } }
 class MembershipNotActiveError extends MembershipError { constructor() { super("MEMBERSHIP_NOT_ACTIVE", "Membership is not active"); } }
 class MembershipReactivationRequiredError extends MembershipError { constructor() { super("MEMBERSHIP_REACTIVATION_REQUIRED", "Membership reactivation is required"); } }
 class MembershipSeasonNotReactivatableError extends MembershipError { constructor(options = {}) { super("MEMBERSHIP_SEASON_NOT_REACTIVATABLE", "Membership season is not reactivatable", options); } }
@@ -47,6 +48,7 @@ module.exports = {
   MembershipAccountRequiredError,
   MembershipAlreadyExistsError,
   MembershipConflictError,
+  MembershipCurrentNotAccessibleError,
   MembershipCursorInvalidError,
   MembershipCursorStaleError,
   MembershipDependencyNotConfiguredError,

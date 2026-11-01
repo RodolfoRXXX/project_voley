@@ -45,6 +45,24 @@ function toMyCurrentGroupMembershipItem(membership, group) {
   });
 }
 
+function toMyCurrentGroupMembershipContext(membership, group, season) {
+  return Object.freeze({
+    group: Object.freeze({
+      id: group.id,
+      nombre: group.nombre,
+      deporte: group.deporte,
+      estado: group.estado,
+      viewerIsOwner: group.viewerIsOwner,
+    }),
+    season: Object.freeze({ id: season.id, nombre: season.nombre, estado: season.estado }),
+    membership: Object.freeze({
+      id: membership.membershipId,
+      estado: membership.estado,
+      fechaIngreso: membership.fechaIngreso.toDate().toISOString(),
+    }),
+  });
+}
+
 function toMembershipSelfExitDto(result) {
   return Object.freeze({
     outcome: "EXIT_CONFIRMED",
@@ -112,4 +130,4 @@ function toMembershipCargoUpdateResult(result) {
   });
 }
 
-module.exports = { FINALIZED_MEMBERSHIP_DTO_KEYS, MEMBERSHIP_DTO_KEYS, toAdministrativeFinalizationPreparation, toAdministrativeFinalizationResult, toFinalizedMembershipDto, toMembershipCargoDetail, toMembershipCargoUpdateResult, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipItem, toOwnGroupMembershipHistoryItem, toOwnerActiveGroupMemberItem };
+module.exports = { FINALIZED_MEMBERSHIP_DTO_KEYS, MEMBERSHIP_DTO_KEYS, toAdministrativeFinalizationPreparation, toAdministrativeFinalizationResult, toFinalizedMembershipDto, toMembershipCargoDetail, toMembershipCargoUpdateResult, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipContext, toMyCurrentGroupMembershipItem, toOwnGroupMembershipHistoryItem, toOwnerActiveGroupMemberItem };

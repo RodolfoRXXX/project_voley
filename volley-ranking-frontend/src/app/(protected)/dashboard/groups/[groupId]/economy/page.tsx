@@ -58,6 +58,8 @@ export default function GroupEconomyPage() {
   const tab = tabs.some((item) => item.id === requestedTab) ? requestedTab! : tabs[0]?.id;
   const lost = useCallback(() => loseAccess("Tu acceso económico ya no está vigente. Se limpiaron los datos del Grupo."), [loseAccess]);
 
+  if (!access.owner && !access.treasury && !access.review && !access.record) return <section role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-5"><h1 className="font-semibold">Economía no disponible</h1><p className="mt-2 text-sm">Integrar el Grupo no concede acceso económico. Volvé a Mi participación.</p><Link className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-amber-500 px-4 font-semibold" href={`/dashboard/groups/${groupId}/membership`}>Ir a Mi participación</Link></section>;
+
   return <>
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
       {access.owner ? <Link className="font-semibold text-orange-700 underline" href={`/dashboard/groups/${groupId}`}>← Volver al resumen</Link> : <span className="text-sm text-[var(--text-muted)]">Acceso delegado validado para este Grupo.</span>}

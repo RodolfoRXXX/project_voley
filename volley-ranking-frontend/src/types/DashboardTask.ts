@@ -16,6 +16,7 @@ export interface DashboardTaskPage {
   coverage: { version: "N20_N31_V1"; complete: boolean; health: DashboardTaskHealth;
     asOf: string; generationId: string };
   totalTasks?: number;
+  groupTaskCounts?: { groupId: string; count: number }[];
   items: DashboardTask[];
   nextCursor?: string;
 }

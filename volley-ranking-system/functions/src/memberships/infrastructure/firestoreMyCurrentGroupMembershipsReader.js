@@ -29,6 +29,23 @@ function createFirestoreMyCurrentGroupMembershipsReader({ db, membershipReposito
     return query.limit(pageSize + 1);
   }
 
+  async function requireIntegrityInTransaction({ transaction, personId, candidate, activeSnapshot = null }) {
+    const active = activeSnapshot || await transaction.get(membershipRepository.activePairQuery({ personId, groupId: candidate.groupId }));
+    const memberships = active.docs.map((document) => hydrateMembership(document.id, document.data()));
+    if (memberships.length !== 1 || memberships[0].membershipId !== candidate.membershipId) throw new MembershipIncompatibleStateError("Active Membership uniqueness is incompatible");
+    const guardId = activeMembershipGuardId(candidate.groupId, personId);
+    const guard = hydrateActiveMembershipGuard(await transaction.get(db.collection("activeMembershipGuards").doc(guardId)), { guardId, personId, groupId: candidate.groupId });
+    if (!guard) throw new MembershipIncompatibleStateError("Active Membership guard is absent");
+    const periods = await membershipRepository.requirePeriodIntegrity({ transaction, membership: memberships[0] });
+    assertMembershipCorrelated(memberships[0], guard, periods.latestPeriod);
+    if ([4, 6].includes(memberships[0].schemaVersion)) {
+      const lifecycleId = membershipLifecycleGuardId(candidate.groupId, personId);
+      const lifecycle = hydrateMembershipLifecycleGuard(await transaction.get(db.collection("membershipLifecycleGuards").doc(lifecycleId)), { guardId: lifecycleId, personId, groupId: candidate.groupId });
+      assertActiveLifecycleCorrelated(memberships[0], lifecycle, guard, periods.latestPeriod);
+    }
+    return memberships[0];
+  }
+
   return {
     async listPage({ personId, pageSize, position }) {
       try {
@@ -62,26 +79,29 @@ function createFirestoreMyCurrentGroupMembershipsReader({ db, membershipReposito
 
     async requireIntegrity({ personId, candidate }) {
       try {
-        return await db.runTransaction(async (transaction) => {
-          const active = await transaction.get(membershipRepository.activePairQuery({ personId, groupId: candidate.groupId }));
-          const memberships = active.docs.map((document) => hydrateMembership(document.id, document.data()));
-          if (memberships.length !== 1 || memberships[0].membershipId !== candidate.membershipId) throw new MembershipIncompatibleStateError("Active Membership uniqueness is incompatible");
-          const guardId = activeMembershipGuardId(candidate.groupId, personId);
-          const guard = hydrateActiveMembershipGuard(await transaction.get(db.collection("activeMembershipGuards").doc(guardId)), { guardId, personId, groupId: candidate.groupId });
-          if (!guard) throw new MembershipIncompatibleStateError("Active Membership guard is absent");
-          const periods = await membershipRepository.requirePeriodIntegrity({ transaction, membership: memberships[0] });
-          assertMembershipCorrelated(memberships[0], guard, periods.latestPeriod);
-          if ([4, 6].includes(memberships[0].schemaVersion)) {
-            const lifecycleId = membershipLifecycleGuardId(candidate.groupId, personId);
-            const lifecycle = hydrateMembershipLifecycleGuard(await transaction.get(db.collection("membershipLifecycleGuards").doc(lifecycleId)), { guardId: lifecycleId, personId, groupId: candidate.groupId });
-            assertActiveLifecycleCorrelated(memberships[0], lifecycle, guard, periods.latestPeriod);
-          }
-          return memberships[0];
-        });
+        return await db.runTransaction((transaction) => requireIntegrityInTransaction({ transaction, personId, candidate }));
       } catch (error) {
         if (error instanceof InvalidMembershipStateError) {
           throw new MembershipIncompatibleStateError(undefined, { cause: error });
         }
+        throw mapInfrastructureError(error);
+      }
+    },
+
+    async getCurrentForGroup({ personId, groupId }) {
+      try {
+        return await db.runTransaction(async (transaction) => {
+          const active = await transaction.get(membershipRepository.activePairQuery({ personId, groupId }));
+          if (active.empty) return null;
+          if (active.size !== 1) throw new MembershipIncompatibleStateError("Active Membership uniqueness is incompatible");
+          const candidate = hydrateMembership(active.docs[0].id, active.docs[0].data());
+          if (candidate.personId !== personId || candidate.groupId !== groupId || candidate.estado !== "activa") {
+            throw new MembershipIncompatibleStateError("Current Membership candidate is incompatible");
+          }
+          return requireIntegrityInTransaction({ transaction, personId, candidate, activeSnapshot: active });
+        });
+      } catch (error) {
+        if (error instanceof InvalidMembershipStateError) throw new MembershipIncompatibleStateError(undefined, { cause: error });
         throw mapInfrastructureError(error);
       }
     },

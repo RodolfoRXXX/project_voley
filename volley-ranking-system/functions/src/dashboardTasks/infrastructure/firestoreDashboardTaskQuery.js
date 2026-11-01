@@ -61,6 +61,7 @@ function createFirestoreDashboardTaskQuery({ db, cursorSecret, projectionEnabled
     const byPath = new Map(snapshots.map((snapshot) => [snapshot.ref.path, snapshot]));
     let state = ["READY", "ROLLED_BACK"].includes(meta.projectionState) ? HEALTH.READY : HEALTH.REBUILDING;
     let total = 0;
+    const groupTaskCounts = [];
     for (const groupId of groupIds) {
       const scopeSnapshot = byPath.get(db.collection("dashboardTaskScopes").doc(groupId).path);
       if (!scopeSnapshot?.exists) { state = HEALTH.REBUILDING; continue; }
@@ -76,12 +77,15 @@ function createFirestoreDashboardTaskQuery({ db, cursorSecret, projectionEnabled
       if (count.generationId !== generationId || count.groupId !== groupId || !validCount(count.N20) || !validCount(count.N31)
         || !validCount(count.total) || count.total !== count.N20 + count.N31) throw new DashboardTaskIncompatibleStateError();
       const allowed = authorized.get(groupId);
-      total += (allowed.N20 ? count.N20 : 0) + (allowed.N31 ? count.N31 : 0);
+      const authorizedCount = (allowed.N20 ? count.N20 : 0) + (allowed.N31 ? count.N31 : 0);
+      total += authorizedCount;
+      groupTaskCounts.push(Object.freeze({ groupId, count: authorizedCount }));
     }
     if (!validCount(root.total) || !validCount(root.N20) || !validCount(root.N31) || root.total !== root.N20 + root.N31) {
       throw new DashboardTaskIncompatibleStateError();
     }
-    return { health: state, total };
+    groupTaskCounts.sort((left, right) => left.groupId.localeCompare(right.groupId));
+    return { health: state, total, groupTaskCounts: Object.freeze(groupTaskCounts) };
   }
 
   async function revalidate(transaction, accountId, authorized, docs) {
@@ -138,7 +142,8 @@ function createFirestoreDashboardTaskQuery({ db, cursorSecret, projectionEnabled
         if (authorized.size) throw new DashboardTaskProjectionNotReadyError();
         cursorCodec.decode(input.cursor, { accountId, coverage: COVERAGE, generationId: EMPTY_GENERATION });
         return Object.freeze({ coverage: { version: COVERAGE, complete: true, health: HEALTH.READY,
-          asOf: now().toDate().toISOString(), generationId: EMPTY_GENERATION }, totalTasks: 0, items: [] });
+          asOf: now().toDate().toISOString(), generationId: EMPTY_GENERATION }, totalTasks: 0,
+          groupTaskCounts: Object.freeze([]), items: [] });
       }
       const meta = metaSnapshot.data(); const generationId = meta.activeGenerationId;
       if (meta.coverage !== COVERAGE || typeof generationId !== "string" || !generationId) throw new DashboardTaskProjectionNotReadyError();
@@ -166,7 +171,8 @@ function createFirestoreDashboardTaskQuery({ db, cursorSecret, projectionEnabled
         ? HEALTH.UPDATING : state.health;
       const complete = finalHealth === HEALTH.READY;
       return Object.freeze({ coverage: { version: COVERAGE, complete, health: finalHealth,
-        asOf: now().toDate().toISOString(), generationId }, ...(complete ? { totalTasks: state.total } : {}), items: visible,
+        asOf: now().toDate().toISOString(), generationId }, ...(complete
+        ? { totalTasks: state.total, groupTaskCounts: state.groupTaskCounts } : {}), items: visible,
         ...(hasMore && nextAnchor ? { nextCursor: cursorCodec.encode({ accountId, coverage: COVERAGE, generationId,
           anchor: nextAnchor }) } : {}) });
     }, { readOnly: true });

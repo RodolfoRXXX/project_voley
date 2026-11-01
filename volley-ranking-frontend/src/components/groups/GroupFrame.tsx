@@ -1,17 +1,17 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 
 import { GroupContextNavigation } from "@/components/groups/GroupContextNavigation";
 import { GroupActionsMenu } from "@/components/groups/GroupActionsMenu";
 import { GroupLoading } from "@/components/groups/GroupLoading";
 import { GroupPageShell } from "@/components/groups/GroupPageShell";
-import { getMyDirectPaymentRecordContext } from "@/services/administrativeReceiptsService";
-import { getOwnGroup } from "@/services/groupsService";
-import { listMyCurrentGroupMemberships } from "@/services/membershipsService";
-import { getMyPaymentReviewContext } from "@/services/paymentDeliveriesService";
-import { getMyGroupTreasuryContext } from "@/services/treasuryService";
+import { administrativeReceiptErrorReason, getMyDirectPaymentRecordContext } from "@/services/administrativeReceiptsService";
+import { getGroupErrorReason, getOwnGroup } from "@/services/groupsService";
+import { getMyCurrentGroupMembershipContext } from "@/services/membershipsService";
+import { deliveryErrorReason, getMyPaymentReviewContext } from "@/services/paymentDeliveriesService";
+import { getMyGroupTreasuryContext, getTreasuryErrorReason } from "@/services/treasuryService";
 import type { OwnGroup, OwnGroupActive } from "@/types/OwnGroup";
 
 type GroupAccess = {
@@ -19,6 +19,7 @@ type GroupAccess = {
   treasury: boolean;
   review: boolean;
   record: boolean;
+  membership: boolean;
   group: OwnGroup | null;
   groupName: string;
 };
@@ -40,35 +41,45 @@ type FrameState = {
 
 const GroupFrameContext = createContext<GroupFrameValue | null>(null);
 
-async function membershipGroupName(groupId: string) {
-  let cursor: string | undefined;
-  do {
-    const page = await listMyCurrentGroupMemberships({ pageSize: 50, ...(cursor ? { cursor } : {}) });
-    const found = page.items.find((item) => item.group.id === groupId);
-    if (found) return found.group.nombre;
-    cursor = page.nextCursor ?? undefined;
-  } while (cursor);
-  return "Grupo";
-}
-
-async function resolveAccess(groupId: string): Promise<GroupAccess> {
+async function resolveAccess(groupId: string, includeCapabilities: boolean): Promise<GroupAccess> {
   try {
     const { group } = await getOwnGroup(groupId);
-    return { owner: true, treasury: false, review: false, record: false, group, groupName: group.nombre };
-  } catch {
-    const [treasury, review, record, groupName] = await Promise.all([
-      getMyGroupTreasuryContext(groupId).then(() => true, () => false),
-      getMyPaymentReviewContext(groupId).then(() => true, () => false),
-      getMyDirectPaymentRecordContext(groupId).then(() => true, () => false),
-      membershipGroupName(groupId),
+    return { owner: true, treasury: false, review: false, record: false, membership: false, group, groupName: group.nombre };
+  } catch (cause) {
+    const ownerReason = getGroupErrorReason(cause);
+    if (!["GROUP_NOT_ACCESSIBLE", "NOT_AUTHORIZED", "NOT_FOUND"].includes(ownerReason)) throw cause;
+    const [membership, treasury, review, record] = await Promise.allSettled([
+      getMyCurrentGroupMembershipContext(groupId),
+      includeCapabilities ? getMyGroupTreasuryContext(groupId).then(() => true, () => false) : Promise.resolve(false),
+      includeCapabilities ? getMyPaymentReviewContext(groupId).then(() => true, () => false) : Promise.resolve(false),
+      includeCapabilities ? getMyDirectPaymentRecordContext(groupId).then(() => true, () => false) : Promise.resolve(false),
     ]);
-    if (!treasury && !review && !record) throw new Error("GROUP_ECONOMY_NOT_AUTHORIZED");
-    return { owner: false, treasury, review, record, group: null, groupName };
+    const hasMembership = membership.status === "fulfilled";
+    const hasTreasury = treasury.status === "fulfilled" && treasury.value;
+    const hasReview = review.status === "fulfilled" && review.value;
+    const hasRecord = record.status === "fulfilled" && record.value;
+    const capabilityUnavailable = (treasury.status === "rejected" && getTreasuryErrorReason(treasury.reason) !== "GROUP_TREASURY_NOT_AUTHORIZED")
+      || (review.status === "rejected" && deliveryErrorReason(review.reason) !== "PAYMENT_NOTICE_REVIEW_NOT_AUTHORIZED")
+      || (record.status === "rejected" && administrativeReceiptErrorReason(record.reason) !== "ADMINISTRATIVE_RECEIPT_NOT_AUTHORIZED");
+    if (!hasMembership && !hasTreasury && !hasReview && !hasRecord && capabilityUnavailable) {
+      throw new Error("GROUP_CAPABILITIES_UNAVAILABLE");
+    }
+    if (!hasMembership && !hasTreasury && !hasReview && !hasRecord) throw new Error("GROUP_NOT_AUTHORIZED");
+    return {
+      owner: false,
+      treasury: hasTreasury,
+      review: hasReview,
+      record: hasRecord,
+      membership: hasMembership,
+      group: null,
+      groupName: hasMembership ? membership.value.group.nombre : "Grupo",
+    };
   }
 }
 
 export function GroupFrame({ children }: { children: React.ReactNode }) {
   const { groupId } = useParams<{ groupId: string }>();
+  const pathname = usePathname();
   const router = useRouter();
   const [frame, setFrame] = useState<FrameState>({ token: {}, access: null, resolvedGroupId: null, status: "loading", error: "" });
   const [reloadVersion, setReloadVersion] = useState(0);
@@ -87,19 +98,22 @@ export function GroupFrame({ children }: { children: React.ReactNode }) {
       setRecoveryBlocked(false);
       setNotice("");
     });
-    void resolveAccess(groupId).then((resolved) => {
+    void resolveAccess(groupId, pathname.endsWith("/economy")).then((resolved) => {
       if (!active) return;
       setFrame((current) => current.token === token
         ? { token, access: resolved, resolvedGroupId: groupId, status: "ready", error: "" }
         : current);
-    }, () => {
+    }, (cause) => {
       if (!active) return;
+      const unavailable = cause instanceof Error && cause.message === "GROUP_CAPABILITIES_UNAVAILABLE";
       setFrame((current) => current.token === token
-        ? { token, access: null, resolvedGroupId: null, status: "error", error: "No tenés un acceso vigente para este Grupo." }
+        ? { token, access: null, resolvedGroupId: null, status: "error", error: unavailable
+          ? "No pudimos verificar tus accesos para este Grupo. Reintentá la consulta."
+          : "No tenés un acceso vigente para este Grupo." }
         : current);
     });
     return () => { active = false; };
-  }, [groupId, reloadVersion]);
+  }, [groupId, pathname, reloadVersion]);
 
   const loseAccess = useCallback((message = "Tu acceso ya no está vigente. Se limpiaron los datos del Grupo.") => {
     setFrame({ token: {}, access: null, resolvedGroupId: null, status: "error", error: message });
@@ -144,7 +158,7 @@ export function GroupFrame({ children }: { children: React.ReactNode }) {
       title={currentAccess?.groupName ?? "Grupo"}
       description={currentAccess?.owner
         ? currentAccess.group?.estado === "archivado" ? "Grupo archivado, disponible en modo de consulta." : "Administración contextual del Grupo."
-        : "Consulta económica con autorización validada por cada operación."}
+        : currentAccess?.membership ? "Participación propia acreditada para este Grupo." : "Consulta económica con autorización validada por cada operación."}
       badge={headerBadge}
       actions={headerActions}
     >
@@ -152,7 +166,7 @@ export function GroupFrame({ children }: { children: React.ReactNode }) {
       {frame.status === "loading" ? <GroupLoading label="Cargando contexto del Grupo" /> : null}
       {frame.status === "error" ? <section role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-5"><p>{frame.error}</p><div className="mt-3 flex flex-wrap gap-2"><button className="min-h-11 rounded-lg border px-4 font-semibold" onClick={() => setReloadVersion((value) => value + 1)}>Reintentar</button><button className="min-h-11 rounded-lg border px-4 font-semibold" onClick={() => router.replace("/dashboard/groups")}>Volver a Mis grupos</button></div></section> : null}
       {frame.status === "ready" && value ? <GroupFrameContext.Provider value={value}>
-        <GroupContextNavigation groupId={groupId} groupName={value.groupName} owner={value.owner} activeGroup={value.group?.estado !== "archivado"} hasPendingOperation={pendingOperation} blockContextChange={recoveryBlocked} />
+        <GroupContextNavigation groupId={groupId} groupName={value.groupName} owner={value.owner} membership={value.membership} capabilities={{ treasury: value.treasury, review: value.review, record: value.record }} activeGroup={value.group?.estado !== "archivado"} hasPendingOperation={pendingOperation} blockContextChange={recoveryBlocked} />
         {children}
       </GroupFrameContext.Provider> : null}
     </GroupPageShell>

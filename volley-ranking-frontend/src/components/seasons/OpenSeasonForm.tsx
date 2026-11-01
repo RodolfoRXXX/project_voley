@@ -120,7 +120,7 @@ export function OpenSeasonForm({ groupId }: { groupId: string }) {
       </div>
       <div>
         <label className="mb-2 block text-sm font-semibold" htmlFor="season-start-date">Fecha de inicio</label>
-        <input ref={dateRef} id="season-start-date" name="fechaInicio" type="date" value={fechaInicio} onChange={(event) => { setFechaInicio(event.target.value); updateIntent(nombre, event.target.value); }} aria-invalid={error?.field === "fechaInicio"} aria-describedby="season-start-help" className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 focus-visible:outline-2 focus-visible:outline-orange-500" />
+        <input ref={dateRef} id="season-start-date" name="fechaInicio" type="date" value={fechaInicio} onChange={(event) => { setFechaInicio(event.target.value); updateIntent(nombre, event.target.value); }} aria-invalid={error?.field === "fechaInicio"} aria-describedby="season-start-help" className="min-h-11 w-full cursor-pointer touch-manipulation rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500" />
         <p id="season-start-help" className="mt-2 text-xs text-[var(--text-muted)]">Es una fecha civil; no se compara con hoy.</p>
       </div>
       <button type="submit" disabled={sending} className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-orange-600 px-5 py-2 font-semibold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">{sending ? "Creando y abriendo…" : "Crear y abrir temporada"}</button>

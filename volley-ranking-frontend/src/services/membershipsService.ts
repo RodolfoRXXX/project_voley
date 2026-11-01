@@ -2,7 +2,7 @@ import { httpsCallable } from "firebase/functions";
 
 import { functions } from "@/lib/firebase";
 import type { ActiveOwnMembership, FinalizedOwnMembership, MembershipErrorReason, OwnMembership } from "@/types/OwnMembership";
-import type { LeaveMyGroupMembershipResult, ListMyCurrentGroupMembershipsResult } from "@/types/MyCurrentGroupMembership";
+import type { LeaveMyGroupMembershipResult, ListMyCurrentGroupMembershipsResult, MyCurrentGroupMembershipContext } from "@/types/MyCurrentGroupMembership";
 import type { ListActiveGroupMembersResult, MembershipCargoDetail, MembershipCargoUpdateResult } from "@/types/ActiveGroupMember";
 import type { ListMyGroupMembershipHistoryResult } from "@/types/OwnGroupMembershipHistory";
 
@@ -28,6 +28,7 @@ const createCallable = httpsCallable<CreateMyMembershipInput, CreateMyMembership
 const getCallable = httpsCallable<{ groupId: string }, { membership: OwnMembership | null }>(functions, "getMyMembershipForOwnedGroup");
 const finalizeCallable = httpsCallable<{ groupId: string }, FinalizeMyMembershipResult>(functions, "finalizeMyMembershipForOwnedGroup");
 const listMyCurrentGroupsCallable = httpsCallable<{ pageSize?: number; cursor?: string }, ListMyCurrentGroupMembershipsResult>(functions, "listMyCurrentGroupMemberships");
+const getMyCurrentGroupContextCallable = httpsCallable<{ groupId: string }, MyCurrentGroupMembershipContext>(functions, "getMyCurrentGroupMembershipContext");
 const listMyGroupMembershipHistoryCallable = httpsCallable<{ pageSize?: number; cursor?: string }, ListMyGroupMembershipHistoryResult>(functions, "listMyGroupMembershipHistory");
 const leaveMyGroupCallable = httpsCallable<{ groupId: string; idempotencyKey: string }, LeaveMyGroupMembershipResult>(functions, "leaveMyGroupMembership");
 const listActiveGroupMembersCallable = httpsCallable<{ groupId: string; pageSize?: number; cursor?: string }, ListActiveGroupMembersResult>(functions, "listActiveGroupMembersForOwnedGroup");
@@ -50,6 +51,10 @@ export async function finalizeMyMembershipForOwnedGroup(groupId: string): Promis
 
 export async function listMyCurrentGroupMemberships(input: { pageSize?: number; cursor?: string } = {}): Promise<ListMyCurrentGroupMembershipsResult> {
   return (await listMyCurrentGroupsCallable(input)).data;
+}
+
+export async function getMyCurrentGroupMembershipContext(groupId: string): Promise<MyCurrentGroupMembershipContext> {
+  return (await getMyCurrentGroupContextCallable({ groupId })).data;
 }
 
 export async function leaveMyGroupMembership(input: { groupId: string; idempotencyKey: string }): Promise<LeaveMyGroupMembershipResult> {
@@ -89,7 +94,7 @@ export function getMembershipErrorReason(error: unknown): MembershipErrorReason 
         "UNAUTHENTICATED", "ACCOUNT_REQUIRED", "PERSON_REQUIRED", "PERSON_INCOMPATIBLE",
         "GROUP_NOT_FOUND", "GROUP_INCOMPATIBLE", "NOT_AUTHORIZED", "OPEN_SEASON_REQUIRED",
         "SEASON_INCOMPATIBLE", "VALIDATION_FAILED", "CURSOR_INVALID", "CURSOR_STALE", "MEMBERSHIP_ALREADY_EXISTS",
-        "MEMBERSHIP_NOT_FOUND", "MEMBERSHIP_NOT_ACTIVE", "MEMBERSHIP_REACTIVATION_REQUIRED",
+        "MEMBERSHIP_NOT_FOUND", "CURRENT_MEMBERSHIP_NOT_ACCESSIBLE", "MEMBERSHIP_NOT_ACTIVE", "MEMBERSHIP_REACTIVATION_REQUIRED",
         "MEMBERSHIP_SEASON_NOT_MODIFIABLE",
         "IDEMPOTENCY_CONFLICT", "INCOMPATIBLE_STATE", "CONFLICT", "DEPENDENCY_NOT_CONFIGURED",
         "DEPENDENCY_UNAVAILABLE", "INTERNAL_ERROR", "GROUP_NOT_ACCESSIBLE", "ROSTER_CONTEXT_CHANGED",
@@ -117,6 +122,7 @@ export function getMembershipErrorMessage(reason: MembershipErrorReason): string
     CURSOR_STALE: "El historial cambió mientras lo consultabas. Reiniciamos la lista.",
     MEMBERSHIP_ALREADY_EXISTS: "Ya existe una Membresía activa para tu Persona en este Grupo.",
     MEMBERSHIP_NOT_FOUND: "No encontramos una Membresía propia para finalizar.",
+    CURRENT_MEMBERSHIP_NOT_ACCESSIBLE: "Tu participación actual no está disponible en este Grupo.",
     MEMBERSHIP_NOT_ACTIVE: "Tu Membresía ya no está activa. Actualizá el listado antes de continuar.",
     MEMBERSHIP_REACTIVATION_REQUIRED: "Tu Membresía está finalizada. La reactivación todavía no está disponible.",
     MEMBERSHIP_SEASON_NOT_MODIFIABLE: "La Temporada de esta Membresía ya no está abierta. No se realizó la salida.",

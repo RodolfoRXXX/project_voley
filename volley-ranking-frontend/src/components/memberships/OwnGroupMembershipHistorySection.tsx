@@ -1,121 +1,70 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
-import { usePerson } from "@/hooks/usePerson";
+import { visibleHistoryItems } from "@/services/groupsPresentation.mjs";
 import { getMembershipErrorMessage, getMembershipErrorReason, listMyGroupMembershipHistory } from "@/services/membershipsService";
-import type { MembershipErrorReason } from "@/types/OwnMembership";
+import type { OwnGroup } from "@/types/OwnGroup";
 import type { OwnGroupMembershipHistoryItem } from "@/types/OwnGroupMembershipHistory";
 
-const resetReasons = new Set<MembershipErrorReason>(["CURSOR_INVALID", "CURSOR_STALE"]);
-const clearReasons = new Set<MembershipErrorReason>(["UNAUTHENTICATED", "ACCOUNT_REQUIRED", "PERSON_REQUIRED", "PERSON_INCOMPATIBLE"]);
+type Props = { archivedGroups: OwnGroup[]; visibleMembershipKeys: Set<string>; membershipHistoryAvailable: boolean };
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(value));
-}
-
-export function OwnGroupMembershipHistorySection() {
-  const { firebaseUser, accountStatus } = useAuth();
-  const { person, personStatus } = usePerson();
+export function OwnGroupMembershipHistorySection({ archivedGroups, visibleMembershipKeys, membershipHistoryAvailable }: Props) {
+  const { firebaseUser } = useAuth();
+  const [open, setOpen] = useState(false);
   const [items, setItems] = useState<OwnGroupMembershipHistoryItem[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error" | "person-required">("idle");
-  const [reason, setReason] = useState<MembershipErrorReason | null>(null);
-  const [incrementalError, setIncrementalError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState("");
   const generation = useRef(0);
   const inFlight = useRef(false);
-  const itemsRef = useRef<OwnGroupMembershipHistoryItem[]>([]);
-  const cursorRef = useRef<string | null>(null);
-  const listRef = useRef<HTMLOListElement>(null);
-
-  const replaceItems = useCallback((next: OwnGroupMembershipHistoryItem[]) => {
-    itemsRef.current = next;
-    setItems(next);
-  }, []);
-
-  const replaceCursor = useCallback((next: string | null) => {
-    cursorRef.current = next;
-    setCursor(next);
-  }, []);
-
-  const load = useCallback(async (mode: "reset" | "more", announcement = "") => {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    const requestGeneration = generation.current;
-    const prior = itemsRef.current;
-    if (mode === "reset") { setStatus("loading"); setReason(null); setIncrementalError(""); }
-    else { setLoadingMore(true); setIncrementalError(""); }
-    try {
-      const page = await listMyGroupMembershipHistory(mode === "more" && cursorRef.current ? { cursor: cursorRef.current } : {});
-      if (requestGeneration !== generation.current) return;
-      const known = new Set(prior.map((item) => item.rowKey));
-      if (mode === "more" && page.items.some((item) => known.has(item.rowKey))) {
-        inFlight.current = false; setLoadingMore(false); generation.current += 1;
-        replaceItems([]); replaceCursor(null); setHasMore(false);
-        const message = "El historial cambió mientras lo consultabas. Reiniciamos la lista.";
-        setNotice(message); await load("reset", message); return;
-      }
-      const next = mode === "more" ? [...prior, ...page.items] : page.items;
-      replaceItems(next); replaceCursor(page.nextCursor); setHasMore(page.hasMore); setStatus("ready"); setReason(null);
-      if (announcement) setNotice(announcement);
-      if (mode === "more" && page.items.length) {
-        const firstKey = page.items[0].rowKey;
-        queueMicrotask(() => listRef.current?.querySelector<HTMLElement>(`[data-row-key="${firstKey}"]`)?.focus());
-      }
-    } catch (cause) {
-      if (requestGeneration !== generation.current) return;
-      const nextReason = getMembershipErrorReason(cause);
-      if (clearReasons.has(nextReason)) { replaceItems([]); replaceCursor(null); setHasMore(false); }
-      if (mode === "more" && resetReasons.has(nextReason)) {
-        inFlight.current = false; setLoadingMore(false); generation.current += 1;
-        replaceItems([]); replaceCursor(null); setHasMore(false);
-        const message = getMembershipErrorMessage(nextReason);
-        setNotice(message); await load("reset", message); return;
-      }
-      setReason(nextReason);
-      if (mode === "more") { setIncrementalError(getMembershipErrorMessage(nextReason)); setStatus("ready"); }
-      else setStatus(nextReason === "PERSON_REQUIRED" ? "person-required" : "error");
-    } finally {
-      if (requestGeneration === generation.current) { inFlight.current = false; setLoadingMore(false); }
-    }
-  }, [replaceCursor, replaceItems]);
+  const seenCursors = useRef(new Set<string>());
 
   useEffect(() => {
     generation.current += 1; inFlight.current = false;
-    replaceItems([]); replaceCursor(null); setHasMore(false); setNotice(""); setReason(null); setIncrementalError("");
-    if (!firebaseUser?.uid) { setStatus("idle"); return; }
-    if (accountStatus !== "ready" || personStatus === "loading" || personStatus === "idle") { setStatus("loading"); return; }
-    void load("reset");
+    seenCursors.current.clear(); setOpen(false); setItems([]); setCursor(null); setHasMore(false); setStatus("idle"); setError("");
     return () => { generation.current += 1; inFlight.current = false; };
-  // Session and Person identity deliberately reset all accumulated private rows.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [firebaseUser?.uid, accountStatus, person?.personId, personStatus]);
+  }, [firebaseUser?.uid]);
 
-  return <section aria-labelledby="group-history-title" aria-busy={status === "loading" || loadingMore} className="space-y-4">
-    <div>
-      <h2 id="group-history-title" className="text-2xl font-semibold">Historial de grupos</h2>
-      <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">Esta cronología incluye tus pertenencias actuales y finalizadas. Las actuales también aparecen en ‘Grupos que integrás’, donde están disponibles las acciones operativas.</p>
-    </div>
-    <div className="sr-only" aria-live="polite">{notice}{loadingMore ? "Cargando más pertenencias." : ""}</div>
-    {notice ? <p className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">{notice}</p> : null}
-    {status === "loading" ? <p role="status" className="rounded-xl border border-[var(--border)] p-5">Cargando tu historial…</p> : null}
-    {status === "person-required" ? <div className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-950"><p>Necesitás vincular tu Persona para consultar tu historial.</p><Link className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-amber-500 px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2" href="/profile/person">Ir a mi Persona</Link></div> : null}
-    {status === "error" ? <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-5 text-red-900"><p>{getMembershipErrorMessage(reason || "INTERNAL_ERROR")}</p><button type="button" className="mt-4 min-h-11 rounded-lg border border-red-400 px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2" onClick={() => void load("reset")}>Reintentar</button></div> : null}
-    {status === "ready" && !items.length ? <div className="rounded-2xl border border-dashed border-[var(--border)] p-6 text-center sm:p-10"><p className="font-semibold">Todavía no tenés pertenencias registradas</p></div> : null}
-    {items.length ? <ol ref={listRef} className="grid min-w-0 gap-4 sm:grid-cols-2">{items.map((item) => <li key={item.rowKey} data-row-key={item.rowKey} tabIndex={-1} className="min-w-0 rounded-2xl border border-[var(--border)] p-5 focus-visible:outline-2 focus-visible:outline-offset-2">
-      <div className="flex flex-wrap items-start justify-between gap-2"><h3 className="min-w-0 break-words text-lg font-semibold">{item.group.nombre}</h3><span className={item.status === "CURRENT" ? "rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800" : "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"}>{item.status === "CURRENT" ? "Actual" : "Finalizada"}</span></div>
-      <p className="mt-2 break-words text-sm">Temporada: <span className="font-medium">{item.season.nombre}</span></p>
-      <p className="mt-2 text-sm text-[var(--text-muted)]">Ingreso: <time dateTime={item.joinedAt}>{formatDate(item.joinedAt)}</time></p>
-      {item.leftAt ? <p className="mt-1 text-sm text-[var(--text-muted)]">Egreso: <time dateTime={item.leftAt}>{formatDate(item.leftAt)}</time></p> : null}
-      <p className="mt-2 text-sm">Origen: <span className="font-medium">{item.continuity === "RENEWAL" ? "Renovación intertemporada" : "Alta inicial"}</span></p>
-      <p className="mt-1 text-sm">{item.validityPeriodCount === 1 ? "Período de vigencia" : "Períodos de vigencia"}: <span className="font-medium">{item.validityPeriodCount}</span></p>
-    </li>)}</ol> : null}
-    {incrementalError ? <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-900"><p>{incrementalError}</p></div> : null}
-    {status === "ready" && hasMore && cursor ? <button type="button" disabled={loadingMore} className="min-h-11 rounded-lg bg-orange-600 px-5 py-2 font-semibold text-white hover:bg-orange-700 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-60" onClick={() => void load("more")}>{loadingMore ? "Cargando…" : incrementalError ? "Reintentar" : "Cargar más"}</button> : null}
+  const load = useCallback(async (more = false) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    const requestGeneration = generation.current;
+    if (!more) { setStatus("loading"); setError(""); }
+    try {
+      const page = await listMyGroupMembershipHistory(more && cursor ? { pageSize: 20, cursor } : { pageSize: 20 });
+      if (requestGeneration !== generation.current) return;
+      if (!more) seenCursors.current.clear();
+      if (page.nextCursor && (page.nextCursor === cursor || seenCursors.current.has(page.nextCursor))) throw new Error("MEMBERSHIP_HISTORY_CURSOR_REPEATED");
+      if (page.nextCursor) seenCursors.current.add(page.nextCursor);
+      setItems((current) => more ? [...current, ...page.items] : page.items);
+      setCursor(page.nextCursor); setHasMore(page.hasMore); setStatus("ready");
+    } catch (cause) {
+      if (requestGeneration !== generation.current) return;
+      const reason = getMembershipErrorReason(cause);
+      setError(getMembershipErrorMessage(reason));
+      setStatus(reason === "PERSON_REQUIRED" ? "person-required" : "error");
+    } finally {
+      if (requestGeneration === generation.current) inFlight.current = false;
+    }
+  }, [cursor]);
+
+  const visibleItems = useMemo(() => visibleHistoryItems(items, visibleMembershipKeys), [items, visibleMembershipKeys]);
+  const archived = archivedGroups.filter((group): group is Extract<OwnGroup, { estado: "archivado" }> => group.estado === "archivado");
+  const empty = status === "ready" && membershipHistoryAvailable && archived.length === 0 && visibleItems.length === 0;
+
+  return <section className="mt-8 border-t border-[var(--border)] pt-5">
+    <button type="button" className="flex min-h-11 w-full items-center justify-between rounded-lg px-2 text-left font-semibold focus-visible:outline-2 focus-visible:outline-offset-2" aria-expanded={open} onClick={() => { const next = !open; setOpen(next); if (next && status === "idle") { if (membershipHistoryAvailable) void load(false); else setStatus("ready"); } }}><span>Historial</span><span aria-hidden="true">{open ? "⌃" : "⌄"}</span></button>
+    {open ? <div className="mt-4 space-y-5" aria-busy={status === "loading"}>
+      {archived.length ? <section aria-labelledby="archived-owned-title"><h2 id="archived-owned-title" className="text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">Grupos propios archivados</h2><div className="mt-3 grid gap-3 sm:grid-cols-2">{archived.map((group) => <Link key={group.id} href={`/dashboard/groups/${group.id}`} className="rounded-xl border border-[var(--border)] p-4 focus-visible:outline-2 focus-visible:outline-offset-2"><span className="block font-semibold">{group.nombre}</span><span className="mt-1 block text-sm text-[var(--text-muted)]">Archivado el {new Date(group.archivedAt).toLocaleDateString("es-AR")}</span></Link>)}</div></section> : null}
+      {status === "loading" ? <p role="status" className="rounded-xl border p-4">Cargando historial…</p> : null}
+      {status === "error" ? <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-900"><p>{error}</p><button type="button" className="mt-3 min-h-11 rounded-lg border border-red-400 px-4 font-semibold" onClick={() => void load(false)}>Reintentar historial</button></div> : null}
+      {visibleItems.length ? <section aria-labelledby="membership-history-title"><h2 id="membership-history-title" className="text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">Pertenencias</h2><ol className="mt-3 grid gap-3 sm:grid-cols-2">{visibleItems.map((item) => <li key={item.rowKey} className="rounded-xl border border-[var(--border)] p-4"><div className="flex flex-wrap justify-between gap-2"><span className="font-semibold">{item.group.nombre}</span><span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold">{item.status === "CURRENT" ? "Actual" : "Finalizada"}</span></div><p className="mt-2 text-sm">Temporada: {item.season.nombre}</p><p className="mt-1 text-sm text-[var(--text-muted)]">Ingreso: {new Date(item.joinedAt).toLocaleDateString("es-AR", { timeZone: "UTC" })}</p>{item.leftAt ? <p className="mt-1 text-sm text-[var(--text-muted)]">Egreso: {new Date(item.leftAt).toLocaleDateString("es-AR", { timeZone: "UTC" })}</p> : null}<p className="mt-1 text-sm text-[var(--text-muted)]">{item.validityPeriodCount === 1 ? "1 período de vigencia" : `${item.validityPeriodCount} períodos de vigencia`}</p></li>)}</ol></section> : null}
+      {empty ? <p className="rounded-xl border border-dashed p-6 text-center font-semibold">No hay historial para mostrar</p> : null}
+      {status === "ready" && hasMore && cursor ? <button type="button" className="min-h-11 rounded-lg border border-orange-500 px-4 font-semibold text-orange-700" onClick={() => void load(true)}>Cargar más</button> : null}
+    </div> : null}
   </section>;
 }

@@ -33,14 +33,13 @@ test("Rules siguen deny-all para roots, Períodos y guards", () => {
   assert.match(rules, /validityPeriods[\s\S]{0,180}allow read, write: if false/);
 });
 
-test("frontend E2-19 es callable-only, accesible y no contiene acciones", () => {
+test("frontend E2-19/IUX-03 conserva callable, carga diferida, paginación y cronología sin acciones", () => {
   const ui = read("volley-ranking-frontend/src/components/memberships/OwnGroupMembershipHistorySection.tsx");
   const service = read("volley-ranking-frontend/src/services/membershipsService.ts");
   assert.doesNotMatch(`${ui}\n${service}`, /firebase\/firestore|collection\(|getDoc\(|setDoc\(|updateDoc\(/);
-  for (const marker of ["Historial de grupos", "Grupos que integrás", "Todavía no tenés pertenencias registradas", "Cargar más", "Reintentar", "aria-live", "aria-busy", "tabIndex={-1}", "min-h-11", "sm:grid-cols-2", "generation.current", "inFlight.current", "rowKey", "<time", "Origen:", "Alta inicial", "Renovación intertemporada", "Período de vigencia", "Períodos de vigencia"]) assert.match(ui, new RegExp(marker));
-  assert.match(ui, /item\.continuity === "RENEWAL" \? "Renovación intertemporada" : "Alta inicial"/);
-  assert.match(ui, /item\.validityPeriodCount === 1 \? "Período de vigencia" : "Períodos de vigencia"/);
-  assert.doesNotMatch(ui, /·\s*(Renovación|Incorporación inicial)|\{item\.validityPeriodCount\}\s*\{item\.validityPeriodCount === 1 \? "vigencia"/);
+  for (const marker of ["Historial", "Pertenencias", "No hay historial para mostrar", "Cargar más", "Reintentar historial", "aria-busy", "min-h-11", "sm:grid-cols-2", "generation.current", "inFlight.current", "rowKey", "validityPeriodCount", "status === \"idle\"", "aria-expanded"]) assert.match(ui, new RegExp(marker));
+  assert.match(ui, /item\.validityPeriodCount === 1 \? "1 período de vigencia"/);
+  assert.match(ui, /item\.status === "CURRENT" \? "Actual" : "Finalizada"/);
   assert.doesNotMatch(ui, />\s*(Finalizar|Reactivar|Renovar|Administrar|Exportar)/i);
 });
 

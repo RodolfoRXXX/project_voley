@@ -5,6 +5,7 @@ const test = require("node:test");
 const { createMembershipService } = require("../../src/memberships/application/membershipService");
 const {
   MembershipAccountRequiredError,
+  MembershipCurrentNotAccessibleError,
   MembershipDependencyUnavailableError,
   MembershipInternalError,
   MembershipNotAuthorizedError,
@@ -39,10 +40,11 @@ function setup(overrides = {}) {
     myCurrentGroupMembershipsReader: {
       async listPage() { calls.push("list-page"); return { candidates: [], hasLookahead: false, cursorAnchor: null }; },
       async requireIntegrity() { calls.push("integrity"); },
+      async getCurrentForGroup() { calls.push("current-for-group"); return persisted(); },
     },
     memberGroupContext: {
       async getGroup({ groupId }) { calls.push("member-group"); return { id: groupId, nombre: "Grupo", deporte: "voleibol", estado: "activo", viewerIsOwner: false }; },
-      async getOpenSeason({ groupId }) { calls.push("member-season"); return { id: "season-1", groupId, estado: "abierta" }; },
+      async getOpenSeason({ groupId }) { calls.push("member-season"); return { id: "season-1", groupId, nombre: "Temporada 2026", estado: "abierta" }; },
     },
     ...overrides,
   };
@@ -219,6 +221,35 @@ test("PERSON_REQUIRED ocurre antes del reader de Membresías", async () => {
   const { service, calls } = setup({ selfPersonContext: { async getForUser() { calls.push("person"); return null; } } });
   await assert.rejects(() => service.listMyCurrentGroupMemberships({ userId: "uid" }, { pageSize: 20 }), MembershipPersonRequiredError);
   assert.equal(calls.includes("list-page"), false);
+});
+
+test("IUX-03 lector contextual deriva identidad y devuelve sólo Grupo, Temporada y vínculo propios", async () => {
+  const { service, calls } = setup();
+  const result = await service.getMyCurrentGroupMembershipContext({ userId: "uid", roles: ["ignored"] }, { groupId: "group-1" });
+  assert.deepEqual(calls, ["account", "person", "current-for-group", "member-group", "member-season"]);
+  assert.deepEqual(result, {
+    group: { id: "group-1", nombre: "Grupo", deporte: "voleibol", estado: "activo", viewerIsOwner: false },
+    season: { id: "season-1", nombre: "Temporada 2026", estado: "abierta" },
+    membership: { id: "membership-generated", estado: "activa", fechaIngreso: "2026-08-27T12:00:00.000Z" },
+  });
+  assert.equal(JSON.stringify(result).includes("personId"), false);
+  assert.equal(JSON.stringify(result).includes("ownerUserId"), false);
+});
+
+test("IUX-03 lector contextual distingue ausencia de vínculo y Temporada incompatible", async () => {
+  const absent = setup({ myCurrentGroupMembershipsReader: { async getCurrentForGroup() { return null; } } });
+  await assert.rejects(
+    () => absent.service.getMyCurrentGroupMembershipContext({ userId: "uid" }, { groupId: "group-1" }),
+    MembershipCurrentNotAccessibleError
+  );
+  const closed = setup({ memberGroupContext: {
+    async getGroup() { return { id: "group-1", nombre: "Grupo", deporte: "voleibol", estado: "activo", viewerIsOwner: false }; },
+    async getOpenSeason() { return null; },
+  } });
+  await assert.rejects(
+    () => closed.service.getMyCurrentGroupMembershipContext({ userId: "uid" }, { groupId: "group-1" }),
+    MembershipCurrentNotAccessibleError
+  );
 });
 
 test("página filtrada conserva cursor desde el último crudo procesado", async () => {

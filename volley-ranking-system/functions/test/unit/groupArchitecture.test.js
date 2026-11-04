@@ -60,6 +60,7 @@ test("frontend cubre vacío unificado, carga parcial, doble submit, errores y Ow
   const list = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/page.tsx");
   const form = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/new/page.tsx");
   const detail = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/page.tsx");
+  const members = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/members/page.tsx");
   const frame = read("volley-ranking-frontend/src/components/groups/GroupFrame.tsx");
   const navigation = read("volley-ranking-frontend/src/components/groups/GroupContextNavigation.tsx");
   assert.match(list, /Todavía no tenés grupos/);
@@ -74,9 +75,9 @@ test("frontend cubre vacío unificado, carga parcial, doble submit, errores y Ow
   assert.match(frame, /GroupActionsMenu/);
   assert.match(detail, /!owner \|\| !group/);
   assert.match(detail, /GroupSeasonSummaryCard/);
-  assert.match(detail, /ActiveGroupMembersSection/);
+  assert.match(members, /ActiveGroupMembersSection/);
   assert.match(navigation, /label: "Integrantes"/);
-  assert.match(navigation, /label: "Temporadas"/);
+  assert.match(navigation, /label: "Temporada"/);
   assert.match(navigation, /owner \?/);
   assert.match(detail, /sm:|lg:/);
 });

@@ -11,6 +11,9 @@ const { createDashboardTaskQueryCallable, toHttps } = require("../../src/dashboa
 
 test("IUX-02B contract is closed and cursor is signed and context-bound", () => {
   assert.deepEqual(validateDashboardTaskQuery({ coverage: "N20_N31_V1" }), { coverage: "N20_N31_V1" });
+  assert.deepEqual(validateDashboardTaskQuery({ coverage: "N20_N31_V1", groupId: "group-a" }),
+    { coverage: "N20_N31_V1", groupId: "group-a" });
+  assert.throws(() => validateDashboardTaskQuery({ coverage: "N20_N31_V1", groupId: "bad/group" }), /VALIDATION_FAILED/);
   assert.throws(() => validateDashboardTaskQuery({ coverage: "N20_N31_V1", accountId: "forged" }), /VALIDATION_FAILED/);
   assert.throws(() => validateDashboardTaskQuery({ coverage: "N20" }), /VALIDATION_FAILED/);
   const codec = createDashboardTaskCursorCodec({ secret: "unit-dashboard-task-cursor-secret-32-characters" });
@@ -21,6 +24,14 @@ test("IUX-02B contract is closed and cursor is signed and context-bound", () => 
   assert.throws(() => codec.decode(`${cursor.slice(0, -1)}x`, { accountId: "account-a", coverage: "N20_N31_V1", generationId: "generation-a" }), DashboardTaskInvalidCursorError);
   assert.throws(() => codec.decode(cursor, { accountId: "account-b", coverage: "N20_N31_V1", generationId: "generation-a" }), DashboardTaskInvalidCursorError);
   assert.throws(() => codec.decode(cursor, { accountId: "account-a", coverage: "N20_N31_V1", generationId: "generation-b" }), DashboardTaskExpiredCursorError);
+  const filtered = codec.encode({ accountId: "account-a", coverage: "N20_N31_V1", generationId: "generation-a",
+    groupId: "group-a", anchor });
+  assert.deepEqual(codec.decode(filtered, { accountId: "account-a", coverage: "N20_N31_V1",
+    generationId: "generation-a", groupId: "group-a" }), anchor);
+  assert.throws(() => codec.decode(filtered, { accountId: "account-a", coverage: "N20_N31_V1",
+    generationId: "generation-a", groupId: "group-b" }), DashboardTaskInvalidCursorError);
+  assert.throws(() => codec.decode(cursor, { accountId: "account-a", coverage: "N20_N31_V1",
+    generationId: "generation-a", groupId: "group-a" }), DashboardTaskInvalidCursorError);
 });
 
 test("IUX-02B frontend request gate discards superseded and cross-session responses without scheduling", async () => {

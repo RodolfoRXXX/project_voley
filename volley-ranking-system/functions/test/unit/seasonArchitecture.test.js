@@ -51,7 +51,7 @@ test("frontend cubre vacío, formulario, validación, retry estable, confirmaci�
   const section = read("volley-ranking-frontend/src/components/seasons/OpenSeasonSection.tsx");
   const history = read("volley-ranking-frontend/src/components/seasons/SeasonHistorySection.tsx");
   const seasonUi = `${form}\n${section}\n${history}`;
-  const detail = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/page.tsx");
+  const members = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/members/page.tsx");
   for (const pattern of [
     /estado válido/i,
     /Crear y abrir temporada/,
@@ -72,7 +72,7 @@ test("frontend cubre vacío, formulario, validación, retry estable, confirmaci�
   assert.match(form, /intentSignature/);
   assert.match(form, /attemptedPayload !== intentSignature/);
   assert.match(form, /Owner.*Persona.*Membresía/);
-  assert.match(detail, /OwnMembershipSection/);
+  assert.match(members, /OwnMembershipSection/);
   assert.doesNotMatch(`${form}\n${section}`, /overflow-x|Partido|Torneo|posición|dorsal/);
 });
 

@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { assertSafeFirebaseTestEnvironment } = require("../guards/firebaseTestGuard");
 const { SYNTHETIC_DATA } = require("../fixtures/syntheticData");
+const { eventId } = require("../../src/dashboardTasks/application/dashboardTaskModel");
 
 async function readJson(response) {
   const text = await response.text();
@@ -30,6 +31,16 @@ async function callFunction(host, projectId, name, data, idToken) {
     body: JSON.stringify({ data }),
   });
   return { status: response.status, body: await readJson(response) };
+}
+
+async function waitFor(check, timeoutMs = 15_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const value = await check();
+    if (value) return value;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error("Timed out waiting for dashboard coverage");
 }
 
 async function firestoreRequest({ host, projectId, path, idToken, method = "GET", body }) {
@@ -101,6 +112,17 @@ test("E2-01 crea y consulta Grupos propios con ownership, idempotencia y aislami
       seedAccount(db, existingOwner),
     ]);
 
+    if (process.env.IUX_04_COVERAGE_FOCAL === "1") {
+      await t.test("Cuenta nueva sin Grupos acredita READY/0 sin materializar contextos", async () => {
+        const empty = await callFunction(functionsHost, projectId, "listMyDashboardTasks", { coverage: "N20_N31_V1" }, owner.idToken);
+        assert.equal(empty.status, 200, JSON.stringify(empty.body));
+        assert.equal(empty.body.result.coverage.health, "READY");
+        assert.equal(empty.body.result.coverage.generationId, "no-contexts-v1");
+        assert.equal(empty.body.result.totalTasks, 0);
+        assert.equal((await db.doc(`users/${owner.uid}/dashboardTaskProjection/N20_N31_V1`).get()).exists, false);
+      });
+    }
+
     await t.test("rechaza visitante, cuenta ausente y payload abierto sin escribir", async () => {
       const unauthenticated = await callFunction(functionsHost, projectId, "createOwnGroup", validPayload("e2-unauthenticated-key-0001"));
       const accountRequired = await callFunction(functionsHost, projectId, "createOwnGroup", validPayload("e2-account-required-key-01"), noAccount.idToken);
@@ -123,10 +145,11 @@ test("E2-01 crea y consulta Grupos propios con ownership, idempotencia y aislami
       assert.match(ownerGroup.createdAt, /^\d{4}-\d{2}-\d{2}T/);
 
       const group = (await db.collection("groups").doc(ownerGroup.id).get()).data();
-      assert.deepEqual(Object.keys(group).sort(), ["createdAt", "deporte", "estado", "nombre", "ownerId", "schemaVersion"]);
+      assert.deepEqual(Object.keys(group).sort(), ["createdAt", "deporte", "estado", "nombre", "ownerId", "ownershipRevision", "schemaVersion"]);
       assert.equal(group.ownerId, owner.uid);
       assert.equal(group.estado, "activo");
-      assert.equal(group.schemaVersion, 1);
+      assert.equal(group.ownershipRevision, 1);
+      assert.equal(group.schemaVersion, 3);
       assert.equal(Object.hasOwn(group, "memberIds"), false);
       assert.equal(Object.hasOwn(group, "adminIds"), false);
 
@@ -137,11 +160,39 @@ test("E2-01 crea y consulta Grupos propios con ownership, idempotencia y aislami
       assert.match(guard.idempotencyKeyHash, /^[a-f0-9]{64}$/);
       assert.notEqual(guard.idempotencyKeyHash, "e2-owner-idempotency-key-0001");
 
+      const scope = (await db.collection("dashboardTaskScopes").doc(ownerGroup.id).get()).data();
+      const initialization = (await db.collection("dashboardTaskOutbox")
+        .doc(eventId("GROUP_COVERAGE_INITIALIZED", ownerGroup.id)).get()).data();
+      assert.equal(scope.groupId, ownerGroup.id);
+      assert.equal(scope.sourceRevision, 1);
+      assert.equal(scope.coverageComplete, true);
+      assert.equal(initialization.kind, "GROUP_COVERAGE_INITIALIZED");
+      assert.equal(initialization.groupId, ownerGroup.id);
+      assert.equal(initialization.scopeRevision, 1);
+
+      if (process.env.IUX_04_COVERAGE_FOCAL === "1") {
+        await waitFor(async () => (await db.collection("dashboardTaskOutbox")
+          .doc(eventId("GROUP_COVERAGE_INITIALIZED", ownerGroup.id)).get()).data()?.status === "APPLIED");
+        const [globalTasks, contextualTasks] = await Promise.all([
+          callFunction(functionsHost, projectId, "listMyDashboardTasks", { coverage: "N20_N31_V1" }, owner.idToken),
+          callFunction(functionsHost, projectId, "listMyDashboardTasks", { coverage: "N20_N31_V1", groupId: ownerGroup.id }, owner.idToken),
+        ]);
+        for (const response of [globalTasks, contextualTasks]) {
+          assert.equal(response.status, 200, JSON.stringify(response.body));
+          assert.equal(response.body.result.coverage.health, "READY");
+          assert.equal(response.body.result.totalTasks, 0);
+        }
+        assert.deepEqual(contextualTasks.body.result.groupTaskCounts,
+          [{ groupId: ownerGroup.id, count: 0, N20: 0, N31: 0 }]);
+      }
+
       for (const collection of ["personas", "memberships", "seasons", "requests", "plans", "subscriptions", "activities", "dashboards"]) {
         assert.equal((await db.collection(collection).get()).size, 0, collection);
       }
       assert.equal((await db.collection("users").doc(owner.uid).get()).data().personaId, undefined);
     });
+
+    if (process.env.IUX_04_COVERAGE_FOCAL === "1") return;
 
     await t.test("respuesta perdida/reintento devuelve existing desde lo persistido", async () => {
       const result = await callFunction(functionsHost, projectId, "createOwnGroup", validPayload("e2-owner-idempotency-key-0001"), owner.idToken);
@@ -290,6 +341,10 @@ test("E2-01 crea y consulta Grupos propios con ownership, idempotencia y aislami
   } finally {
     const batch = db.batch();
     for (const id of createdIds) batch.delete(db.collection("groups").doc(id));
+    for (const id of createdIds) {
+      batch.delete(db.collection("dashboardTaskScopes").doc(id));
+      batch.delete(db.collection("dashboardTaskOutbox").doc(eventId("GROUP_COVERAGE_INITIALIZED", id)));
+    }
     for (const actor of actors) {
       batch.delete(db.collection("users").doc(actor.uid));
       batch.delete(db.collection("groupCreationGuards").doc(actor.uid));

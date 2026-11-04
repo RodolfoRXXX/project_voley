@@ -3,7 +3,7 @@
 ## Estado
 
 - **Naturaleza:** complemento normativo focal adoptado.
-- **Estado documental:** `ADOPTADO POR D5-064; D07 RESUELTA POR DIFERIMIENTO`.
+- **Estado documental:** `ADOPTADO; D07 DIFERIDA; D08-A IMPLEMENTADA; CIERRE TÉCNICO LOCAL`.
 - **Fecha:** 2026-11-02.
 - **Base:** `dev@1ab39b3`.
 - **Incremento:** [IUX-04](../implementacion/interetapa-ux-movil/IUX-04-ficha-detalle-grupo-mobile-first.md).
@@ -184,7 +184,42 @@ forman parte del contrato accesible.
 | IUX-04-D05 | accesos archivados actuales, sin roster histórico/acciones | ADOPTADA POR D5-064 |
 | IUX-04-D06 | breakpoint inicial `md`, sujeto a validación | ADOPTADA POR D5-064 |
 | IUX-04-D07 | diferir el total fuera de IUX-04, sin elegir arquitectura ni asignar incremento | RESUELTA; ADOPTADA POR D5-064 |
+| IUX-04-D08-A | alta nueva directa v3 con `ownershipRevision=1` e inicializacion atomica de cobertura | ADOPTADA POR D5-065 |
 
-Este addendum no autoriza código, índices, Functions, datos, migración, deploy, cierre de IUX/E3,
-habilitación de E4 ni rollout productivo IUX-02. La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE
-AUTORIZACIÓN SEPARADA`.
+La implementación local posterior fue autorizada y queda cerrada técnicamente; no autoriza deploy,
+datos productivos, cierre de IUX/E3, habilitación de E4 ni rollout productivo IUX-02. La UAT humana
+complementaria y los gates productivos permanecen explícitos en el informe y el cierre.
+
+## 7. Addendum UAT - inicializacion automatica posterior al backfill
+
+Se autoriza la senal minima `GROUP_COVERAGE_INITIALIZED` atomica con el alta canonica de Grupo,
+determinista por `groupId`, con scope `DIRTY`, cobertura declarada completa solo como alcance a
+procesar y `READY` exclusivamente despues del avance contiguo del worker. Reintentos del comando y
+eventos duplicados no incrementan revision. N20/N31 concurrentes conservan revisiones crecientes y
+no pueden ser sobrescritos por una revision anterior. El trigger on-create es la via inmediata; el
+scheduler de un minuto es recuperacion y la reconciliacion diaria se conserva.
+
+La Cuenta sin Grupos usa el vacio revalidado `no-contexts-v1` sin documentos derivados. La primera
+relacion contextual invalida ese caso y exige proyeccion acreditada.
+
+**IUX-04-D08-A queda ADOPTADA:** Grupos nuevos nacen directamente como schema v3 activo con
+`ownershipRevision=1`. La misma transaccion crea el guard y prepara scope/evento determinista de
+inicializacion. El full scan acredita Owner, raiz y contexto incluso con cero N20/N31; la raiz live se
+activa solo al completar esa senal. Rebuild/backfill mantienen activacion operativa separada. El
+proyector no evoluciona el Agregado, el reader no escribe y metadata ausente no equivale a cero.
+
+Los v1 anteriores se reparan unicamente mediante la evolucion canonica con precondiciones y una
+inicializacion determinista posterior, nunca por edicion manual o migracion masiva.
+
+## 8. Resultado de implementación
+
+D08-A quedó implementada mediante el alta canónica v3 y la señal determinista en la misma
+transacción. Outbox, worker, recuperación y reconciliación existentes se reutilizan; readers siguen
+sin escrituras. Las regresiones locales acreditan idempotencia, evento duplicado, N20/N31 y
+compatibilidad global/contextual. La denegación
+`ADMINISTRATIVE_RECEIPT_NOT_AUTHORIZED` continúa siendo el resultado autoritativo esperado para un
+integrante sin capability y no amplía permisos.
+
+La evidencia humana sólo confirma N20 en Inicio/Novedades y la corrección visual del doble scroll y
+espacio inferior en el recorrido observado. No acredita N31, concurrencia, zoom 200 %, Android real
+ni lector de pantalla. D07 y las exclusiones originales permanecen sin cambios.

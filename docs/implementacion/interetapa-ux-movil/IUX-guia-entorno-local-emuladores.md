@@ -17,13 +17,22 @@ Ejemplo: `volley-ranking-system/functions/.env.demo.example`.
 
 Firebase CLI carga `.env.<projectId>`. Para el proyecto recomendado:
 
-```bash
-cp volley-ranking-system/functions/.env.demo.example \
-  volley-ranking-system/functions/.env.demo-sportexa-local
+```powershell
+$source = 'volley-ranking-system\functions\.env.demo.example'
+$target = 'volley-ranking-system\functions\.env.demo-iux01-uat'
+if (-not (Test-Path -LiteralPath $target)) { Copy-Item $source $target }
 ```
 
-Después de copiar, reemplazar únicamente el placeholder del secreto. No agregar el archivo generado
-a Git.
+```bash
+test -e volley-ranking-system/functions/.env.demo-iux01-uat ||
+  cp volley-ranking-system/functions/.env.demo.example \
+     volley-ranking-system/functions/.env.demo-iux01-uat
+```
+
+Si el archivo ya existe, conservarlo. Después de copiar, configurar localmente
+`ENABLE_DASHBOARD_TASK_PROJECTION=true` y reemplazar únicamente el placeholder del secreto por un
+valor sintético de al menos 32 caracteres. No imprimir ni versionar el secreto. `.gitignore` excluye
+`.env.*` locales y conserva los ejemplos `*.example`.
 
 ### Frontend
 
@@ -39,107 +48,224 @@ Ejemplo: `volley-ranking-frontend/.env.local.example`.
 - `NEXT_PUBLIC_FUNCTIONS_BASE_URL`: base HTTP de callables/rutas propias. Debe contener el mismo
   project ID y host que el resto del entorno.
 
-```bash
-cp volley-ranking-frontend/.env.local.example volley-ranking-frontend/.env.local
+```powershell
+if (-not (Test-Path -LiteralPath 'volley-ranking-frontend\.env.local')) {
+  Copy-Item 'volley-ranking-frontend\.env.local.example' 'volley-ranking-frontend\.env.local'
+}
 ```
 
-Para acceso sólo desde la computadora se conservan los valores `127.0.0.1`. Para acceso desde un
-celular en la misma LAN, reemplazar `127.0.0.1` por la IP LAN de la computadora tanto en
-`NEXT_PUBLIC_FIREBASE_EMULATOR_HOST` como en `NEXT_PUBLIC_FUNCTIONS_BASE_URL`. Reiniciar Next.js
-después de modificar variables. No cambiar archivos de producción.
+```bash
+test -e volley-ranking-frontend/.env.local ||
+  cp volley-ranking-frontend/.env.local.example volley-ranking-frontend/.env.local
+```
 
-## Arranque
+Para acceso sólo desde la computadora, usar `127.0.0.1`. Para un celular en una LAN privada,
+reemplazar ese host por la IP LAN de la computadora en `NEXT_PUBLIC_FIREBASE_EMULATOR_HOST` y
+`NEXT_PUBLIC_FUNCTIONS_BASE_URL`, y arrancar Next.js escuchando en `0.0.0.0`. `firebase.json` ya
+escucha Auth, Firestore, Functions y Emulator UI en todas las interfaces para permitir ese acceso;
+esto expone esos emuladores en la red local. Usar sólo una red confiable y aplicar el firewall
+local. Pub/Sub permanece ligado a `127.0.0.1`, porque sólo lo necesita Functions localmente. Reiniciar
+Next.js después de modificar variables. No cambiar archivos de producción.
 
-Terminal 1, desde la raíz del repositorio:
+## Arranque local de desarrollo
+
+Desde la raíz, iniciar Auth, Firestore, Functions y Pub/Sub con un project ID demo explícito. Pub/Sub
+es necesario para las Functions programadas, incluida la reconciliación de la proyección:
+no omitir `--project` ni confiar en el proyecto predeterminado de `.firebaserc`.
+
+```powershell
+Set-Location volley-ranking-system
+firebase emulators:start --project demo-iux01-uat --only auth,firestore,functions,pubsub --config firebase.json
+```
 
 ```bash
 cd volley-ranking-system
-firebase emulators:start \
-  --project demo-sportexa-local \
-  --only auth,firestore,functions \
-  --config firebase.json
+firebase emulators:start --project demo-iux01-uat \
+  --only auth,firestore,functions,pubsub --config firebase.json
 ```
 
-Terminal 2:
+En una segunda terminal, iniciar Next en loopback:
+
+```powershell
+Set-Location volley-ranking-frontend
+npm run dev -- --hostname 127.0.0.1 --port 3000
+```
 
 ```bash
 cd volley-ranking-frontend
-npm run dev -- --hostname 0.0.0.0 --port 3000
+npm run dev -- --hostname 127.0.0.1 --port 3000
 ```
 
-Abrir `http://127.0.0.1:3000/dashboard` en la computadora. Desde otro equipo de la LAN, usar
-`http://<IP-LAN>:3000/dashboard` después de configurar los dos hosts frontend como se indicó arriba.
-El ID `demo-sportexa-local` debe permanecer idéntico en el nombre del `.env` de Functions, el
-argumento `--project`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID` y `NEXT_PUBLIC_FUNCTIONS_BASE_URL`.
+Abrir `http://127.0.0.1:3000/dashboard`. Usar el mismo proyecto en `--project`, el nombre de
+`.env.<projectId>`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID` y `NEXT_PUBLIC_FUNCTIONS_BASE_URL`. Esta
+configuración sólo inicializa emuladores y no autoriza despliegue ni acceso a datos productivos.
 
-La proyección continúa deshabilitada por defecto fuera de este archivo local. Esta preparación no
-autoriza backfill remoto, despliegue ni uso de datos productivos.
+## UAT con frontend compilado y exportación persistente
 
-## UAT liviana con frontend compilado
+Usar `demo-iux01-uat` de manera consistente en `.env.demo-iux01-uat`, `--project`,
+`NEXT_PUBLIC_FIREBASE_PROJECT_ID` y `NEXT_PUBLIC_FUNCTIONS_BASE_URL`. Confirmar localmente
+`ENABLE_DASHBOARD_TASK_PROJECTION=true` sin mostrar ni compartir el secreto del cursor. Antes del
+build, verificar `.env.local` y las variables públicas; Next las incorpora al artefacto compilado.
+Todos los comandos especifican `--project demo-iux01-uat`; no omitirlo ni usar el proyecto
+predeterminado de `.firebaserc`.
 
-Esta variante reduce recompilaciones y evita mezclar el consumo del bundler con el de Functions.
-Usar un solo proyecto demo (por ejemplo `demo-iux01-uat`) en `.env.local`, `.env.<projectId>`, el
-argumento `--project` y `NEXT_PUBLIC_FUNCTIONS_BASE_URL`.
+1. Detener cualquier `next start`/`next dev` que use el mismo `.next`. Construir una sola vez:
 
-1. Detener servidores Next, emuladores y suites anteriores. Confirmar que
-   `ENABLE_DASHBOARD_TASK_PROJECTION=true`; N20/N31 necesita sus productores y workers.
-2. Desde `volley-ranking-frontend`, ejecutar `npm run build`. Next incorpora las variables
-   `NEXT_PUBLIC_*` durante este paso: verificar antes del build el project ID, el host Emulator y
-   la URL de Functions. No cambiar esas variables entre `build` y `start`.
-3. Iniciar una única instancia de Auth, Firestore y Functions Emulator con el mismo `demo-*`. Para
-   preservar la UAT vigente, importar el snapshot y exportar sobre él al detener normalmente:
-
-   ```bash
-   cd volley-ranking-system
-   firebase emulators:start --project demo-iux01-uat \
-     --only auth,firestore,functions --config firebase.json \
-     --import /tmp/demo-iux01-uat-current \
-     --export-on-exit /tmp/demo-iux01-uat-current
+   ```powershell
+   Set-Location volley-ranking-frontend
+   npm run build
    ```
 
-   Esta terminal permanece abierta. No iniciar otra instancia Emulator sobre los mismos puertos.
+   ```bash
+   cd volley-ranking-frontend
+   npm run build
+   ```
 
-4. Después de que Functions informe que cargó `.env.demo-iux01-uat`, inicializar o reconciliar la
-   generación IUX-02. No existe un comando `tasks`: el operador canónico es el script de Functions
-   siguiente y termina por sí solo. Es idempotente sobre las fuentes N20/N31 y no reemplaza
-   contadores manualmente:
+2. Elegir **una sola** forma de arranque del emulador. Ambos ejemplos preservan cada sesión en un
+   directorio persistente fuera del repositorio y fuera de `/tmp`; generan una carpeta de salida
+   nueva, se niegan a reutilizarla, y esperan `Export complete` al detenerse.
+
+   **Primer arranque, sin snapshot:** no pasar `--import`.
+
+   PowerShell:
+
+   ```powershell
+   $exportRoot = Join-Path $env:LOCALAPPDATA 'SPORTEXA\demo-iux01-uat\exports'
+   New-Item -ItemType Directory -Force -Path $exportRoot | Out-Null
+   $exportPath = Join-Path $exportRoot ("demo-iux01-uat-" + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+   if (Test-Path -LiteralPath $exportPath) { throw "El destino ya existe: $exportPath" }
+   Set-Location volley-ranking-system
+   firebase emulators:start --project demo-iux01-uat --only auth,firestore,functions,pubsub --config firebase.json --export-on-exit $exportPath
+   ```
+
+   Bash (Linux/macOS):
 
    ```bash
-   cd volley-ranking-system/functions
-   FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 \
-   GCLOUD_PROJECT=demo-iux01-uat \
+   exportRoot="$HOME/.local/share/SPORTEXA/demo-iux01-uat/exports"
+   mkdir -p "$exportRoot"
+   exportPath="$exportRoot/demo-iux01-uat-$(date +%Y%m%d-%H%M%S)"
+   test ! -e "$exportPath" || { echo "El destino ya existe: $exportPath" >&2; exit 1; }
+   cd volley-ranking-system
+   firebase emulators:start --project demo-iux01-uat \
+     --only auth,firestore,functions,pubsub --config firebase.json \
+     --export-on-exit "$exportPath"
+   ```
+
+   Conserva el valor generado de `exportPath`. No uses `--force`, ni cierres la terminal antes del
+   mensaje de exportación completa.
+
+   **Arranques posteriores, con snapshot válido:** seleccionar la última exportación terminada;
+   verificar que contiene `firebase-export-metadata.json`; importar desde allí y exportar a una
+   carpeta nueva. Nunca reutilizar como salida la carpeta de entrada.
+
+   PowerShell:
+
+   ```powershell
+   $exportRoot = Join-Path $env:LOCALAPPDATA 'SPORTEXA\demo-iux01-uat\exports'
+   $importPath = Join-Path $exportRoot 'demo-iux01-uat-AAAAMMDD-HHMMSS'
+   if (-not (Test-Path -LiteralPath (Join-Path $importPath 'firebase-export-metadata.json'))) { throw "Snapshot inválido: $importPath" }
+   New-Item -ItemType Directory -Force -Path $exportRoot | Out-Null
+   $exportPath = Join-Path $exportRoot ("demo-iux01-uat-" + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+   if ($exportPath -eq $importPath -or (Test-Path -LiteralPath $exportPath)) { throw "El destino debe ser una carpeta nueva: $exportPath" }
+   Set-Location volley-ranking-system
+   firebase emulators:start --project demo-iux01-uat --only auth,firestore,functions,pubsub --config firebase.json --import $importPath --export-on-exit $exportPath
+   ```
+
+   Bash (Linux/macOS):
+
+   ```bash
+   exportRoot="$HOME/.local/share/SPORTEXA/demo-iux01-uat/exports"
+   importPath="$exportRoot/demo-iux01-uat-AAAAMMDD-HHMMSS"
+   test -f "$importPath/firebase-export-metadata.json" || { echo "Snapshot inválido: $importPath" >&2; exit 1; }
+   mkdir -p "$exportRoot"
+   exportPath="$exportRoot/demo-iux01-uat-$(date +%Y%m%d-%H%M%S)"
+   test "$exportPath" != "$importPath" && test ! -e "$exportPath" || { echo "El destino debe ser una carpeta nueva: $exportPath" >&2; exit 1; }
+   cd volley-ranking-system
+   firebase emulators:start --project demo-iux01-uat \
+     --only auth,firestore,functions,pubsub --config firebase.json \
+     --import "$importPath" --export-on-exit "$exportPath"
+   ```
+
+   Mantener abierta esta terminal y no iniciar una segunda instancia sobre los mismos puertos.
+
+3. Las altas nuevas de Grupo inicializan scope y cobertura automáticamente mediante el writer
+   canónico; `onDashboardTaskOutboxCreate` procesa el evento incremental. No ejecutar backfill tras
+   cada Grupo. Pub/Sub habilita la reconciliación programada y la comprobación de salud. La
+   proyección sólo se acredita `READY` cuando la cobertura `N20_N31_V1` está completa; cobertura
+   incompleta no equivale a cero tareas.
+
+   El operador `npm run iux-02a:backfill:emulator` se reserva para un conjunto preexistente que
+   requiera una inicialización/reconciliación justificada (por ejemplo, migración de datos
+   anteriores a la inicialización automática) o un procedimiento de recuperación documentado.
+   Antes, capturar el estado y revisar eventos fallidos, en proceso y leases. No ejecutarlo como
+   sustituto del procesamiento incremental. No editar proyecciones ni contadores manualmente. El
+   operador requiere `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080` y
+   `GCLOUD_PROJECT=demo-iux01-uat`.
+
+   PowerShell (sólo si esa reconciliación está justificada):
+
+   ```powershell
+   Set-Location volley-ranking-system\functions
+   $env:FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080'
+   $env:GCLOUD_PROJECT = 'demo-iux01-uat'
    npm run iux-02a:backfill:emulator
    ```
 
-   El resultado operativo debe mostrar `generationId: "live-v1"`, `dirtyScopes: 0`,
-   `degradedScopes: 0`, `failedEvents: 0` y `processingEvents: 0`. `users: 0` sólo es válido si
-   ninguna fuente canónica tiene destinatarios accionables. Si existen N20/N31 y sigue en cero,
-   revisar primero compatibilidad de ownership/cuentas y los errores del outbox; no editar la
-   proyección ni sus contadores.
+   Bash (Linux/macOS):
 
-5. En otra terminal, iniciar solamente el artefacto compilado:
+   ```bash
+   cd volley-ranking-system/functions
+   FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 GCLOUD_PROJECT=demo-iux01-uat \
+     npm run iux-02a:backfill:emulator
+   ```
+
+4. En una segunda terminal, iniciar **solo** el build compilado:
+
+   ```powershell
+   Set-Location volley-ranking-frontend
+   npm run start -- --hostname 127.0.0.1 --port 3000
+   ```
 
    ```bash
    cd volley-ranking-frontend
    npm run start -- --hostname 127.0.0.1 --port 3000
    ```
 
-   Esta terminal también permanece abierta durante la UAT.
+   Abrir `http://127.0.0.1:3000/dashboard`. No ejecutar `next dev`, `next build` y `next start`
+   simultáneamente sobre `.next`; detener Next antes de cambiar variables o recompilar. No mezclar
+   `localhost` y `127.0.0.1` dentro de una misma sesión de navegador.
 
-6. Usar perfiles aislados del navegador para las dos sesiones y datos sintéticos del mismo
-   Emulator. El procesamiento incremental de outbox y la reconciliación viven dentro de Functions
-   Emulator de la terminal 1; no requieren otro daemon. Mantener
-   `ENABLE_DASHBOARD_TASK_PROJECTION=true`.
-7. Recorrer una vez Dashboard, Mis grupos y Economía con ambas sesiones; repetir el mismo recorrido
-   y dejar 30 segundos de inactividad. No ejecutar simultáneamente build, suites o una segunda
-   instancia de Next/Emulator. La ejecución serial de depuración sirve para diagnóstico funcional,
-   no como prueba de rendimiento.
+5. No hay un bootstrap UAT de datos por script seguro. Crear usuarios, Grupos, Temporadas y
+   solicitudes desde la aplicación; no ejecutar fixtures de pruebas contra la UAT, porque pueden
+   incluir cleanup. Usar perfiles de navegador aislados para las sesiones.
 
-Para detener, usar `Ctrl+C` primero en `next start` y después en Emulator. Esperar el mensaje
-`Export complete` antes de cerrar la terminal 1. También puede preservarse una sesión ya iniciada
-con `firebase emulators:export /tmp/demo-iux01-uat-current --project demo-iux01-uat` desde una tercera
-terminal; este comando no debe ejecutarse simultáneamente con otro export.
+## Detener y preservar
 
-Para acceso desde Android real, repetir el procedimiento con `--hostname 0.0.0.0` y la IP LAN en
-las variables indicadas anteriormente. El selector de fecha nativo y la simulación táctil deben
-validarse en el dispositivo; el modo adaptable de escritorio no sustituye esa comprobación.
+Detener primero `next start` y después Functions/Auth/Firestore/Pub/Sub con `Ctrl+C`. Esperar
+`Export complete` en la terminal de Emulator antes de cerrarla. El destino generado por
+`--export-on-exit` conserva la sesión. Como alternativa para un checkpoint manual, detener primero
+Next pero dejar los emuladores en ejecución, elegir una ruta nueva persistente y exportar sin
+`--force`; ejecutar el export desde una tercera terminal. No hacer el export manual simultáneamente
+con otro export:
+
+```powershell
+$exportRoot = Join-Path $env:LOCALAPPDATA 'SPORTEXA\demo-iux01-uat\exports'
+New-Item -ItemType Directory -Force -Path $exportRoot | Out-Null
+$exportPath = Join-Path $exportRoot ("demo-iux01-uat-checkpoint-" + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+if (Test-Path -LiteralPath $exportPath) { throw "El destino ya existe: $exportPath" }
+Set-Location volley-ranking-system
+firebase emulators:export $exportPath --project demo-iux01-uat
+```
+
+```bash
+exportRoot="$HOME/.local/share/SPORTEXA/demo-iux01-uat/exports"
+mkdir -p "$exportRoot"
+exportPath="$exportRoot/demo-iux01-uat-checkpoint-$(date +%Y%m%d-%H%M%S)"
+test ! -e "$exportPath" || { echo "El destino ya existe: $exportPath" >&2; exit 1; }
+cd volley-ranking-system
+firebase emulators:export "$exportPath" --project demo-iux01-uat
+```
+
+No ejecutar exportaciones simultáneas. Para validar el diseño táctil en un dispositivo real, además
+de abrir Next en `0.0.0.0` y usar la IP LAN en las variables del frontend, confirmar que el firewall
+permite sólo esa red confiable; el modo adaptable del escritorio no sustituye la validación física.

@@ -9,6 +9,7 @@ const { createTreasuryAccountIdentityCapability } = require("../../users/public/
 const { createDashboardTaskSourceReader, RESOURCE_TYPES } = require("./dashboardTaskSourceReader");
 const {
   DashboardTaskProjectionDisabledError, DashboardTaskProjectionNotReadyError, DashboardTaskIncompatibleStateError,
+  DashboardTaskGroupContextNotAccessibleError,
 } = require("../application/dashboardTaskQueryErrors");
 
 const PAGE_SIZE = 10;
@@ -51,6 +52,23 @@ function createFirestoreDashboardTaskQuery({ db, cursorSecret, projectionEnabled
     return result;
   }
 
+  async function contextualAuthorization(transaction, accountId, groupId) {
+    if ((await identities.getCanonicalAccount({ unitOfWork: transaction, accountId })).status !== "READY") {
+      throw new DashboardTaskIncompatibleStateError();
+    }
+    const group = await groups.get({ unitOfWork: transaction, groupId });
+    if (group.status === "INCOMPATIBLE") throw new DashboardTaskIncompatibleStateError();
+    if (group.status !== "READY") throw new DashboardTaskGroupContextNotAccessibleError();
+    if (group.ownerId === accountId) {
+      return new Map([[groupId, { ...group, N20: group.estado === "activo", N31: true }]]);
+    }
+    const authorization = await audience.evaluateAccount({ unitOfWork: transaction, accountId, group });
+    if (authorization.status !== "AUTHORIZED" || authorization.kind !== "REVIEWER") {
+      throw new DashboardTaskGroupContextNotAccessibleError();
+    }
+    return new Map([[groupId, { ...group, N20: false, N31: true }]]);
+  }
+
   async function healthAndTotal(transaction, accountId, generationId, authorized, meta, root) {
     const groupIds = [...authorized.keys()];
     const scopeRefs = groupIds.map((id) => db.collection("dashboardTaskScopes").doc(id));
@@ -79,7 +97,8 @@ function createFirestoreDashboardTaskQuery({ db, cursorSecret, projectionEnabled
       const allowed = authorized.get(groupId);
       const authorizedCount = (allowed.N20 ? count.N20 : 0) + (allowed.N31 ? count.N31 : 0);
       total += authorizedCount;
-      groupTaskCounts.push(Object.freeze({ groupId, count: authorizedCount }));
+      groupTaskCounts.push(Object.freeze({ groupId, count: authorizedCount,
+        N20: allowed.N20 ? count.N20 : 0, N31: allowed.N31 ? count.N31 : 0 }));
     }
     if (!validCount(root.total) || !validCount(root.N20) || !validCount(root.N31) || root.total !== root.N20 + root.N31) {
       throw new DashboardTaskIncompatibleStateError();
@@ -123,7 +142,7 @@ function createFirestoreDashboardTaskQuery({ db, cursorSecret, projectionEnabled
         ...(season ? { season: { id: season.seasonId, name: season.name } } : {}),
         summary: source.taskType === TASK_TYPES.JOIN_REQUEST ? "Solicitud de ingreso por decidir" : "Entrega de pago por revisar",
         destination: source.taskType === TASK_TYPES.JOIN_REQUEST
-          ? { href: `/dashboard/groups/${encodeURIComponent(source.groupId)}?joinRequestId=${encodeURIComponent(source.resourceId)}#integrantes` }
+          ? { href: `/dashboard/groups/${encodeURIComponent(source.groupId)}/members?joinRequestId=${encodeURIComponent(source.resourceId)}` }
           : { href: `/dashboard/groups/${encodeURIComponent(source.groupId)}/economy?tab=notices&deliveryId=${encodeURIComponent(source.resourceId)}` },
       }));
       anchors.set(source.taskId, anchor(projected));
@@ -138,24 +157,35 @@ function createFirestoreDashboardTaskQuery({ db, cursorSecret, projectionEnabled
       const metaSnapshot = await transaction.get(metaRef);
       if (!metaSnapshot.exists) {
         let authorized;
-        try { authorized = await contexts(transaction, accountId); } catch { throw new DashboardTaskProjectionNotReadyError(); }
+        try { authorized = input.groupId
+          ? await contextualAuthorization(transaction, accountId, input.groupId)
+          : await contexts(transaction, accountId); } catch (error) {
+          if (error instanceof DashboardTaskGroupContextNotAccessibleError) throw error;
+          throw new DashboardTaskProjectionNotReadyError();
+        }
         if (authorized.size) throw new DashboardTaskProjectionNotReadyError();
-        cursorCodec.decode(input.cursor, { accountId, coverage: COVERAGE, generationId: EMPTY_GENERATION });
+        cursorCodec.decode(input.cursor, { accountId, coverage: COVERAGE, generationId: EMPTY_GENERATION,
+          groupId: input.groupId ?? null });
         return Object.freeze({ coverage: { version: COVERAGE, complete: true, health: HEALTH.READY,
           asOf: now().toDate().toISOString(), generationId: EMPTY_GENERATION }, totalTasks: 0,
           groupTaskCounts: Object.freeze([]), items: [] });
       }
       const meta = metaSnapshot.data(); const generationId = meta.activeGenerationId;
       if (meta.coverage !== COVERAGE || typeof generationId !== "string" || !generationId) throw new DashboardTaskProjectionNotReadyError();
-      const cursor = cursorCodec.decode(input.cursor, { accountId, coverage: COVERAGE, generationId });
+      const cursor = cursorCodec.decode(input.cursor, { accountId, coverage: COVERAGE, generationId,
+        groupId: input.groupId ?? null });
       const rootRef = db.collection("users").doc(accountId).collection("dashboardTaskSets").doc(generationId);
       const rootSnapshot = await transaction.get(rootRef);
       if (!rootSnapshot.exists || rootSnapshot.data().coverage !== COVERAGE || rootSnapshot.data().generationId !== generationId) {
         throw new DashboardTaskProjectionNotReadyError();
       }
-      const authorized = await contexts(transaction, accountId);
+      const authorized = input.groupId
+        ? await contextualAuthorization(transaction, accountId, input.groupId)
+        : await contexts(transaction, accountId);
       const state = await healthAndTotal(transaction, accountId, generationId, authorized, meta, rootSnapshot.data());
-      let query = rootRef.collection("items").where("projectionState", "==", "ACTIVE")
+      let query = rootRef.collection("items");
+      if (input.groupId) query = query.where("groupId", "==", input.groupId);
+      query = query.where("projectionState", "==", "ACTIVE")
         .orderBy("actionableAt", "desc").orderBy("taskType", "asc").orderBy("resourceId", "asc");
       if (cursor) query = query.startAfter(new Timestamp(cursor.seconds, cursor.nanoseconds), cursor.kind, cursor.resourceId);
       const page = await transaction.get(query.limit(SCAN_SIZE));
@@ -174,7 +204,7 @@ function createFirestoreDashboardTaskQuery({ db, cursorSecret, projectionEnabled
         asOf: now().toDate().toISOString(), generationId }, ...(complete
         ? { totalTasks: state.total, groupTaskCounts: state.groupTaskCounts } : {}), items: visible,
         ...(hasMore && nextAnchor ? { nextCursor: cursorCodec.encode({ accountId, coverage: COVERAGE, generationId,
-          anchor: nextAnchor }) } : {}) });
+          groupId: input.groupId ?? null, anchor: nextAnchor }) } : {}) });
     }, { readOnly: true });
   }
 

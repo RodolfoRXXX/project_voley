@@ -79,7 +79,8 @@ function buildGroup({ groupId, nombre, deporte, ownerId }) {
     deporte: normalizeSport(deporte),
     ownerId: requireId(ownerId, "Owner id"),
     estado: GROUP_INITIAL_STATE,
-    schemaVersion: GROUP_SCHEMA_VERSION,
+    ownershipRevision: 1,
+    schemaVersion: GROUP_OWNERSHIP_SCHEMA_VERSION,
   });
 }
 

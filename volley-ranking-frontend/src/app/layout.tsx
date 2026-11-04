@@ -14,7 +14,7 @@ export default function RootLayout({
   return (
     <html lang="es" data-theme="light">
       <body
-        className="h-screen overflow-y-auto"
+        className="h-dvh"
         style={{
           ["--font-outfit" as string]: "'Segoe UI', Inter, Roboto, Arial, sans-serif",
           ["--font-arizonia" as string]: "'Brush Script MT', 'Lucida Handwriting', cursive",
@@ -24,7 +24,7 @@ export default function RootLayout({
           <PersonProvider>
             <ToastProvider>
               <ConfirmProvider>
-                <div className="h-screen flex flex-col">
+                <div className="flex h-full flex-col">
                   {/* Header mobile */}
                   <Navbar />
                   <main className="flex-1 flex flex-col min-h-0">{children}</main>

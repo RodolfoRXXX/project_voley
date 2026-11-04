@@ -23,4 +23,5 @@ module.exports = {
   DashboardTaskDependencyUnavailableError: error("DEPENDENCY_UNAVAILABLE"),
   DashboardTaskInvalidCursorError: error("INVALID_CURSOR"),
   DashboardTaskExpiredCursorError: error("CURSOR_EXPIRED"),
+  DashboardTaskGroupContextNotAccessibleError: error("GROUP_CONTEXT_NOT_ACCESSIBLE"),
 };

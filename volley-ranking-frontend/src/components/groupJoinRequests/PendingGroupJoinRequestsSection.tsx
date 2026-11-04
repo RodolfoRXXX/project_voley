@@ -98,10 +98,8 @@ export function PendingGroupJoinRequestsSection({ groupId, requestedRequestId, o
       else if (["REQUEST_CANCELLED", "DECISION_ALREADY_APPROVED", "DECISION_ALREADY_REJECTED"].includes(reason as GroupJoinRequestErrorReason)) await consultAuthoritative(requestId);
     } finally { flights.current.finish(requestId); markBusy(requestId, false); focusResult(); }
   };
-  const copyLink = async () => { try { await navigator.clipboard.writeText(`${window.location.origin}/join/groups/${encodeURIComponent(groupId)}`); setError(""); setNotice("Enlace copiado."); focusResult(); } catch { setNotice(""); setError("No pudimos copiar el enlace."); setStatus("error"); } };
-
   return <section id="pending-group-join-requests" tabIndex={-1} className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-7 lg:col-span-2" aria-labelledby="pending-requests-heading">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h2 id="pending-requests-heading" className="text-lg font-semibold">Solicitudes pendientes</h2><button type="button" className="min-h-11 rounded-lg border border-orange-500 px-4 py-2 font-semibold" onClick={() => void copyLink()}>Copiar enlace de solicitud</button></div>
+    <h2 id="pending-requests-heading" className="text-lg font-semibold">Solicitudes pendientes</h2>
     <div ref={region} tabIndex={-1} aria-live="polite" className="mt-4 focus-visible:outline-2">
       {notice ? <p role="status" className="mb-3 text-sm text-emerald-700">{notice}</p> : null}
       {error ? <p role="alert" className="mb-3 text-sm text-red-700">{error}</p> : null}

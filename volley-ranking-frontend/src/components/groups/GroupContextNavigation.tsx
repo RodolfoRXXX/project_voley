@@ -5,18 +5,26 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
+import { useAuth } from "@/hooks/useAuth";
+import { usePerson } from "@/hooks/usePerson";
 import { listOwnGroups } from "@/services/groupsService";
-import { listMyCurrentGroupMemberships } from "@/services/membershipsService";
+import { getMembershipErrorReason, listMyCurrentGroupMemberships } from "@/services/membershipsService";
 
 type ContextOption = { groupId: string; groupName: string; owner: boolean; membership: boolean };
 
-async function loadContexts(): Promise<ContextOption[]> {
+async function loadContexts(includeMemberships: boolean): Promise<ContextOption[]> {
   const owned = (await listOwnGroups()).items.map((group) => ({ groupId: group.id, groupName: group.nombre, owner: true, membership: false }));
+  if (!includeMemberships) return owned.sort((a, b) => a.groupName.localeCompare(b.groupName, "es"));
   const memberships = [] as Awaited<ReturnType<typeof listMyCurrentGroupMemberships>>["items"];
   let cursor: string | undefined;
   const seenCursors = new Set<string>();
   do {
-    const page = await listMyCurrentGroupMemberships({ pageSize: 20, ...(cursor ? { cursor } : {}) });
+    let page;
+    try { page = await listMyCurrentGroupMemberships({ pageSize: 20, ...(cursor ? { cursor } : {}) }); }
+    catch (cause) {
+      if (getMembershipErrorReason(cause) === "PERSON_REQUIRED") return owned.sort((a, b) => a.groupName.localeCompare(b.groupName, "es"));
+      throw cause;
+    }
     memberships.push(...page.items);
     const next = page.nextCursor ?? undefined;
     if (next && seenCursors.has(next)) throw new Error("MEMBERSHIP_CURSOR_REPEATED");
@@ -32,37 +40,39 @@ export function GroupContextNavigation({ groupId, groupName, owner, membership, 
   const pathname = usePathname();
   const router = useRouter();
   const { confirm } = useConfirm();
+  const { firebaseUser } = useAuth();
+  const { personStatus, personAccountId } = usePerson();
   const [contexts, setContexts] = useState<ContextOption[]>([{ groupId, groupName, owner, membership }]);
   const [switchError, setSwitchError] = useState("");
-  const [hash, setHash] = useState("");
 
   useEffect(() => {
     let active = true;
-    void loadContexts().then((items) => {
+    const scopedPersonStatus = personAccountId === firebaseUser?.uid ? personStatus : "loading";
+    if (!["ready", "empty"].includes(scopedPersonStatus)) return () => { active = false; };
+    void loadContexts(scopedPersonStatus === "ready").then((items) => {
       if (!active) return;
       const present = items.some((item) => item.groupId === groupId);
       setContexts(present ? items : [{ groupId, groupName, owner, membership }, ...items]);
     }, () => undefined);
     return () => { active = false; };
-  }, [groupId, groupName, membership, owner]);
-
-  useEffect(() => {
-    const update = () => setHash(window.location.hash);
-    update();
-    window.addEventListener("hashchange", update);
-    window.addEventListener("popstate", update);
-    return () => { window.removeEventListener("hashchange", update); window.removeEventListener("popstate", update); };
-  }, [pathname]);
+  }, [firebaseUser?.uid, groupId, groupName, membership, owner, personAccountId, personStatus]);
 
   const links = useMemo(() => owner ? [
     { label: "Resumen", href: `/dashboard/groups/${groupId}` },
-    ...(activeGroup ? [{ label: "Integrantes", href: `/dashboard/groups/${groupId}#integrantes` }] : []),
-    { label: "Temporadas", href: `/dashboard/groups/${groupId}/seasons` },
     { label: "Economía", href: `/dashboard/groups/${groupId}/economy` },
+    { label: "Temporada", href: `/dashboard/groups/${groupId}/seasons` },
+    ...(activeGroup ? [{ label: "Integrantes", href: `/dashboard/groups/${groupId}/members` }] : []),
   ] : [
     ...(membership ? [{ label: "Mi participación", href: `/dashboard/groups/${groupId}/membership` }] : []),
     ...((capabilities.treasury || capabilities.review || capabilities.record) ? [{ label: "Economía", href: `/dashboard/groups/${groupId}/economy` }] : []),
   ], [activeGroup, capabilities.record, capabilities.review, capabilities.treasury, groupId, membership, owner]);
+
+  const activeHref = useMemo(() => {
+    const base = `/dashboard/groups/${groupId}`;
+    return links.find((link) => link.label === "Temporada"
+      ? pathname.startsWith(`${base}/seasons`)
+      : pathname === link.href)?.href ?? links[0]?.href ?? base;
+  }, [groupId, links, pathname]);
 
   async function changeGroup(nextGroupId: string) {
     if (nextGroupId === groupId) return;
@@ -87,14 +97,18 @@ export function GroupContextNavigation({ groupId, groupName, owner, membership, 
         </label>
       </div>
       {switchError ? <p role="alert" className="mt-3 text-sm text-red-700">{switchError}</p> : null}
-      <nav className="mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Secciones del Grupo">
+      <label className="mt-4 block text-sm font-medium md:hidden">
+        Sección del Grupo
+        <select value={activeHref} onChange={(event) => router.push(event.target.value)} className="mt-1 block min-h-11 w-full rounded-lg border bg-[var(--background)] px-3">
+          {links.map((link) => <option key={link.href} value={link.href}>{link.label}</option>)}
+        </select>
+      </label>
+      <nav className="mt-4 hidden flex-wrap gap-2 md:flex" aria-label="Secciones del Grupo">
         {links.map((link) => {
           const base = `/dashboard/groups/${groupId}`;
-          const active = link.label === "Integrantes"
-            ? pathname === base && hash === "#integrantes"
-            : link.label === "Resumen"
-              ? pathname === base && hash !== "#integrantes"
-              : link.label === "Temporadas"
+          const active = link.label === "Resumen"
+              ? pathname === base
+              : link.label === "Temporada"
                 ? pathname.startsWith(`${base}/seasons`)
               : link.label === "Mi participación"
                 ? pathname === link.href

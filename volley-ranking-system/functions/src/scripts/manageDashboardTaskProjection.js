@@ -6,6 +6,8 @@ const { createFirestoreDashboardTaskProjectionStore } = require("../dashboardTas
 const { createDashboardTaskWorker } = require("../dashboardTasks/application/dashboardTaskWorker");
 const { Timestamp } = require("firebase-admin/firestore");
 const { COVERAGE } = require("../dashboardTasks/application/dashboardTaskModel");
+const { createGroupOwnershipContextCapability } = require("../groups/public/groupOwnershipContextCapability");
+const { createDashboardTaskOutboxCapability } = require("../dashboardTasks/public/dashboardTaskOutboxCapability");
 
 function requireEmulator() {
   if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error("This IUX-02A operator is restricted to the Firestore emulator until productive authorization");
@@ -77,11 +79,41 @@ async function rollback(database, operations, worker, at = Timestamp.now(), scop
   return eligible.length;
 }
 
+async function repairLegacyGroup(database, groupId) {
+  if (typeof groupId !== "string" || !groupId.trim() || groupId.includes("/")) throw new Error("Invalid groupId");
+  const ownership = createGroupOwnershipContextCapability({ db: database });
+  const outbox = createDashboardTaskOutboxCapability({ db: database });
+  return database.runTransaction(async (transaction) => {
+    const groupSnapshot = await transaction.get(database.collection("groups").doc(groupId));
+    const group = groupSnapshot.data();
+    if (!groupSnapshot.exists || typeof group?.ownerId !== "string" || !group.ownerId.trim()) {
+      throw new Error(`Group ${groupId} is not eligible for canonical evolution`);
+    }
+    const prepared = await outbox.prepare(transaction, { kind: "GROUP_COVERAGE_INITIALIZED",
+      idempotencyIdentity: groupId, groupId, resourceType: "GROUP", resourceIds: [groupId],
+      fingerprintParts: [groupId, group.ownerId, group.ownershipRevision || 1], coverageComplete: true,
+      activateOnComplete: true });
+    const context = await ownership.ensureOwnershipContext({ unitOfWork: transaction, groupId });
+    if (context.status !== "READY") throw new Error(`Group ${groupId} is not eligible for canonical evolution`);
+    prepared.commit();
+    return { groupId, ownershipRevision: context.ownershipRevision, revision: prepared.revision,
+      duplicate: prepared.duplicate };
+  });
+}
+
 async function main() {
   requireEmulator();
   const command = process.argv[2] || "backfill"; const operations = createDashboardTaskOperations({ db });
   const worker = createDashboardTaskWorker({ store: createFirestoreDashboardTaskProjectionStore({ db }) });
   if (command === "rollback") return console.log(JSON.stringify({ command, users: await rollback(db, operations, worker) }));
+  if (command === "repair-group") {
+    const groupIds = [...new Set(process.argv.slice(3))];
+    if (!groupIds.length) throw new Error("repair-group requires at least one groupId");
+    const repaired = [];
+    for (const groupId of groupIds) repaired.push(await repairLegacyGroup(db, groupId));
+    const processed = await drain(worker);
+    return console.log(JSON.stringify({ command, repaired, processed }, null, 2));
+  }
   const generationId = command === "rebuild" ? `rebuild-${Date.now()}` : "live-v1";
   const runId = `${command}-${Date.now()}`;
   const enqueued = await operations.enqueueAll({ reason: command === "rebuild" ? "DASHBOARD_TASK_REBUILD" : "DASHBOARD_TASK_BACKFILL", generationId, runId });
@@ -92,4 +124,4 @@ async function main() {
 
 if (require.main === module) main().then(() => process.exit(0)).catch((error) => { console.error(error); process.exit(1); });
 
-module.exports = { activateGeneration, assertGenerationComplete, drain, rollback };
+module.exports = { activateGeneration, assertGenerationComplete, drain, repairLegacyGroup, rollback };

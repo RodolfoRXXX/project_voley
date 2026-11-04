@@ -7,7 +7,8 @@ const { isTransientDependencyError } = require("../../shared/application/transie
 const CODES = Object.freeze({ UNAUTHENTICATED: "unauthenticated", VALIDATION_FAILED: "invalid-argument",
   PROJECTION_DISABLED: "failed-precondition", PROJECTION_NOT_READY: "failed-precondition",
   COVERAGE_CHANGED: "aborted", INCOMPATIBLE_STATE: "failed-precondition", DEPENDENCY_UNAVAILABLE: "unavailable",
-  INVALID_CURSOR: "invalid-argument", CURSOR_EXPIRED: "failed-precondition" });
+  INVALID_CURSOR: "invalid-argument", CURSOR_EXPIRED: "failed-precondition",
+  GROUP_CONTEXT_NOT_ACCESSIBLE: "permission-denied" });
 
 function toHttps(error) {
   if (error instanceof functions.https.HttpsError) return error;

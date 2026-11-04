@@ -2,6 +2,7 @@
 
 const { createGroupJoinRequestTaskSource } = require("./groupJoinRequestTaskSource");
 const { createPaymentDeliveryDashboardTaskProjectionCapability } = require("../../paymentDeliveries/public/dashboardTaskProjectionCapability");
+const { createPaymentReviewAudienceCapability } = require("../../paymentDeliveries/public/paymentReviewAudienceCapability");
 const { TASK_TYPES, taskId } = require("../application/dashboardTaskModel");
 
 const RESOURCE_TYPES = Object.freeze({ JOIN_REQUEST: "GROUP_JOIN_REQUEST", PAYMENT_DELIVERY: "PAYMENT_DELIVERY" });
@@ -9,12 +10,18 @@ const RESOURCE_TYPES = Object.freeze({ JOIN_REQUEST: "GROUP_JOIN_REQUEST", PAYME
 function createDashboardTaskSourceReader({ db }) {
   const n20 = createGroupJoinRequestTaskSource({ db });
   const n31 = createPaymentDeliveryDashboardTaskProjectionCapability({ db });
+  const audience = createPaymentReviewAudienceCapability({ db });
   return Object.freeze({
     async readGroup({ unitOfWork, groupId }) {
       const [requests, deliveries] = await Promise.all([
         n20.readForGroup({ unitOfWork, groupId }), n31.readForGroup({ unitOfWork, groupId }),
       ]);
       return [...requests, ...deliveries];
+    },
+    async readCoverageRecipients({ unitOfWork, groupId }) {
+      const context = await audience.getGroupAudience({ unitOfWork, groupId });
+      if (context.status !== "READY") throw Object.assign(new Error("Dashboard task audience is incompatible"), { code: "PROJECTION_AUDIENCE_INCOMPATIBLE" });
+      return [...new Set(context.recipients.map((recipient) => recipient.accountId))];
     },
     async readResources({ unitOfWork, groupId, resourceType, resourceIds }) {
       if (resourceType === RESOURCE_TYPES.JOIN_REQUEST) {

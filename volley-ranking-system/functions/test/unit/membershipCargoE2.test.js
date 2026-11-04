@@ -108,7 +108,7 @@ test("E2-22A mantiene backend único, receipts deny-all y UI callable-only sin p
   const root = path.resolve(__dirname, "../../../.."); const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
   const store = read("volley-ranking-system/functions/src/memberships/infrastructure/firestoreMembershipCargoStore.js");
   const rules = read("volley-ranking-system/firestore.rules"); const frontend = read("volley-ranking-frontend/src/components/memberships/ActiveGroupMembersSection.tsx");
-  const detail = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/page.tsx");
+  const detail = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/members/page.tsx");
   const frame = read("volley-ranking-frontend/src/components/groups/GroupFrame.tsx");
   assert.match(store, /runTransaction/); assert.match(store, /transaction\.create\(receiptRef/); assert.match(store, /membershipRepository\.updateRoot/);
   assert.match(rules, /match \/membershipCargoUpdateReceipts\/\{receiptId\}[\s\S]*allow read, write: if false/);

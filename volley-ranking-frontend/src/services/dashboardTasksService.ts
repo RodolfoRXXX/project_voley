@@ -3,13 +3,14 @@ import { auth, functions } from "@/lib/firebase";
 import type { DashboardTaskPage, DashboardTaskQueryReason } from "@/types/DashboardTask";
 import { createDashboardTaskRequestGate, StaleDashboardTaskResponseError } from "./dashboardTaskRequestGate.mjs";
 
-const listCall = httpsCallable<{ coverage: "N20_N31_V1"; cursor?: string }, DashboardTaskPage>(functions, "listMyDashboardTasks");
+const listCall = httpsCallable<{ coverage: "N20_N31_V1"; groupId?: string; cursor?: string }, DashboardTaskPage>(functions, "listMyDashboardTasks");
 
 export function createDashboardTasksClient(getSessionId: () => string | null = () => auth.currentUser?.uid ?? null) {
   const gate = createDashboardTaskRequestGate(getSessionId);
   return Object.freeze({
-    list(cursor?: string) {
-      return gate.run(async () => (await listCall({ coverage: "N20_N31_V1", ...(cursor ? { cursor } : {}) })).data);
+    list(cursor?: string, groupId?: string) {
+      return gate.run(async () => (await listCall({ coverage: "N20_N31_V1", ...(groupId ? { groupId } : {}),
+        ...(cursor ? { cursor } : {}) })).data);
     },
     invalidate() { gate.invalidate(); },
   });
@@ -22,6 +23,6 @@ export function dashboardTaskQueryReason(error: unknown): DashboardTaskQueryReas
     ? String((error as { details: { reason?: unknown } }).details.reason) : "INTERNAL_ERROR";
   const known: DashboardTaskQueryReason[] = ["UNAUTHENTICATED", "VALIDATION_FAILED", "PROJECTION_DISABLED",
     "PROJECTION_NOT_READY", "COVERAGE_CHANGED", "INCOMPATIBLE_STATE", "DEPENDENCY_UNAVAILABLE",
-    "INVALID_CURSOR", "CURSOR_EXPIRED", "INTERNAL_ERROR", "STALE_RESPONSE"];
+    "INVALID_CURSOR", "CURSOR_EXPIRED", "GROUP_CONTEXT_NOT_ACCESSIBLE", "INTERNAL_ERROR", "STALE_RESPONSE"];
   return known.includes(reason as DashboardTaskQueryReason) ? reason as DashboardTaskQueryReason : "INTERNAL_ERROR";
 }

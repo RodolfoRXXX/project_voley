@@ -34,10 +34,11 @@ test("frontend E2-07 usa callables sin Firestore e incluye decisión accesible",
   const service = fs.readFileSync(path.resolve(root, "../../volley-ranking-frontend/src/services/groupJoinRequestsService.ts"), "utf8");
   const candidate = fs.readFileSync(path.resolve(root, "../../volley-ranking-frontend/src/components/groupJoinRequests/GroupJoinRequestCandidate.tsx"), "utf8");
   const owner = fs.readFileSync(path.resolve(root, "../../volley-ranking-frontend/src/components/groupJoinRequests/PendingGroupJoinRequestsSection.tsx"), "utf8");
-  assert.match(service, /firebase\/functions/); assert.doesNotMatch(service + candidate + owner, /firebase\/firestore/i);
+  const clipboard = fs.readFileSync(path.resolve(root, "../../volley-ranking-frontend/src/components/groups/CopyGroupJoinLinkButton.tsx"), "utf8");
+  assert.match(service, /firebase\/functions/); assert.doesNotMatch(service + candidate + owner + clipboard, /firebase\/firestore/i);
   for (const marker of ["approveGroupJoinRequest", "rejectGroupJoinRequest", "getGroupJoinRequestDecisionResult", "APPROVAL_IN_PROGRESS", "busyIds", "Reactivar Membresía y aprobar Solicitud", "Confirmar rechazo"]) assert.equal((service + candidate + owner).includes(marker), true, marker);
   for (const marker of ["role=\"status\"", "role=\"alert\"", "aria-live", "alertdialog", "Escape", "min-h-11"]) assert.equal(candidate.includes(marker) || owner.includes(marker), true, marker);
-  for (const marker of ["useRef(newKey())", "retryAction.current", "busy.current", "keyRef.current = newKey()", "navigator.clipboard.writeText", "Enlace copiado.", "busyIds", "returnFocus"]) assert.equal(candidate.includes(marker) || owner.includes(marker), true, marker);
+  for (const marker of ["useRef(newKey())", "retryAction.current", "busy.current", "keyRef.current = newKey()", "navigator.clipboard.writeText", "Enlace copiado", "busyIds", "returnFocus"]) assert.equal(candidate.includes(marker) || owner.includes(marker) || clipboard.includes(marker), true, marker);
 });
 test("reglas e índice declaran exclusivamente la persistencia aprobada", () => {
   const rules = fs.readFileSync(path.resolve(root, "../firestore.rules"), "utf8");

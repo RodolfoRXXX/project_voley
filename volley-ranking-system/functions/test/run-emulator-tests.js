@@ -48,6 +48,8 @@ Object.assign(environment, {
   FUNCTIONS_DISCOVERY_TIMEOUT: "30",
   TEST_FIREBASE_PROJECT_ID: SYNTHETIC_DATA.projectId,
   TEST_SECRET_SOURCE: "synthetic-inline",
+  ...(process.env.IUX_04_COVERAGE_FOCAL === "1" ? { ENABLE_DASHBOARD_TASK_PROJECTION: "true" } : {}),
+  ...(process.env.IUX_04_COVERAGE_FOCAL === "1" ? { IUX_04_COVERAGE_FOCAL: "1" } : {}),
   FUNCTIONS_EMULATOR_HOST: "127.0.0.1:15001",
   HTTP_PROXY: blockedProxy,
   HTTPS_PROXY: blockedProxy,
@@ -368,7 +370,9 @@ const tournamentEconomyRetirementE3TestPath = path.join(
   "emulator",
   "tournamentEconomyRetirementE3.test.js"
 );
-const command = process.env.IUX_02B_FOCAL === "1"
+const command = process.env.IUX_04_COVERAGE_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${groupTestPath}"`
+  : process.env.IUX_02B_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${dashboardTaskQueryIux02bTestPath}"`
   : process.env.IUX_02A_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${dashboardTaskProjectionIux02aTestPath}"`

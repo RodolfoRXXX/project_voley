@@ -22,7 +22,8 @@ test("Grupo normaliza nombre Unicode y crea exactamente un Owner con estado acti
     deporte: "voleibol",
     ownerId: "uid-1",
     estado: "activo",
-    schemaVersion: 1,
+    ownershipRevision: 1,
+    schemaVersion: 3,
   });
   assert.equal(Object.hasOwn(group, "memberIds"), false);
   assert.equal(Object.hasOwn(group, "adminIds"), false);

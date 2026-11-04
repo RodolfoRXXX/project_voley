@@ -84,7 +84,7 @@ test("IUX-02B lists authorized N20/N31 with exact total, stable pages, health an
   const { projectId } = assertSafeFirebaseTestEnvironment(process.env); assert.equal(projectId, SYNTHETIC_DATA.projectId);
   const admin = require("firebase-admin"); const app = admin.initializeApp({ projectId }, "iux-02b-query"); const db = app.firestore();
   const prefix = "iux-02b-q-"; const ownerId = `${prefix}owner`; const otherId = `${prefix}other`;
-  const noContextId = `${prefix}no-context`;
+  const noContextId = `${prefix}no-context`; const filteredOwnerId = `${prefix}filtered-owner`;
   const at = admin.firestore.Timestamp.fromDate(new Date("2026-10-26T12:00:00Z"));
   const contexts = [0, 1].map((index) => ({ groupId: `${prefix}g${index}`, seasonId: `${prefix}s${index}`, name: `Grupo ${index}` }));
   const tasks = Array.from({ length: 12 }, (_, index) => ({ kind: index % 2 ? "N31" : "N20", resourceId: `${prefix}r${String(index).padStart(2, "0")}`,
@@ -102,12 +102,32 @@ test("IUX-02B lists authorized N20/N31 with exact total, stable pages, health an
       validityAnchor: "owner-overlap", ownershipRevision: 1, updatedAt: at, schemaVersion: 1 });
     const first = await query.list(ownerId, { coverage: "N20_N31_V1" });
     assert.equal(first.coverage.health, "READY"); assert.equal(first.coverage.complete, true); assert.equal(first.totalTasks, 12);
-    assert.deepEqual(first.groupTaskCounts, contexts.map(({ groupId }) => ({ groupId, count: 6 })));
+    assert.deepEqual(first.groupTaskCounts, [
+      { groupId: contexts[0].groupId, count: 6, N20: 6, N31: 0 },
+      { groupId: contexts[1].groupId, count: 6, N20: 0, N31: 6 },
+    ]);
     assert.equal(first.items.length, 10); assert.ok(first.nextCursor); assert.equal(new Set(first.items.map((item) => item.taskId)).size, 10);
     assert.ok(first.items.every((item) => item.destination.href.includes(encodeURIComponent(item.resourceId))));
     const second = await query.list(ownerId, { coverage: "N20_N31_V1", cursor: first.nextCursor });
     assert.equal(second.items.length, 2); assert.equal(second.totalTasks, 12);
     assert.equal(new Set([...first.items, ...second.items].map((item) => item.taskId)).size, 12);
+
+    const filteredContext = { groupId: `${prefix}filtered-group`, seasonId: `${prefix}filtered-season`, name: "Grupo filtrado" };
+    const filteredTasks = Array.from({ length: 12 }, (_, index) => ({ kind: index % 2 ? "N31" : "N20",
+      resourceId: `${prefix}filtered-${String(index).padStart(2, "0")}`, groupId: filteredContext.groupId,
+      seasonId: filteredContext.seasonId, at: admin.firestore.Timestamp.fromMillis(at.toMillis() - index) }));
+    await writeAll(db, projectionFixture({ prefix, ownerId: filteredOwnerId, contexts: [filteredContext], tasks: filteredTasks, at }));
+    const filteredFirst = await query.list(filteredOwnerId, { coverage: "N20_N31_V1", groupId: filteredContext.groupId });
+    assert.equal(filteredFirst.totalTasks, 12); assert.equal(filteredFirst.items.length, 10); assert.ok(filteredFirst.nextCursor);
+    assert.deepEqual(filteredFirst.groupTaskCounts, [{ groupId: filteredContext.groupId, count: 12, N20: 6, N31: 6 }]);
+    assert.ok(filteredFirst.items.every((item) => item.group.id === filteredContext.groupId));
+    const filteredSecond = await query.list(filteredOwnerId, { coverage: "N20_N31_V1",
+      groupId: filteredContext.groupId, cursor: filteredFirst.nextCursor });
+    assert.equal(filteredSecond.items.length, 2); assert.equal(filteredSecond.totalTasks, 12);
+    await assert.rejects(query.list(filteredOwnerId, { coverage: "N20_N31_V1", cursor: filteredFirst.nextCursor }),
+      (error) => error.reason === "INVALID_CURSOR");
+    await assert.rejects(query.list(filteredOwnerId, { coverage: "N20_N31_V1", groupId: contexts[0].groupId }),
+      (error) => error.reason === "GROUP_CONTEXT_NOT_ACCESSIBLE");
 
     await assert.rejects(query.list(ownerId, { coverage: "N20_N31_V1", cursor: `${first.nextCursor.slice(0, -1)}x` }), (error) => error.reason === "INVALID_CURSOR");
     const otherFixtures = projectionFixture({ prefix, ownerId: otherId, contexts: [], tasks: [], at });
@@ -125,6 +145,9 @@ test("IUX-02B lists authorized N20/N31 with exact total, stable pages, health an
     await db.doc(`dashboardTaskScopes/${contexts[0].groupId}`).update({ status: "DIRTY" });
     let state = await query.list(ownerId, { coverage: "N20_N31_V1" });
     assert.equal(state.coverage.health, "UPDATING"); assert.equal(state.totalTasks, undefined); assert.equal(state.groupTaskCounts, undefined);
+    const isolated = await query.list(ownerId, { coverage: "N20_N31_V1", groupId: contexts[1].groupId });
+    assert.equal(isolated.coverage.health, "READY"); assert.equal(isolated.totalTasks, 6);
+    assert.deepEqual(isolated.groupTaskCounts, [{ groupId: contexts[1].groupId, count: 6, N20: 0, N31: 6 }]);
     await db.doc(`dashboardTaskScopes/${contexts[0].groupId}`).update({ status: "REBUILDING" });
     state = await query.list(ownerId, { coverage: "N20_N31_V1" }); assert.equal(state.coverage.health, "REBUILDING");
     await db.doc(`dashboardTaskScopes/${contexts[0].groupId}`).update({ status: "DEGRADED" });
@@ -151,7 +174,7 @@ test("IUX-02B lists authorized N20/N31 with exact total, stable pages, health an
     const disabled = createFirestoreDashboardTaskQuery({ db, cursorSecret: SECRET, projectionEnabled: false });
     await assert.rejects(disabled.list(ownerId, { coverage: "N20_N31_V1" }), (error) => error.reason === "PROJECTION_DISABLED");
     await assert.rejects(query.list(`${prefix}missing`, { coverage: "N20_N31_V1" }), (error) => error.reason === "PROJECTION_NOT_READY");
-  } finally { await cleanup(db, prefix, [ownerId, otherId, noContextId]); await app.delete(); }
+  } finally { await cleanup(db, prefix, [ownerId, otherId, noContextId, filteredOwnerId]); await app.delete(); }
 });
 
 test("IUX-02B revalidates delegated N31 audience, self-review and revocation without exposing stale items", async () => {
@@ -198,7 +221,7 @@ test("IUX-02B revalidates delegated N31 audience, self-review and revocation wit
     await db.doc(`users/${reviewerId}/dashboardTaskSets/${generation}/contexts/${groupId}`).update({ total: 1, N31: 1 });
     result = await query.list(reviewerId, { coverage: "N20_N31_V1" });
     assert.equal(result.coverage.health, "READY"); assert.equal(result.totalTasks, 1);
-    assert.deepEqual(result.groupTaskCounts, [{ groupId, count: 1 }]);
+    assert.deepEqual(result.groupTaskCounts, [{ groupId, count: 1, N20: 0, N31: 1 }]);
 
     await db.doc(`groupCapabilityGrants/${grantId}`).update({ state: "REVOKED", revokedAt: at, revokedByAccountId: ownerId });
     await db.doc(`groupCapabilityGrantSlots/${slotId}`).delete();

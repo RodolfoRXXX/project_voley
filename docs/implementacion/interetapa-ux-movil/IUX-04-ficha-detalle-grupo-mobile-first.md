@@ -2,7 +2,7 @@
 
 ## Estado
 
-**LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA**
+**IMPLEMENTADO Y CERRADO TÉCNICAMENTE EN LOCAL — UAT HUMANA COMPLEMENTARIA PENDIENTE**
 
 Registra IUX-04-D01–D06 y el
 [addendum focal IUX-04](../../arquitectura/Documento-2-3-4-addendum-IUX-04-detalle-grupo-mobile-first.md).
@@ -198,3 +198,46 @@ IUX-04-D07 queda resuelta por diferimiento: IUX-04 no entrega total de integrant
 roster. D02 se sustituye sólo en ese alcance por esta resolución; la definición del conteo futuro se
 preserva sin adoptar arquitectura. No quedan decisiones bloqueantes. Nombres internos y técnica del
 tooltip pueden variar sin alterar resultados; check adoptado por 2 segundos.
+
+## 10. Ampliacion UAT autorizada - cobertura de altas posteriores
+
+La UAT del 3 de noviembre de 2026 autoriza que el alta canonica de Grupo emita, en su misma
+transaccion, un evento determinista e idempotente de inicializacion de cobertura. Debe reutilizar
+scope, outbox, trigger inmediato, worker, recuperacion cada minuto y reconciliacion diaria. El reader
+permanece read-only y nunca sintetiza `READY/0`.
+
+La Cuenta nueva sin Grupos conserva el contrato vacio acreditado `no-contexts-v1`: el backend
+revalida que no existan contextos autorizados y devuelve cero sin persistir proyeccion. Al aparecer
+el primer Grupo deja de aplicar ese caso vacio y se exige cobertura materializada del contexto.
+
+**IUX-04-D08-A ADOPTADA:** toda alta nueva crea directamente el Grupo canonico activo schema v3,
+con `ownershipRevision=1` y el resto de invariantes vigentes. Grupo, guard de idempotencia, scope y
+`GROUP_COVERAGE_INITIALIZED` se confirman en una unica transaccion. La senal lleva
+`coverageComplete=true` como alcance a comprobar y `activateOnComplete=true`; solo el full scan
+completo puede materializar raiz/contexto del Owner y pasar la raiz live a `READY`. El proyector no
+evoluciona el Grupo. Rebuild/backfill conservan su activacion explicita y no heredan esa marca.
+
+Grupos v1 preexistentes no cambian por esta decision. Su reparacion UAT exige primero la capability
+canonica `ensureOwnershipContext` bajo precondiciones (activo, v1, Owner valido, sin revision) y luego
+la misma inicializacion determinista; queda separada de la regresion de altas nuevas y no autoriza
+migracion masiva ni edicion manual.
+
+Plazo: el trigger Firestore `onDashboardTaskOutboxCreate` intenta procesamiento inmediato cuando
+Functions esta realmente ejecutando; `onDashboardTaskProjection` reintenta/recupera cada minuto y
+la reconciliacion diaria repara drift. En Emulator, iniciar Functions/PubSub solo carga funciones:
+la evidencia debe observar la invocacion del trigger y el evento `APPLIED`, no inferirla del arranque.
+
+## 11. Cierre técnico local
+
+IUX-04 queda implementado y validado técnicamente en local. La evidencia automatizada final acredita
+alta canónica v3, recuperación/idempotencia del comando, inicialización de cobertura global y
+contextual, N20/N31, cursores ligados al contexto, compatibilidad IUX-03 y autorización de registro
+directo. El usuario confirmó N20 en Inicio y Novedades, y confirmó la desaparición del doble scroll y
+del espacio inferior en el recorrido observado.
+
+La confirmación humana no se extiende a N31, concurrencia, matriz completa de viewports, zoom real
+200 %, Android real ni lector de pantalla. Esas comprobaciones son UAT complementaria y gates de
+habilitación, no evidencia implícita. D07 mantiene diferido el conteo exacto de integrantes; Economía
+personal por Membresía queda fuera. El diagnóstico `startTime/reportAllChanges` continúa separado y
+sin causa atribuida. Este cierre no cierra IUX/E3, no habilita E4 y no satisface los gates productivos
+pendientes de IUX-02.

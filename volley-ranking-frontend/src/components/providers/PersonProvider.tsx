@@ -16,6 +16,7 @@ export type PersonStatus = "idle" | "loading" | "empty" | "ready" | "error" | "i
 type PersonState = {
   person: MyPerson | null;
   personStatus: PersonStatus;
+  personAccountId: string | null;
   personError: string | null;
   personOutcome: "created" | "existing" | null;
   savingPerson: boolean;
@@ -29,6 +30,7 @@ export function PersonProvider({ children }: { children: React.ReactNode }) {
   const { account, accountStatus } = useAuthContext();
   const [person, setPerson] = useState<MyPerson | null>(null);
   const [personStatus, setPersonStatus] = useState<PersonStatus>("idle");
+  const [personAccountId, setPersonAccountId] = useState<string | null>(null);
   const [personError, setPersonError] = useState<string | null>(null);
   const [personOutcome, setPersonOutcome] = useState<"created" | "existing" | null>(null);
   const [savingPerson, setSavingPerson] = useState(false);
@@ -41,6 +43,7 @@ export function PersonProvider({ children }: { children: React.ReactNode }) {
       await Promise.resolve();
       if (!active) return;
       if (accountStatus !== "ready" || !account) {
+        setPersonAccountId(null);
         setPerson(null);
         setPersonError(null);
         setPersonOutcome(null);
@@ -49,16 +52,19 @@ export function PersonProvider({ children }: { children: React.ReactNode }) {
       }
 
       setPersonStatus("loading");
+      setPersonAccountId(null);
       setPersonError(null);
       try {
         const nextPerson = await getMyPerson();
         if (!active) return;
         setPerson(nextPerson);
+        setPersonAccountId(account.userId);
         setPersonOutcome(nextPerson ? "existing" : null);
         setPersonStatus(nextPerson ? "ready" : "empty");
       } catch (error) {
         if (!active) return;
         setPerson(null);
+        setPersonAccountId(account.userId);
         setPersonError(getPersonErrorMessage(error));
         const reason = getPersonErrorReason(error);
         setPersonStatus(reason === "PERSON_LINK_INCONSISTENT" ? "inconsistent" : reason === "AUTHENTICATION_REQUIRED" ? "sessionInvalid" : "error");
@@ -78,12 +84,14 @@ export function PersonProvider({ children }: { children: React.ReactNode }) {
     const request = ensureMyPersonRequest(input)
       .then((result) => {
         setPerson(result.person);
+        setPersonAccountId(account?.userId ?? null);
         setPersonOutcome(result.outcome);
         setPersonStatus("ready");
         return result;
       })
       .catch((error) => {
         setPersonError(getPersonErrorMessage(error));
+        setPersonAccountId(account?.userId ?? null);
         const reason = getPersonErrorReason(error);
         setPersonStatus(reason === "PERSON_LINK_INCONSISTENT" ? "inconsistent" : reason === "AUTHENTICATION_REQUIRED" ? "sessionInvalid" : "error");
         throw error;
@@ -94,18 +102,19 @@ export function PersonProvider({ children }: { children: React.ReactNode }) {
       });
     inFlight.current = request;
     return request;
-  }, []);
+  }, [account?.userId]);
 
   const retryPerson = useCallback(() => setRetryVersion((version) => version + 1), []);
   const value = useMemo<PersonState>(() => ({
     person,
     personStatus,
+    personAccountId,
     personError,
     personOutcome,
     savingPerson,
     ensureMyPerson,
     retryPerson,
-  }), [ensureMyPerson, person, personError, personOutcome, personStatus, retryPerson, savingPerson]);
+  }), [ensureMyPerson, person, personAccountId, personError, personOutcome, personStatus, retryPerson, savingPerson]);
 
   return <PersonContext.Provider value={value}>{children}</PersonContext.Provider>;
 }

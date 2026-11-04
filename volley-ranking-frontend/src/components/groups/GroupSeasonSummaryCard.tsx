@@ -38,6 +38,6 @@ export function GroupSeasonSummaryCard({ groupId, readOnly, onAccessLost }: { gr
     {status === "error" ? <p className="mt-3 text-sm text-red-700" role="alert">No pudimos consultar la Temporada actual. La gestión completa sigue disponible en Temporadas.</p> : null}
     {status === "ready" && season ? <div className="mt-3"><p className="font-semibold">{season.nombre}</p><p className="mt-1 text-sm text-[var(--text-muted)]">Abierta · inicio <time dateTime={season.fechaInicio}>{season.fechaInicio}</time></p></div> : null}
     {status === "ready" && !season ? <p className="mt-3 text-sm text-[var(--text-muted)]">{readOnly ? "El Grupo archivado no tiene una Temporada actual." : "No hay una Temporada actual."}</p> : null}
-    <Link href={`/dashboard/groups/${groupId}/seasons`} className="mt-4 inline-flex min-h-11 items-center font-semibold text-orange-700 underline">Ver temporadas</Link>
+    <Link href={`/dashboard/groups/${groupId}/seasons`} className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-orange-600 px-4 py-2 font-semibold text-white">Abrir temporada</Link>
   </section>;
 }

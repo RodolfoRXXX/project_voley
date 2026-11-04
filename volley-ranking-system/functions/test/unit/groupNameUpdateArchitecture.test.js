@@ -11,7 +11,7 @@ test("E2-20 usa writer acotado, callable backend y receipt deny-all", () => {
 
 test("E2-20 UI usa Functions, limita el formulario y cubre retry, stale, foco y pérdida de acceso", () => {
   const ui = read("volley-ranking-frontend/src/components/groups/EditGroupNameDialog.tsx");
-  const detail = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/page.tsx");
+  const detail = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/members/page.tsx");
   const frame = read("volley-ranking-frontend/src/components/groups/GroupFrame.tsx");
   const actions = read("volley-ranking-frontend/src/components/groups/GroupActionsMenu.tsx");
   assert.doesNotMatch(ui, /firebase\/firestore|deporte|ownerId|schemaVersion|descripci|configur|archiv|elimin/i);

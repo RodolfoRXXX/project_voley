@@ -1,6 +1,7 @@
 "use strict";
 
 const { FieldValue } = require("firebase-admin/firestore");
+const { createDashboardTaskOutboxCapability } = require("../../dashboardTasks/public/dashboardTaskOutboxCapability");
 const { InvalidGroupStateError } = require("../domain/group");
 const {
   GroupConflictError,
@@ -41,8 +42,9 @@ function isUnavailable(error) {
   return [4, 14, "4", "14", "deadline-exceeded", "unavailable", "DEADLINE_EXCEEDED", "UNAVAILABLE"].includes(error?.code);
 }
 
-function createFirestoreGroupCreationGuard({ db, ownGroupsReader }) {
+function createFirestoreGroupCreationGuard({ db, ownGroupsReader, dashboardTaskOutboxCapability }) {
   if (!db || !ownGroupsReader) throw new TypeError("creation guard dependencies are required");
+  const dashboardTasks = dashboardTaskOutboxCapability || createDashboardTaskOutboxCapability({ db });
 
   return {
     async confirmFirstGroup({ userId, group, idempotencyKeyHash, requestHash, groupRepository }) {
@@ -94,7 +96,18 @@ function createFirestoreGroupCreationGuard({ db, ownGroupsReader }) {
             }
             throw error;
           }
+          const coverage = await dashboardTasks.prepare(transaction, {
+            kind: "GROUP_COVERAGE_INITIALIZED",
+            idempotencyIdentity: group.groupId,
+            groupId: group.groupId,
+            resourceType: "GROUP",
+            resourceIds: [group.groupId],
+            fingerprintParts: [group.groupId, group.ownerId, group.ownershipRevision],
+            coverageComplete: true,
+            activateOnComplete: true,
+          });
           groupRepository.createInitial(transaction, group);
+          coverage.commit();
           transaction.create(guardRef, {
             groupId: group.groupId,
             idempotencyKeyHash,

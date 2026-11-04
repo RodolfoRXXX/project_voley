@@ -22,7 +22,7 @@ const PROVISIONAL_GROUP_LIMIT = 1;
 
 export default function OwnGroupsPage() {
   const { firebaseUser } = useAuth();
-  const { personStatus } = usePerson();
+  const { personStatus, personAccountId } = usePerson();
   const searchParams = useSearchParams();
   const generation = useRef(0);
   const [owned, setOwned] = useState<OwnGroup[]>([]);
@@ -102,6 +102,7 @@ export default function OwnGroupsPage() {
   useEffect(() => {
     const requestGeneration = generation.current;
     if (!firebaseUser?.uid) return;
+    if (personAccountId !== firebaseUser.uid) return;
     if (personStatus === "empty") {
       queueMicrotask(() => {
         if (generation.current !== requestGeneration) return;
@@ -112,7 +113,7 @@ export default function OwnGroupsPage() {
     if (personStatus === "ready") {
       queueMicrotask(() => void loadMemberships());
     }
-  }, [firebaseUser?.uid, loadMemberships, personStatus]);
+  }, [firebaseUser?.uid, loadMemberships, personAccountId, personStatus]);
 
   const activeOwned = useMemo(() => owned.filter((group) => group.estado === "activo"), [owned]);
   const archivedOwned = useMemo(() => owned.filter((group) => group.estado === "archivado"), [owned]);

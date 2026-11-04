@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - definición IUX-04 adoptada con D07 resuelta - 2 de noviembre de 2026*
+*Borrador consolidado - cierre técnico local IUX-04 - 4 de noviembre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -39,7 +39,7 @@ Estado operativo del plan:
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
 - `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
-- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01 E IUX-03 CERRADOS LOCALMENTE; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA; IUX-04 LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA`;
+- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03 E IUX-04 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -1991,7 +1991,7 @@ el plan, pero no obliga a ejecutarlas en una cascada rígida ni a publicarlas co
 | 1 | Usuario, Persona y autorización | `CERRADA` | Cierre de Etapa 0 | Identidad separada y autorización contextual inicial |
 | 2 | Grupo, Membresía, Solicitud y Temporada | `CERRADA CON RIESGO RESIDUAL ACEPTADO` | Persona y actor identificables | Fuentes de verdad organizativas separadas |
 | 3 | Pago deportivo | `ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; HABILITACIÓN PRODUCTIVA PENDIENTE; ETAPA ABIERTA` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
-| IUX | Interetapa UX móvil | `IUX-01 E IUX-03 CERRADOS LOCALMENTE; IUX-02A/B INTEGRADOS TÉCNICAMENTE EN LOCAL; IUX-02 ABIERTO SIN HABILITACIÓN PRODUCTIVA; IUX-04 LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA` | Preservar contratos, autorizaciones y gates E3; no habilita E4 | Superficies mobile-first por incrementos acotados, sin renumeración |
+| IUX | Interetapa UX móvil | `IUX-01, IUX-03 E IUX-04 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-02A/B INTEGRADOS TÉCNICAMENTE EN LOCAL; IUX-02 ABIERTO SIN HABILITACIÓN PRODUCTIVA` | Preservar contratos, autorizaciones y gates E3; no habilita E4 | Superficies mobile-first por incrementos acotados, sin renumeración |
 | 4 | Partido-Torneo y CU-075 | `ROADMAP` | Modelo de Partido, contratos y pruebas | Resultado original y estado competitivo separados |
 | 5 | Estadísticas, Rendimiento, Actividad y recuperación | `ROADMAP` | Cada fuente original correspondiente | Proyecciones reconstruibles y procesos recuperables |
 | 6 | Comercial | `ROADMAP` | Usuario estable y consultas deportivas públicas | Capacidades y límites sin otorgar permisos deportivos |
@@ -2469,8 +2469,8 @@ El siguiente incremento funcional es:
 - Cierre local IUX-03: implementación, evidencia técnica y UAT humana quedan acreditadas para el
     entorno demo y frontend compilado. La mejora de velocidad y consumo observada es local; no
     acredita rendimiento productivo, ausencia definitiva de fugas ni prueba en Android real.
-- Cuarto incremento: `IUX-04 — detalle de Grupo mobile-first`, adoptado por D5-064 y **LISTO PARA
-    IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA**. Para Owner organiza rutas propias de Resumen,
+- Cuarto incremento: `IUX-04 — detalle de Grupo mobile-first`, adoptado por D5-064, ampliado por
+    D5-065 y **CERRADO TÉCNICAMENTE EN LOCAL**. Para Owner organiza rutas propias de Resumen,
     Economía, Temporada e Integrantes; usa selector móvil bajo `md`, tabs desde `md` y conserva
     URLs, recarga, deep-links y Atrás/Adelante. Archivados mantienen accesos actuales sin roster
     histórico ni acciones nuevas; Mi participación conserva su guard member-safe.
@@ -2508,8 +2508,9 @@ El siguiente incremento funcional es:
     [ficha IUX-03](../implementacion/interetapa-ux-movil/IUX-03-ficha-mis-grupos-mobile-first.md),
     [relevamiento IUX-03](../implementacion/interetapa-ux-movil/IUX-03-relevamiento-mis-grupos-mobile-first.md),
     [ficha IUX-04](../implementacion/interetapa-ux-movil/IUX-04-ficha-detalle-grupo-mobile-first.md),
-    [relevamiento IUX-04](../implementacion/interetapa-ux-movil/IUX-04-relevamiento-detalle-grupo-mobile-first.md)
-    y [addendum IUX-04](../arquitectura/Documento-2-3-4-addendum-IUX-04-detalle-grupo-mobile-first.md).
+    [relevamiento IUX-04](../implementacion/interetapa-ux-movil/IUX-04-relevamiento-detalle-grupo-mobile-first.md),
+    [addendum IUX-04](../arquitectura/Documento-2-3-4-addendum-IUX-04-detalle-grupo-mobile-first.md)
+    y [cierre IUX-04](../implementacion/interetapa-ux-movil/IUX-04-cierre.md).
 
 
 ## 7.6 Etapa 4 - Partido, Torneo y CU-075
@@ -2712,6 +2713,8 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-062 | Adopta `IUX-03 — “Mis grupos” mobile-first y acceso “Mi participación”`, sus decisiones D01–D05 y el contrato contextual mínimo de Membresía propia por Grupo; corrige además la fotografía de integración técnica local de IUX-01 e IUX-02A/B | APROBADA | IUX / IUX-03 / `/dashboard/groups` | IUX-03 queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`: unifica relaciones sin inferencias, conserva resultados acreditados con cobertura parcial explícita, historial lazy por `rowKey`, orden español estable, límite técnico provisional y destinos según autorización; agrega la ruta member-safe sin administración ni permisos nuevos y resuelve capabilities sólo al abrir. No crea proyección/persistencia/Rules/Plan. IUX-01 e IUX-02A/B están integrados técnicamente en local, pero IUX-02 completo sigue abierto sin habilitación productiva. No cierra IUX/E3 ni habilita E4 |
 | D5-063 | Registra el cierre de `IUX-03` en su alcance local, la UAT humana aprobada y la ampliación de badges contextuales N20/N31 por tarjeta reutilizando los contadores autorizados de IUX-02 | APROBADA | IUX / IUX-03 / cierre local | IUX-03 queda implementado, validado y aprobado localmente; la observación de mejor velocidad/consumo con frontend compilado no caracteriza producción ni descarta fugas de larga duración. No acredita Android real. IUX-02 conserva pendientes backfill/seguridad/operación/rendimiento/rollout productivos; no cierra IUX/E3 ni habilita E4 |
 | D5-064 | Adopta `IUX-04 — detalle de Grupo mobile-first`, D01, D03–D07 y el addendum focal: navegación Owner por rutas, Resumen interno, filtro contextual N20/N31 compatible, `/members`, deep-links compatibles, copia accesible y diferimiento del total de roster | APROBADA | IUX / IUX-04 / detalle de Grupo / Documentos 2-3-4 | D07 supera D02 sólo dentro de IUX-04: no hay `totalItems`, count físico, barrido, límite ni proyección/contador; se conserva la definición futura. La ficha queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`. No autoriza código/índices/deploy, no cierra IUX/E3, no habilita E4 ni satisface gates productivos IUX-02 |
+| D5-065 | Autoriza para la UAT IUX-04 la inicializacion automatica de cobertura y adopta IUX-04-D08-A: alta directa de Grupo canonico v3 con `ownershipRevision=1`, guard, scope y evento determinista atomicos | APROBADA; D08-A ADOPTADA | IUX / IUX-04 / IUX-02A / alta de Grupo | Reutiliza outbox, trigger, worker y reconciliacion. `activateOnComplete` se limita a la inicializacion live completa; backfill/rebuild conservan activacion explicita. No autoriza READY sintetico, writes desde readers, nueva proyeccion, permisos, migracion masiva ni despliegue. Cuenta sin Grupos conserva `no-contexts-v1`; v1 previos requieren evolucion canonica separada. No declara UAT ni layout resueltos, no cierra IUX/E3. |
+| D5-066 | Registra la implementación y cierre técnico local de IUX-04, incluida D08-A, con D07 diferida y evidencia humana acotada | CERRADO TÉCNICAMENTE EN LOCAL | IUX / IUX-04 / detalle de Grupo | Las regresiones acreditan alta v3, idempotencia/recuperación, cobertura global/contextual y N20/N31. La confirmación humana sólo cubre N20 en Inicio/Novedades y la desaparición del doble scroll/espacio inferior en el recorrido observado; no acredita N31, concurrencia, zoom 200 %, Android real ni lector de pantalla. No cierra IUX/E3, no habilita E4 ni satisface gates productivos IUX-02. |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -2909,8 +2912,10 @@ reutiliza N20/N31 con filtro `groupId` opcional y cursor ligado, mantiene el con
 expone desglose contextual sólo bajo coverage READY. D07 difiere el total de integrantes fuera de
 IUX-04: no se modifica el roster ni se presenta cero, aproximación o primera página como total. La
 definición canónica futura se conserva sin arquitectura asignada. D01, D03–D07 quedan adoptadas; D02
-es superada por D07 sólo en este alcance. La ficha está `LISTO PARA IMPLEMENTAR — REQUIERE
-AUTORIZACIÓN SEPARADA`.
+es superada por D07 sólo en este alcance. D5-065 incorpora D08-A y D5-066 registra la implementación
+y el cierre técnico local. La UAT humana complementaria y los gates productivos quedan pendientes:
+no se infieren N31, concurrencia, zoom 200 %, Android real ni lector de pantalla de la evidencia
+automatizada o de las confirmaciones humanas acotadas.
 
 “Requiere tu atención”, Agenda, notificaciones/campana, navbar/sidebar y roles o permisos permanecen
 fuera del incremento y sujetos a definición posterior. Presupuesto/rendimiento deben medirse durante

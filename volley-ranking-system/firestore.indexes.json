@@ -154,6 +154,17 @@
       ]
     },
     {
+      "collectionGroup": "items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "projectionState", "mode": "ASCENDING" },
+        { "fieldPath": "actionableAt", "mode": "DESCENDING" },
+        { "fieldPath": "taskType", "mode": "ASCENDING" },
+        { "fieldPath": "resourceId", "mode": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "groupDeletionReceipts",
       "queryScope": "COLLECTION",
       "fields": [

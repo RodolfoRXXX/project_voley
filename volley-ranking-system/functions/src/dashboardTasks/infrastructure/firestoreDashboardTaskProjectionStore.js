@@ -86,6 +86,8 @@ function createFirestoreDashboardTaskProjectionStore({ db, now = () => Timestamp
       const generation = event.generationId || GENERATION;
       const mode = processingMode(event); const progress = event.progress || { phase: firstPhase(mode), cursor: null };
       let desired = []; let taskIds = []; let oldSnapshots = []; let nextProgress = null; let complete = mode === PROCESSING_MODE.RESOURCE;
+      const coverageRecipients = mode === PROCESSING_MODE.FULL
+        ? await source.readCoverageRecipients({ unitOfWork: transaction, groupId: claimed.groupId }) : [];
       if (mode === PROCESSING_MODE.RESOURCE) {
         const resource = await source.readResources({ unitOfWork: transaction, groupId: claimed.groupId,
           resourceType: event.resourceType, resourceIds: event.resourceIds });
@@ -125,9 +127,10 @@ function createFirestoreDashboardTaskProjectionStore({ db, now = () => Timestamp
         for (const uid of recipients) transitions.push({ uid, taskId: taskIdValue, old, next: next?.recipients.includes(uid) ? next : null });
       }
       const itemRefs = transitions.map((entry) => itemRef(db, entry.uid, entry.taskId, generation));
-      const counterKeys = [...new Set(transitions.map((entry) => `${entry.uid}\u0000${claimed.groupId}`))];
+      const counterKeys = [...new Set([...transitions.map((entry) => entry.uid), ...coverageRecipients]
+        .map((uid) => `${uid}\u0000${claimed.groupId}`))];
       const counterRefs = counterKeys.map((key) => { const [uid, groupId] = key.split("\u0000"); return contextRef(db, uid, groupId, generation); });
-      const metaUids = [...new Set(transitions.map((entry) => entry.uid))]; const metaRefs = metaUids.map((uid) => projectionRef(db, uid));
+      const metaUids = [...new Set([...transitions.map((entry) => entry.uid), ...coverageRecipients])]; const metaRefs = metaUids.map((uid) => projectionRef(db, uid));
       const generationRefs = metaUids.map((uid) => generationRef(db, uid, generation));
       const revisionWindow = await transaction.get(outbox.where("groupId", "==", claimed.groupId)
         .where("scopeRevision", ">", scope.projectedRevision || 0).orderBy("scopeRevision", "asc").limit(250));
@@ -145,7 +148,7 @@ function createFirestoreDashboardTaskProjectionStore({ db, now = () => Timestamp
       }
       const actualWrites = projectionWriteCount({
         itemWrites: plans.filter(({ entry, wasActive }) => Boolean(entry.next) || wasActive).length,
-        contextWrites: deltas.size,
+        contextWrites: counterKeys.length,
         userCount: metaUids.length,
         manifestWrites: new Set([...desiredById.keys(), ...oldById.keys()]).size,
       });
@@ -165,7 +168,8 @@ function createFirestoreDashboardTaskProjectionStore({ db, now = () => Timestamp
         transaction.set(ref, { generationId: generation, coverage: COVERAGE, total: n20 + n31, N20: n20, N31: n31,
           projectedRevision: event.scopeRevision, updatedAt: at, schemaVersion: 1 }, { merge: true });
       }
-      for (const [key, delta] of deltas) {
+      for (const key of counterKeys) {
+        const delta = deltas.get(key) || { N20: 0, N31: 0 };
         const [uid, groupId] = key.split("\u0000"); const ref = contextRef(db, uid, groupId, generation); const snapshot = byPath.get(ref.path); const current = snapshot?.exists ? snapshot.data() : {};
         const n20 = nextCount(current.N20, delta.N20); const n31 = nextCount(current.N31, delta.N31);
         transaction.set(ref, { groupId, generationId: generation, total: n20 + n31, N20: n20, N31: n31,
@@ -175,9 +179,10 @@ function createFirestoreDashboardTaskProjectionStore({ db, now = () => Timestamp
         const meta = byPath.get(projectionRef(db, uid).path)?.data() || {};
         const rebuilding = meta.activeGenerationId && meta.activeGenerationId !== generation;
         const activated = meta.activeGenerationId === generation && ["READY", "ROLLED_BACK"].includes(meta.projectionState);
+        const initializeReady = event.activateOnComplete === true && complete && scope.coverageComplete === true;
         transaction.set(projectionRef(db, uid), { coverage: COVERAGE,
           ...(rebuilding ? { buildingGenerationId: generation } : { activeGenerationId: generation }),
-          projectionState: rebuilding ? "REBUILDING" : activated ? meta.projectionState : "AVAILABLE",
+          projectionState: rebuilding ? "REBUILDING" : initializeReady ? "READY" : activated ? meta.projectionState : "AVAILABLE",
           updatedAt: at, schemaVersion: 1 }, { merge: true });
       }
       for (const [taskIdentity, task] of desiredById) {

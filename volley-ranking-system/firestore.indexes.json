@@ -51,6 +51,16 @@
       "collectionGroup": "paymentDeliveries",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "membershipId", "mode": "ASCENDING" },
+        { "fieldPath": "decisionState", "mode": "ASCENDING" },
+        { "fieldPath": "confirmedAt", "mode": "DESCENDING" },
+        { "fieldPath": "__name__", "mode": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "paymentDeliveries",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "groupId", "mode": "ASCENDING" },
         { "fieldPath": "decisionState", "mode": "ASCENDING" },
         { "fieldPath": "__name__", "mode": "ASCENDING" }

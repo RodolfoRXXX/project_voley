@@ -8,6 +8,7 @@ const { createPaymentPersonPresentationCapability } = require("../../persons/pub
 const { createGroupTreasuryAuthorizationCapability } = require("../../treasury/public/groupTreasuryAuthorizationCapability");
 const { createDashboardTaskOutboxCapability } = require("../../dashboardTasks/public/dashboardTaskOutboxCapability");
 const { createPaymentReviewAudienceCapability } = require("../public/paymentReviewAudienceCapability");
+const { createSubjectPaymentApplicationsCapability } = require("../public/subjectPaymentApplicationsCapability");
 const { createFirestorePaymentDeliveryRepository } = require("./firestorePaymentDeliveryRepository");
 const { createFirestorePaymentEconomicRepository } = require("./firestorePaymentEconomicRepository");
 const { createFirestorePaymentReviewRepository } = require("./firestorePaymentReviewRepository");
@@ -26,6 +27,7 @@ function createFirestorePaymentDeliveryStore({ db, now = () => Timestamp.now(), 
   const treasuryAuthorization = createGroupTreasuryAuthorizationCapability({ db });
   const dashboardTasks = createDashboardTaskOutboxCapability({ db, now });
   const reviewAudience = createPaymentReviewAudienceCapability({ db });
+  const subjectApplications = createSubjectPaymentApplicationsCapability({ db });
 
   function map(error) {
     if (error instanceof e.PaymentDeliveryError) return error;
@@ -206,6 +208,46 @@ function createFirestorePaymentDeliveryStore({ db, now = () => Timestamp.now(), 
   }
 
   async function ownAuthorization(transaction, accountId) { return account(transaction, accountId, true); }
+  async function contextualSubjectAuthorization(transaction, accountId, input) {
+    const actor = await ownAuthorization(transaction, accountId); const membership = membershipContext(await transaction.get(db.collection("memberships").doc(input.membershipId)));
+    if (membership.estado !== "activa" || membership.personId !== actor.personId || membership.groupId !== input.groupId) throw new e.DeliveryNotAccessibleError();
+    const [groupSnapshot, seasonSnapshot] = await Promise.all([transaction.get(db.collection("groups").doc(input.groupId)), transaction.get(db.collection("seasons").doc(membership.seasonId))]);
+    const group = validGroup(groupSnapshot); const season = seasonSnapshot.data();
+    if (group.estado !== "activo" || !seasonSnapshot.exists || season?.groupId !== input.groupId || season.estado !== "abierta") throw new e.DeliveryNotAccessibleError();
+    return { actor, membership };
+  }
+  function ownNoticeDto(delivery) {
+    return Object.freeze({ deliveryId: delivery.deliveryId, reportedAt: d.iso(delivery.reportedAt), declaredPaidOn: delivery.declaredPaidOn, declaredTotalMinor: delivery.declaredTotalMinor, decisionState: delivery.decisionState,
+      ...(delivery.applicationState ? { applicationState: delivery.applicationState } : {}), ...(delivery.confirmedAt ? { confirmedAt: d.iso(delivery.confirmedAt) } : {}),
+      ...(delivery.rejectedAt ? { rejectedAt: d.iso(delivery.rejectedAt), rejection: { reasonCode: delivery.rejection.reasonCode, ...(delivery.rejection.reasonNote ? { reasonNote: delivery.rejection.reasonNote } : {}) } } : {}),
+      ...(delivery.resolution ? { resolution: { administrativeReceiptId: delivery.resolution.administrativeReceiptId, correctedFields: delivery.resolution.correctedFields, resolvedAt: d.iso(delivery.resolution.resolvedAt) } } : {}),
+      ...(delivery.reversedAt ? { reversedAt: d.iso(delivery.reversedAt) } : {}),
+      lines: Object.freeze(delivery.lines.map((line) => Object.freeze({ lineId: line.lineId, paymentId: line.paymentId, requestedAmountMinor: line.requestedAmountMinor, conceptName: line.conceptName, dueDate: line.dueDate }))) });
+  }
+  async function listMyMembershipNotices(accountId, input) { try { return await db.runTransaction(async (transaction) => {
+    const { actor, membership } = await contextualSubjectAuthorization(transaction, accountId, input);
+    const scope = { contractVersion: "my-membership-payment-notices-v1", accountId, personId: actor.personId, groupId: input.groupId, seasonId: membership.seasonId, membershipId: input.membershipId, states: "ALL", order: "reportedAt:desc,deliveryId:desc", pageSize: input.pageSize };
+    const anchor = decodeCursor(input.cursor, scope); let query = deliveries.where("personId", "==", actor.personId).where("membershipId", "==", input.membershipId).orderBy("reportedAt", "desc").orderBy("__name__", "desc");
+    if (anchor) {
+      if (!d.exact(anchor, ["at", "id"]) || !Number.isSafeInteger(anchor.at) || typeof anchor.id !== "string" || !anchor.id) throw new e.DeliveryConcurrentModificationError();
+      const anchored = hydrateDelivery(await transaction.get(deliveries.doc(anchor.id)));
+      if (!anchored || anchored.reportedAt.toMillis() !== anchor.at || anchored.personId !== actor.personId || anchored.groupId !== input.groupId || anchored.seasonId !== membership.seasonId || anchored.membershipId !== input.membershipId) throw new e.DeliveryConcurrentModificationError();
+      query = query.startAfter(Timestamp.fromMillis(anchor.at), anchor.id);
+    }
+    const snapshot = await transaction.get(query.limit(input.pageSize + 1)); const docs = snapshot.docs.slice(0, input.pageSize); const items = docs.map((doc) => {
+      const delivery = hydrateDelivery(doc); if (delivery.personId !== actor.personId || delivery.groupId !== input.groupId || delivery.seasonId !== membership.seasonId || delivery.membershipId !== input.membershipId) throw new e.DeliveryIncompatibleStateError(); return ownNoticeDto(delivery);
+    });
+    const last = docs.at(-1); return Object.freeze({ items: Object.freeze(items), ...(snapshot.size > input.pageSize && last ? { nextCursor: encodeCursor(scope, { at: last.data().reportedAt.toMillis(), id: last.id }) } : {}) });
+  }); } catch (error) { throw map(error); } }
+  async function listMyPaymentApplications(accountId, input) { try { return await db.runTransaction(async (transaction) => {
+    const actor = await ownAuthorization(transaction, accountId); const payment = d.economicPayment(await transaction.get(economicRepository.paymentRef(input.paymentId)));
+    if (!payment || payment.personId !== actor.personId) throw new e.DeliveryNotAccessibleError();
+    const membership = membershipContext(await transaction.get(db.collection("memberships").doc(payment.membershipId)));
+    if (membership.personId !== actor.personId || membership.groupId !== payment.groupId || membership.seasonId !== payment.seasonId) throw new e.DeliveryNotAccessibleError();
+    const [groupSnapshot, seasonSnapshot] = await Promise.all([transaction.get(db.collection("groups").doc(payment.groupId)), transaction.get(db.collection("seasons").doc(payment.seasonId))]);
+    validGroup(groupSnapshot); if (!seasonSnapshot.exists || seasonSnapshot.data()?.groupId !== payment.groupId) throw new e.DeliveryIncompatibleStateError();
+    return subjectApplications.list({ unitOfWork: transaction, accountId, personId: actor.personId, payment, pageSize: input.pageSize, cursor: input.cursor });
+  }); } catch (error) { throw map(error); } }
   async function listOwn(accountId, input) { try { return await db.runTransaction(async (transaction) => { const actor = await ownAuthorization(transaction, accountId); const scope = { contract: "my-payment-deliveries", accountId, personId: actor.personId, membershipId: input.membershipId || null, pageSize: input.pageSize }; const anchor = decodeCursor(input.cursor, scope); let query = deliveries.where("personId", "==", actor.personId); if (input.membershipId) query = query.where("membershipId", "==", input.membershipId); query = query.orderBy("reportedAt", "desc").orderBy("__name__", "desc"); if (anchor) query = query.startAfter(Timestamp.fromMillis(anchor.at), anchor.id); const snapshot = await transaction.get(query.limit(input.pageSize + 1)); const docs = snapshot.docs.slice(0, input.pageSize); const items = docs.map((doc) => d.deliveryDto(hydrateDelivery(doc))); const last = docs.at(-1); return { items, ...(snapshot.size > input.pageSize ? { nextCursor: encodeCursor(scope, { at: last.data().reportedAt.toMillis(), id: last.id }) } : {}) }; }); } catch (error) { throw map(error); } }
   async function getOwn(accountId, input) { try { return await db.runTransaction(async (transaction) => { const actor = await ownAuthorization(transaction, accountId); const delivery = hydrateDelivery(await transaction.get(deliveries.doc(input.deliveryId))); if (!delivery || delivery.personId !== actor.personId) throw new e.DeliveryNotAccessibleError(); return d.deliveryDto(delivery); }); } catch (error) { throw map(error); } }
   async function listPending(accountId, input) { try { return await db.runTransaction(async (transaction) => { const auth = await reviewerAuthorization(transaction, accountId, input.groupId); const scope = { contract: "pending-payment-deliveries", accountId, groupId: input.groupId, pageSize: input.pageSize }; const anchor = decodeCursor(input.cursor, scope); let query = deliveries.where("groupId", "==", input.groupId).where("decisionState", "==", "REPORTED").orderBy("reportedAt", "asc").orderBy("__name__", "asc"); if (anchor) query = query.startAfter(Timestamp.fromMillis(anchor.at), anchor.id); const snapshot = await transaction.get(query.limit(input.pageSize + 1)); const candidates = snapshot.docs.filter((doc) => auth.kind === "OWNER" || doc.data().personId !== auth.personId); const docs = candidates.slice(0, input.pageSize); const items = []; for (const doc of docs) items.push(d.deliveryDto(hydrateDelivery(doc), { includeLines: false, person: await personPresentation.get(transaction, doc.data().personId) })); const last = docs.at(-1); return { items, ...(snapshot.size > input.pageSize && last ? { nextCursor: encodeCursor(scope, { at: last.data().reportedAt.toMillis(), id: last.id }) } : {}) }; }); } catch (error) { throw map(error); } }
@@ -309,7 +351,7 @@ function createFirestorePaymentDeliveryStore({ db, now = () => Timestamp.now(), 
   async function getReviewContext(accountId, input) { try { return await db.runTransaction(async (transaction) => { const authorization = await reviewerAuthorization(transaction, accountId, input.groupId); if (authorization.kind !== "REVIEWER") throw new e.ReviewNotAuthorizedError(); return { groupId: input.groupId, capabilityId: d.CAPABILITY_ID, canReviewPaymentNotices: true }; }); } catch (error) { throw map(error); } }
 
   return Object.freeze({ report, confirm: (accountId, input) => decide(accountId, input, "CONFIRM"), reject: (accountId, input) => decide(accountId, input, "REJECT"), reverse,
-    listOwn, getOwn, listPending, getPending, listReportedForPayments, getOwnerObligationDetail, getTreasuryObligationDetail, listHistory, getHistory, getReviewOutcome,
+    listMyMembershipNotices, listMyPaymentApplications, listOwn, getOwn, listPending, getPending, listReportedForPayments, getOwnerObligationDetail, getTreasuryObligationDetail, listHistory, getHistory, getReviewOutcome,
     grantReview, revokeReview, listReviewGrants, getReviewContext });
 }
 

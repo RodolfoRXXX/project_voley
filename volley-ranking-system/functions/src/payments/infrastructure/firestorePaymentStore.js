@@ -7,6 +7,8 @@ const { createGroupObligationPresentationCapability } = require("../../groups/pu
 const { createMembershipObligationEligibilityCapability } = require("../../memberships/public/membershipObligationEligibilityCapability");
 const { createPaymentPersonPresentationCapability } = require("../../persons/public/paymentPersonPresentationCapability");
 const { createGroupTreasuryAuthorizationCapability } = require("../../treasury/public/groupTreasuryAuthorizationCapability");
+const { createSubjectPaymentApplicationsCapability } = require("../../paymentDeliveries/public/subjectPaymentApplicationsCapability");
+const { createSubjectPendingNoticeEvidenceCapability } = require("../../paymentDeliveries/public/subjectPendingNoticeEvidenceCapability");
 const {
   conceptDto, exact, hash, hydrateConcept, hydrateOccurrence, iso, monthBounds, opaqueId, paymentDto,
   normalizeConceptName, normalizeExceptionReason, normalizePrincipalCorrectionExplanation, requireAmount, requireDueDate, requireId, requireKind, requirePrincipalCorrectionReason, requireVersion, stable,
@@ -34,6 +36,8 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
   const personPresentation = createPaymentPersonPresentationCapability({ db });
   const groupPresentation = createGroupObligationPresentationCapability({ db });
   const treasuryAuthorization = createGroupTreasuryAuthorizationCapability({ db });
+  const subjectApplications = createSubjectPaymentApplicationsCapability({ db });
+  const subjectPendingNotices = createSubjectPendingNoticeEvidenceCapability({ db, testHooks });
 
   function isTransient(error) { return ["cancelled", "deadline-exceeded", "resource-exhausted", "aborted", "unavailable", 1, 4, 8, 10, 14].includes(error?.code); }
   function map(error) {
@@ -381,6 +385,41 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
     }); } catch (error) { throw map(error); }
   }
 
+  async function listMyMembershipObligations(userId, input) {
+    try { return await db.runTransaction(async (transaction) => {
+      const user = await account(transaction, userId, true);
+      const membershipSnapshot = await transaction.get(db.collection("memberships").doc(input.membershipId)); const membership = membershipSnapshot.data();
+      if (!membershipSnapshot.exists || membership?.estado !== "activa" || membership.personId !== user.personaId || membership.groupId !== input.groupId || typeof membership.seasonId !== "string") throw new PaymentNotAccessibleError();
+      const [groupSnapshot, seasonSnapshot] = await Promise.all([
+        transaction.get(db.collection("groups").doc(input.groupId)),
+        transaction.get(db.collection("seasons").doc(membership.seasonId)),
+      ]);
+      const groupData = groupSnapshot.data(); const seasonData = seasonSnapshot.data();
+      if (!groupSnapshot.exists || groupData?.estado !== "activo" || typeof groupData.nombre !== "string" || !seasonSnapshot.exists || seasonData?.groupId !== input.groupId || seasonData.estado !== "abierta") throw new PaymentNotAccessibleError();
+      const scope = { contract: "my-membership-obligations-v1", accountId: userId, personId: user.personaId, groupId: input.groupId, seasonId: membership.seasonId, membershipId: input.membershipId, states: ["PENDING", "PARTIAL"], order: "dueDate:desc,__name__:desc", pageSize: input.pageSize };
+      const anchor = readCursor(input.cursor, scope);
+      let query = payments.where("membershipId", "==", input.membershipId).where("estado", "in", ["PENDING", "PARTIAL"]).orderBy("dueDate", "desc").orderBy("__name__", "desc");
+      if (anchor) {
+        if (!exact(anchor, ["dueDate", "id"]) || typeof anchor.dueDate !== "string" || typeof anchor.id !== "string" || !anchor.id) throw new PaymentConcurrentModificationError();
+        const anchorPayment = persistedPayment(await transaction.get(payments.doc(anchor.id)));
+        if (!anchorPayment || anchorPayment.membershipId !== input.membershipId || anchorPayment.personId !== user.personaId || anchorPayment.groupId !== input.groupId || anchorPayment.seasonId !== membership.seasonId || anchorPayment.dueDate !== anchor.dueDate || !["PENDING", "PARTIAL"].includes(anchorPayment.economicState) || anchorPayment.balanceMinor <= 0) throw new PaymentConcurrentModificationError();
+        query = query.startAfter(anchor.dueDate, anchor.id);
+      }
+      const snapshot = await transaction.get(query.limit(input.pageSize + 1)); const docs = snapshot.docs.slice(0, input.pageSize); const items = [];
+      for (const doc of docs) {
+        const payment = persistedPayment(doc);
+        if (!payment || payment.membershipId !== input.membershipId || payment.personId !== user.personaId || payment.groupId !== input.groupId || payment.seasonId !== membership.seasonId || !["PENDING", "PARTIAL"].includes(payment.economicState) || payment.balanceMinor <= 0) throw new PaymentIncompatibleStateError();
+        items.push(paymentDto(payment, { owner: false, groupName: groupData.nombre }));
+      }
+      const pendingNoticeEvidence = await subjectPendingNotices.find({ unitOfWork: transaction, personId: user.personaId, groupId: input.groupId,
+        seasonId: membership.seasonId, membershipId: input.membershipId, paymentIds: items.map((item) => item.paymentId) });
+      const enrichedItems = items.map((item) => Object.freeze({ ...item, pendingNoticeEvidence: pendingNoticeEvidence.evidence.get(item.paymentId) }));
+      const last = docs.at(-1);
+      return Object.freeze({ items: Object.freeze(enrichedItems), pendingNoticeCoverage: pendingNoticeEvidence.coverage,
+        ...(snapshot.size > input.pageSize && last ? { nextCursor: cursor(scope, { dueDate: last.data().dueDate, id: last.id }) } : {}) });
+    }); } catch (error) { throw map(error); }
+  }
+
   function prearchive(payment, group) { return group.estado === "activo" || (group.estado === "archivado" && iso(group.archivedAt) && payment.createdAt.toMillis() <= group.archivedAt.toMillis() && typeof payment.generationIntentId === "string" && /^[a-f0-9]{64}$/.test(payment.payloadHash)); }
   function voidResource(payment) { return Object.freeze({ paymentId: payment.paymentId, groupId: payment.groupId, membershipId: payment.membershipId, amountMinor: payment.amountMinor, currentPrincipalMinor: payment.currentPrincipalMinor ?? payment.amountMinor, balanceMinor: 0, estado: "VOIDED", lifecycle: "VOIDED", economicRevision: payment.economicRevision, voidedAmountMinor: payment.voidedAmountMinor, voidReasonCode: payment.voidReasonCode, voidExplanation: payment.voidExplanation, voidedAt: iso(payment.voidedAt) }); }
   async function voidPayment(userId, input) {
@@ -633,7 +672,8 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
       const { overdue, createdAt, ...dto } = paymentDto(payment, { owner: false, groupName: presentedGroup.name });
       const corrections = await correctionPage(transaction, userId, payment, { pageSize: 20 }, "SUBJECT");
       const waivers = await waiverHistoryPage(transaction, userId, payment, { pageSize: 20 }, "SUBJECT");
-      return Object.freeze({ ...dto, context: { groupName: presentedGroup.name, seasonName: season.data().nombre }, principalCorrections: corrections.items, ...(corrections.nextCursor ? { correctionNextCursor: corrections.nextCursor } : {}), waiverHistory: waivers.items, waiverHistoryRevision: payment.waiverHistoryRevision || 0, ...(waivers.nextCursor ? { waiverNextCursor: waivers.nextCursor } : {}) });
+      const applications = await subjectApplications.list({ unitOfWork: transaction, accountId: userId, personId: user.personaId, payment, pageSize: 20 });
+      return Object.freeze({ ...dto, context: { groupName: presentedGroup.name, seasonName: season.data().nombre }, applications: applications.items, ...(applications.nextCursor ? { applicationNextCursor: applications.nextCursor } : {}), principalCorrections: corrections.items, ...(corrections.nextCursor ? { correctionNextCursor: corrections.nextCursor } : {}), waiverHistory: waivers.items, waiverHistoryRevision: payment.waiverHistoryRevision || 0, ...(waivers.nextCursor ? { waiverNextCursor: waivers.nextCursor } : {}) });
     }); } catch (error) { throw map(error); }
   }
 
@@ -671,6 +711,7 @@ function createFirestorePaymentStore({ db, now = () => Timestamp.now(), testHook
     deactivateConcept: (userId, input) => mutateConcept(userId, input, "DEACTIVATE_CONCEPT"),
     listConcepts, listOccurrences, createOccurrence, listCandidates, generate,
     listGroupObligations: (userId, input) => listPayments(userId, input, false),
+    listMyMembershipObligations,
     listMyObligations: (userId, input) => listPayments(userId, input, true),
     getOwnerGroupEconomySummary,
     voidPayment, correctPaymentPrincipal, listPaymentPrincipalCorrections, getMyPaymentObligationDetail,

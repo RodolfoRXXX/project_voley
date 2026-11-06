@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePerson } from "@/hooks/usePerson";
 import { formatArs, getMyPaymentObligationDetail, getPaymentErrorMessage, getPaymentErrorReason, listMyObligations, listPaymentPrincipalCorrections, listPaymentWaiverHistory, parseArsMinor } from "@/services/paymentsService";
@@ -29,13 +30,19 @@ async function loadMembershipLabels() {
 
 export function MyObligationsView() {
   const { person, personStatus, personError } = usePerson();
+  const searchParams = useSearchParams();
+  const requestedPaymentId = searchParams.get("paymentId") ?? "";
+  const requestedGroupId = searchParams.get("groupId") ?? "";
+  const requestedMembershipId = searchParams.get("membershipId") ?? "";
+  const requestedReturnTo = searchParams.get("returnTo") ?? "";
+  const returnTo = requestedReturnTo.startsWith("/dashboard/groups/") ? requestedReturnTo : "";
   const [items, setItems] = useState<Obligation[]>([]); const [cursor, setCursor] = useState<string>(); const [receipts, setReceipts] = useState<PaymentReceipt[]>([]); const [receiptCursor, setReceiptCursor] = useState<string>();
   const [obligationStatus, setObligationStatus] = useState<"OPEN" | "SETTLED" | "VOIDED">("OPEN"); const [paymentDetail, setPaymentDetail] = useState<MyPaymentObligationDetail | null>(null);
   const [labels, setLabels] = useState<Map<string, { groupName: string; seasonName: string }>>(new Map()); const [detail, setDetail] = useState<PaymentReceipt | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading"); const [error, setError] = useState(""); const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState<Record<string, Draft>>({}); const [context, setContext] = useState<Context | null>(null); const [pendingSwitch, setPendingSwitch] = useState<Obligation | null>(null);
   const [showSummary, setShowSummary] = useState(false); const [declaredPaidOn, setDeclaredPaidOn] = useState(todayBuenosAires); const [recoveryInput, setRecoveryInput] = useState<Record<string, unknown> | null>(null);
-  const busy = useRef(false); const feedback = useRef<HTMLDivElement>(null);
+  const busy = useRef(false); const feedback = useRef<HTMLDivElement>(null); const handledRequestedPayment = useRef("");
   const load = useCallback(async (append = false) => { setStatus("loading"); try { const [page, history, contextLabels] = await Promise.all([listMyObligations({ status: obligationStatus, pageSize: 20, ...(append && cursor ? { cursor } : {}) }), append ? Promise.resolve(null) : listMyPaymentReceipts({ pageSize: 20 }), append ? Promise.resolve(null) : loadMembershipLabels()]); setItems((current) => append ? [...current, ...page.items] : page.items); setCursor(page.nextCursor); if (history) { setReceipts(history.items); setReceiptCursor(history.nextCursor); } if (contextLabels) setLabels(contextLabels); setStatus("ready"); } catch (cause) { setError(getPaymentErrorMessage(getPaymentErrorReason(cause))); setStatus("error"); queueMicrotask(() => feedback.current?.focus()); } }, [cursor, obligationStatus]);
   const loadMoreReceipts = async () => { if (!receiptCursor) return; const page = await listMyPaymentReceipts({ pageSize: 20, cursor: receiptCursor }); setReceipts((current) => [...current, ...page.items]); setReceiptCursor(page.nextCursor); };
   const openReceipt = async (receipt: PaymentReceipt) => { try { setDetail(await getMyPaymentReceipt(receipt.receiptId)); } catch { setError("No pudimos abrir el detalle de esta recepción."); } };
@@ -52,6 +59,34 @@ export function MyObligationsView() {
   // Person identity resets all accumulated private economic data. `load` intentionally owns pagination state.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [person?.personId, personStatus, obligationStatus]);
+  useEffect(() => {
+    const requestKey = `${person?.personId ?? ""}\u0000${requestedPaymentId}\u0000${requestedGroupId}\u0000${requestedMembershipId}`;
+    if (personStatus !== "ready" || status !== "ready" || !requestedPaymentId || !requestedGroupId || !requestedMembershipId || handledRequestedPayment.current === requestKey) return;
+    handledRequestedPayment.current = requestKey;
+    let active = true;
+    void (async () => {
+      try {
+        const listed = items.find((item) => item.paymentId === requestedPaymentId);
+        const fetched = listed ? null : await getMyPaymentObligationDetail(requestedPaymentId);
+        const item = listed ?? fetched!;
+        if (!active) return;
+        if (item.membershipId !== requestedMembershipId || (item.groupId && item.groupId !== requestedGroupId)) { setError("No podés consultar esa obligación en el contexto indicado."); return; }
+        if (fetched) setItems((current) => current.some((entry) => entry.paymentId === item.paymentId) ? current : [{ ...item, groupId: requestedGroupId, groupName: fetched.context.groupName }, ...current]);
+        if (item.lifecycle === "VOIDED" || item.estado === "VOIDED") { setError("La obligación está anulada y no admite avisos de pago."); return; }
+        if (item.estado === "SETTLED" || item.balanceMinor <= 0) { setError("La obligación ya está saldada y no admite avisos de pago."); return; }
+        if (item.estado !== "PENDING" && item.estado !== "PARTIAL") { setError("La obligación no admite avisos de pago en su estado actual."); return; }
+        setContext({ groupId: requestedGroupId, seasonId: item.seasonId, membershipId: item.membershipId });
+        setSelected({ [item.paymentId]: { mode: "FULL", amount: (item.balanceMinor / 100).toFixed(2) } });
+        setNotice("Obligación seleccionada. Revisá el importe y la fecha antes de informar el pago.");
+        queueMicrotask(() => feedback.current?.focus());
+      } catch (cause) {
+        if (!active) return;
+        setError(getPaymentErrorMessage(getPaymentErrorReason(cause)));
+        queueMicrotask(() => feedback.current?.focus());
+      }
+    })();
+    return () => { active = false; };
+  }, [items, person?.personId, personStatus, requestedGroupId, requestedMembershipId, requestedPaymentId, status]);
   const chosen = useMemo(() => items.filter((item) => selected[item.paymentId]).map((item) => ({ item, draft: selected[item.paymentId] })), [items, selected]);
   const lineAmount = (item: Obligation, draft: Draft) => draft.mode === "FULL" ? item.balanceMinor : parseArsMinor(draft.amount);
   const total = chosen.reduce((sum, { item, draft }) => sum + (lineAmount(item, draft) ?? 0), 0);
@@ -66,7 +101,7 @@ export function MyObligationsView() {
   if (personStatus === "empty") return <section className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-950"><p>Necesitás crear o vincular tu Persona para consultar tus obligaciones.</p><Link className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-amber-500 px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2" href="/profile/person">Ir a mi Persona</Link></section>;
   if (personStatus !== "ready" || !person) return <section role="alert" className="rounded-xl border border-red-300 bg-red-50 p-5 text-red-900"><p>{personError ?? "No pudimos verificar la vinculación de tu Persona."}</p><Link className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-red-400 px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2" href="/profile/person">Revisar mi Persona</Link></section>;
 
-  return <div className="space-y-6"><div ref={feedback} tabIndex={-1} aria-live="polite">{notice ? <p className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p> : null}{error ? <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}</div>
+  return <div className="space-y-6">{returnTo ? <Link href={returnTo} className="inline-flex min-h-11 items-center text-sm font-semibold text-orange-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500">Volver a Economía personal</Link> : null}<div ref={feedback} tabIndex={-1} aria-live="polite">{notice ? <p className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p> : null}{error ? <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}</div>
     <h2 className="text-lg font-semibold">{obligationStatus === "OPEN" ? "Mis obligaciones pendientes" : "Mis obligaciones anuladas"}</h2>
     {recoveryInput ? <button type="button" className="rounded-lg border border-amber-600 px-4 py-2 font-semibold" onClick={() => void submit(recoveryInput)}>Recuperar la misma entrega</button> : null}
     {status === "loading" && items.length === 0 ? <p role="status">Cargando {obligationStatus === "OPEN" ? "obligaciones pendientes" : "obligaciones anuladas"}…</p> : null}{status === "error" ? <button onClick={() => void load(false)} className="rounded-lg border px-4 py-2 font-semibold">Reintentar</button> : null}

@@ -23,7 +23,7 @@ test("IUX-04 usa selector móvil, tabs desktop y Clipboard accesible", () => {
   const clipboard = read("volley-ranking-frontend/src/components/groups/CopyGroupJoinLinkButton.tsx");
   assert.match(navigation, /Sección del Grupo/); assert.match(navigation, /md:hidden/); assert.match(navigation, /md:flex/);
   assert.doesNotMatch(navigation, /overflow-x-auto/);
-  for (const label of ["Resumen", "Economía", "Temporada", "Integrantes"]) assert.match(navigation, new RegExp(`label: "${label}"`));
+  for (const label of ["Resumen", "Mi participación", "Economía personal", "Economía del Grupo", "Temporada", "Integrantes"]) assert.match(navigation, new RegExp(`label: "${label}"`));
   for (const marker of ["navigator.clipboard.writeText", "aria-live=\"polite\"", "min-h-11", "min-w-11", "Enlace copiado", "role=\"alert\""]) assert.match(clipboard, new RegExp(marker));
   assert.match(clipboard, /className="relative inline-flex flex-col items-end"[\s\S]*className="sr-only" aria-live="polite"/);
 });
@@ -67,25 +67,49 @@ test("IUX-04 conserva un solo scroller vertical de aplicacion", () => {
 });
 
 test("IUX-04 no consulta membresias cuando la ausencia de Persona esta acreditada", () => {
-  const navigation = read("volley-ranking-frontend/src/components/groups/GroupContextNavigation.tsx");
+  const switcher = read("volley-ranking-frontend/src/components/groups/GroupSwitcher.tsx");
   const groupsPage = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/page.tsx");
   const personProvider = read("volley-ranking-frontend/src/components/providers/PersonProvider.tsx");
   assert.match(personProvider, /personAccountId/);
-  assert.match(navigation, /personAccountId === firebaseUser\?\.uid/);
-  assert.match(navigation, /loadContexts\(scopedPersonStatus === "ready"\)/);
-  assert.match(navigation, /getMembershipErrorReason\(cause\) === "PERSON_REQUIRED"/);
+  assert.match(switcher, /personAccountId === firebaseUser\?\.uid/);
+  assert.match(switcher, /scopedStatus === "empty" \? "empty"/);
+  assert.match(switcher, /scopedStatus === "ready" \? "available"/);
+  assert.match(switcher, /if \(membershipCoverage === "available"\)/);
   assert.match(groupsPage, /personAccountId !== firebaseUser\.uid/);
   assert.match(groupsPage, /personStatus === "empty"/);
 });
 
-test("IUX-04 resuelve capabilities solo bajo demanda y clasifica denegaciones esperadas", () => {
+test("IUX-05 integra el cambio de Grupo en el título y reserva la caja para secciones", () => {
+  const frame = read("volley-ranking-frontend/src/components/groups/GroupFrame.tsx");
+  const switcher = read("volley-ranking-frontend/src/components/groups/GroupSwitcher.tsx");
+  const navigation = read("volley-ranking-frontend/src/components/groups/GroupContextNavigation.tsx");
+  assert.match(frame, /title=\{currentAccess \? <GroupSwitcher/);
+  assert.match(frame, /Temporada \$\{seasonName\} · \$\{condition\}/);
+  assert.doesNotMatch(navigation, /Grupo seleccionado|Cambiar de Grupo|listOwnGroups|listMyCurrentGroupMemberships/);
+  assert.match(navigation, /aria-label="Navegación del Grupo"/);
+  for (const marker of ["aria-haspopup=\"menu\"", "aria-expanded", "event.key === \"Escape\"", "pointerdown", "Reintentar alternativas", "overflow-x-hidden", "pageSize: 20", "seenCursors", "MEMBERSHIP_CURSOR_REPEATED"]) assert.match(switcher, new RegExp(marker));
+  assert.match(switcher, /loading \|\| !alternatives\.complete \|\| alternatives\.items\.length > 1/);
+  assert.match(switcher, /current\.owner \|\| next\.owner/);
+  assert.match(switcher, /current\.membership \|\| next\.membership/);
+  assert.match(switcher, /pathname\.endsWith\("\/personal-economy"\) && target\.membership/);
+  assert.match(switcher, /if \(target\.owner\) return base/);
+  assert.match(switcher, /if \(target\.membership\) return `\$\{base\}\/membership`/);
+});
+
+test("IUX-04 resuelve capabilities una vez en el frame y clasifica denegaciones esperadas", () => {
   const frame = read("volley-ranking-frontend/src/components/groups/GroupFrame.tsx");
   const membership = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/membership/page.tsx");
-  assert.match(frame, /resolveAccess\(groupId, pathname\.endsWith\("\/economy"\)\)/);
-  assert.match(membership, /withCapabilityTimeout\(getMyDirectPaymentRecordContext\(groupId\)\)/);
-  assert.match(membership, /recordDenied[\s\S]*ADMINISTRATIVE_RECEIPT_NOT_AUTHORIZED/);
-  assert.match(membership, /record\.status === "rejected" && !recordDenied/);
-  assert.match(membership, /href="\/dashboard\/obligations"/);
-  assert.match(membership, /No pudimos verificar todas tus autorizaciones\. No asumimos que est.n ausentes\./);
-  assert.equal((membership.match(/withCapabilityTimeout\(getMyDirectPaymentRecordContext\(groupId\)\)/g) || []).length, 1);
+  const personalEconomyPage = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/personal-economy/page.tsx");
+  const personalEconomy = read("volley-ranking-frontend/src/components/payments/PersonalMembershipEconomy.tsx");
+  assert.match(frame, /resolveAccess\(groupId, true\)/);
+  assert.doesNotMatch(frame, /usePathname|needsEconomicCapabilities/);
+  assert.match(frame, /getMyDirectPaymentRecordContext\(groupId\)/);
+  assert.match(frame, /ADMINISTRATIVE_RECEIPT_NOT_AUTHORIZED/);
+  assert.match(frame, /capabilitiesFailed: capabilityUnavailable/);
+  assert.doesNotMatch(membership, /getMyDirectPaymentRecordContext|resolveCapabilities|Promise\.allSettled/);
+  assert.doesNotMatch(membership, /<PersonalMembershipEconomy/);
+  assert.match(personalEconomyPage, /<PersonalMembershipEconomy[^>]*groupId=\{groupId\}/);
+  assert.match(personalEconomy, /href="\/dashboard\/obligations"/);
+  assert.match(frame, /No pudimos verificar todas tus autorizaciones econ.micas\. No asumimos que est.n ausentes\./);
+  assert.equal((frame.match(/getMyDirectPaymentRecordContext\(groupId\)/g) || []).length, 1);
 });

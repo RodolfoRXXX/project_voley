@@ -349,6 +349,7 @@ const paymentVoidNoticeGateE3TestPath = path.join(
 const paymentVoidE3TestPath = path.join(systemRoot, "functions", "test", "emulator", "paymentVoidE3.test.js");
 const paymentPrincipalCorrectionE3TestPath = path.join(systemRoot, "functions", "test", "emulator", "paymentPrincipalCorrectionE3.test.js");
 const paymentWaiverE3TestPath = path.join(systemRoot, "functions", "test", "emulator", "paymentWaiverE3.test.js");
+const personalEconomyIux05TestPath = path.join(systemRoot, "functions", "test", "emulator", "personalEconomyIux05.test.js");
 const legacyJoinRetirementTestPath = path.join(
   systemRoot,
   "functions",
@@ -370,7 +371,9 @@ const tournamentEconomyRetirementE3TestPath = path.join(
   "emulator",
   "tournamentEconomyRetirementE3.test.js"
 );
-const command = process.env.IUX_04_COVERAGE_FOCAL === "1"
+const command = process.env.IUX_05_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${personalEconomyIux05TestPath}"`
+  : process.env.IUX_04_COVERAGE_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${groupTestPath}"`
   : process.env.IUX_02B_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${dashboardTaskQueryIux02bTestPath}"`
@@ -480,9 +483,9 @@ const defaultTestPaths = [accountTestPath, personTestPath, groupTestPath, groupN
   paymentE3SerializationTestPath, treasuryE3TestPath, treasuryE3CallableTestPath, paymentDeliveryE3TestPath, administrativeReceiptE3TestPath,
   administrativeReceiptPaginationE3TestPath, administrativeReceiptConcurrencyE3TestPath, paymentWaiverE3TestPath,
   dashboardTaskProjectionIux02aTestPath, dashboardTaskQueryIux02bTestPath, emulatorTestPath, autopromotionTestPath, minimumReadPolicyTestPath,
-  priorityAssetCharacterizationTestPath, socialMatchEconomyRetirementE3TestPath, tournamentEconomyRetirementE3TestPath];
+  priorityAssetCharacterizationTestPath, socialMatchEconomyRetirementE3TestPath, tournamentEconomyRetirementE3TestPath, personalEconomyIux05TestPath];
 const defaultTestBatches = partitionTestPaths(defaultTestPaths, 6);
-assertBatchPlan(defaultTestPaths, defaultTestBatches, 41, 7);
+assertBatchPlan(defaultTestPaths, defaultTestBatches, 42, 7);
 const commands = command
   ? [command]
   : defaultTestBatches.map((paths) => `node --test --test-concurrency=1 ${paths.map((entry) => `"${entry}"`).join(" ")}`);
@@ -495,7 +498,7 @@ function emulatorArgs(testCommand) {
     "--config",
     "firebase.test.json",
     "--only",
-    process.env.IUX_02A_FOCAL === "1" || process.env.IUX_02B_FOCAL === "1" ? "auth,firestore" : "auth,firestore,functions",
+    process.env.IUX_05_FOCAL === "1" ? "firestore" : process.env.IUX_02A_FOCAL === "1" || process.env.IUX_02B_FOCAL === "1" ? "auth,firestore" : "auth,firestore,functions",
     testCommand,
   ];
 }

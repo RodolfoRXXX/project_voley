@@ -15,6 +15,9 @@ function validateDeliveryCommand(data) { closed(data, ["groupId", "deliveryId", 
 function validateReject(data) { const fields = ["groupId", "deliveryId", "reasonCode", ...(data?.reasonNote === undefined ? [] : ["reasonNote"]), "idempotencyKey"]; closed(data, fields); const reasons = ["PAYMENT_NOT_RECEIVED", "AMOUNT_DOES_NOT_MATCH", "DATE_DOES_NOT_MATCH", "DUPLICATE_DELIVERY", "OTHER"]; if (!reasons.includes(data.reasonCode)) throw new DeliveryValidationError(); const reasonNote = d.text(data.reasonNote, false); if (data.reasonCode === "OTHER" && !reasonNote) throw new DeliveryValidationError(); return Object.freeze({ groupId: d.id(data.groupId), deliveryId: d.id(data.deliveryId), reasonCode: data.reasonCode, ...(reasonNote ? { reasonNote } : {}), idempotencyKey: d.key(data.idempotencyKey) }); }
 function validateReverse(data) { closed(data, ["groupId", "deliveryId", "reason", "idempotencyKey"]); return Object.freeze({ groupId: d.id(data.groupId), deliveryId: d.id(data.deliveryId), reason: d.text(data.reason), idempotencyKey: d.key(data.idempotencyKey) }); }
 function validateOwnList(data) { const fields = data?.membershipId === undefined ? [] : ["membershipId"]; const page = optionalPage(data, fields); return Object.freeze({ ...page, ...(data.membershipId ? { membershipId: d.id(data.membershipId) } : {}) }); }
+function contextualPage(data) { const page = optionalPage(data, ["groupId", "membershipId"]); if (page.pageSize > 20) throw new DeliveryValidationError(); return Object.freeze({ groupId: d.id(data.groupId), membershipId: d.id(data.membershipId), ...page }); }
+function validateMyMembershipNotices(data) { return contextualPage(data); }
+function validateMyPaymentApplications(data) { const page = optionalPage(data, ["paymentId"]); if (page.pageSize > 20) throw new DeliveryValidationError(); return Object.freeze({ paymentId: d.id(data.paymentId), ...page }); }
 function validateGet(data) { closed(data, ["deliveryId"]); return Object.freeze({ deliveryId: d.id(data.deliveryId) }); }
 function validateAdminList(data) { const page = optionalPage(data, ["groupId", "decisionState"]); if (data.decisionState !== "REPORTED") throw new DeliveryValidationError(); return Object.freeze({ groupId: d.id(data.groupId), decisionState: "REPORTED", ...page }); }
 function validateAdminGet(data) { closed(data, ["groupId", "deliveryId"]); return Object.freeze({ groupId: d.id(data.groupId), deliveryId: d.id(data.deliveryId) }); }
@@ -32,5 +35,5 @@ function validateReportedForPayments(data) {
 }
 function validateOwnerObligationDetail(data) { const page = optionalPage(data, ["groupId", "paymentId"]); return Object.freeze({ groupId: d.id(data.groupId), paymentId: d.id(data.paymentId), ...page }); }
 module.exports = { validateAdminGet, validateAdminList, validateDeliveryCommand, validateGet, validateGrantList, validateGroup,
-  validateHistory, validateOwnList, validateOwnerObligationDetail, validateReject, validateReport, validateReportedForPayments,
+  validateHistory, validateMyMembershipNotices, validateMyPaymentApplications, validateOwnList, validateOwnerObligationDetail, validateReject, validateReport, validateReportedForPayments,
   validateReverse, validateReviewGrant, validateReviewRevoke };

@@ -1,0 +1,6 @@
+"use strict";
+const functions = require("firebase-functions/v1");
+const service = require("../src/administrativeReceipts/infrastructure/administrativeReceiptModule");
+const { validateMyMembershipRegisteredPayments } = require("../src/administrativeReceipts/application/administrativeReceiptContract");
+const { createAdministrativeReceiptCallable } = require("../src/administrativeReceipts/infrastructure/administrativeReceiptCallable");
+module.exports = functions.https.onCall(createAdministrativeReceiptCallable({ operation: service.listMyMembershipRegisteredPayments, validate: validateMyMembershipRegisteredPayments }));

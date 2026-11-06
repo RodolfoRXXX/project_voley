@@ -1,6 +1,6 @@
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
-import type { ChargeConcept, ChargeKind, ChargeOccurrence, GenerationRow, MonthlyMembershipCandidate, MyPaymentObligationDetail, Obligation, PaymentErrorReason, PaymentWaiverEvent, PrincipalCorrection, PrincipalCorrectionReason, VoidReasonCode, WaiverReasonCode, WaiverReversalReasonCode } from "@/types/Payment";
+import type { ChargeConcept, ChargeKind, ChargeOccurrence, GenerationRow, MembershipObligationPage, MonthlyMembershipCandidate, MyPaymentObligationDetail, Obligation, PaymentErrorReason, PaymentWaiverEvent, PrincipalCorrection, PrincipalCorrectionReason, VoidReasonCode, WaiverReasonCode, WaiverReversalReasonCode } from "@/types/Payment";
 import { formatArs, parseArsMinor } from "./arsMoney.mjs";
 export { formatArs, parseArsMinor };
 
@@ -17,6 +17,7 @@ const generateCall = httpsCallable<Record<string, unknown>, { generationIntentId
 type ObligationListInput = { economicStates?: ["PENDING", "PARTIAL"]; status?: "OPEN" | "SETTLED" | "VOIDED"; pageSize?: number; cursor?: string };
 const listGroupCall = httpsCallable<ObligationListInput & { groupId: string }, Page<Obligation>>(functions, "listGroupObligations");
 const listMineCall = httpsCallable<ObligationListInput, Page<Obligation>>(functions, "listMyObligations");
+const listMyMembershipCall = httpsCallable<{ groupId: string; membershipId: string; status: "OPEN"; pageSize?: number; cursor?: string }, MembershipObligationPage>(functions, "listMyMembershipObligations");
 const voidPaymentCall = httpsCallable<{ groupId: string; paymentId: string; expectedEconomicRevision: number; reasonCode: VoidReasonCode; explanation: string; idempotencyKey: string }, { outcome: "VOIDED" | "EXISTING" | "PENDING_RECOVERY"; resource?: Obligation }>(functions, "voidPaymentObligation");
 const myPaymentDetailCall = httpsCallable<{ paymentId: string }, MyPaymentObligationDetail>(functions, "getMyPaymentObligationDetail");
 const correctPrincipalCall = httpsCallable<{ groupId: string; paymentId: string; newPrincipalMinor: number; expectedEconomicRevision: number; reasonCode: PrincipalCorrectionReason; explanation: string; idempotencyKey: string }, { outcome: "CORRECTED" | "EXISTING" | "PENDING_RECOVERY" }>(functions, "correctPaymentPrincipal");
@@ -39,6 +40,7 @@ export const listMonthlyCandidates = async (input: { groupId: string; periodKey:
 export const generateMembershipObligations = async (input: Record<string, unknown>) => (await generateCall(input)).data;
 export const listGroupObligations = async (input: ObligationListInput & { groupId: string }) => (await listGroupCall({ status: "OPEN", ...input })).data;
 export const listMyObligations = async (input: ObligationListInput = {}) => (await listMineCall({ status: "OPEN", ...input })).data;
+export const listMyMembershipObligations = async (input: { groupId: string; membershipId: string; pageSize?: number; cursor?: string }) => (await listMyMembershipCall({ groupId: input.groupId, membershipId: input.membershipId, status: "OPEN", ...(input.pageSize === undefined ? {} : { pageSize: input.pageSize }), ...(input.cursor === undefined ? {} : { cursor: input.cursor }) })).data;
 export const voidPaymentObligation = async (input: { groupId: string; paymentId: string; expectedEconomicRevision: number; reasonCode: VoidReasonCode; explanation: string; idempotencyKey: string }) => (await voidPaymentCall(input)).data;
 export const correctPaymentPrincipal = async (input: { groupId: string; paymentId: string; newPrincipalMinor: number; expectedEconomicRevision: number; reasonCode: PrincipalCorrectionReason; explanation: string; idempotencyKey: string }) => (await correctPrincipalCall(input)).data;
 export const listPaymentPrincipalCorrections = async (input: { paymentId: string; pageSize?: number; cursor?: string }) => (await listCorrectionsCall(input)).data;

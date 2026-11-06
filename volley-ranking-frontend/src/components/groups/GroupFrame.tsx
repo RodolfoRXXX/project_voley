@@ -1,17 +1,20 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, usePathname, useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 import { GroupContextNavigation } from "@/components/groups/GroupContextNavigation";
 import { GroupActionsMenu } from "@/components/groups/GroupActionsMenu";
 import { GroupLoading } from "@/components/groups/GroupLoading";
 import { GroupPageShell } from "@/components/groups/GroupPageShell";
+import { GroupSwitcher } from "@/components/groups/GroupSwitcher";
+import { useAuth } from "@/hooks/useAuth";
 import { administrativeReceiptErrorReason, getMyDirectPaymentRecordContext } from "@/services/administrativeReceiptsService";
 import { getGroupErrorReason, getOwnGroup } from "@/services/groupsService";
 import { getMyCurrentGroupMembershipContext } from "@/services/membershipsService";
 import { deliveryErrorReason, getMyPaymentReviewContext } from "@/services/paymentDeliveriesService";
 import { getMyGroupTreasuryContext, getTreasuryErrorReason } from "@/services/treasuryService";
+import type { MyCurrentGroupMembershipContext } from "@/types/MyCurrentGroupMembership";
 import type { OwnGroup, OwnGroupActive } from "@/types/OwnGroup";
 
 type GroupAccess = {
@@ -20,6 +23,8 @@ type GroupAccess = {
   review: boolean;
   record: boolean;
   membership: boolean;
+  membershipContext: MyCurrentGroupMembershipContext | null;
+  capabilitiesFailed: boolean;
   group: OwnGroup | null;
   groupName: string;
 };
@@ -29,6 +34,7 @@ type GroupFrameValue = GroupAccess & {
   setOwnerGroup: (group: OwnGroup) => void;
   setNavigationProtection: (pending: boolean, recoveryBlocked: boolean) => void;
   loseAccess: (message?: string) => void;
+  retryAccess: () => void;
 };
 
 type FrameState = {
@@ -44,15 +50,16 @@ const GroupFrameContext = createContext<GroupFrameValue | null>(null);
 async function resolveAccess(groupId: string, includeCapabilities: boolean): Promise<GroupAccess> {
   try {
     const { group } = await getOwnGroup(groupId);
-    return { owner: true, treasury: false, review: false, record: false, membership: false, group, groupName: group.nombre };
+    const membershipContext = await getMyCurrentGroupMembershipContext(groupId).then((context) => context, () => null);
+    return { owner: true, treasury: false, review: false, record: false, membership: membershipContext !== null, membershipContext, capabilitiesFailed: false, group, groupName: group.nombre };
   } catch (cause) {
     const ownerReason = getGroupErrorReason(cause);
     if (!["GROUP_NOT_ACCESSIBLE", "NOT_AUTHORIZED", "NOT_FOUND"].includes(ownerReason)) throw cause;
     const [membership, treasury, review, record] = await Promise.allSettled([
       getMyCurrentGroupMembershipContext(groupId),
-      includeCapabilities ? getMyGroupTreasuryContext(groupId).then(() => true, () => false) : Promise.resolve(false),
-      includeCapabilities ? getMyPaymentReviewContext(groupId).then(() => true, () => false) : Promise.resolve(false),
-      includeCapabilities ? getMyDirectPaymentRecordContext(groupId).then(() => true, () => false) : Promise.resolve(false),
+      includeCapabilities ? getMyGroupTreasuryContext(groupId).then(() => true) : Promise.resolve(false),
+      includeCapabilities ? getMyPaymentReviewContext(groupId).then(() => true) : Promise.resolve(false),
+      includeCapabilities ? getMyDirectPaymentRecordContext(groupId).then(() => true) : Promise.resolve(false),
     ]);
     const hasMembership = membership.status === "fulfilled";
     const hasTreasury = treasury.status === "fulfilled" && treasury.value;
@@ -71,6 +78,8 @@ async function resolveAccess(groupId: string, includeCapabilities: boolean): Pro
       review: hasReview,
       record: hasRecord,
       membership: hasMembership,
+      membershipContext: hasMembership ? membership.value : null,
+      capabilitiesFailed: capabilityUnavailable,
       group: null,
       groupName: hasMembership ? membership.value.group.nombre : "Grupo",
     };
@@ -79,8 +88,8 @@ async function resolveAccess(groupId: string, includeCapabilities: boolean): Pro
 
 export function GroupFrame({ children }: { children: React.ReactNode }) {
   const { groupId } = useParams<{ groupId: string }>();
-  const pathname = usePathname();
   const router = useRouter();
+  const { firebaseUser } = useAuth();
   const [frame, setFrame] = useState<FrameState>({ token: {}, access: null, resolvedGroupId: null, status: "loading", error: "" });
   const [reloadVersion, setReloadVersion] = useState(0);
   const [pendingOperation, setPendingOperation] = useState(false);
@@ -98,7 +107,7 @@ export function GroupFrame({ children }: { children: React.ReactNode }) {
       setRecoveryBlocked(false);
       setNotice("");
     });
-    void resolveAccess(groupId, pathname.endsWith("/economy")).then((resolved) => {
+    void resolveAccess(groupId, true).then((resolved) => {
       if (!active) return;
       setFrame((current) => current.token === token
         ? { token, access: resolved, resolvedGroupId: groupId, status: "ready", error: "" }
@@ -113,7 +122,7 @@ export function GroupFrame({ children }: { children: React.ReactNode }) {
         : current);
     });
     return () => { active = false; };
-  }, [groupId, pathname, reloadVersion]);
+  }, [firebaseUser?.uid, groupId, reloadVersion]);
 
   const loseAccess = useCallback((message = "Tu acceso ya no está vigente. Se limpiaron los datos del Grupo.") => {
     setFrame({ token: {}, access: null, resolvedGroupId: null, status: "error", error: message });
@@ -138,6 +147,7 @@ export function GroupFrame({ children }: { children: React.ReactNode }) {
     setOwnerGroup,
     setNavigationProtection: (pending, blocked) => { setPendingOperation(pending); setRecoveryBlocked(blocked); },
     loseAccess,
+    retryAccess: () => setReloadVersion((current) => current + 1),
   } : null, [currentAccess, groupId, loseAccess, setOwnerGroup]);
 
   const groupState = currentAccess?.group?.estado ?? (currentAccess ? "activo" : null);
@@ -151,14 +161,23 @@ export function GroupFrame({ children }: { children: React.ReactNode }) {
     onDeleted={() => { router.replace("/dashboard/groups?notice=group-deleted"); }}
     onAccessLost={handleAccessLost}
   /> : null;
+  const condition = currentAccess?.owner && currentAccess.membership
+    ? "Administrás e integrás este Grupo"
+    : currentAccess?.owner
+      ? "Administrás este Grupo"
+      : currentAccess?.membership
+        ? "Integrás este Grupo"
+        : currentAccess
+          ? "Acceso económico delegado"
+          : "Cargando contexto del Grupo";
+  const seasonName = currentAccess?.membershipContext?.season.nombre;
+  const headerDescription = seasonName ? `Temporada ${seasonName} · ${condition}` : condition;
 
   return (
     <GroupPageShell
       backHref="/dashboard/groups"
-      title={currentAccess?.groupName ?? "Grupo"}
-      description={currentAccess?.owner
-        ? currentAccess.group?.estado === "archivado" ? "Grupo archivado, disponible en modo de consulta." : "Administración contextual del Grupo."
-        : currentAccess?.membership ? "Participación propia acreditada para este Grupo." : "Consulta económica con autorización validada por cada operación."}
+      title={currentAccess ? <GroupSwitcher groupId={groupId} groupName={currentAccess.groupName} owner={currentAccess.owner} membership={currentAccess.membership} hasPendingOperation={pendingOperation} blockContextChange={recoveryBlocked} /> : "Grupo"}
+      description={headerDescription}
       badge={headerBadge}
       actions={headerActions}
     >
@@ -166,7 +185,8 @@ export function GroupFrame({ children }: { children: React.ReactNode }) {
       {frame.status === "loading" ? <GroupLoading label="Cargando contexto del Grupo" /> : null}
       {frame.status === "error" ? <section role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-5"><p>{frame.error}</p><div className="mt-3 flex flex-wrap gap-2"><button className="min-h-11 rounded-lg border px-4 font-semibold" onClick={() => setReloadVersion((value) => value + 1)}>Reintentar</button><button className="min-h-11 rounded-lg border px-4 font-semibold" onClick={() => router.replace("/dashboard/groups")}>Volver a Mis grupos</button></div></section> : null}
       {frame.status === "ready" && value ? <GroupFrameContext.Provider value={value}>
-        <GroupContextNavigation groupId={groupId} groupName={value.groupName} owner={value.owner} membership={value.membership} capabilities={{ treasury: value.treasury, review: value.review, record: value.record }} activeGroup={value.group?.estado !== "archivado"} hasPendingOperation={pendingOperation} blockContextChange={recoveryBlocked} />
+        <GroupContextNavigation groupId={groupId} owner={value.owner} membership={value.membership} capabilities={{ treasury: value.treasury, review: value.review, record: value.record }} activeGroup={value.group?.estado !== "archivado"} />
+        {value.capabilitiesFailed ? <div role="alert" className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm"><p>No pudimos verificar todas tus autorizaciones económicas. No asumimos que estén ausentes.</p><button type="button" className="mt-2 min-h-11 rounded-lg border border-amber-500 px-3 font-semibold" onClick={value.retryAccess}>Reintentar verificación</button></div> : null}
         {children}
       </GroupFrameContext.Provider> : null}
     </GroupPageShell>

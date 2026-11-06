@@ -7,6 +7,7 @@ export type PaymentDelivery = { deliveryId: string; receiptId?: string; origin?:
   decisionState: DeliveryDecisionState; applicationState?: DeliveryApplicationState; reportedAt: string; confirmedAt?: string; rejectedAt?: string; reversedAt?: string;
   rejection?: { reasonCode: string; reasonNote?: string }; reversal?: { reason: string }; resolution?: { administrativeReceiptId: string; correctedFields: string[]; resolvedAt: string }; lines?: DeliveryLine[]; person?: PersonPresentation };
 export type PaymentDeliveryPage = { items: PaymentDelivery[]; nextCursor?: string };
+export type MembershipPaymentNotice = { deliveryId: string; reportedAt: string; declaredPaidOn: string; declaredTotalMinor: number; decisionState: DeliveryDecisionState; applicationState?: DeliveryApplicationState; confirmedAt?: string; rejectedAt?: string; reversedAt?: string; rejection?: { reasonCode: string; reasonNote?: string }; resolution?: { administrativeReceiptId: string; correctedFields: string[]; resolvedAt: string }; lines: Array<{ lineId: string; paymentId: string; requestedAmountMinor: number; conceptName: string; dueDate: string }> };
 export type ReportedPaymentDeliveryMatch = PaymentDelivery & { matchingPaymentIds: string[] };
 type PaymentObligationDetailBase = {
   person: PersonPresentation;

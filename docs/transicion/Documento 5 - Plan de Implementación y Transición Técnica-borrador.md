@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - adopción documental IUX-05 - 4 de noviembre de 2026*
+*Borrador consolidado - cierre técnico local IUX-05 - 6 de noviembre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -39,7 +39,7 @@ Estado operativo del plan:
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
 - `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
-- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03 E IUX-04 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA; IUX-05 LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA`;
+- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -1991,7 +1991,7 @@ el plan, pero no obliga a ejecutarlas en una cascada rígida ni a publicarlas co
 | 1 | Usuario, Persona y autorización | `CERRADA` | Cierre de Etapa 0 | Identidad separada y autorización contextual inicial |
 | 2 | Grupo, Membresía, Solicitud y Temporada | `CERRADA CON RIESGO RESIDUAL ACEPTADO` | Persona y actor identificables | Fuentes de verdad organizativas separadas |
 | 3 | Pago deportivo | `ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; HABILITACIÓN PRODUCTIVA PENDIENTE; ETAPA ABIERTA` | Referencias estables a recursos y participantes | Pago independiente y campos embebidos retirados |
-| IUX | Interetapa UX móvil | `IUX-01, IUX-03 E IUX-04 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-02A/B INTEGRADOS TÉCNICAMENTE EN LOCAL; IUX-02 ABIERTO SIN HABILITACIÓN PRODUCTIVA; IUX-05 LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA` | Preservar contratos, autorizaciones y gates E3; no habilita E4 | Superficies mobile-first por incrementos acotados, sin renumeración |
+| IUX | Interetapa UX móvil | `IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-02A/B INTEGRADOS TÉCNICAMENTE EN LOCAL; IUX-02 ABIERTO SIN HABILITACIÓN PRODUCTIVA` | Preservar contratos, autorizaciones y gates E3; no habilita E4 | Superficies mobile-first por incrementos acotados, sin renumeración |
 | 4 | Partido-Torneo y CU-075 | `ROADMAP` | Modelo de Partido, contratos y pruebas | Resultado original y estado competitivo separados |
 | 5 | Estadísticas, Rendimiento, Actividad y recuperación | `ROADMAP` | Cada fuente original correspondiente | Proyecciones reconstruibles y procesos recuperables |
 | 6 | Comercial | `ROADMAP` | Usuario estable y consultas deportivas públicas | Capacidades y límites sin otorgar permisos deportivos |
@@ -2496,8 +2496,9 @@ El siguiente incremento funcional es:
     permisos, Rules, writers, migración, historia de roster archivado, cambios en formularios y
     diagnóstico especulativo de consola. El error `startTime/reportAllChanges` permanece documentado
     por separado y sin causa atribuida a SPORTEXA.
-- Quinto incremento: `IUX-05 — Economía personal por Membresía`, adoptado por D5-067 y
-    **LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA**. En la ruta member-safe vigente
+- Quinto incremento: `IUX-05 — Economía personal por Membresía`, adoptado por D5-067, implementado
+    y cerrado técnicamente en local por D5-068, con UAT humana aprobada sólo para los recorridos
+    informados y sin despliegue. En la ruta member-safe vigente
     consulta toda la economía de la `membershipId` acreditada, incluidos Períodos anteriores de esa
     raíz, sin incorporar raíces de renovación. Conserva Grupo/Temporada visibles, el guard actual de
     `/membership` y `Mis obligaciones` como acceso histórico global; no agrega ruta o selector
@@ -2511,9 +2512,12 @@ El siguiente incremento funcional es:
 - Contratos IUX-05: páginas backend de máximo 20 con `limit + 1`, cursores ligados a identidad,
     Grupo, Temporada, Membresía, filtros, orden, tamaño y versión. Se reutilizan índices existentes
     de obligaciones, avisos y recepciones administrativas; informados confirmados requieren el
-    índice `membershipId ASC, decisionState ASC, confirmedAt DESC, __name__ DESC`. Presupuestos
-    previstos por página: 30 lecturas Obligaciones, 30 Avisos, 51 Pagos registrados y 72
-    Aplicaciones, sujetos a prueba/medición de implementación.
+    índice `membershipId ASC, decisionState ASC, confirmedAt DESC, __name__ DESC`. Obligaciones
+    incorpora evidencia acotada de avisos `REPORTED` mediante otra query agrupada `20 + 1`, con
+    cobertura `COMPLETE|PARTIAL|FAILED` y estados `FOUND|NONE|UNKNOWN`, sin consultas por fila.
+    Presupuestos aprobados por intento: 46 lecturas en primera página de Obligaciones, 47 en su
+    continuación, 30 Avisos, 51 Pagos registrados y 72 Aplicaciones; los reintentos se cuentan por
+    separado y las cifras no representan facturación ni latencia productiva.
 - Exclusiones IUX-05: no hay resumen, saldo total ni cantidad agregada de Membresía, porque
     acreditarlos exigiría un barrido sin cota o una persistencia nueva. Tampoco hay subtotal de
     página, timeline unificado, navegación histórica contextual, callable único, writers,
@@ -2535,8 +2539,9 @@ El siguiente incremento funcional es:
     [addendum IUX-04](../arquitectura/Documento-2-3-4-addendum-IUX-04-detalle-grupo-mobile-first.md)
     y [cierre IUX-04](../implementacion/interetapa-ux-movil/IUX-04-cierre.md);
     [ficha IUX-05](../implementacion/interetapa-ux-movil/IUX-05-ficha-economia-personal-membresia.md),
-    [relevamiento IUX-05](../implementacion/interetapa-ux-movil/IUX-05-relevamiento-economia-personal-membresia.md)
-    y [addendum IUX-05](../arquitectura/Documento-2-3-4-addendum-IUX-05-economia-personal-membresia.md).
+    [relevamiento IUX-05](../implementacion/interetapa-ux-movil/IUX-05-relevamiento-economia-personal-membresia.md),
+    [addendum IUX-05](../arquitectura/Documento-2-3-4-addendum-IUX-05-economia-personal-membresia.md)
+    y [cierre IUX-05](../implementacion/interetapa-ux-movil/IUX-05-cierre.md).
 
 
 ## 7.6 Etapa 4 - Partido, Torneo y CU-075
@@ -2742,6 +2747,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-065 | Autoriza para la UAT IUX-04 la inicializacion automatica de cobertura y adopta IUX-04-D08-A: alta directa de Grupo canonico v3 con `ownershipRevision=1`, guard, scope y evento determinista atomicos | APROBADA; D08-A ADOPTADA | IUX / IUX-04 / IUX-02A / alta de Grupo | Reutiliza outbox, trigger, worker y reconciliacion. `activateOnComplete` se limita a la inicializacion live completa; backfill/rebuild conservan activacion explicita. No autoriza READY sintetico, writes desde readers, nueva proyeccion, permisos, migracion masiva ni despliegue. Cuenta sin Grupos conserva `no-contexts-v1`; v1 previos requieren evolucion canonica separada. No declara UAT ni layout resueltos, no cierra IUX/E3. |
 | D5-066 | Registra la implementación y cierre técnico local de IUX-04, incluida D08-A, con D07 diferida y evidencia humana acotada | CERRADO TÉCNICAMENTE EN LOCAL | IUX / IUX-04 / detalle de Grupo | Las regresiones acreditan alta v3, idempotencia/recuperación, cobertura global/contextual y N20/N31. La confirmación humana sólo cubre N20 en Inicio/Novedades y la desaparición del doble scroll/espacio inferior en el recorrido observado; no acredita N31, concurrencia, zoom 200 %, Android real ni lector de pantalla. No cierra IUX/E3, no habilita E4 ni satisface gates productivos IUX-02. |
 | D5-067 | Adopta `IUX-05 — Economía personal por Membresía`, D01–D07 y el addendum conjunto a Documentos 2/3/4: raíz acreditada completa sin renovaciones, Obligaciones/Avisos/Pagos registrados independientes, aplicaciones propias minimizadas y primer corte sin resumen agregado | APROBADA | IUX / IUX-05 / `/dashboard/groups/{groupId}/membership` | IUX-05 queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; reutiliza sin ampliar `getMyCurrentGroupMembershipContext`, páginas máximas 20, cursores ligados, presupuestos por intento 30/30/51/72 y un índice informado confirmado quedan definidos. La facturación/latencia y la validación remota del índice son gates. No autoriza código/índices/deploy, no crea writers/proyección/permisos, conserva `Mis obligaciones`, UAT complementaria IUX-04 y gates productivos IUX-02/E3; no cierra IUX/E3 ni habilita E4. |
+| D5-068 | Registra la implementación y cierre técnico local de IUX-05, incluida la navegación contextual, lectores SUBJECT read-only, evidencia acotada de avisos pendientes y localización sin duplicación por `deliveryId` | CERRADO TÉCNICAMENTE EN LOCAL; UAT HUMANA ACOTADA APROBADA | IUX / IUX-05 / cierre local | Obligaciones adopta presupuestos lógicos máximos de 46 lecturas en primera página y 47 en continuación por intento; reintentos se contabilizan aparte y no representan facturación ni latencia productiva. La aprobación humana cubre sólo los recorridos informados. Validación/construcción remota del índice, rendimiento productivo, rollout y matriz complementaria permanecen como gates. Conserva pendientes IUX-04 e IUX-02/E3; no cierra IUX/E3 ni habilita E4. |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -2949,9 +2955,24 @@ D5-067 adopta IUX-05 para Economía personal de la `membershipId` vigente acredi
 Pagos registrados se consultan y paginan por separado; aplicaciones y ajustes se explican en el
 detalle propio sin identidades administrativas. El primer corte no muestra resumen, saldo total o
 cantidad agregada, no deriva totales de páginas y no incorpora timeline o navegación histórica
-contextual. Contratos, cursores, presupuestos e índice mínimo quedan definidos; su implementación,
-Emulator, medición, UAT, índice y cualquier deploy requieren autorización separada. Los pendientes
+contextual. Contratos, cursores, presupuestos e índice mínimo quedaron definidos para su
+implementación posterior. Los pendientes
 IUX-04 y gates productivos IUX-02/E3 permanecen íntegros; no se cierra IUX/E3 ni se habilita E4.
+
+La autorización posterior de implementación local incorpora evidencia limitada de avisos propios
+`REPORTED` en Obligaciones. Una única consulta agrupada de 20 documentos y un lookahead acredita
+`FOUND`; sólo cobertura `COMPLETE` acredita `NONE`, mientras `PARTIAL` o fallo producen `UNKNOWN`.
+El presupuesto lógico de Obligaciones queda en 46 lecturas para primera página y 47 para
+continuación por intento, sin modificar saldo, permisos, writers, proyecciones ni límites del
+dominio.
+
+D5-068 registra la implementación y el cierre técnico local: readers SUBJECT read-only, navegación
+integrada, aplicaciones y ajustes propios, descripciones históricas, estados en español, flujo
+existente **Informar un pago**, encabezado y selector de Grupo, reutilización del contexto entre
+secciones y localización de avisos sin duplicación por `deliveryId`. La UAT humana queda aprobada
+únicamente para los recorridos informados por el usuario; no acredita matriz completa, Android real,
+todos los viewports, zoom 200 % o lector de pantalla. La validación y construcción remota del índice,
+facturación/latencia productiva, rollout y smoke desplegado siguen pendientes.
 
 “Requiere tu atención”, Agenda, notificaciones/campana, navbar/sidebar y roles o permisos permanecen
 fuera del incremento y sujetos a definición posterior. Presupuesto/rendimiento deben medirse durante

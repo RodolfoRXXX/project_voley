@@ -3,8 +3,8 @@
 ## Estado
 
 - **Naturaleza:** complemento normativo focal adoptado.
-- **Estado:** `ADOPTADO POR D5-067 — LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA`.
-- **Fecha:** 4 de noviembre de 2026.
+- **Estado:** `ADOPTADO POR D5-067; CIERRE LOCAL REGISTRADO POR D5-068 — GATES PRODUCTIVOS PENDIENTES`.
+- **Fecha:** 6 de noviembre de 2026.
 - **Base:** `dev@88dae54`.
 - **Ficha:** [IUX-05](../implementacion/interetapa-ux-movil/IUX-05-ficha-economia-personal-membresia.md).
 
@@ -121,10 +121,17 @@ cursor incluye identidad, Grupo, Temporada, Membresía, filtros, orden, tamaño 
 iniciales son: obligaciones abiertas; todos los estados de Avisos; informados confirmados más
 administrativos para Pagos registrados; aplicaciones aplicadas o revertidas.
 
-Presupuestos máximos previstos por página y por intento: 30 lecturas para Obligaciones, 30 para
+Presupuestos máximos previstos por página y por intento: 46 lecturas para la primera página de
+Obligaciones y 47 para su continuación, 30 para
 Avisos, 51 para Pagos registrados y 72 para Aplicaciones. Incluyen `limit + 1`, autorización,
 validaciones, contexto e hidratación/raíces correlacionadas. Los reintentos son intentos separados;
 facturación y latencia permanecen pendientes de medición. No hay barrido adicional para totales.
+
+Obligaciones incorpora una capacidad pública SUBJECT read-only que ejecuta una sola consulta
+agrupada `membershipId == M AND decisionState == REPORTED ORDER BY __name__ ASC LIMIT 21`. Los
+primeros 20 documentos forman la ventana de evidencia y el documento 21 es lookahead validado. La
+cobertura es `COMPLETE`, `PARTIAL` o `FAILED`; cada obligación recibe `FOUND`, `NONE` sólo bajo
+`COMPLETE`, o `UNKNOWN`. No hay consultas por fila, writer, proyección ni límite de negocio.
 
 Se reutilizan los índices versionados por Membresía/estado/vencimiento,
 Persona/Membresía/reporte y Persona/origen/Membresía/registro. Se requiere un índice nuevo:
@@ -139,17 +146,19 @@ comportamiento local; no certifica índices compuestos de producción. La query/
 aceptación/estado remoto del índice documentado deben validarse como gates de implementación antes
 de modificar o desplegar configuración.
 
-## 7. Gates de implementación
+## 7. Gates de cierre y habilitación
 
-1. autorizar implementación por separado;
-2. comprobar contratos cerrados, autorización propia y descartes de sesión;
-3. probar localmente query, `limit + 1`, merge cursors y presupuestos, y validar por separado la
-   configuración y el índice en el entorno remoto autorizado;
-4. probar pago parcial, varios pagos, aviso, rechazo, resolución, reversión y ajustes;
-5. probar reactivación, renovación, sesión distinta, acceso ajeno y varias páginas;
-6. demostrar cero escrituras y preservación de permisos/destinos;
-7. ejecutar UAT y conservar los gates productivos IUX-02/IUX-04/E3.
+1. contratos cerrados, autorización propia, descartes de sesión, paginación y presupuestos quedaron
+   verificados localmente;
+2. pago parcial, varios pagos, aviso, rechazo, resolución, reversión, ajustes, raíces y acceso ajeno
+   tienen cobertura automática y recorridos humanos acotados;
+3. cero escrituras y preservación de permisos/destinos quedaron acreditados localmente;
+4. configuración e índice deben validarse y construirse en el entorno remoto sólo durante un
+   rollout autorizado;
+5. rendimiento/facturación productivos, smoke desplegado y matriz complementaria de dispositivos y
+   accesibilidad continúan pendientes;
+6. se conservan los gates productivos IUX-02/IUX-04/E3.
 
-La definición queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`. Los gates anteriores
-no están ejecutados ni autorizan deploy. IUX-04 conserva UAT complementaria; IUX-02 y E3 conservan
-sus gates productivos. No se cierra IUX/E3 ni se habilita E4.
+La implementación queda cerrada técnicamente en local con conformidad humana acotada para los
+recorridos informados. Los pendientes anteriores no autorizan deploy. IUX-04 conserva UAT
+complementaria; IUX-02 y E3 conservan sus gates productivos. No se cierra IUX/E3 ni se habilita E4.

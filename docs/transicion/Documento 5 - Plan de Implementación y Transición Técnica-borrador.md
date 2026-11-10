@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - cierre técnico local IUX-05 - 6 de noviembre de 2026*
+*Borrador consolidado - definición IUX-06 - 10 de noviembre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -39,7 +39,7 @@ Estado operativo del plan:
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
 - `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
-- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
+- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA; IUX-06 DEFINIDO SIN IMPLEMENTACIÓN AUTORIZADA`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -2748,6 +2748,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-066 | Registra la implementación y cierre técnico local de IUX-04, incluida D08-A, con D07 diferida y evidencia humana acotada | CERRADO TÉCNICAMENTE EN LOCAL | IUX / IUX-04 / detalle de Grupo | Las regresiones acreditan alta v3, idempotencia/recuperación, cobertura global/contextual y N20/N31. La confirmación humana sólo cubre N20 en Inicio/Novedades y la desaparición del doble scroll/espacio inferior en el recorrido observado; no acredita N31, concurrencia, zoom 200 %, Android real ni lector de pantalla. No cierra IUX/E3, no habilita E4 ni satisface gates productivos IUX-02. |
 | D5-067 | Adopta `IUX-05 — Economía personal por Membresía`, D01–D07 y el addendum conjunto a Documentos 2/3/4: raíz acreditada completa sin renovaciones, Obligaciones/Avisos/Pagos registrados independientes, aplicaciones propias minimizadas y primer corte sin resumen agregado | APROBADA | IUX / IUX-05 / `/dashboard/groups/{groupId}/membership` | IUX-05 queda `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`; reutiliza sin ampliar `getMyCurrentGroupMembershipContext`, páginas máximas 20, cursores ligados, presupuestos por intento 30/30/51/72 y un índice informado confirmado quedan definidos. La facturación/latencia y la validación remota del índice son gates. No autoriza código/índices/deploy, no crea writers/proyección/permisos, conserva `Mis obligaciones`, UAT complementaria IUX-04 y gates productivos IUX-02/E3; no cierra IUX/E3 ni habilita E4. |
 | D5-068 | Registra la implementación y cierre técnico local de IUX-05, incluida la navegación contextual, lectores SUBJECT read-only, evidencia acotada de avisos pendientes y localización sin duplicación por `deliveryId` | CERRADO TÉCNICAMENTE EN LOCAL; UAT HUMANA ACOTADA APROBADA | IUX / IUX-05 / cierre local | Obligaciones adopta presupuestos lógicos máximos de 46 lecturas en primera página y 47 en continuación por intento; reintentos se contabilizan aparte y no representan facturación ni latencia productiva. La aprobación humana cubre sólo los recorridos informados. Validación/construcción remota del índice, rendimiento productivo, rollout y matriz complementaria permanecen como gates. Conserva pendientes IUX-04 e IUX-02/E3; no cierra IUX/E3 ni habilita E4. |
+| D5-069 | Adopta `IUX-06 — Evolución de Grupos, Explorar e Integrantes`: A amplía el catálogo a Vóley, Fútbol, Básquet, Handball, Hockey, Rugby, Tenis, Pádel y Otro, incorpora publicación Owner y Explorar con privacidad por defecto; B reorganiza Mis grupos, solicitudes propias e historia finalizada; C1 fusiona Tu Membresía con Integrantes; C2 define total exacto y búsqueda completa; D separa Conceptos, Deudas, avisos e Historial | APROBADA | IUX / IUX-06 / Grupos / Integrantes / Economía | IUX-06A, B, C1 y D quedan `LISTOS PARA IMPLEMENTAR — REQUIEREN AUTORIZACIÓN POSTERIOR`; A es el primer corte recomendado. C2 queda definido funcionalmente pero no listo hasta resolver P01 (conteo exacto) y P02 (búsqueda completa). `Otro` no admite texto libre y el deporte no cambia comportamiento. Publicación no altera enlace ni solicitudes. Se preservan permisos, deep-links y gates IUX-02/E3; no autoriza código, configuración, índices, Rules, datos, migración, deploy ni producción. |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -2973,6 +2974,22 @@ secciones y localización de avisos sin duplicación por `deliveryId`. La UAT hu
 únicamente para los recorridos informados por el usuario; no acredita matriz completa, Android real,
 todos los viewports, zoom 200 % o lector de pantalla. La validación y construcción remota del índice,
 facturación/latencia productiva, rollout y smoke desplegado siguen pendientes.
+
+D5-069 adopta la definición de IUX-06 en cinco cortes. IUX-06A amplía el catálogo deportivo sin
+introducir comportamiento por deporte, mantiene `Otro` como categoría cerrada, establece privacidad
+por defecto y separa publicación en Explorar del enlace y de las solicitudes existentes. IUX-06B
+ordena Mis grupos en relaciones actuales deduplicadas, solicitudes propias pendientes e historia de
+Membresías finalizadas, con páginas de hasta cinco. IUX-06C1 integra Tu Membresía en las filas de
+Integrantes y conserva al Owner primero sin inferir que posee Membresía. IUX-06C2 define el total
+exacto y la búsqueda completa, pero permanece bloqueado hasta adoptar P01 y P02. IUX-06D separa
+Conceptos, Deudas, Pagos informados e Historial, preservando capabilities y enlaces directos.
+
+A, B, C1 y D quedan listos para una implementación que requiere autorización posterior; A es el
+primer corte recomendado. La revisión de la base vigente no encontró una contradicción funcional que
+cambie esos estados: confirmó, como brechas a implementar, el catálogo actual limitado a Vóley, la
+ausencia de publicación canónica y la presentación todavía separada. No se autorizan código,
+configuración, índices, Rules, datos, migraciones, despliegue ni producción. Los gates IUX-02/E3 y
+las decisiones anteriores no modificadas expresamente permanecen.
 
 “Requiere tu atención”, Agenda, notificaciones/campana, navbar/sidebar y roles o permisos permanecen
 fuera del incremento y sujetos a definición posterior. Presupuesto/rendimiento deben medirse durante

@@ -47,8 +47,11 @@ test("UI expone ruta, navegación y tarjeta sin reactivar redirects neutrales", 
   const page = read("volley-ranking-frontend/src/app/(protected)/profile/person/page.tsx");
   const sidebar = read("volley-ranking-frontend/src/components/layout/AppSidebar.tsx");
   const navbar = read("volley-ranking-frontend/src/components/layout/Navbar.tsx");
+  const navigation = read("volley-ranking-frontend/src/lib/navigation/accountNavigation.ts");
   const dashboard = read("volley-ranking-frontend/src/app/(protected)/dashboard/page.tsx");
   assert.match(page, /PersonBootstrapForm/);
-  for (const source of [sidebar, navbar, dashboard]) assert.match(source, /\/profile\/person/);
+  assert.match(navigation, /\/profile\/person/);
+  for (const source of [sidebar, navbar]) assert.match(source, /visibleAccountNavigationItems/);
+  assert.match(dashboard, /\/profile\/person/);
   assert.doesNotMatch(dashboard, /incremento posterior/);
 });

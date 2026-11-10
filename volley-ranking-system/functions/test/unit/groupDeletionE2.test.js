@@ -88,8 +88,8 @@ test("Owner menu replaces large triggers and implements keyboard, focus and dest
   const deletion = read("volley-ranking-frontend/src/components/groups/DeleteGroupDialog.tsx");
   assert.match(frame, /GroupActionsMenu/); assert.doesNotMatch(detail, /<EditGroupNameDialog|<ArchiveGroupDialog|<DeleteGroupDialog/);
   for (const pattern of [/Acciones del grupo/g, /aria-haspopup="menu"/, /aria-expanded/, /role="menu"/, /role="menuitem"/g, /ArrowDown/, /ArrowUp/, /Home/, /End/, /Escape/, /Tab/, /pointerdown/, /<svg aria-hidden="true"/, /circle cx="12" cy="5"[\s\S]*circle cx="12" cy="12"[\s\S]*circle cx="12" cy="19"/, /M4 7h16M9 7V4h6v3/, /border-t/]) assert.match(menu, pattern);
-  assert.ok((menu.match(/role="menuitem"/g) || []).length === 3);
-  assert.match(menu, /Editar nombre[\s\S]*Archivar grupo[\s\S]*Eliminar grupo/);
+  assert.ok((menu.match(/role="menuitem"/g) || []).length === 4);
+  assert.match(menu, /Publicar en Explorar[\s\S]*Editar nombre[\s\S]*Archivar grupo[\s\S]*Eliminar grupo/);
   assert.match(deletion, /prepareOwnGroupDeletion/); assert.match(deletion, /intent\.current/); assert.match(deletion, /inFlight\.current/);
   assert.match(deletion, /inFlight\.current = false; setSending\(false\);[\s\S]*await prepare/);
   assert.match(deletion, /current !== generation\.current \|\| groupId !== group\.id/); assert.match(deletion, /role="alertdialog"/);

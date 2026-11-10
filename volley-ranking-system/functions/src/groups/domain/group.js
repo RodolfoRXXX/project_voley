@@ -6,7 +6,17 @@ const GROUP_OWNERSHIP_SCHEMA_VERSION = 3;
 const GROUP_OWNERSHIP_ARCHIVED_SCHEMA_VERSION = 4;
 const GROUP_INITIAL_STATE = "activo";
 const GROUP_ARCHIVED_STATE = "archivado";
-const GROUP_SPORTS = Object.freeze(["voleibol"]);
+const GROUP_SPORTS = Object.freeze([
+  "voleibol",
+  "futbol",
+  "basquet",
+  "handball",
+  "hockey",
+  "rugby",
+  "tenis",
+  "padel",
+  "otro",
+]);
 const GROUP_FIELDS = Object.freeze([
   "nombre",
   "deporte",

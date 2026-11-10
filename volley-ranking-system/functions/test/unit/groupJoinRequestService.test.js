@@ -11,7 +11,7 @@ function service(overrides = {}) {
 }
 test("servicio deriva UID y Persona y produce DTOs mínimos", async () => {
   const { api, calls } = service();
-  assert.deepEqual(await api.getKnownGroupJoinPreview({ userId: "u" }, { groupId: "g" }), { group: { id: "g", nombre: "Grupo", deporte: "voleibol" } });
+  assert.deepEqual(await api.getKnownGroupJoinPreview({ userId: "u" }, { groupId: "g" }), { group: { id: "g", nombre: "Grupo", deporte: "voleibol" }, requestEligibility: "READY" });
   assert.deepEqual((await api.createMyGroupJoinRequest({ userId: "u" }, { groupId: "g", idempotencyKey: "secret" })).request, { id: "r", groupId: "g", estado: "pendiente", decisionStatus: "PENDING", createdAt: "1970-01-01T00:00:00.000Z" });
   const owner = await api.listPendingGroupJoinRequestsForOwnedGroup({ userId: "owner" }, { groupId: "g", pageSize: 20 });
   assert.deepEqual(owner, { items: [{ id: "r", estado: "pendiente", decisionStatus: "PENDING", createdAt: "1970-01-01T00:00:00.000Z", person: { firstName: "Ana", lastName: "Pérez" }, approvalEffect: "CREATE_MEMBERSHIP" }], nextCursor: null });
@@ -22,6 +22,14 @@ test("Owner listado no requiere Persona y roles nunca participan", async () => {
   const { api, calls } = service({ person: { getOwnContext: async () => { throw new Error("must not run"); } } });
   await api.listPendingGroupJoinRequestsForOwnedGroup({ userId: "owner", roles: "admin" }, { groupId: "g", pageSize: 20 });
   assert.equal(calls[0][0], "list"); assert.equal(Object.hasOwn(calls[0][1], "roles"), false);
+});
+test("vista previa permite explorar sin Persona pero mantiene la solicitud bloqueada", async () => {
+  const { api, calls } = service({ person: { getOwnContext: async () => ({ status: "missing" }) } });
+  assert.deepEqual(await api.getKnownGroupJoinPreview({ userId: "u" }, { groupId: "g", source: "EXPLORE" }), {
+    group: { id: "g", nombre: "Grupo", deporte: "voleibol" }, requestEligibility: "PERSON_REQUIRED",
+  });
+  assert.equal(calls[0][1].personId, null);
+  assert.equal(calls[0][1].source, "EXPLORE");
 });
 test("autenticación, Cuenta y Persona fallan con reasons estables", async () => {
   await assert.rejects(() => service().api.getMyCurrentGroupJoinRequest(null, { groupId: "g" }), { reason: "UNAUTHENTICATED" });

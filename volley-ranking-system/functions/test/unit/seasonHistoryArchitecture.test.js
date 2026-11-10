@@ -41,7 +41,7 @@ test("presentación E2-16 sólo usa callable y cubre estados/accesibilidad", () 
 
 test("E2-16 no crea Agregado, proyección, E2-17 ni E2-18", () => {
   const files = fs.readdirSync(path.join(root, "volley-ranking-system/functions/src/groups/domain"));
-  assert.deepEqual(files.sort(), ["group.js", "season.js"]);
+  assert.deepEqual(files.sort(), ["group.js", "groupPublication.js", "season.js"]);
   const source = read("volley-ranking-system/functions/src/groups/infrastructure/firestoreSeasonHistoryReader.js");
   assert.doesNotMatch(source, /collection\(["']seasonHistory["']\)|E2-17|E2-18|renew|reopen/i);
 });

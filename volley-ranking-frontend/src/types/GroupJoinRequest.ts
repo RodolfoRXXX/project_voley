@@ -1,6 +1,8 @@
 export type GroupJoinRequestState = "pendiente" | "cancelada" | "rechazada" | "aprobada";
 export type GroupJoinRequestDecisionStatus = "PENDING" | "APPROVAL_IN_PROGRESS";
-export interface KnownGroupJoinPreview { id: string; nombre: string; deporte: string; }
+import type { GroupSport } from "@/types/OwnGroup";
+export interface KnownGroupJoinPreview { id: string; nombre: string; deporte: GroupSport; }
+export type GroupJoinRequestSource = "EXPLORE";
 export interface PendingOwnGroupJoinRequest { id: string; groupId: string; estado: "pendiente"; decisionStatus: GroupJoinRequestDecisionStatus; createdAt: string; }
 export interface CancelledOwnGroupJoinRequest { id: string; groupId: string; estado: "cancelada"; createdAt: string; cancelledAt: string; }
 export interface DecidedOwnGroupJoinRequest { id: string; groupId: string; estado: "aprobada" | "rechazada"; createdAt: string; decidedAt: string; }

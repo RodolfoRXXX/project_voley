@@ -51,7 +51,7 @@ test("E2-06 solicitud propia usa fuente autoritativa, idempotencia, privacidad, 
       const [visitor, preview, ownerPreview, manipulated, adminList] = await Promise.all([
         call("getKnownGroupJoinPreview", { groupId: ids.group }), call("getKnownGroupJoinPreview", { groupId: ids.group }, candidate.idToken), call("getKnownGroupJoinPreview", { groupId: ids.group }, owner.idToken), call("createMyGroupJoinRequest", { ...command(ids.group), personId: ids.candidatePerson }, candidate.idToken), call("listPendingGroupJoinRequestsForOwnedGroup", { groupId: ids.group }, globalAdmin.idToken),
       ]);
-      assert.equal(visitor.body.error.details.reason, "UNAUTHENTICATED"); assert.deepEqual(preview.body.result, { group: { id: ids.group, nombre: "Grupo sintético", deporte: "voleibol" } }); assert.equal(ownerPreview.body.error.details.reason, "OWNER_CANNOT_REQUEST"); assert.equal(manipulated.body.error.details.reason, "VALIDATION_FAILED"); assert.equal(adminList.body.error.details.reason, "GROUP_NOT_ACCESSIBLE");
+      assert.equal(visitor.body.error.details.reason, "UNAUTHENTICATED"); assert.deepEqual(preview.body.result, { group: { id: ids.group, nombre: "Grupo sintético", deporte: "voleibol" }, requestEligibility: "READY" }); assert.equal(ownerPreview.body.error.details.reason, "OWNER_CANNOT_REQUEST"); assert.equal(manipulated.body.error.details.reason, "VALIDATION_FAILED"); assert.equal(adminList.body.error.details.reason, "GROUP_NOT_ACCESSIBLE");
       assert.equal(JSON.stringify(preview.body).includes(owner.uid), false); assert.equal(JSON.stringify(preview.body).includes("email"), false);
     });
 

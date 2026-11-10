@@ -50,7 +50,10 @@ test("Grupo rechaza nombre, deporte, Owner e IDs inválidos", () => {
   for (const nombre of ["", "   ", "a\u0000b", "x".repeat(81)]) {
     assert.throws(() => buildGroup({ groupId: "id", nombre, deporte: "voleibol", ownerId: "uid" }), InvalidGroupStateError);
   }
-  assert.throws(() => buildGroup({ groupId: "id", nombre: "Grupo", deporte: "futbol", ownerId: "uid" }), InvalidGroupStateError);
+  for (const deporte of ["voleibol", "futbol", "basquet", "handball", "hockey", "rugby", "tenis", "padel", "otro"]) {
+    assert.equal(buildGroup({ groupId: `id-${deporte}`, nombre: "Grupo", deporte, ownerId: "uid" }).deporte, deporte);
+  }
+  assert.throws(() => buildGroup({ groupId: "id", nombre: "Grupo", deporte: "ajedrez", ownerId: "uid" }), InvalidGroupStateError);
   assert.throws(() => buildGroup({ groupId: "id", nombre: "Grupo", deporte: "voleibol", ownerId: "" }), InvalidGroupStateError);
 });
 

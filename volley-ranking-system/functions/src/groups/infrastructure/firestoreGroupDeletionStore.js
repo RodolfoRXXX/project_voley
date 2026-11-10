@@ -256,6 +256,7 @@ function createFirestoreGroupDeletionStore({ db, groupRepository, membershipRepo
             deletedAt, outcome: "DELETED", receiptVersion: 1,
           });
           groupRepository.deleteRoot(transaction, command.groupId);
+          transaction.delete(db.collection("groupExplorationPublications").doc(command.groupId));
           transaction.delete(guardRef);
           return Object.freeze({
             outcome: "DELETED", recovered: false,

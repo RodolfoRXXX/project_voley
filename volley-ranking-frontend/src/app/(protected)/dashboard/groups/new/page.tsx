@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { GroupPageShell } from "@/components/groups/GroupPageShell";
 import { createOwnGroup, getGroupErrorMessage, getGroupErrorReason } from "@/services/groupsService";
 import type { GroupErrorReason, GroupSport } from "@/types/OwnGroup";
+import { GROUP_SPORT_OPTIONS } from "@/lib/groups/groupSports";
 
 function newIdempotencyKey(): string {
   if (!globalThis.crypto?.randomUUID) throw new Error("Secure UUID generation is unavailable");
@@ -17,7 +18,7 @@ export default function NewOwnGroupPage() {
   const errorRef = useRef<HTMLDivElement>(null);
   const sendingRef = useRef(false);
   const [nombre, setNombre] = useState("");
-  const [deporte] = useState<GroupSport>("voleibol");
+  const [deporte, setDeporte] = useState<GroupSport>("voleibol");
   const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
   const [attemptedValues, setAttemptedValues] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -32,6 +33,12 @@ export default function NewOwnGroupPage() {
     if (attemptedValues !== null && attemptedValues !== `${value}\u0000${deporte}`) {
       setIdempotencyKey(null);
       setAttemptedValues(null);
+    }
+  }
+  function updateSport(value: GroupSport) {
+    setDeporte(value); setError(null);
+    if (attemptedValues !== null && attemptedValues !== `${nombre}\u0000${value}`) {
+      setIdempotencyKey(null); setAttemptedValues(null);
     }
   }
 
@@ -81,10 +88,10 @@ export default function NewOwnGroupPage() {
         </div>
         <div>
           <label className="mb-2 block text-sm font-semibold" htmlFor="group-sport">Deporte</label>
-          <select id="group-sport" value={deporte} disabled className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 disabled:opacity-100">
-            <option value="voleibol">Vóley</option>
+          <select id="group-sport" value={deporte} onChange={(event) => updateSport(event.target.value as GroupSport)} className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2">
+            {GROUP_SPORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
-          <p className="mt-2 text-xs text-[var(--text-muted)]">El catálogo inicial admite únicamente Vóley.</p>
+          <p className="mt-2 text-xs text-[var(--text-muted)]">El deporte identifica al grupo; no cambia su comportamiento. “Otro” no requiere texto adicional.</p>
         </div>
         <button type="submit" disabled={!validName || sending} className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-orange-600 px-5 py-2 font-semibold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">
           {sending ? "Creando…" : "Crear Grupo"}

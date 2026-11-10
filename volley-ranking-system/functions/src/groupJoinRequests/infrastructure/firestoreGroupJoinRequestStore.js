@@ -111,8 +111,8 @@ function mapFailure(error) {
   return error;
 }
 
-function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapability, personCapability, membershipCapability, repository }) {
-  if (!db || !groupCapability || !seasonCapability || !personCapability || !membershipCapability || !repository) throw new TypeError("Group join request store dependencies are required");
+function createFirestoreGroupJoinRequestStore({ db, groupCapability, publicationCapability, seasonCapability, personCapability, membershipCapability, repository }) {
+  if (!db || !groupCapability || !publicationCapability || !seasonCapability || !personCapability || !membershipCapability || !repository) throw new TypeError("Group join request store dependencies are required");
   const guardRef = (groupId, personId) => db.collection("pendingGroupJoinRequestGuards").doc(pendingGroupJoinRequestGuardId(groupId, personId));
   const intentRef = (userId, key) => db.collection("groupJoinRequestIntents").doc(groupJoinRequestIntentId(userId, key));
   const decisionIntentRef = (userId, key) => db.collection("groupJoinRequestDecisionIntents").doc(groupJoinRequestDecisionIntentId(userId, key));
@@ -154,6 +154,11 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
     const context = await membershipCapability.getActiveContext({ unitOfWork, personId, groupId });
     if (context?.status === "incompatible") throw new GroupJoinRequestIncompatibleStateError();
     if (context?.status !== "absent") throw new GroupJoinRequestActiveMembershipExistsError();
+  }
+  async function assertExplorePublished(unitOfWork, groupId) {
+    const context = await publicationCapability.getExploreContext({ unitOfWork, groupId });
+    if (context?.status === "incompatible") throw new GroupJoinRequestGroupIncompatibleError();
+    if (context?.status !== "published") throw new GroupJoinRequestGroupNotAvailableError();
   }
   async function readCanonicalIntent(transaction, request) {
     if (!["aprobada", "rechazada"].includes(request.estado)) return null;
@@ -399,15 +404,16 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
   }
 
   return {
-    async preview({ userId, personId, groupId, observe = () => {} }) {
-      try { return await db.runTransaction(async (transaction) => { observe({ stage: "candidate-context-check", classification: "first-attempt" }); const group = await candidateGroup(transaction, groupId, userId); await assertNoActiveMembership(transaction, personId, groupId); observe({ stage: "context-confirmed", classification: "first-attempt" }); return group; }); }
+    async preview({ userId, personId, groupId, source, observe = () => {} }) {
+      try { return await db.runTransaction(async (transaction) => { observe({ stage: "candidate-context-check", classification: "first-attempt" }); if (source === "EXPLORE") await assertExplorePublished(transaction, groupId); const group = await candidateGroup(transaction, groupId, userId); if (personId) await assertNoActiveMembership(transaction, personId, groupId); observe({ stage: "context-confirmed", classification: "first-attempt" }); return group; }); }
       catch (error) { throw mapFailure(error); }
     },
-    async create({ userId, personId, groupId, idempotencyKey, observe = () => {} }) {
+    async create({ userId, personId, groupId, idempotencyKey, source, observe = () => {} }) {
       const requestId = repository.newId(); const requestedHash = groupJoinRequestHash(personId, groupId);
       try {
         return await db.runTransaction(async (transaction) => {
           observe({ stage: "candidate-context-check", classification: "first-attempt" });
+          if (source === "EXPLORE") await assertExplorePublished(transaction, groupId);
           await candidateGroup(transaction, groupId, userId); await assertNoActiveMembership(transaction, personId, groupId);
           const iRef = intentRef(userId, idempotencyKey); const gRef = guardRef(groupId, personId);
           const [intentSnapshot, guardSnapshot] = await transaction.getAll(iRef, gRef);
@@ -457,6 +463,8 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, seasonCapab
           const guard = hydrateGuard(guardSnapshot, { guardId: gRef.id, personId, groupId }); const pending = resolvePending(pendingSnapshot, guard, { repository, personId, groupId }); const coordination = hydrateCoordination(coordinationSnapshot);
           if (coordination) await readCoordinationIntent(transaction, request, coordination);
           if (request.estado === "cancelada") { if (guard || pending || coordination) throw new GroupJoinRequestIncompatibleStateError(); return { outcome: "ALREADY_CANCELLED", request }; }
+          if (request.estado === "aprobada") throw new GroupJoinRequestDecisionAlreadyApprovedError();
+          if (request.estado === "rechazada") throw new GroupJoinRequestDecisionAlreadyRejectedError();
           if (request.estado !== "pendiente") throw new GroupJoinRequestRequestNotPendingError();
           if (!guard || !pending || pending.requestId !== requestId) throw new GroupJoinRequestIncompatibleStateError();
           if (coordination) throw new GroupJoinRequestApprovalInProgressError();

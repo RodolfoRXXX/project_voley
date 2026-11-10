@@ -1,4 +1,4 @@
-export type GroupSport = "voleibol";
+export type GroupSport = "voleibol" | "futbol" | "basquet" | "handball" | "hockey" | "rugby" | "tenis" | "padel" | "otro";
 export type GroupState = "activo" | "archivado";
 
 interface OwnGroupBase {

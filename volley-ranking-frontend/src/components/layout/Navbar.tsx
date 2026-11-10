@@ -12,12 +12,7 @@ import ThemeSwitch from "@/components/layout/ThemeSwitch";
 import { useThemeMode } from "@/hooks/useThemeMode";
 import SportexaLogo from "./SportexaLogo";
 import { getActiveNavigationHref } from "@/lib/navigation/activeRoute.mjs";
-
-type NavItem = {
-  label: string;
-  href?: string;
-  children?: Array<{ label: string; href: string }>;
-};
+import { visibleAccountNavigationItems } from "@/lib/navigation/accountNavigation";
 
 export default function Navbar() {
   const {
@@ -73,30 +68,8 @@ export default function Navbar() {
     }
   };
 
-  const navItems: NavItem[] = [
-    { label: "Inicio", href: "/dashboard" },
-    { label: "Mis grupos", href: "/dashboard/groups" },
-    { label: "Mis obligaciones", href: "/dashboard/obligations" },
-    { label: "Grupos", href: "/groups" },
-    { label: "Torneos", href: "/tournaments" },
-
-    {
-      label: "Mi perfil",
-      children: [
-        { label: "Ficha personal", href: "/profile/person" },
-        { label: "Mis torneos", href: "/profile/tournaments" },
-      ],
-    },
-  ];
-
-  if (!legacyUserLoading && userDoc?.roles === "admin") {
-    navItems.push({
-      label: "Mi gestión",
-      children: [
-        { label: "Torneos", href: "/admin/tournaments" },
-      ],
-    });
-  }
+  const isAdmin = !legacyUserLoading && userDoc?.roles === "admin";
+  const navItems = visibleAccountNavigationItems(isAdmin);
 
   const activeHref = getActiveNavigationHref(
     pathname,

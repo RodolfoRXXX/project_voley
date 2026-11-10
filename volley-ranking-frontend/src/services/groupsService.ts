@@ -68,6 +68,13 @@ export interface DeleteOwnGroupResult {
   recovered: boolean;
   appliedEffect: { outcome: "DELETED"; deletedAt: string };
 }
+export interface GroupPublicationState { publicationState: "invite_only" | "published"; publishedAt: string | null }
+export interface ExploreGroup { id: string; nombre: string; deporte: GroupSport; ownRequestStatus: "pending" | "none" | "unavailable" }
+export interface ExploreGroupsPage {
+  items: ExploreGroup[];
+  nextCursor: string | null;
+  viewer: { personStatus: "available" | "required" };
+}
 
 const createCallable = httpsCallable<CreateOwnGroupInput, CreateOwnGroupResult>(functions, "createOwnGroup");
 const listCallable = httpsCallable<Record<string, never>, { items: OwnGroup[] }>(functions, "listOwnGroups");
@@ -78,6 +85,9 @@ const prepareArchiveCallable = httpsCallable<{ groupId: string }, PrepareOwnGrou
 const archiveCallable = httpsCallable<{ groupId: string; expectedArchiveToken: string; idempotencyKey: string }, ArchiveOwnGroupResult>(functions, "archiveOwnGroup");
 const prepareDeletionCallable = httpsCallable<{ groupId: string }, PrepareOwnGroupDeletionResult>(functions, "prepareOwnGroupDeletion");
 const deleteCallable = httpsCallable<{ groupId: string; expectedDeletionToken: string; idempotencyKey: string }, DeleteOwnGroupResult>(functions, "deleteOwnGroup");
+const getPublicationCallable = httpsCallable<{ groupId: string }, GroupPublicationState>(functions, "getOwnGroupPublication");
+const setPublicationCallable = httpsCallable<{ groupId: string; published: boolean }, GroupPublicationState & { outcome: "UPDATED" | "NO_CHANGES" }>(functions, "setOwnGroupPublication");
+const exploreCallable = httpsCallable<{ pageSize?: number; cursor?: string }, ExploreGroupsPage>(functions, "listExploreGroups");
 
 export async function createOwnGroup(input: CreateOwnGroupInput): Promise<CreateOwnGroupResult> {
   return (await createCallable(input)).data;
@@ -113,6 +123,18 @@ export async function updateOwnGroupName(input: UpdateOwnGroupNameInput): Promis
 
 export async function getOwnGroupsDashboard(): Promise<{ items: DashboardGroup[] }> {
   return (await dashboardCallable({})).data;
+}
+
+export async function getOwnGroupPublication(groupId: string): Promise<GroupPublicationState> {
+  return (await getPublicationCallable({ groupId })).data;
+}
+
+export async function setOwnGroupPublication(input: { groupId: string; published: boolean }) {
+  return (await setPublicationCallable(input)).data;
+}
+
+export async function listExploreGroups(input: { pageSize?: number; cursor?: string } = {}): Promise<ExploreGroupsPage> {
+  return (await exploreCallable(input)).data;
 }
 
 export function getGroupErrorReason(error: unknown): GroupErrorReason {

@@ -463,6 +463,8 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, publication
           const guard = hydrateGuard(guardSnapshot, { guardId: gRef.id, personId, groupId }); const pending = resolvePending(pendingSnapshot, guard, { repository, personId, groupId }); const coordination = hydrateCoordination(coordinationSnapshot);
           if (coordination) await readCoordinationIntent(transaction, request, coordination);
           if (request.estado === "cancelada") { if (guard || pending || coordination) throw new GroupJoinRequestIncompatibleStateError(); return { outcome: "ALREADY_CANCELLED", request }; }
+          if (request.estado === "aprobada") throw new GroupJoinRequestDecisionAlreadyApprovedError();
+          if (request.estado === "rechazada") throw new GroupJoinRequestDecisionAlreadyRejectedError();
           if (request.estado !== "pendiente") throw new GroupJoinRequestRequestNotPendingError();
           if (!guard || !pending || pending.requestId !== requestId) throw new GroupJoinRequestIncompatibleStateError();
           if (coordination) throw new GroupJoinRequestApprovalInProgressError();

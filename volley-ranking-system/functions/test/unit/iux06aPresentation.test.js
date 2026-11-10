@@ -21,11 +21,13 @@ test("IUX-06A comparte Explorar entre navegación móvil y sidebar con ruta acti
   assert.equal(getActiveNavigationHref("/dashboard/groups/explore", ["/dashboard/groups", "/dashboard/groups/explore"]), "/dashboard/groups/explore");
 });
 
-test("IUX-06A presenta solicitud propia pendiente sin consulta frontend por tarjeta", () => {
+test("IUX-06A presenta estado pendiente autónomo y enlaza al detalle canónico sin consulta por tarjeta", () => {
   const page = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/explore/page.tsx");
   const service = read("volley-ranking-frontend/src/services/groupsService.ts");
   assert.match(page, /group\.ownRequestStatus === "pending"/);
-  assert.match(page, /Solicitud pendiente/);
+  assert.match(page, /Tu solicitud de ingreso está pendiente/);
+  assert.match(page, />Ver solicitud</);
+  assert.match(page, /\/join\/groups\/\$\{group\.id\}\?source=explore/);
   assert.match(service, /ownRequestStatus: "pending" \| "none" \| "unavailable"/);
   assert.doesNotMatch(page, /getMyCurrentGroupJoinRequest|groupJoinRequestsService/);
 });

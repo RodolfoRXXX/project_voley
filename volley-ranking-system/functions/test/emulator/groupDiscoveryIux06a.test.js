@@ -96,6 +96,22 @@ test("IUX-06A publica, descubre y solicita con autorización y compatibilidad", 
     const pendingCard = catalogWithPendingRequest.body.result.items.find((item) => item.id === ids.legacy);
     assert.equal(pendingCard?.ownRequestStatus, "pending", JSON.stringify(catalogWithPendingRequest.body));
 
+    const detail = await call("getMyCurrentGroupJoinRequest", { groupId: ids.legacy }, candidate.idToken);
+    assert.equal(detail.body.result.request.id, requestId);
+    const cancelled = await call("cancelMyGroupJoinRequest", { groupId: ids.legacy, requestId }, candidate.idToken);
+    assert.equal(cancelled.body.result.outcome, "CANCELLED", JSON.stringify(cancelled.body));
+    const catalogAfterCancel = await call("listExploreGroups", {}, candidate.idToken);
+    assert.equal(catalogAfterCancel.body.result.items.find((item) => item.id === ids.legacy)?.ownRequestStatus, "none");
+    const catalogAfterCancelReload = await call("listExploreGroups", {}, candidate.idToken);
+    assert.equal(catalogAfterCancelReload.body.result.items.find((item) => item.id === ids.legacy)?.ownRequestStatus, "none");
+
+    const replacementKey = "iux-06a-request-key-0002";
+    const replacement = await call("createMyGroupJoinRequest", { groupId: ids.legacy, idempotencyKey: replacementKey, source: "EXPLORE" }, candidate.idToken);
+    assert.equal(replacement.body.result.outcome, "CREATED_PENDING", JSON.stringify(replacement.body));
+    const replacementRequestId = replacement.body.result.request.id;
+    fixtures.register(db.collection("groupJoinRequests").doc(replacementRequestId));
+    fixtures.register(db.collection("groupJoinRequestIntents").doc(groupJoinRequestIntentId(candidate.uid, replacementKey)));
+
     const unpublished = await call("setOwnGroupPublication", { groupId: ids.legacy, published: false }, owner.idToken);
     assert.equal(unpublished.body.result.publicationState, "invite_only");
     const after = await call("listExploreGroups", {}, candidate.idToken);
@@ -103,7 +119,7 @@ test("IUX-06A publica, descubre y solicita con autorización y compatibilidad", 
     const sharedLink = await call("getKnownGroupJoinPreview", { groupId: ids.legacy }, noPerson.idToken);
     assert.equal(sharedLink.body.result.requestEligibility, "PERSON_REQUIRED");
     const existing = await call("getMyCurrentGroupJoinRequest", { groupId: ids.legacy }, candidate.idToken);
-    assert.equal(existing.body.result.request.id, requestId);
+    assert.equal(existing.body.result.request.id, replacementRequestId);
     const staleCard = await call("createMyGroupJoinRequest", { groupId: ids.legacy, idempotencyKey: "iux-06a-stale-card-0001", source: "EXPLORE" }, candidate.idToken);
     assert.equal(staleCard.body.error.details.reason, "GROUP_NOT_AVAILABLE");
 

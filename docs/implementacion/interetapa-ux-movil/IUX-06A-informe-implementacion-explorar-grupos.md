@@ -35,8 +35,10 @@ deshabilitada y se ofrece `/profile/person`, también desde el enlace compartido
 
 - `Explorar grupos` usa la navegación compartida en sidebar y móvil, con igual destino y estado
   activo.
-- La tarjeta refleja `ownRequestStatus: pending` desde el estado canónico propio y reemplaza la
-  acción de solicitud; recargar o volver a Explorar conserva la señal.
+- La tarjeta refleja `ownRequestStatus: pending` desde el estado canónico propio, comunica “Tu
+  solicitud de ingreso está pendiente” y ofrece “Ver solicitud” hacia el detalle canónico. Allí la
+  cuenta puede cancelar; volver o recargar Explorar reconsulta el estado y, si las reglas lo
+  permiten, vuelve a ofrecer “Solicitar ingreso”. No se incorporan llamadas por tarjeta.
 - El detalle administrado e integrado comparte la presentación de pestañas, foco, adaptación móvil
   y rutas/permisos por rol, incluido Owner que también integra el Grupo.
 - Economía del Grupo integra visualmente Deudas, Pagos informados e Historial en la caja del panel
@@ -55,6 +57,7 @@ Emulator. Crea identidades descartables y limpia sus fixtures; no altera datos U
 | --- | --- | --- |
 | Publicar, descubrir y solicitar con cuentas distintas | callable Owner, catálogo y Solicitud `EXPLORE` | PASS |
 | Solicitud propia pendiente | catálogo cambia de `none` a `pending`; sin consulta por tarjeta | PASS |
+| Detalle y cancelación propia | abre el estado autoritativo, cancela y el catálogo vuelve a `none` incluso al recargar | PASS |
 | Explorar sin Persona | catálogo visible y preview `PERSON_REQUIRED` | PASS |
 | Despublicar | sale del catálogo; enlace y Solicitud pendiente continúan | PASS |
 | Tarjeta obsoleta | nueva Solicitud devuelve `GROUP_NOT_AVAILABLE` | PASS |
@@ -82,22 +85,36 @@ Remove-Item Env:IUX_06A_FOCAL
 | Build Next.js | PASS; incluye `/dashboard/groups/explore` |
 | `git diff --check` | PASS |
 
+### Revalidación del hallazgo UAT: acceso a la Solicitud pendiente
+
+El ajuste posterior al cierre local quedó validado con 13/13 pruebas unitarias focales y 1/1 prueba
+de Emulator IUX-06A. El recorrido sintético ejecutó `enviar → listar pending → abrir el detalle
+propio → cancelar → listar none → recargar/listar none → volver a solicitar`, conservando la
+publicación. TypeScript, lint focal, sintaxis del archivo backend, build Next.js y
+`git diff --check` también finalizaron en PASS. La tarjeta no recibe `requestId`, no consulta por
+fila y no expone datos de terceros: “Ver solicitud” abre la ruta canónica, que resuelve la Solicitud
+propia en backend. La cancelación revalida titularidad y estado en transacción y distingue si una
+carrera ya la dejó aprobada, rechazada o cancelada.
+
 ## Evidencia humana y UAT pendiente
 
 El usuario confirmó visualmente el 2026-11-10 el último ajuste de Economía del Grupo: pestañas
 integradas a la caja y selección distinguible. Esto no amplía IUX-06D ni acredita un cambio
 funcional en Economía.
 
-Sidebar, tarjeta pendiente y pestañas del detalle cuentan con pruebas focales, análisis estático,
-Emulator y build, pero no con reconfirmación humana posterior. Queda pendiente en navegador
-autenticado de escritorio y Android:
+El usuario aceptó además el último recorrido de Explorar: el aviso “Tu solicitud de ingreso está
+pendiente” comunica el estado, “Ver solicitud” abre la Solicitud propia y la acción canónica permite
+cancelarla. Esta aceptación humana se registra por separado de la evidencia automatizada anterior.
+
+Sidebar y pestañas del detalle cuentan con pruebas focales, análisis estático, Emulator y build,
+pero no con reconfirmación humana posterior. Queda pendiente en navegador autenticado de escritorio
+y Android:
 
 1. Confirmar `Explorar grupos` en sidebar y su estado activo.
-2. Solicitar, recargar y volver: la tarjeta debe mostrar “Solicitud pendiente” sin duplicado.
-3. Recorrer pestañas como Owner, integrante y Owner-integrante; revisar foco, Atrás/Adelante,
+2. Recorrer pestañas como Owner, integrante y Owner-integrante; revisar foco, Atrás/Adelante,
    rutas, etiquetas y permisos.
-4. A 360 y 390 px, comprobar ausencia de desborde horizontal y doble scroll.
-5. Repetir publicar, descubrir, solicitar, despublicar, enlace, cuenta sin Persona, exclusiones y
+3. A 360 y 390 px, comprobar ausencia de desborde horizontal y doble scroll.
+4. Repetir publicar, descubrir, despublicar, enlace, cuenta sin Persona, exclusiones y
    Grupo “Otro” para acreditar la presentación completa, no sólo los contratos.
 
 No queda un fallo funcional conocido que impida el cierre técnico local. No hubo verificación

@@ -7,11 +7,14 @@ const { decodeGroupJoinRequestCursor, encodeGroupJoinRequestCursor } = require("
 test("cinco payloads son planos, cerrados y aplican límites normativos", () => {
   assert.deepEqual(contract.validateGroupJoinRequestGroupPayload({ groupId: "g" }), { groupId: "g" });
   assert.deepEqual(contract.validateCreateGroupJoinRequestPayload({ groupId: "g", idempotencyKey: "1234567890abcdef" }), { groupId: "g", idempotencyKey: "1234567890abcdef" });
+  assert.deepEqual(contract.validateCreateGroupJoinRequestPayload({ groupId: "g", idempotencyKey: "1234567890abcdef", source: "EXPLORE" }), { groupId: "g", idempotencyKey: "1234567890abcdef", source: "EXPLORE" });
+  assert.deepEqual(contract.validateGroupJoinRequestPreviewPayload({ groupId: "g", source: "EXPLORE" }), { groupId: "g", source: "EXPLORE" });
   assert.deepEqual(contract.validateCancelGroupJoinRequestPayload({ groupId: "g", requestId: "r" }), { groupId: "g", requestId: "r" });
   assert.deepEqual(contract.validateListGroupJoinRequestsPayload({ groupId: "g" }), { groupId: "g", pageSize: 20 });
   assert.deepEqual(contract.validateListGroupJoinRequestsPayload({ groupId: "g", pageSize: 1, cursor: "abc" }), { groupId: "g", pageSize: 1, cursor: "abc" });
   for (const bad of [null, [], { groupId: "g", userId: "u" }, { groupId: " g" }]) assert.throws(() => contract.validateGroupJoinRequestGroupPayload(bad), { reason: "VALIDATION_FAILED" });
   assert.throws(() => contract.validateListGroupJoinRequestsPayload({ groupId: "g", pageSize: 21 }), { reason: "VALIDATION_FAILED" });
+  assert.throws(() => contract.validateCreateGroupJoinRequestPayload({ groupId: "g", idempotencyKey: "1234567890abcdef", source: "SHARED_LINK" }), { reason: "VALIDATION_FAILED" });
 });
 test("intent usa sólo dominio, actor y clave; requestHash cubre Persona y Grupo", () => {
   const key = "1234567890abcdef";

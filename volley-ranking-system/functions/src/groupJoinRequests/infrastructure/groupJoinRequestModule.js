@@ -3,6 +3,7 @@ const { db } = require("../../firebase");
 const { createGroupJoinRequestAccountCapability } = require("../../users/public/groupJoinRequestAccountCapability");
 const { createGroupJoinRequestPersonCapability } = require("../../persons/public/groupJoinRequestPersonCapability");
 const { createGroupJoinRequestGroupCapability } = require("../../groups/public/groupJoinRequestGroupCapability");
+const { createGroupJoinRequestPublicationCapability } = require("../../groups/public/groupJoinRequestPublicationCapability");
 const { createGroupJoinRequestSeasonCapability } = require("../../groups/public/groupJoinRequestSeasonCapability");
 const { createGroupJoinRequestMembershipCapability } = require("../../memberships/public/groupJoinRequestMembershipCapability");
 const { createGroupJoinRequestService } = require("../application/groupJoinRequestService");
@@ -19,6 +20,7 @@ module.exports = createGroupJoinRequestService({
   store: createFirestoreGroupJoinRequestStore({
     db,
     groupCapability,
+    publicationCapability: createGroupJoinRequestPublicationCapability({ db }),
     seasonCapability,
     personCapability,
     membershipCapability: createGroupJoinRequestMembershipCapability({ db, groupCapability, seasonCapability }),

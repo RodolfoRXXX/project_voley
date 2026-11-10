@@ -30,16 +30,18 @@ test("UAT-01 resuelve un único enlace activo por ruta normalizada y específica
 test("UAT-01 muestra Mis grupos como enlace principal independiente y sin rol legacy", () => {
   const navbar = read("src/components/layout/Navbar.tsx");
   const sidebar = read("src/components/layout/AppSidebar.tsx");
+  const navigation = read("src/lib/navigation/accountNavigation.ts");
   const mainLink = '{ label: "Mis grupos", href: "/dashboard/groups" }';
 
-  assert.match(navbar, new RegExp(mainLink.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  const profileChildren = navbar.slice(navbar.indexOf('label: "Mi perfil"'), navbar.indexOf("if (!legacyUserLoading"));
+  assert.match(navigation, new RegExp(mainLink.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  const profileChildren = navigation.slice(navigation.indexOf('label: "Mi perfil"'), navigation.indexOf('label: "Mi gestión"'));
   assert.doesNotMatch(profileChildren, /Mis grupos|\/dashboard\/groups/);
-  assert.ok(navbar.indexOf(mainLink) < navbar.indexOf("userDoc?.roles"));
+  assert.ok(navigation.indexOf(mainLink) < navigation.indexOf('label: "Mi perfil"'));
 
   for (const source of [navbar, sidebar]) {
     assert.doesNotMatch(source, /\/profile\/groups/);
     assert.match(source, /getActiveNavigationHref/);
+    assert.match(source, /visibleAccountNavigationItems/);
     assert.doesNotMatch(source, /pathname\.startsWith\((item|sub)\.href\)/);
   }
 });

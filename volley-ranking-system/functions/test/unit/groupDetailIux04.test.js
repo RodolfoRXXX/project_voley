@@ -18,10 +18,11 @@ test("IUX-04 compone Resumen y /members sin total de roster", () => {
   assert.doesNotMatch(summary + members, /totalItems|items\.length.*integrantes/i);
 });
 
-test("IUX-04 usa selector móvil, tabs desktop y Clipboard accesible", () => {
+test("IUX-04 usa pestañas compartidas responsive y Clipboard accesible", () => {
   const navigation = read("volley-ranking-frontend/src/components/groups/GroupContextNavigation.tsx");
   const clipboard = read("volley-ranking-frontend/src/components/groups/CopyGroupJoinLinkButton.tsx");
-  assert.match(navigation, /Sección del Grupo/); assert.match(navigation, /md:hidden/); assert.match(navigation, /md:flex/);
+  assert.match(navigation, /aria-label="Secciones del Grupo"/); assert.match(navigation, /flex-wrap/);
+  assert.match(navigation, /aria-current/); assert.match(navigation, /focus-visible:outline-orange-500/);
   assert.doesNotMatch(navigation, /overflow-x-auto/);
   for (const label of ["Resumen", "Mi participación", "Economía personal", "Economía del Grupo", "Temporada", "Integrantes"]) assert.match(navigation, new RegExp(`label: "${label}"`));
   for (const marker of ["navigator.clipboard.writeText", "aria-live=\"polite\"", "min-h-11", "min-w-11", "Enlace copiado", "role=\"alert\""]) assert.match(clipboard, new RegExp(marker));

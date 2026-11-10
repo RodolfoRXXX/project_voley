@@ -1,15 +1,19 @@
 "use client";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cancelMyGroupJoinRequest, createMyGroupJoinRequest, getGroupJoinRequestErrorMessage, getGroupJoinRequestErrorReason, getKnownGroupJoinPreview, getMyCurrentGroupJoinRequest } from "@/services/groupJoinRequestsService";
 import type { KnownGroupJoinPreview, OwnGroupJoinRequest } from "@/types/GroupJoinRequest";
 import { resolveAuthoritativeCandidateView } from "./groupJoinRequestCandidateState";
+import { groupSportLabel } from "@/lib/groups/groupSports";
 
-type View = "loading" | "eligible" | "creating" | "pending" | "approval-in-progress" | "cancel-confirm" | "cancelling" | "cancelled" | "error";
+type View = "loading" | "person-required" | "eligible" | "creating" | "pending" | "approval-in-progress" | "cancel-confirm" | "cancelling" | "cancelled" | "error";
 type RetryAction = "load" | "create" | "cancel";
 function newKey() { return `group-join-${crypto.randomUUID()}`; }
 
 export function GroupJoinRequestCandidate({ groupId }: { groupId: string }) {
+  const searchParams = useSearchParams();
+  const source = searchParams.get("source") === "explore" ? "EXPLORE" as const : undefined;
   const [group, setGroup] = useState<KnownGroupJoinPreview | null>(null);
   const [request, setRequest] = useState<OwnGroupJoinRequest | null>(null);
   const [view, setView] = useState<View>("loading");
@@ -24,24 +28,26 @@ export function GroupJoinRequestCandidate({ groupId }: { groupId: string }) {
   const load = useCallback(async () => {
     setView("loading"); setError("");
     try {
-      const preview = await getKnownGroupJoinPreview(groupId);
+      const preview = await getKnownGroupJoinPreview(groupId, source);
+      setGroup(preview.group);
+      if (preview.requestEligibility === "PERSON_REQUIRED") { setRequest(null); setView("person-required"); return; }
       const current = await getMyCurrentGroupJoinRequest(groupId);
-      setGroup(preview.group); setRequest(current.request);
+      setRequest(current.request);
       setView(resolveAuthoritativeCandidateView(current.request?.estado === "pendiente" ? current.request.decisionStatus : null, consumedIntentRequiresExplicitRenewal.current));
     } catch (cause) { retryAction.current = "load"; setError(getGroupJoinRequestErrorMessage(getGroupJoinRequestErrorReason(cause))); setView("error"); queueMicrotask(() => result.current?.focus()); }
-  }, [groupId]);
+  }, [groupId, source]);
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { if (view === "cancel-confirm") cancelButton.current?.focus(); }, [view]);
 
   const create = async () => {
     if (busy.current) return; busy.current = true; setView("creating"); setError("");
     try {
-      const response = await createMyGroupJoinRequest({ groupId, idempotencyKey: keyRef.current });
+      const response = await createMyGroupJoinRequest({ groupId, idempotencyKey: keyRef.current, ...(source ? { source } : {}) });
       consumedIntentRequiresExplicitRenewal.current = true;
       setRequest(response.request); setView(response.request.estado === "pendiente" ? resolveAuthoritativeCandidateView(response.request.decisionStatus, true) : "cancelled"); queueMicrotask(() => result.current?.focus());
     } catch (cause) {
       const reason = getGroupJoinRequestErrorReason(cause);
-      retryAction.current = "create"; setError(getGroupJoinRequestErrorMessage(reason)); setView("error"); queueMicrotask(() => result.current?.focus());
+      retryAction.current = "create"; setError(source === "EXPLORE" && reason === "GROUP_NOT_AVAILABLE" ? "El grupo ya no está publicado en Explorar. El acceso por un enlace compartido sigue disponible." : getGroupJoinRequestErrorMessage(reason)); setView("error"); queueMicrotask(() => result.current?.focus());
     } finally { busy.current = false; }
   };
   const cancel = async () => {
@@ -53,10 +59,11 @@ export function GroupJoinRequestCandidate({ groupId }: { groupId: string }) {
   const beginNew = () => { keyRef.current = newKey(); consumedIntentRequiresExplicitRenewal.current = false; setRequest(null); setError(""); setView("eligible"); };
 
   return <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
-    <Link href="/dashboard" className="inline-flex min-h-11 items-center text-orange-600 hover:underline">← Volver al panel</Link>
+    <Link href={source === "EXPLORE" ? "/dashboard/groups/explore" : "/dashboard"} className="inline-flex min-h-11 items-center text-orange-600 hover:underline">← {source === "EXPLORE" ? "Volver a Explorar grupos" : "Volver al panel"}</Link>
     <div ref={result} tabIndex={-1} className="mt-4 focus-visible:outline-2">
       {view === "loading" ? <p role="status" aria-live="polite">Cargando Grupo y solicitud…</p> : null}
-      {group ? <header className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-7"><p className="text-xs font-semibold uppercase tracking-wide text-orange-600">{group.deporte}</p><h1 className="mt-2 text-2xl font-bold">{group.nombre}</h1><p className="mt-3 text-sm text-[var(--text-muted)]">Solicitud de ingreso al Grupo.</p></header> : null}
+      {group ? <header className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-7"><p className="text-xs font-semibold uppercase tracking-wide text-orange-600">{groupSportLabel(group.deporte)}</p><h1 className="mt-2 text-2xl font-bold">{group.nombre}</h1><p className="mt-3 text-sm text-[var(--text-muted)]">Solicitud de ingreso al Grupo.</p></header> : null}
+      {view === "person-required" ? <section className="mt-5 rounded-2xl border border-amber-300 bg-amber-50 p-5"><h2 className="font-semibold">Completá tu ficha personal</h2><p className="mt-2 text-sm text-amber-950">Podés consultar este grupo, pero la solicitud queda deshabilitada hasta que tengas una Persona asociada a tu cuenta.</p><button type="button" disabled className="mt-4 min-h-11 rounded-lg bg-orange-600 px-5 py-2 font-semibold text-white opacity-50">Solicitar ingreso</button><Link href="/profile/person" className="ml-0 mt-3 flex min-h-11 items-center font-semibold text-orange-800 underline underline-offset-2 sm:ml-4 sm:inline-flex">Completar ficha personal</Link></section> : null}
       {view === "eligible" ? <section className="mt-5 rounded-2xl border border-[var(--border)] p-5"><h2 className="font-semibold">Solicitar ingreso</h2><p className="mt-2 text-sm text-[var(--text-muted)]">El Owner podrá ver tu nombre y apellido mientras la solicitud esté pendiente.</p><button type="button" className="mt-4 min-h-11 rounded-lg bg-orange-600 px-5 py-2 font-semibold text-white" onClick={() => void create()}>Solicitar ingreso</button></section> : null}
       {view === "creating" ? <p className="mt-5" role="status" aria-live="polite">Confirmando solicitud…</p> : null}
       {view === "pending" && request?.estado === "pendiente" ? <section className="mt-5 rounded-2xl border border-emerald-300 bg-emerald-50 p-5" aria-live="polite"><h2 className="font-semibold text-emerald-950">Solicitud pendiente</h2><p className="mt-2 text-sm text-emerald-900">Creada el <time dateTime={request.createdAt}>{new Date(request.createdAt).toLocaleDateString("es-AR")}</time>.</p><button type="button" className="mt-4 min-h-11 rounded-lg border border-red-400 px-4 py-2 font-semibold text-red-800" onClick={() => setView("cancel-confirm")}>Cancelar solicitud</button></section> : null}

@@ -67,13 +67,13 @@ test("E2-13 cierra DTO público, navegación y alertas exactas", () => {
   const publicDetail = read(frontendRoot, "src/app/(public)/groups/[groupId]/page.tsx");
   const navbar = read(frontendRoot, "src/components/layout/Navbar.tsx");
   const sidebar = read(frontendRoot, "src/components/layout/AppSidebar.tsx");
+  const navigation = read(frontendRoot, "src/lib/navigation/accountNavigation.ts");
   const dashboardGroups = read(frontendRoot, "src/app/(protected)/dashboard/groups/page.tsx");
   const alertTypes = read(frontendRoot, "src/types/pendingAlerts.ts");
   for (const source of [publicList, publicDetail]) assert.doesNotMatch(source, /memberIds|adminIds|membersCount|membershipStatus|pendingAdmin|\/join\/groups/);
-  for (const source of [navbar, sidebar]) {
-    assert.doesNotMatch(source, /href:\s*"\/(profile|admin)\/groups"/);
-    assert.match(source, /href:\s*"\/dashboard\/groups"/);
-  }
+  assert.doesNotMatch(navigation, /href:\s*"\/(profile|admin)\/groups"/);
+  assert.match(navigation, /href:\s*"\/dashboard\/groups"/);
+  for (const source of [navbar, sidebar]) assert.match(source, /visibleAccountNavigationItems/);
   assert.match(dashboardGroups, /role="status"/);
   assert.match(dashboardGroups, /legacy-group-capability-retired/);
   assert.match(alertTypes, /isRetiredLegacyGroupAuthorityAlert/);

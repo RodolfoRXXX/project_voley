@@ -15,13 +15,7 @@ import { useThemeMode } from "@/hooks/useThemeMode";
 import { useEffect, useState } from "react";
 import useToast from "@/components/ui/toast/useToast";
 import { getActiveNavigationHref } from "@/lib/navigation/activeRoute.mjs";
-
-type NavItem = {
-  label: string;
-  href?: string;
-  adminOnly?: boolean;
-  children?: Array<{ label: string; href: string }>;
-};
+import { visibleAccountNavigationItems } from "@/lib/navigation/accountNavigation";
 
 export default function AppSidebar() {
   const pathname = usePathname();
@@ -34,48 +28,11 @@ export default function AppSidebar() {
 
   const isAdmin = !legacyUserLoading && userDoc?.roles === "admin";
 
-  const navItems: NavItem[] = [
-    {
-      label: "Inicio",
-      href: "/dashboard",
-    },
-    {
-      label: "Mis Grupos",
-      href: "/dashboard/groups",
-    },
-    {
-      label: "Mis obligaciones",
-      href: "/dashboard/obligations",
-    },
-    {
-      label: "Grupos",
-      href: "/groups",
-    },
-    {
-      label: "Torneos",
-      href: "/tournaments",
-    },
-    {
-      label: "Mi perfil",
-      children: [
-        { label: "Ficha personal", href: "/profile/person" },
-        { label: "Mis torneos", href: "/profile/tournaments" },
-      ],
-    },
-    {
-      label: "Mi gestión",
-      adminOnly: true,
-      children: [
-        { label: "Torneos", href: "/admin/tournaments" },
-      ],
-    },
-  ];
+  const navItems = visibleAccountNavigationItems(isAdmin);
 
   const activeHref = getActiveNavigationHref(
     pathname,
-    navItems
-      .filter((item) => !item.adminOnly || isAdmin)
-      .flatMap((item) => item.href ? [item.href] : item.children?.map((child) => child.href) ?? [])
+    navItems.flatMap((item) => item.href ? [item.href] : item.children?.map((child) => child.href) ?? [])
   );
 
   useEffect(() => {
@@ -133,8 +90,6 @@ export default function AppSidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          if (item.adminOnly && !isAdmin) return null;
-
           const isOpen = openMenus[item.label];
 
           // ITEM SIMPLE

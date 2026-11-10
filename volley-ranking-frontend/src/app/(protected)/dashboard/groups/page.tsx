@@ -128,7 +128,7 @@ export default function OwnGroupsPage() {
     <GroupPageShell title="Mis grupos" description="">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div role="status" className="min-h-6 text-sm text-[var(--text-muted)]">{!coverageComplete ? "Mostrando resultados acreditados hasta ahora. La cobertura todavía es parcial." : ""}</div>
-        <Link className="inline-flex min-h-11 items-center rounded-lg border border-orange-500 px-4 py-2 text-sm font-semibold text-orange-700 focus-visible:outline-2 focus-visible:outline-offset-2" href="/dashboard/groups/new">Crear grupo</Link>
+        <div className="flex flex-wrap gap-2"><Link className="inline-flex min-h-11 items-center rounded-lg border border-orange-500 px-4 py-2 text-sm font-semibold text-orange-700 focus-visible:outline-2 focus-visible:outline-offset-2" href="/dashboard/groups/explore">Explorar grupos</Link><Link className="inline-flex min-h-11 items-center rounded-lg border border-orange-500 px-4 py-2 text-sm font-semibold text-orange-700 focus-visible:outline-2 focus-visible:outline-offset-2" href="/dashboard/groups/new">Crear grupo</Link></div>
       </div>
       <Notices notice={searchParams.get("notice")} />
       <div className="mb-5 grid gap-3 sm:grid-cols-2">

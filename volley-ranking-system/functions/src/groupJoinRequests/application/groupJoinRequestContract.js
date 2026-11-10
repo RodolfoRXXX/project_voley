@@ -23,10 +23,18 @@ function id(value) {
   return value;
 }
 function validateGroup(data) { closed(data, ["groupId"]); return Object.freeze({ groupId: id(data.groupId) }); }
+function source(value) {
+  if (value !== "EXPLORE") throw new GroupJoinRequestValidationError();
+  return value;
+}
+function validatePreview(data) {
+  closed(data, ["groupId"], ["source"]);
+  return Object.freeze({ groupId: id(data.groupId), ...(data.source === undefined ? {} : { source: source(data.source) }) });
+}
 function validateCreate(data) {
-  closed(data, ["groupId", "idempotencyKey"]);
+  closed(data, ["groupId", "idempotencyKey"], ["source"]);
   if (typeof data.idempotencyKey !== "string" || !KEY_PATTERN.test(data.idempotencyKey)) throw new GroupJoinRequestValidationError();
-  return Object.freeze({ groupId: id(data.groupId), idempotencyKey: data.idempotencyKey });
+  return Object.freeze({ groupId: id(data.groupId), idempotencyKey: data.idempotencyKey, ...(data.source === undefined ? {} : { source: source(data.source) }) });
 }
 function validateCancel(data) { closed(data, ["groupId", "requestId"]); return Object.freeze({ groupId: id(data.groupId), requestId: id(data.requestId) }); }
 function validateDecision(data) {
@@ -44,4 +52,4 @@ function validateList(data) {
   return Object.freeze({ groupId: id(data.groupId), pageSize, ...(data.cursor === undefined ? {} : { cursor: data.cursor }) });
 }
 
-module.exports = { validateCancelGroupJoinRequestPayload: validateCancel, validateCreateGroupJoinRequestPayload: validateCreate, validateGroupJoinRequestDecisionPayload: validateDecision, validateGroupJoinRequestGroupPayload: validateGroup, validateGroupJoinRequestResultPayload: validateCancel, validateListGroupJoinRequestsPayload: validateList };
+module.exports = { validateCancelGroupJoinRequestPayload: validateCancel, validateCreateGroupJoinRequestPayload: validateCreate, validateGroupJoinRequestDecisionPayload: validateDecision, validateGroupJoinRequestGroupPayload: validateGroup, validateGroupJoinRequestPreviewPayload: validatePreview, validateGroupJoinRequestResultPayload: validateCancel, validateListGroupJoinRequestsPayload: validateList };

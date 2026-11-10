@@ -185,6 +185,7 @@ function createFirestoreGroupArchiveStore({ db, groupRepository, membershipRepos
           const projection = await dashboardTasks.prepare(transaction, { kind: "DASHBOARD_TASK_CONTEXT_ARCHIVED", idempotencyIdentity: command.receiptId,
             groupId: command.groupId, resourceType: "GROUP", resourceIds: [command.groupId], fingerprintParts: [command.groupId, "archivado"] });
           groupRepository.archive(transaction, command.groupId, archivedAt, archived.schemaVersion);
+          transaction.delete(db.collection("groupExplorationPublications").doc(command.groupId));
           transaction.create(receiptRef, {
             action: "ARCHIVE_GROUP", actorUserId: command.userId, groupId: command.groupId,
             requestHash: command.requestHash, appliedState: "archivado", archivedAt,

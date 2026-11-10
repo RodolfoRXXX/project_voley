@@ -36,11 +36,30 @@ function createGroupJoinRequestService({ accountCapability, personCapability, st
       throw new GroupJoinRequestInternalError({ cause: error });
     }
   }
+  async function optionalPerson(userId) {
+    try {
+      const value = await personCapability.getOwnContext({ userId });
+      if (value?.status === "account_missing") throw new GroupJoinRequestAccountRequiredError();
+      if (value?.status === "missing") return null;
+      if (value?.status !== "found") throw new GroupJoinRequestPersonIncompatibleError();
+      return value;
+    } catch (error) {
+      if (error instanceof GroupJoinRequestError) throw error;
+      if (error?.reason === "ACCOUNT_NOT_INITIALIZED") throw new GroupJoinRequestAccountRequiredError({ cause: error });
+      if (error?.reason === "PERSON_LINK_INCONSISTENT") throw new GroupJoinRequestPersonIncompatibleError({ cause: error });
+      if (isTransientDependencyError(error)) throw new GroupJoinRequestDependencyUnavailableError({ cause: error });
+      throw new GroupJoinRequestInternalError({ cause: error });
+    }
+  }
   async function candidate(identity) { const userId = actor(identity); await account(userId); const ownPerson = await person(userId); return { userId, personId: ownPerson.personId }; }
   async function safe(work) { try { return await work(); } catch (error) { if (error instanceof GroupJoinRequestError) throw error; throw new GroupJoinRequestInternalError({ cause: error }); } }
 
   return {
-    async getKnownGroupJoinPreview(identity, input, observe) { const context = await candidate(identity); const group = await safe(() => store.preview({ ...context, groupId: input.groupId, observe })); return Object.freeze({ group: toPreview(group) }); },
+    async getKnownGroupJoinPreview(identity, input, observe) {
+      const userId = actor(identity); await account(userId); const ownPerson = await optionalPerson(userId);
+      const group = await safe(() => store.preview({ userId, personId: ownPerson?.personId || null, ...input, observe }));
+      return Object.freeze({ group: toPreview(group), requestEligibility: ownPerson ? "READY" : "PERSON_REQUIRED" });
+    },
     async createMyGroupJoinRequest(identity, input, observe) { const context = await candidate(identity); const result = await safe(() => store.create({ ...context, ...input, observe })); return Object.freeze({ outcome: result.outcome, request: toOwnGroupJoinRequestDto(result.request, result.decisionStatus) }); },
     async getMyCurrentGroupJoinRequest(identity, input, observe) { const context = await candidate(identity); const result = await safe(() => store.getCurrent({ personId: context.personId, groupId: input.groupId, observe })); return Object.freeze({ request: result ? toOwnGroupJoinRequestDto(result.request, result.decisionStatus) : null }); },
     async cancelMyGroupJoinRequest(identity, input, observe) { const context = await candidate(identity); const result = await safe(() => store.cancel({ personId: context.personId, ...input, observe })); return Object.freeze({ outcome: result.outcome, request: toOwnGroupJoinRequestDto(result.request) }); },

@@ -76,6 +76,16 @@
       ]
     },
     {
+      "collectionGroup": "groupJoinRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "personId", "mode": "ASCENDING" },
+        { "fieldPath": "estado", "mode": "ASCENDING" },
+        { "fieldPath": "createdAt", "mode": "DESCENDING" },
+        { "fieldPath": "__name__", "mode": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "dashboardTaskOutbox",
       "queryScope": "COLLECTION",
       "fields": [
@@ -271,6 +281,16 @@
           "fieldPath": "fechaIngreso",
           "mode": "DESCENDING"
         }
+      ]
+    },
+    {
+      "collectionGroup": "memberships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "personId", "mode": "ASCENDING" },
+        { "fieldPath": "estado", "mode": "ASCENDING" },
+        { "fieldPath": "fechaEgreso", "mode": "DESCENDING" },
+        { "fieldPath": "__name__", "mode": "DESCENDING" }
       ]
     },
     {

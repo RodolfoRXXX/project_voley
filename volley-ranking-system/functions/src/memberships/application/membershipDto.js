@@ -90,17 +90,17 @@ function toOwnerActiveGroupMemberItem(membership, person, isOwner) {
   });
 }
 
-function toOwnGroupMembershipHistoryItem({ membership, group, season, validityPeriodCount }) {
+function toOwnGroupMembershipHistoryItem({ membership, group, season, validityPeriodCount, visibleStartedAt, visibleEndedAt }) {
   const item = {
     rowKey: crypto.createHash("sha256").update(`E2-19:row:v1\0${membership.membershipId}`, "utf8").digest("base64url"),
     group: Object.freeze({ id: group.groupId, nombre: group.nombre }),
     season: Object.freeze({ id: season.seasonId, nombre: season.nombre }),
-    status: membership.estado === "activa" ? "CURRENT" : "HISTORICAL",
-    joinedAt: membership.fechaIngreso.toDate().toISOString(),
+    status: "HISTORICAL",
+    joinedAt: visibleStartedAt.toDate().toISOString(),
     validityPeriodCount,
     continuity: [4, 6].includes(membership.schemaVersion) ? "RENEWAL" : "INITIAL",
   };
-  if (membership.estado === "finalizada") item.leftAt = membership.fechaEgreso.toDate().toISOString();
+  item.leftAt = visibleEndedAt.toDate().toISOString();
   return Object.freeze(item);
 }
 

@@ -82,7 +82,7 @@ function createMemberGroupContextAdapter({ memberContext }) {
       try {
         const group = await memberContext.getMemberReadableGroupContext({ groupId, userId });
         if (!group || group.id !== groupId || group.estado !== "activo"
-          || group.deporte !== "voleibol" || typeof group.nombre !== "string" || typeof group.viewerIsOwner !== "boolean") {
+          || typeof group.deporte !== "string" || typeof group.nombre !== "string" || typeof group.viewerIsOwner !== "boolean") {
           throw new MembershipIncompatibleStateError("Member-readable Group context is invalid");
         }
         return group;

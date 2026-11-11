@@ -68,7 +68,7 @@ test("IUX-03 UI preserva cobertura parcial, paginación contractual y rutas por 
   const personalEconomyPage = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/personal-economy/page.tsx");
   const personalEconomy = read("volley-ranking-frontend/src/components/payments/PersonalMembershipEconomy.tsx");
   const presentation = read("volley-ranking-frontend/src/services/groupsPresentation.mjs");
-  for (const marker of ["Todos", "Administro", "Participo", "Todavía no tenés grupos", "No integrás ningún grupo actualmente", "cobertura todavía es parcial", "pageSize: 20", "generation.current", "collectCurrentMembershipPages", "PROVISIONAL_GROUP_LIMIT", "owned.length", "groupTaskCounts", "createDashboardTasksClient", "personStatus === \"empty\"", "completá tu ficha personal"]) assert.match(page, new RegExp(marker));
+  for (const marker of ["Todos", "Administro", "Integro", "Todavía no tenés grupos", "No integrás ningún grupo", "cobertura todavía es parcial", "pageSize: 20", "generation.current", "collectCurrentMembershipPages", "PROVISIONAL_GROUP_LIMIT", "owned.length", "groupTaskCounts", "createDashboardTasksClient", "personStatus === \"empty\"", "completá tu ficha personal"]) assert.match(page, new RegExp(marker));
   assert.doesNotMatch(page, /TaskSourceState|No pudimos verificar los pendientes|Pendientes por Grupo/);
   const membershipPage = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/membership/page.tsx");
   assert.doesNotMatch(membershipPage, /PersonalMembershipEconomy/);
@@ -88,7 +88,7 @@ test("IUX-03 UI preserva cobertura parcial, paginación contractual y rutas por 
   assert.doesNotMatch(`${frame}\n${navigation}\n${switcher}`, /pageSize: 50/);
   assert.doesNotMatch(navigation, /getMy(GroupTreasury|PaymentReview|DirectPaymentRecord)Context/);
   assert.match(history, /status === "idle"/);
-  assert.match(history, /No hay historial para mostrar/);
+  assert.match(history, /No hay membresías finalizadas/);
   assert.doesNotMatch(history, /HISTORY_TIMEOUT|withHistoryTimeout/);
   assert.match(card, /actionableTaskCount/);
   assert.match(card, /pendiente/);

@@ -85,16 +85,13 @@ test("E2-19 consulta historia propia v1-v4 sin escrituras", async (t) => {
     });
 
     let ownCursor;
-    await t.test("v1-v4, activas/finalizadas, reactivación y renovación se proyectan por raíz", async () => {
+    await t.test("IUX-06B lista sólo finalizadas por fecha de egreso y conserva una tarjeta por raíz", async () => {
       const before = await db.collection("memberships").where("personId", "==", personId).get();
-      const result = await call({ pageSize: 3 });
+      const result = await call({ pageSize: 1 });
       assert.equal(result.status, 200, JSON.stringify(result.body));
-      assert.deepEqual(result.body.result.items.map((item) => [item.status, item.validityPeriodCount, item.continuity]), [
-        ["CURRENT", 1, "INITIAL"], ["HISTORICAL", 1, "RENEWAL"], ["CURRENT", 2, "INITIAL"],
-      ]);
-      assert.equal(result.body.result.items[1].leftAt.endsWith("Z"), true);
-      assert.equal(Object.hasOwn(result.body.result.items[0], "leftAt"), false);
-      assert.equal(new Set(result.body.result.items.map((item) => item.rowKey)).size, 3);
+      assert.deepEqual(result.body.result.items.map((item) => [item.status, item.validityPeriodCount, item.continuity]), [["HISTORICAL", 1, "RENEWAL"]]);
+      assert.equal(result.body.result.items[0].leftAt.endsWith("Z"), true);
+      assert.equal(new Set(result.body.result.items.map((item) => item.rowKey)).size, 1);
       for (const item of result.body.result.items) {
         assert.deepEqual(Object.keys(item).sort(), Object.hasOwn(item, "leftAt")
           ? ["continuity", "group", "joinedAt", "leftAt", "rowKey", "season", "status", "validityPeriodCount"]
@@ -102,7 +99,7 @@ test("E2-19 consulta historia propia v1-v4 sin escrituras", async (t) => {
         for (const forbidden of ["membershipId", "personId", "previousMembershipId", "schemaVersion", "latestPeriodId"]) assert.equal(JSON.stringify(item).includes(forbidden), false);
       }
       ownCursor = result.body.result.nextCursor; assert.equal(result.body.result.hasMore, true);
-      const next = await call({ pageSize: 3, cursor: ownCursor });
+      const next = await call({ pageSize: 1, cursor: ownCursor });
       assert.deepEqual(next.body.result.items.map((item) => [item.status, item.continuity]), [["HISTORICAL", "INITIAL"]]);
       assert.equal(next.body.result.hasMore, false); assert.equal(next.body.result.nextCursor, null);
       const after = await db.collection("memberships").where("personId", "==", personId).get();
@@ -118,11 +115,11 @@ test("E2-19 consulta historia propia v1-v4 sin escrituras", async (t) => {
       await userRef.set(user);
     });
 
-    await group("e2-19-page-group", "Página"); await season("e2-19-page-season", "e2-19-page-group", "abierta", "Página 2026");
+    await group("e2-19-page-group", "Página"); await season("e2-19-page-season", "e2-19-page-group", "cerrada", "Página 2026");
     const pageRoots = [];
     for (let index = 0; index < 21; index += 1) {
       const id = `e2-19-page-root-${String(index).padStart(2, "0")}`; const ref = db.collection("memberships").doc(id); refs.push(ref); pageRoots.push(ref);
-      await ref.set({ personId: pagePersonId, groupId: "e2-19-page-group", seasonId: "e2-19-page-season", estado: "activa", fechaIngreso: at(10000 - index), createdAt: at(10000 - index), schemaVersion: 1 });
+      await ref.set({ personId: pagePersonId, groupId: "e2-19-page-group", seasonId: "e2-19-page-season", estado: "finalizada", fechaIngreso: at(9000 - index), fechaEgreso: at(10000 - index), createdAt: at(9000 - index), schemaVersion: 2 });
     }
     await t.test("20/21 ordena, desempata, ancla última entregada y detecta lookahead incompatible", async () => {
       const first = await call({}, pagination); assert.equal(first.status, 200, JSON.stringify(first.body));
@@ -135,7 +132,7 @@ test("E2-19 consulta historia propia v1-v4 sin escrituras", async (t) => {
     });
 
     await t.test("referencias ausentes fallan toda la página y no se reparan", async () => {
-      const ref = db.collection("groups").doc("e2-19-group-current"); const data = (await ref.get()).data(); await ref.delete();
+      const ref = db.collection("groups").doc("e2-19-group-shared"); const data = (await ref.get()).data(); await ref.delete();
       const result = await call({ pageSize: 1 }); assert.equal(result.body?.error?.details?.reason, "INCOMPATIBLE_STATE"); assert.equal((await ref.get()).exists, false);
       await ref.set(data);
     });

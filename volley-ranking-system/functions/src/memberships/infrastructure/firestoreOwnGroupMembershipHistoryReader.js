@@ -35,11 +35,12 @@ function createFirestoreOwnGroupMembershipHistoryReader({ db, personCapability, 
   function queryFor({ personId, pageSize, position }) {
     let query = db.collection("memberships")
       .where("personId", "==", personId)
-      .orderBy("fechaIngreso", "desc")
+      .where("estado", "==", "finalizada")
+      .orderBy("fechaEgreso", "desc")
       .orderBy(FieldPath.documentId(), "desc");
     if (position) {
       query = query.startAfter(
-        new Timestamp(position.lastFechaIngreso.seconds, position.lastFechaIngreso.nanoseconds),
+        new Timestamp(position.lastFechaEgreso.seconds, position.lastFechaEgreso.nanoseconds),
         position.membershipId
       );
     }
@@ -66,7 +67,7 @@ function createFirestoreOwnGroupMembershipHistoryReader({ db, personCapability, 
     if (!snapshot.exists) throw new MembershipCursorStaleError();
     try {
       const membership = hydrateRoot(snapshot, personId);
-      if (!sameTimestamp(membership.fechaIngreso, position.lastFechaIngreso)) throw new MembershipCursorStaleError();
+      if (membership.estado !== "finalizada" || !sameTimestamp(membership.fechaEgreso, position.lastFechaEgreso)) throw new MembershipCursorStaleError();
     } catch (error) {
       if (error instanceof MembershipCursorStaleError) throw error;
       if (error instanceof InvalidMembershipStateError) throw new MembershipCursorStaleError({ cause: error });
@@ -89,9 +90,9 @@ function createFirestoreOwnGroupMembershipHistoryReader({ db, personCapability, 
     metrics.periods = refs.size;
     const snapshots = refs.size ? await transaction.getAll(...refs.values()) : [];
     const byPath = new Map(snapshots.map((snapshot) => [snapshot.ref.path, snapshot]));
-    const counts = new Map();
+    const boundaries = new Map();
     for (const membership of memberships) {
-      if (![3, 4, 5, 6].includes(membership.schemaVersion) || !Number.isSafeInteger(membership.periodCount)) { counts.set(membership.membershipId, 1); continue; }
+      if (![3, 4, 5, 6].includes(membership.schemaVersion) || !Number.isSafeInteger(membership.periodCount)) { boundaries.set(membership.membershipId, Object.freeze({ count: 1, startedAt: membership.fechaIngreso, endedAt: membership.fechaEgreso })); continue; }
       const firstId = membershipValidityPeriodId(membership.membershipId, 1);
       const latestId = membershipValidityPeriodId(membership.membershipId, membership.periodCount);
       const base = db.collection("memberships").doc(membership.membershipId).collection("validityPeriods");
@@ -105,9 +106,9 @@ function createFirestoreOwnGroupMembershipHistoryReader({ db, personCapability, 
         || (membership.estado === "finalizada" && !sameTimestamp(latest.endedAt, membership.fechaEgreso))) {
         throw new InvalidMembershipStateError("Validity period boundary timestamp is inconsistent");
       }
-      counts.set(membership.membershipId, membership.periodCount);
+      boundaries.set(membership.membershipId, Object.freeze({ count: membership.periodCount, startedAt: latest.startedAt, endedAt: latest.endedAt }));
     }
-    return counts;
+    return boundaries;
   }
 
   return Object.freeze({
@@ -125,7 +126,7 @@ function createFirestoreOwnGroupMembershipHistoryReader({ db, personCapability, 
           metrics.roots = snapshot.docs.length;
           const roots = snapshot.docs.map((document) => hydrateRoot(document, personId));
           const delivered = roots.slice(0, pageSize);
-          const periodCounts = await readPeriods(transaction, delivered, metrics);
+          const periodBoundaries = await readPeriods(transaction, delivered, metrics);
           const groupIds = [...new Set(delivered.map((membership) => membership.groupId))];
           const seasonIds = [...new Set(delivered.map((membership) => membership.seasonId))];
           const contexts = await contextCapability.getMany({ unitOfWork: transaction, groupIds, seasonIds });
@@ -138,14 +139,15 @@ function createFirestoreOwnGroupMembershipHistoryReader({ db, personCapability, 
               || (membership.estado === "activa" && season.estado !== "abierta")) {
               throw new InvalidMembershipStateError("Membership external context is incompatible");
             }
-            return Object.freeze({ membership, group, season, validityPeriodCount: periodCounts.get(membership.membershipId) });
+            const period = periodBoundaries.get(membership.membershipId);
+            return Object.freeze({ membership, group, season, validityPeriodCount: period.count, visibleStartedAt: period.startedAt, visibleEndedAt: period.endedAt });
           });
           const last = delivered.at(-1);
           return Object.freeze({
             personId,
             rows: Object.freeze(rows),
             hasMore: roots.length > pageSize,
-            cursorAnchor: last ? Object.freeze({ lastFechaIngreso: last.fechaIngreso, membershipId: last.membershipId }) : null,
+            cursorAnchor: last ? Object.freeze({ lastFechaEgreso: last.fechaEgreso, membershipId: last.membershipId }) : null,
           });
         }, { readOnly: true });
         metrics.total = metrics.authority + metrics.anchor + metrics.roots + metrics.periods + metrics.groups + metrics.seasons;

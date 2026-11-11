@@ -116,6 +116,7 @@ exports.getMyGroupPaymentNoticeReviewContext = require("./callables/getMyGroupPa
 exports.getKnownGroupJoinPreview = require("./callables/getKnownGroupJoinPreview");
 exports.createMyGroupJoinRequest = require("./callables/createMyGroupJoinRequest");
 exports.getMyCurrentGroupJoinRequest = require("./callables/getMyCurrentGroupJoinRequest");
+exports.listMyPendingGroupJoinRequests = require("./callables/listMyPendingGroupJoinRequests");
 exports.cancelMyGroupJoinRequest = require("./callables/cancelMyGroupJoinRequest");
 exports.listPendingGroupJoinRequestsForOwnedGroup = require("./callables/listPendingGroupJoinRequestsForOwnedGroup");
 exports.getPendingGroupJoinRequestForOwnedGroup = require("./callables/getPendingGroupJoinRequestForOwnedGroup");

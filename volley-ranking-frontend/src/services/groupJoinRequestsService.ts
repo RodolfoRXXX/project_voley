@@ -5,6 +5,8 @@ import type { ApproveGroupJoinRequestResult, CancelledOwnGroupJoinRequest, Group
 const previewCallable = httpsCallable<{ groupId: string; source?: GroupJoinRequestSource }, { group: KnownGroupJoinPreview; requestEligibility: "READY" | "PERSON_REQUIRED" }>(functions, "getKnownGroupJoinPreview");
 const createCallable = httpsCallable<{ groupId: string; idempotencyKey: string; source?: GroupJoinRequestSource }, { outcome: "CREATED_PENDING" | "EXISTING_PENDING" | "EXISTING_CANCELLED" | "EXISTING_APPROVED" | "EXISTING_REJECTED"; request: OwnGroupJoinRequest }>(functions, "createMyGroupJoinRequest");
 const currentCallable = httpsCallable<{ groupId: string }, { request: OwnGroupJoinRequest | null }>(functions, "getMyCurrentGroupJoinRequest");
+export type OwnPendingGroupJoinRequest = { id: string; group: { id: string; nombre: string }; createdAt: string };
+const listMineCallable = httpsCallable<{ pageSize?: number; cursor?: string }, { items: OwnPendingGroupJoinRequest[]; nextCursor: string | null }>(functions, "listMyPendingGroupJoinRequests");
 const cancelCallable = httpsCallable<{ groupId: string; requestId: string }, { outcome: "CANCELLED" | "ALREADY_CANCELLED"; request: CancelledOwnGroupJoinRequest }>(functions, "cancelMyGroupJoinRequest");
 const listCallable = httpsCallable<{ groupId: string; pageSize?: number; cursor?: string }, { items: PendingGroupJoinRequestForOwner[]; nextCursor: string | null }>(functions, "listPendingGroupJoinRequestsForOwnedGroup");
 const getPendingForOwnerCallable = httpsCallable<{ groupId: string; requestId: string }, { item: PendingGroupJoinRequestForOwner }>(functions, "getPendingGroupJoinRequestForOwnedGroup");
@@ -15,6 +17,7 @@ const resultCallable = httpsCallable<{ groupId: string; requestId: string }, Gro
 export async function getKnownGroupJoinPreview(groupId: string, source?: GroupJoinRequestSource) { return (await previewCallable({ groupId, ...(source ? { source } : {}) })).data; }
 export async function createMyGroupJoinRequest(input: { groupId: string; idempotencyKey: string; source?: GroupJoinRequestSource }) { return (await createCallable(input)).data; }
 export async function getMyCurrentGroupJoinRequest(groupId: string) { return (await currentCallable({ groupId })).data; }
+export async function listMyPendingGroupJoinRequests(input: { pageSize?: number; cursor?: string } = {}) { return (await listMineCallable(input)).data; }
 export async function cancelMyGroupJoinRequest(groupId: string, requestId: string) { return (await cancelCallable({ groupId, requestId })).data; }
 export async function listPendingGroupJoinRequestsForOwnedGroup(input: { groupId: string; pageSize?: number; cursor?: string }) { return (await listCallable(input)).data; }
 export async function getPendingGroupJoinRequestForOwnedGroup(input: { groupId: string; requestId: string }) { return (await getPendingForOwnerCallable(input)).data; }

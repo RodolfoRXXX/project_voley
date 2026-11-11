@@ -329,7 +329,7 @@ function createMembershipService({ selfAccountReader, selfPersonContext, ownedGr
           ? encodeOwnGroupMembershipHistoryCursor({
             uid: userId,
             personId: page.personId,
-            lastFechaIngreso: page.cursorAnchor.lastFechaIngreso,
+            lastFechaEgreso: page.cursorAnchor.lastFechaEgreso,
             membershipId: page.cursorAnchor.membershipId,
           }) : null;
         return Object.freeze({ items, nextCursor, hasMore: page.hasMore });

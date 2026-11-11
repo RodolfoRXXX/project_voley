@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 
 import { GroupCard } from "@/components/groups/GroupCard";
 import { GroupPageShell } from "@/components/groups/GroupPageShell";
+import { OwnPendingGroupJoinRequestsSection } from "@/components/groupJoinRequests/OwnPendingGroupJoinRequestsSection";
 import { OwnGroupMembershipHistorySection } from "@/components/memberships/OwnGroupMembershipHistorySection";
 import { useAuth } from "@/hooks/useAuth";
 import { usePerson } from "@/hooks/usePerson";
@@ -19,10 +20,11 @@ import type { OwnGroup } from "@/types/OwnGroup";
 type SourceStatus = "loading" | "ready" | "error" | "person-required";
 type TaskStatus = "loading" | "ready" | "unavailable";
 const PROVISIONAL_GROUP_LIMIT = 1;
+const CURRENT_GROUP_PAGE_SIZE = 5;
 
 export default function OwnGroupsPage() {
   const { firebaseUser } = useAuth();
-  const { personStatus, personAccountId } = usePerson();
+  const { personStatus, personAccountId, personError, retryPerson } = usePerson();
   const searchParams = useSearchParams();
   const generation = useRef(0);
   const [owned, setOwned] = useState<OwnGroup[]>([]);
@@ -34,6 +36,7 @@ export default function OwnGroupsPage() {
   const [taskStatus, setTaskStatus] = useState<TaskStatus>("loading");
   const [taskCounts, setTaskCounts] = useState<Map<string, number>>(new Map());
   const [filter, setFilter] = useState<GroupFilter>("all");
+  const [visibleCurrentGroups, setVisibleCurrentGroups] = useState(CURRENT_GROUP_PAGE_SIZE);
   const taskClient = useMemo(() => createDashboardTasksClient(() => firebaseUser?.uid ?? null), [firebaseUser?.uid]);
 
   const loadOwned = useCallback(async () => {
@@ -70,6 +73,14 @@ export default function OwnGroupsPage() {
     }
   }, []);
 
+  const retryMemberships = useCallback(async () => {
+    if (personStatus === "error" || personStatus === "inconsistent" || personStatus === "sessionInvalid") {
+      retryPerson();
+      return;
+    }
+    await loadMemberships();
+  }, [loadMemberships, personStatus, retryPerson]);
+
   const loadTaskCounts = useCallback(async () => {
     const requestGeneration = generation.current;
     setTaskStatus("loading"); setTaskCounts(new Map());
@@ -92,7 +103,8 @@ export default function OwnGroupsPage() {
     const requestGeneration = generation.current;
     queueMicrotask(() => {
       if (generation.current !== requestGeneration) return;
-      setOwned([]); setMemberships([]); setTaskCounts(new Map()); setFilter("all");
+      setOwned([]); setMemberships([]); setTaskCounts(new Map()); setFilter("all"); setVisibleCurrentGroups(CURRENT_GROUP_PAGE_SIZE);
+      setOwnedStatus("loading"); setMembershipStatus("loading"); setOwnedError(""); setMembershipError(""); setTaskStatus("loading");
       if (!firebaseUser?.uid) return;
       void loadOwned(); void loadTaskCounts();
     });
@@ -110,16 +122,23 @@ export default function OwnGroupsPage() {
       });
       return;
     }
+    if (personStatus === "error" || personStatus === "inconsistent" || personStatus === "sessionInvalid") {
+      queueMicrotask(() => {
+        if (generation.current !== requestGeneration) return;
+        setMembershipError(personError || "No pudimos verificar tu ficha personal. Reintentá la consulta.");
+        setMembershipStatus("error");
+      });
+      return;
+    }
     if (personStatus === "ready") {
       queueMicrotask(() => void loadMemberships());
     }
-  }, [firebaseUser?.uid, loadMemberships, personAccountId, personStatus]);
+  }, [firebaseUser?.uid, loadMemberships, personAccountId, personError, personStatus]);
 
   const activeOwned = useMemo(() => owned.filter((group) => group.estado === "activo"), [owned]);
-  const archivedOwned = useMemo(() => owned.filter((group) => group.estado === "archivado"), [owned]);
   const groups = useMemo(() => mergePresentableGroups(activeOwned, memberships), [activeOwned, memberships]);
   const filtered = useMemo(() => filterPresentableGroups(groups, filter), [filter, groups]);
-  const visibleMembershipKeys = useMemo(() => new Set(groups.flatMap((group) => group.membershipKey ? [group.membershipKey] : [])), [groups]);
+  const visibleFiltered = useMemo(() => filtered.slice(0, visibleCurrentGroups), [filtered, visibleCurrentGroups]);
   const membershipComplete = membershipStatus === "ready" || membershipStatus === "person-required";
   const coverageComplete = ownedStatus === "ready" && membershipComplete;
   const trueEmpty = coverageComplete && groups.length === 0;
@@ -133,16 +152,21 @@ export default function OwnGroupsPage() {
       <Notices notice={searchParams.get("notice")} />
       <div className="mb-5 grid gap-3 sm:grid-cols-2">
         <SourceState label="Administración" status={ownedStatus} error={ownedError} onRetry={loadOwned} value={ownedStatus === "ready" ? `${owned.length}/${PROVISIONAL_GROUP_LIMIT}` : undefined} help="Límite técnico provisional" />
-        <SourceState label="Participación" status={membershipStatus} error={membershipError} onRetry={loadMemberships} value={membershipStatus === "ready" ? String(new Set(memberships.map((item) => item.group.id)).size) : membershipStatus === "person-required" ? "—" : undefined} help={membershipStatus === "person-required" ? "Completá tu ficha para participar en grupos" : "Grupos actuales únicos"} />
+        <SourceState label="Participación" status={membershipStatus} error={membershipError} onRetry={retryMemberships} value={membershipStatus === "ready" ? String(new Set(memberships.map((item) => item.group.id)).size) : membershipStatus === "person-required" ? "—" : undefined} help={membershipStatus === "person-required" ? "Completá tu ficha para participar en grupos" : "Grupos actuales únicos"} />
       </div>
       {membershipStatus === "person-required" ? <p className="mb-5 text-sm text-[var(--text-muted)]">Si querés participar en otros grupos, <Link className="font-semibold text-orange-700 underline underline-offset-2" href="/profile/person">completá tu ficha personal</Link>.</p> : null}
       <div className="mb-5 flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar grupos">
-        {([["all", "Todos"], ["admin", "Administro"], ["member", "Participo"]] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={filter === value} className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 ${filter === value ? "border-orange-500 bg-orange-50 text-orange-800" : "border-[var(--border)]"}`} onClick={() => setFilter(value)}>{label}</button>)}
+        {([["all", "Todos"], ["admin", "Administro"], ["member", "Integro"]] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={filter === value} className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 ${filter === value ? "border-orange-500 bg-orange-50 text-orange-800" : "border-[var(--border)]"}`} onClick={() => { setFilter(value); setVisibleCurrentGroups(CURRENT_GROUP_PAGE_SIZE); }}>{label}</button>)}
       </div>
-      {trueEmpty ? <section className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center"><h2 className="text-xl font-semibold">Todavía no tenés grupos</h2></section> : null}
-      {!trueEmpty && coverageComplete && filter === "member" && filtered.length === 0 ? <section className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center"><p className="font-semibold">No integrás ningún grupo actualmente</p></section> : null}
-      {filtered.length > 0 ? <section aria-label="Listado de grupos" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filtered.map((group) => <GroupCard key={group.groupId} group={group} actionableTaskCount={taskStatus === "ready" ? taskCounts.get(group.groupId) : undefined} />)}</section> : null}
-      <OwnGroupMembershipHistorySection archivedGroups={archivedOwned} visibleMembershipKeys={visibleMembershipKeys} membershipHistoryAvailable={membershipStatus !== "person-required"} />
+      <h2 className="mb-3 text-xl font-semibold">Grupos actuales</h2>
+      {trueEmpty ? <section className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center"><p className="font-semibold">Todavía no tenés grupos actuales</p></section> : null}
+      {!trueEmpty && !coverageComplete && visibleFiltered.length === 0 ? <section role="status" className="mb-4 rounded-2xl border border-dashed border-[var(--border)] p-6 text-center text-sm text-[var(--text-muted)]"><p>Estamos verificando tus grupos actuales. El filtro todavía no tiene cobertura completa.</p></section> : null}
+      {!trueEmpty && coverageComplete && filter === "admin" && filtered.length === 0 ? <section className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center"><p className="font-semibold">No administrás ningún grupo actual</p></section> : null}
+      {!trueEmpty && coverageComplete && filter === "member" && filtered.length === 0 ? <section className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center"><p className="font-semibold">No integrás ningún grupo</p></section> : null}
+      {visibleFiltered.length > 0 ? <section aria-label="Listado de grupos" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visibleFiltered.map((group) => <GroupCard key={group.groupId} group={group} actionableTaskCount={taskStatus === "ready" ? taskCounts.get(group.groupId) : undefined} />)}</section> : null}
+      {visibleCurrentGroups < filtered.length ? <button type="button" className="mt-4 min-h-11 rounded-lg border border-orange-500 px-4 font-semibold text-orange-700" onClick={() => setVisibleCurrentGroups((current) => current + CURRENT_GROUP_PAGE_SIZE)}>Cargar más grupos actuales</button> : null}
+      <OwnPendingGroupJoinRequestsSection available={membershipStatus !== "person-required"} onChanged={loadMemberships} />
+      <OwnGroupMembershipHistorySection available={membershipStatus !== "person-required"} />
     </GroupPageShell>
   );
 }

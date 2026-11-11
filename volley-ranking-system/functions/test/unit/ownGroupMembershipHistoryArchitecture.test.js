@@ -10,15 +10,15 @@ const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
 
 test("E2-19 conserva consulta exacta, readOnly, un intento y cero writers/lineage", () => {
   const reader = read("volley-ranking-system/functions/src/memberships/infrastructure/firestoreOwnGroupMembershipHistoryReader.js");
-  for (const pattern of [/where\("personId", "==", personId\)/, /orderBy\("fechaIngreso", "desc"\)/, /FieldPath\.documentId\(\), "desc"/, /startAfter\(/, /limit\(pageSize \+ 1\)/, /\{ readOnly: true \}/, /metrics\.attempts !== 1/, /lineage: 0/]) assert.match(reader, pattern);
-  assert.doesNotMatch(reader, /where\("estado"|previousMembershipId\)|activeMembershipGuards|membershipLifecycleGuards|receipts|intents|matches|tournaments/);
+  for (const pattern of [/where\("personId", "==", personId\)/, /where\("estado", "==", "finalizada"\)/, /orderBy\("fechaEgreso", "desc"\)/, /FieldPath\.documentId\(\), "desc"/, /startAfter\(/, /limit\(pageSize \+ 1\)/, /\{ readOnly: true \}/, /metrics\.attempts !== 1/, /lineage: 0/]) assert.match(reader, pattern);
+  assert.doesNotMatch(reader, /previousMembershipId\)|activeMembershipGuards|membershipLifecycleGuards|receipts|intents|matches|tournaments/);
   assert.doesNotMatch(reader, /transaction\.(create|set|update|delete)\(/);
 });
 
 test("E2-19 registra callable e índice mínimo exacto sin estado", () => {
   assert.match(read("volley-ranking-system/functions/index.js"), /exports\.listMyGroupMembershipHistory/);
   const indexes = JSON.parse(read("volley-ranking-system/firestore.indexes.json"));
-  const wanted = [{ fieldPath: "personId", mode: "ASCENDING" }, { fieldPath: "fechaIngreso", mode: "DESCENDING" }];
+  const wanted = [{ fieldPath: "personId", mode: "ASCENDING" }, { fieldPath: "estado", mode: "ASCENDING" }, { fieldPath: "fechaEgreso", mode: "DESCENDING" }, { fieldPath: "__name__", mode: "DESCENDING" }];
   assert.equal(indexes.indexes.filter((index) => index.collectionGroup === "memberships" && index.queryScope === "COLLECTION" && JSON.stringify(index.fields) === JSON.stringify(wanted)).length, 1);
   assert.deepEqual(indexes.fieldOverrides, []);
   assert.match(read("volley-ranking-system/firebase.json"), /firestore\.indexes\.json/);
@@ -37,9 +37,8 @@ test("frontend E2-19/IUX-03 conserva callable, carga diferida, paginación y cro
   const ui = read("volley-ranking-frontend/src/components/memberships/OwnGroupMembershipHistorySection.tsx");
   const service = read("volley-ranking-frontend/src/services/membershipsService.ts");
   assert.doesNotMatch(`${ui}\n${service}`, /firebase\/firestore|collection\(|getDoc\(|setDoc\(|updateDoc\(/);
-  for (const marker of ["Historial", "Pertenencias", "No hay historial para mostrar", "Cargar más", "Reintentar historial", "aria-busy", "min-h-11", "sm:grid-cols-2", "generation.current", "inFlight.current", "rowKey", "validityPeriodCount", "status === \"idle\"", "aria-expanded"]) assert.match(ui, new RegExp(marker));
-  assert.match(ui, /item\.validityPeriodCount === 1 \? "1 período de vigencia"/);
-  assert.match(ui, /item\.status === "CURRENT" \? "Actual" : "Finalizada"/);
+  for (const marker of ["Historial", "No hay membresías finalizadas", "Cargar más", "Reintentar historial", "aria-busy", "min-h-11", "sm:grid-cols-2", "generation.current", "busy.current", "rowKey", "validityPeriodCount", "status === \"idle\"", "aria-expanded", "pageSize: 5", "Último período"]) assert.match(ui, new RegExp(marker));
+  assert.doesNotMatch(ui, /item\.status === "CURRENT"/);
   assert.doesNotMatch(ui, />\s*(Finalizar|Reactivar|Renovar|Administrar|Exportar)/i);
 });
 

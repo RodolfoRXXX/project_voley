@@ -1,6 +1,8 @@
+import type { GroupSport } from "@/types/OwnGroup";
+
 export type MyCurrentGroupMembership = {
   membership: { id: string; seasonId: string; estado: "activa"; fechaIngreso: string };
-  group: { id: string; nombre: string; deporte: "voleibol"; estado: "activo"; viewerIsOwner: boolean };
+  group: { id: string; nombre: string; deporte: GroupSport; estado: "activo"; viewerIsOwner: boolean };
 };
 
 export type LeaveMyGroupMembershipResult = {
@@ -21,7 +23,7 @@ export type ListMyCurrentGroupMembershipsResult = {
 };
 
 export type MyCurrentGroupMembershipContext = {
-  group: { id: string; nombre: string; deporte: "voleibol"; estado: "activo"; viewerIsOwner: boolean };
+  group: { id: string; nombre: string; deporte: GroupSport; estado: "activo"; viewerIsOwner: boolean };
   season: { id: string; nombre: string; estado: "abierta" };
   membership: { id: string; estado: "activa"; fechaIngreso: string };
 };

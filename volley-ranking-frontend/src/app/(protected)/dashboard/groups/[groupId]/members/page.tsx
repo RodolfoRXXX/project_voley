@@ -7,7 +7,6 @@ import { PendingGroupJoinRequestsSection } from "@/components/groupJoinRequests/
 import { CopyGroupJoinLinkButton } from "@/components/groups/CopyGroupJoinLinkButton";
 import { useGroupFrame } from "@/components/groups/GroupFrame";
 import { ActiveGroupMembersSection } from "@/components/memberships/ActiveGroupMembersSection";
-import { OwnMembershipSection } from "@/components/memberships/OwnMembershipSection";
 
 export default function GroupMembersPage() {
   const router = useRouter();
@@ -25,7 +24,6 @@ export default function GroupMembersPage() {
       <div><h1 className="text-2xl font-semibold">Integrantes</h1><p className="mt-1 text-sm text-[var(--text-muted)]">Membresías y solicitudes del Grupo.</p></div>
       <CopyGroupJoinLinkButton key={group.id} groupId={group.id} />
     </div>
-    <OwnMembershipSection groupId={group.id} onAccessLost={handleAccessLost} />
     <ActiveGroupMembersSection groupId={group.id} onAccessLost={handleAccessLost} />
     <PendingGroupJoinRequestsSection groupId={group.id} requestedRequestId={searchParams.get("joinRequestId") ?? undefined} onAccessLost={handleAccessLost} />
   </div>;

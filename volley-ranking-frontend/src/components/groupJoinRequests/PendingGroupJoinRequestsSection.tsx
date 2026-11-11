@@ -25,6 +25,7 @@ export function PendingGroupJoinRequestsSection({ groupId, requestedRequestId, o
   const dialogInitial = useRef<HTMLButtonElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
   const handledDeepLink = useRef("");
+  const terminalRequestIds = useRef(new Set<string>());
 
   const focusResult = () => scheduleFocus(region.current);
   const load = useCallback(async (nextCursor?: string, append = false) => {
@@ -46,10 +47,12 @@ export function PendingGroupJoinRequestsSection({ groupId, requestedRequestId, o
     if (handledDeepLink.current === key) return;
     handledDeepLink.current = key;
     void getPendingGroupJoinRequestForOwnedGroup({ groupId, requestId: requestedRequestId }).then(({ item }) => {
+      if (terminalRequestIds.current.has(item.id)) return;
       setItems((current) => current.some((candidate) => candidate.id === item.id) ? current : [item, ...current]);
       setNotice("Solicitud localizada. Revisá su estado antes de decidir.");
       queueMicrotask(() => region.current?.focus());
     }, (cause) => {
+      if (terminalRequestIds.current.has(requestedRequestId)) return;
       const reason = getGroupJoinRequestErrorReason(cause);
       setNotice("");
       setError(["REQUEST_NOT_FOUND", "REQUEST_NOT_PENDING", "GROUP_NOT_ACCESSIBLE"].includes(reason)
@@ -66,8 +69,11 @@ export function PendingGroupJoinRequestsSection({ groupId, requestedRequestId, o
     setError(""); setNotice("Consultando el resultado autoritativo…");
     try {
       const result = await getGroupJoinRequestDecisionResult(groupId, requestId);
+      if (["APPROVED", "REJECTED", "CANCELLED"].includes(result.status)) terminalRequestIds.current.add(requestId);
       setItems((current) => applyAuthoritativeDecision(current, result));
+      setError("");
       setNotice(result.status === "APPROVAL_IN_PROGRESS" ? "La aprobación sigue en proceso." : result.status === "PENDING" ? "La solicitud sigue pendiente." : `Resultado confirmado: ${result.status === "APPROVED" ? "aprobada" : result.status === "REJECTED" ? "rechazada" : "cancelada"}.`);
+      if (result.status === "APPROVED") window.dispatchEvent(new CustomEvent("group-membership-changed", { detail: { groupId } }));
     } catch (cause) { const reason = getGroupJoinRequestErrorReason(cause); if (reason === "GROUP_NOT_ACCESSIBLE") { setItems([]); setConfirmation(null); onAccessLost?.(getGroupJoinRequestErrorMessage(reason)); return; } setError(getGroupJoinRequestErrorMessage(reason)); setNotice(""); }
     finally { focusResult(); }
   };
@@ -88,14 +94,14 @@ export function PendingGroupJoinRequestsSection({ groupId, requestedRequestId, o
     try {
       if (action === "approve") await approveGroupJoinRequest({ groupId, requestId, idempotencyKey: intent.idempotencyKey });
       else await rejectGroupJoinRequest({ groupId, requestId, idempotencyKey: intent.idempotencyKey });
-      intents.current.confirm(action, requestId); setItems((current) => current.filter((candidate) => candidate.id !== requestId)); setNotice(action === "approve" ? (renews ? "Membresía renovada para la Temporada abierta actual y Solicitud aprobada." : reactivates ? "Membresía reactivada y Solicitud aprobada." : "Membresía creada y Solicitud aprobada.") : "Rechazo confirmado; no se creó ninguna Membresía.");
-      if (action === "approve") window.dispatchEvent(new CustomEvent("season-context-changed", { detail: { groupId } }));
+      terminalRequestIds.current.add(requestId); intents.current.confirm(action, requestId); setError(""); setItems((current) => current.filter((candidate) => candidate.id !== requestId)); setNotice(action === "approve" ? (renews ? "Membresía renovada para la Temporada abierta actual y Solicitud aprobada." : reactivates ? "Membresía reactivada y Solicitud aprobada." : "Membresía creada y Solicitud aprobada.") : "Rechazo confirmado; no se creó ninguna Membresía.");
+      if (action === "approve") window.dispatchEvent(new CustomEvent("group-membership-changed", { detail: { groupId } }));
     } catch (cause) {
       const reason = getGroupJoinRequestErrorReason(cause); setError(getGroupJoinRequestErrorMessage(reason)); setNotice("");
       if (reason === "GROUP_NOT_ACCESSIBLE") { setItems([]); setConfirmation(null); onAccessLost?.(getGroupJoinRequestErrorMessage(reason)); return; }
       if (["MEMBERSHIP_REACTIVATION_SUPERSEDED", "MEMBERSHIP_RENEWAL_SUPERSEDED"].includes(reason)) intents.current.requireNewConfirmation(action, requestId);
       if (reason === "APPROVAL_IN_PROGRESS" || shouldConsultAfterDecisionError(reason)) await consultAuthoritative(requestId);
-      else if (["REQUEST_CANCELLED", "DECISION_ALREADY_APPROVED", "DECISION_ALREADY_REJECTED"].includes(reason as GroupJoinRequestErrorReason)) await consultAuthoritative(requestId);
+      else if (["REQUEST_NOT_PENDING", "REQUEST_CANCELLED", "DECISION_ALREADY_APPROVED", "DECISION_ALREADY_REJECTED"].includes(reason as GroupJoinRequestErrorReason)) await consultAuthoritative(requestId);
     } finally { flights.current.finish(requestId); markBusy(requestId, false); focusResult(); }
   };
   return <section id="pending-group-join-requests" tabIndex={-1} className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-7 lg:col-span-2" aria-labelledby="pending-requests-heading">

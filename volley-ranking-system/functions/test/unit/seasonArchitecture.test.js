@@ -72,7 +72,7 @@ test("frontend cubre vacío, formulario, validación, retry estable, confirmaci�
   assert.match(form, /intentSignature/);
   assert.match(form, /attemptedPayload !== intentSignature/);
   assert.match(form, /Owner.*Persona.*Membresía/);
-  assert.match(members, /OwnMembershipSection/);
+  assert.match(read("volley-ranking-frontend/src/components/memberships/ActiveGroupMembersSection.tsx"), /OwnMembershipSection/);
   assert.doesNotMatch(`${form}\n${section}`, /overflow-x|Partido|Torneo|posición|dorsal/);
 });
 

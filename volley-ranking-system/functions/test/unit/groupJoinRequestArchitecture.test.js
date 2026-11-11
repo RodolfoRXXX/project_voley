@@ -11,7 +11,7 @@ test("Dominio y Aplicación de Solicitud no importan Firebase/Admin SDK", () => 
 });
 test("ocho callables están compuestos y el flujo no toca legado ni otros Agregados", () => {
   const index = read("index.js");
-  for (const name of ["getKnownGroupJoinPreview", "createMyGroupJoinRequest", "getMyCurrentGroupJoinRequest", "cancelMyGroupJoinRequest", "listPendingGroupJoinRequestsForOwnedGroup", "approveGroupJoinRequest", "rejectGroupJoinRequest", "getGroupJoinRequestDecisionResult"]) assert.match(index, new RegExp(`exports\\.${name}`));
+  for (const name of ["getKnownGroupJoinPreview", "createMyGroupJoinRequest", "getMyCurrentGroupJoinRequest", "cancelMyGroupJoinRequest", "listMyPendingGroupJoinRequests", "listPendingGroupJoinRequestsForOwnedGroup", "approveGroupJoinRequest", "rejectGroupJoinRequest", "getGroupJoinRequestDecisionResult"]) assert.match(index, new RegExp(`exports\\.${name}`));
   const store = read("src/groupJoinRequests/infrastructure/firestoreGroupJoinRequestStore.js");
   for (const prohibited of ["pendingRequestIds", "pendingAdminRequestIds", "memberIds", "adminIds", "notifications", "activities", "seasons"]) assert.equal(store.includes(prohibited), false, prohibited);
   assert.doesNotMatch(store, /transaction\.(set|create|update|delete).*memberships|collection\("groups"\).*\.(set|update)/s);
@@ -45,9 +45,10 @@ test("reglas e índice declaran exclusivamente la persistencia aprobada", () => 
   for (const collection of ["groupJoinRequests", "pendingGroupJoinRequestGuards", "groupJoinRequestIntents", "groupJoinRequestDecisionIntents", "groupJoinRequestApprovalCoordinations"]) assert.match(rules, new RegExp(`match /${collection}`));
   const indexes = JSON.parse(fs.readFileSync(path.resolve(root, "../firestore.indexes.json"), "utf8"));
   assert.equal(indexes.indexes.length >= 11, true); assert.deepEqual(indexes.fieldOverrides, []);
-  const target = indexes.indexes.filter((item) => item.collectionGroup === "groupJoinRequests"); assert.equal(target.length, 2);
+  const target = indexes.indexes.filter((item) => item.collectionGroup === "groupJoinRequests"); assert.equal(target.length, 3);
   for (const fields of [
     [{ fieldPath: "groupId", mode: "ASCENDING" }, { fieldPath: "estado", mode: "ASCENDING" }, { fieldPath: "createdAt", mode: "DESCENDING" }],
     [{ fieldPath: "groupId", mode: "ASCENDING" }, { fieldPath: "estado", mode: "ASCENDING" }, { fieldPath: "__name__", mode: "ASCENDING" }],
+    [{ fieldPath: "personId", mode: "ASCENDING" }, { fieldPath: "estado", mode: "ASCENDING" }, { fieldPath: "createdAt", mode: "DESCENDING" }, { fieldPath: "__name__", mode: "DESCENDING" }],
   ]) assert.equal(target.some((item) => JSON.stringify(item.fields) === JSON.stringify(fields)), true, JSON.stringify(fields));
 });

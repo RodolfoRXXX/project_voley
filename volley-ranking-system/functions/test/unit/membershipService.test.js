@@ -3,10 +3,12 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { createMembershipService } = require("../../src/memberships/application/membershipService");
+const { createMemberGroupContextAdapter } = require("../../src/memberships/infrastructure/membershipExternalContexts");
 const {
   MembershipAccountRequiredError,
   MembershipCurrentNotAccessibleError,
   MembershipDependencyUnavailableError,
+  MembershipIncompatibleStateError,
   MembershipInternalError,
   MembershipNotAuthorizedError,
   MembershipOpenSeasonRequiredError,
@@ -16,6 +18,20 @@ const {
 } = require("../../src/memberships/application/membershipErrors");
 
 const timestamp = { toDate: () => new Date("2026-08-27T12:00:00.000Z") };
+
+test("IUX-06B acepta deportes de Grupo válidos en el contexto de Membresía", async () => {
+  const group = { id: "group-1", nombre: "Grupo fútbol", deporte: "futbol", estado: "activo", viewerIsOwner: true };
+  const context = createMemberGroupContextAdapter({
+    memberContext: { async getMemberReadableGroupContext() { return group; } },
+  });
+  assert.equal(await context.getGroup({ groupId: "group-1", userId: "uid" }), group);
+
+  const malformed = createMemberGroupContextAdapter({
+    memberContext: { async getMemberReadableGroupContext() { return { ...group, deporte: null }; } },
+  });
+  await assert.rejects(() => malformed.getGroup({ groupId: "group-1", userId: "uid" }), MembershipIncompatibleStateError);
+});
+
 function persisted(overrides = {}) {
   return { membershipId: "membership-generated", personId: "person-1", groupId: "group-1", seasonId: "season-1", estado: "activa", fechaIngreso: timestamp, createdAt: timestamp, schemaVersion: 1, ...overrides };
 }

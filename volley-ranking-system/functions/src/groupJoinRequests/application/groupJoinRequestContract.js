@@ -51,5 +51,12 @@ function validateList(data) {
   }
   return Object.freeze({ groupId: id(data.groupId), pageSize, ...(data.cursor === undefined ? {} : { cursor: data.cursor }) });
 }
+function validateOwnList(data) {
+  closed(data, [], ["pageSize", "cursor"]);
+  const pageSize = data.pageSize === undefined ? 5 : data.pageSize;
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 5) throw new GroupJoinRequestValidationError();
+  if (data.cursor !== undefined && (typeof data.cursor !== "string" || !data.cursor || data.cursor.length > 2048 || !/^[A-Za-z0-9_-]+$/.test(data.cursor))) throw new GroupJoinRequestValidationError();
+  return Object.freeze({ pageSize, ...(data.cursor === undefined ? {} : { cursor: data.cursor }) });
+}
 
-module.exports = { validateCancelGroupJoinRequestPayload: validateCancel, validateCreateGroupJoinRequestPayload: validateCreate, validateGroupJoinRequestDecisionPayload: validateDecision, validateGroupJoinRequestGroupPayload: validateGroup, validateGroupJoinRequestPreviewPayload: validatePreview, validateGroupJoinRequestResultPayload: validateCancel, validateListGroupJoinRequestsPayload: validateList };
+module.exports = { validateCancelGroupJoinRequestPayload: validateCancel, validateCreateGroupJoinRequestPayload: validateCreate, validateGroupJoinRequestDecisionPayload: validateDecision, validateGroupJoinRequestGroupPayload: validateGroup, validateGroupJoinRequestPreviewPayload: validatePreview, validateGroupJoinRequestResultPayload: validateCancel, validateListGroupJoinRequestsPayload: validateList, validateListMyGroupJoinRequestsPayload: validateOwnList };

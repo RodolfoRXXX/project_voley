@@ -4,9 +4,9 @@ const crypto = require("node:crypto");
 const { MembershipCursorInvalidError } = require("./membershipErrors");
 const { OWN_HISTORY_MAX_CURSOR_LENGTH } = require("./membershipContract");
 
-const CURSOR_VERSION = 1;
-const CURSOR_CONTRACT = "listMyGroupMembershipHistory:v1";
-const CURSOR_ORDER = "fechaIngreso:desc,__name__:desc";
+const CURSOR_VERSION = 2;
+const CURSOR_CONTRACT = "listMyGroupMembershipHistory:v2";
+const CURSOR_ORDER = "fechaEgreso:desc,__name__:desc";
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
 const HASH_PATTERN = /^[a-f0-9]{64}$/;
 const FIRESTORE_MIN_SECONDS = -62135596800;
@@ -45,13 +45,13 @@ function actorHash(uid) { return contextualHash("E2-19:actor:v1", uid); }
 function personHash(personId) { return contextualHash("E2-19:person:v1", personId); }
 
 function assertPayload(payload) {
-  if (!exact(payload, ["v", "contract", "order", "actorHash", "personHash", "lastFechaIngreso", "membershipId"])
+  if (!exact(payload, ["v", "contract", "order", "actorHash", "personHash", "lastFechaEgreso", "membershipId"])
     || payload.v !== CURSOR_VERSION || payload.contract !== CURSOR_CONTRACT || payload.order !== CURSOR_ORDER
     || !HASH_PATTERN.test(payload.actorHash || "") || !HASH_PATTERN.test(payload.personHash || "")
-    || !exact(payload.lastFechaIngreso, ["seconds", "nanoseconds"]) || !validId(payload.membershipId)) {
+    || !exact(payload.lastFechaEgreso, ["seconds", "nanoseconds"]) || !validId(payload.membershipId)) {
     throw new MembershipCursorInvalidError();
   }
-  const { seconds, nanoseconds } = payload.lastFechaIngreso;
+  const { seconds, nanoseconds } = payload.lastFechaEgreso;
   if (!Number.isSafeInteger(seconds) || seconds < FIRESTORE_MIN_SECONDS || seconds > FIRESTORE_MAX_SECONDS
     || !Number.isSafeInteger(nanoseconds) || nanoseconds < 0 || nanoseconds > 999999999) {
     throw new MembershipCursorInvalidError();
@@ -59,14 +59,14 @@ function assertPayload(payload) {
   return payload;
 }
 
-function encodeOwnGroupMembershipHistoryCursor({ uid, personId, lastFechaIngreso, membershipId }) {
+function encodeOwnGroupMembershipHistoryCursor({ uid, personId, lastFechaEgreso, membershipId }) {
   const payload = assertPayload({
     v: CURSOR_VERSION,
     contract: CURSOR_CONTRACT,
     order: CURSOR_ORDER,
     actorHash: actorHash(uid),
     personHash: personHash(personId),
-    lastFechaIngreso: { seconds: lastFechaIngreso.seconds, nanoseconds: lastFechaIngreso.nanoseconds },
+    lastFechaEgreso: { seconds: lastFechaEgreso.seconds, nanoseconds: lastFechaEgreso.nanoseconds },
     membershipId,
   });
   return Buffer.from(canonicalJson(payload), "utf8").toString("base64url");
@@ -85,7 +85,7 @@ function decodeOwnGroupMembershipHistoryCursor(token, { uid, personId }) {
       throw new MembershipCursorInvalidError();
     }
     return Object.freeze({
-      lastFechaIngreso: Object.freeze({ ...payload.lastFechaIngreso }),
+      lastFechaEgreso: Object.freeze({ ...payload.lastFechaEgreso }),
       membershipId: payload.membershipId,
     });
   } catch (error) {

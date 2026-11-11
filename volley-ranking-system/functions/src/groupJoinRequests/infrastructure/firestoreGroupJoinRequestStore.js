@@ -6,6 +6,7 @@ const { isTransientDependencyError } = require("../../shared/application/transie
 const { createDashboardTaskOutboxCapability } = require("../../dashboardTasks/public/dashboardTaskOutboxCapability");
 const errors = require("../application/groupJoinRequestErrors");
 const { decodeGroupJoinRequestCursor, encodeGroupJoinRequestCursor } = require("../application/groupJoinRequestCursor");
+const { decodeOwnGroupJoinRequestCursor, encodeOwnGroupJoinRequestCursor } = require("../application/ownGroupJoinRequestCursor");
 const {
   groupJoinRequestDecisionHash, groupJoinRequestDecisionIntentId, groupJoinRequestHash,
   groupJoinRequestIntentId, groupJoinRequestActivationIdempotencyHash,
@@ -448,6 +449,27 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, publication
     async getCurrent({ personId, groupId, observe = () => {} }) {
       try { return await db.runTransaction(async (transaction) => { const gRef = guardRef(groupId, personId); const guardSnapshot = await transaction.get(gRef); const pendingSnapshot = await transaction.get(repository.pendingPairQuery({ personId, groupId })); const guard = hydrateGuard(guardSnapshot, { guardId: gRef.id, personId, groupId }); const request = resolvePending(pendingSnapshot, guard, { repository, personId, groupId }); const decisionStatus = request ? await this.readPendingDecisionStatus(transaction, request) : null; observe({ stage: "authoritative-state-confirmed", classification: "first-attempt" }); return request ? { request, decisionStatus } : null; }); }
       catch (error) { throw mapFailure(error); }
+    },
+    async listMine({ userId, personId, pageSize, cursor, observe = () => {} }) {
+      try {
+        return await db.runTransaction(async (transaction) => {
+          const position = cursor ? decodeOwnGroupJoinRequestCursor(cursor, personId) : null;
+          let query = db.collection("groupJoinRequests").where("personId", "==", personId).where("estado", "==", "pendiente")
+            .orderBy("createdAt", "desc").orderBy(FieldPath.documentId(), "desc");
+          if (position) query = query.startAfter(new Timestamp(position.seconds, position.nanoseconds), position.requestId);
+          const snapshot = await transaction.get(query.limit(pageSize + 1));
+          const delivered = snapshot.docs.slice(0, pageSize).map(repository.fromSnapshot);
+          const rows = [];
+          for (const request of delivered) {
+            const context = await groupCapability.getCandidateContext({ unitOfWork: transaction, groupId: request.groupId, userId });
+            if (context?.status !== "available") throw new GroupJoinRequestGroupIncompatibleError();
+            rows.push(Object.freeze({ request, group: context.group }));
+          }
+          const last = delivered.at(-1);
+          observe({ stage: "own-pending-confirmed", classification: "first-attempt" });
+          return Object.freeze({ rows: Object.freeze(rows), nextCursor: snapshot.size > pageSize && last ? encodeOwnGroupJoinRequestCursor({ personId, createdAt: last.createdAt, requestId: last.requestId }) : null });
+        });
+      } catch (error) { throw mapFailure(error); }
     },
     async cancel({ personId, groupId, requestId, observe = () => {} }) {
       try {

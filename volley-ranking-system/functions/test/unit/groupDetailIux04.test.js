@@ -18,6 +18,20 @@ test("IUX-04 compone Resumen y /members sin total de roster", () => {
   assert.doesNotMatch(summary + members, /totalItems|items\.length.*integrantes/i);
 });
 
+test("IUX-06B reintenta cobertura inicial acotadamente y actualiza ambos resúmenes compartidos", () => {
+  const summary = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/page.tsx");
+  const hook = read("volley-ranking-frontend/src/components/groups/useGroupDashboardTasks.ts");
+  const news = read("volley-ranking-frontend/src/components/groups/GroupNewsCard.tsx");
+  assert.equal((summary.match(/tasks=\{tasks\}/g) || []).length, 2);
+  assert.match(hook, /COVERAGE_RETRY_DELAYS_MS = \[250, 500, 1000, 2000\]/);
+  assert.match(hook, /reason === "PROJECTION_NOT_READY"/);
+  assert.match(hook, /!page\.coverage\.complete \|\| page\.coverage\.health !== "READY"/);
+  assert.match(hook, /scheduleCoverageRetry\(coverageRetry\)/);
+  assert.match(hook, /clearTimeout\(retryTimer\.current\)/);
+  assert.match(news, /La cobertura está actualizándose; no mostramos totales inciertos/);
+  assert.match(news, /Reintentar ahora/);
+});
+
 test("IUX-04 usa pestañas compartidas responsive y Clipboard accesible", () => {
   const navigation = read("volley-ranking-frontend/src/components/groups/GroupContextNavigation.tsx");
   const clipboard = read("volley-ranking-frontend/src/components/groups/CopyGroupJoinLinkButton.tsx");

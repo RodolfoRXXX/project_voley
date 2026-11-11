@@ -8,7 +8,7 @@ const {
   GroupJoinRequestPersonRequiredError,
   GroupJoinRequestUnauthenticatedError,
 } = require("./groupJoinRequestErrors");
-const { toApprovalDto, toDecisionResultDto, toOwnGroupJoinRequestDto, toOwnerItem, toPreview, toRejectionDto } = require("./groupJoinRequestDto");
+const { toApprovalDto, toDecisionResultDto, toOwnGroupJoinRequestDto, toOwnPendingItem, toOwnerItem, toPreview, toRejectionDto } = require("./groupJoinRequestDto");
 const { isTransientDependencyError } = require("../../shared/application/transientDependencyError");
 
 function createGroupJoinRequestService({ accountCapability, personCapability, store }) {
@@ -63,6 +63,7 @@ function createGroupJoinRequestService({ accountCapability, personCapability, st
     async createMyGroupJoinRequest(identity, input, observe) { const context = await candidate(identity); const result = await safe(() => store.create({ ...context, ...input, observe })); return Object.freeze({ outcome: result.outcome, request: toOwnGroupJoinRequestDto(result.request, result.decisionStatus) }); },
     async getMyCurrentGroupJoinRequest(identity, input, observe) { const context = await candidate(identity); const result = await safe(() => store.getCurrent({ personId: context.personId, groupId: input.groupId, observe })); return Object.freeze({ request: result ? toOwnGroupJoinRequestDto(result.request, result.decisionStatus) : null }); },
     async cancelMyGroupJoinRequest(identity, input, observe) { const context = await candidate(identity); const result = await safe(() => store.cancel({ personId: context.personId, ...input, observe })); return Object.freeze({ outcome: result.outcome, request: toOwnGroupJoinRequestDto(result.request) }); },
+    async listMyPendingGroupJoinRequests(identity, input, observe) { const context = await candidate(identity); const result = await safe(() => store.listMine({ ...context, ...input, observe })); return Object.freeze({ items: result.rows.map(({ request, group }) => toOwnPendingItem(request, group)), nextCursor: result.nextCursor }); },
     async listPendingGroupJoinRequestsForOwnedGroup(identity, input, observe) { const userId = actor(identity); await account(userId); const result = await safe(() => store.listOwned({ userId, ...input, observe })); return Object.freeze({ items: result.composed.map(({ request, person: value, decisionStatus, approvalEffect }) => toOwnerItem(request, value, decisionStatus, approvalEffect)), nextCursor: result.nextCursor }); },
     async getPendingGroupJoinRequestForOwnedGroup(identity, input, observe) { const userId = actor(identity); await account(userId); const result = await safe(() => store.getOwnedPending({ userId, ...input, observe })); return Object.freeze({ item: toOwnerItem(result.request, result.person, result.decisionStatus, result.approvalEffect) }); },
     async approveGroupJoinRequest(identity, input, observe) { const userId = actor(identity); await account(userId); const result = await safe(() => store.approve({ userId, ...input, observe })); return toApprovalDto(result.outcome, result.request, result.membership); },

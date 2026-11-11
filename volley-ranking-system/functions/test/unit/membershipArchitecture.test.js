@@ -95,14 +95,18 @@ test("consulta e índice E2-04 conservan orden exacto y no declaran __name__", (
     ] },
   ];
   for (const index of expected) assert.equal(membershipIndexes.some((candidate) => JSON.stringify(candidate) === JSON.stringify(index)), true);
-  assert.equal(JSON.stringify(membershipIndexes).includes("__name__"), false);
+  const history = { collectionGroup: "memberships", queryScope: "COLLECTION", fields: [
+    { fieldPath: "personId", mode: "ASCENDING" }, { fieldPath: "estado", mode: "ASCENDING" },
+    { fieldPath: "fechaEgreso", mode: "DESCENDING" }, { fieldPath: "__name__", mode: "DESCENDING" },
+  ] };
+  assert.equal(membershipIndexes.some((candidate) => JSON.stringify(candidate) === JSON.stringify(history)), true);
 });
 
 test("dashboard unifica ownership y pertenencia sin Firestore ni navegación administrativa member-scoped", () => {
   const page = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/page.tsx");
   const section = read("volley-ranking-frontend/src/components/memberships/MyCurrentGroupMembershipsSection.tsx");
   const service = read("volley-ranking-frontend/src/services/membershipsService.ts");
-  for (const marker of [/mergePresentableGroups/, /Administro/, /Participo/, /GroupCard/]) assert.match(page, marker);
+  for (const marker of [/mergePresentableGroups/, /Administro/, /Integro/, /GroupCard/]) assert.match(page, marker);
   assert.match(section, /Grupos que integrás/);
   assert.match(section, /PERSON_REQUIRED/);
   assert.match(section, /Ver página siguiente/);

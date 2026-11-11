@@ -27,24 +27,24 @@ test("E2-19 acepta sólo payload cerrado con default/máximo 20", () => {
   for (const cursor of ["", 3, "a".repeat(2049)]) assert.throws(() => validateListMyGroupMembershipHistoryPayload({ cursor }), MembershipCursorInvalidError);
 });
 
-test("cursor E2-19 es canónico, contextual, cerrado y sin secretos/checksum", () => {
-  const token = encodeOwnGroupMembershipHistoryCursor({ uid: "actor-1", personId: "person-1", lastFechaIngreso: t(123, 456), membershipId: "membership-1" });
+test("cursor IUX-06B es canónico, contextual y ordena por finalización", () => {
+  const token = encodeOwnGroupMembershipHistoryCursor({ uid: "actor-1", personId: "person-1", lastFechaEgreso: t(123, 456), membershipId: "membership-1" });
   assert.match(token, /^[A-Za-z0-9_-]+$/); assert.doesNotMatch(token, /=/);
   const raw = Buffer.from(token, "base64url").toString("utf8");
   const payload = JSON.parse(raw);
   assert.equal(raw, canonicalJson(payload));
-  assert.deepEqual(Object.keys(payload).sort(), ["actorHash", "contract", "lastFechaIngreso", "membershipId", "order", "personHash", "v"]);
-  assert.deepEqual(Object.keys(payload.lastFechaIngreso).sort(), ["nanoseconds", "seconds"]);
+  assert.deepEqual(Object.keys(payload).sort(), ["actorHash", "contract", "lastFechaEgreso", "membershipId", "order", "personHash", "v"]);
+  assert.deepEqual(Object.keys(payload.lastFechaEgreso).sort(), ["nanoseconds", "seconds"]);
   assert.equal(payload.actorHash, actorHash("actor-1")); assert.equal(payload.personHash, personHash("person-1"));
   assert.equal(raw.includes("actor-1"), false); assert.equal(raw.includes("person-1"), false);
   assert.doesNotMatch(raw, /checksum|hmac|expires|secret/i);
   assert.deepEqual(decodeOwnGroupMembershipHistoryCursor(token, { uid: "actor-1", personId: "person-1" }), {
-    lastFechaIngreso: { seconds: 123, nanoseconds: 456 }, membershipId: "membership-1",
+    lastFechaEgreso: { seconds: 123, nanoseconds: 456 }, membershipId: "membership-1",
   });
   for (const context of [{ uid: "actor-2", personId: "person-1" }, { uid: "actor-1", personId: "person-2" }]) {
     assert.throws(() => decodeOwnGroupMembershipHistoryCursor(token, context), MembershipCursorInvalidError);
   }
-  for (const mutation of [{ ...payload, v: 2 }, { ...payload, extra: true }, { ...payload, order: "other" }, { ...payload, membershipId: "x/y" }]) {
+  for (const mutation of [{ ...payload, v: 1 }, { ...payload, extra: true }, { ...payload, order: "other" }, { ...payload, membershipId: "x/y" }]) {
     const changed = Buffer.from(canonicalJson(mutation), "utf8").toString("base64url");
     assert.throws(() => decodeOwnGroupMembershipHistoryCursor(changed, { uid: "actor-1", personId: "person-1" }), MembershipCursorInvalidError);
   }
@@ -61,14 +61,13 @@ function membership(version, estado, overrides = {}) {
   return { ...base, ...overrides };
 }
 
-test("DTO E2-19 proyecta v1-v4 sin IDs internos y con egreso condicional", () => {
-  for (const [version, estado, status, continuity] of [[1, "activa", "CURRENT", "INITIAL"], [2, "finalizada", "HISTORICAL", "INITIAL"], [3, "activa", "CURRENT", "INITIAL"], [3, "finalizada", "HISTORICAL", "INITIAL"], [4, "activa", "CURRENT", "RENEWAL"], [4, "finalizada", "HISTORICAL", "RENEWAL"]]) {
+test("DTO IUX-06B proyecta sólo finalizadas y las fechas visibles acreditadas", () => {
+  for (const [version, continuity] of [[2, "INITIAL"], [3, "INITIAL"], [4, "RENEWAL"]]) {
+    const estado = "finalizada";
     const root = membership(version, estado);
-    const dto = toOwnGroupMembershipHistoryItem({ membership: root, group: { groupId: "group-1", nombre: "Grupo" }, season: { seasonId: "season-1", nombre: "Temporada" }, validityPeriodCount: version < 3 ? 1 : root.periodCount });
-    assert.deepEqual(Object.keys(dto).sort(), estado === "finalizada"
-      ? ["continuity", "group", "joinedAt", "leftAt", "rowKey", "season", "status", "validityPeriodCount"]
-      : ["continuity", "group", "joinedAt", "rowKey", "season", "status", "validityPeriodCount"]);
-    assert.equal(dto.status, status); assert.equal(dto.continuity, continuity); assert.equal(dto.validityPeriodCount, 1);
+    const dto = toOwnGroupMembershipHistoryItem({ membership: root, group: { groupId: "group-1", nombre: "Grupo" }, season: { seasonId: "season-1", nombre: "Temporada" }, validityPeriodCount: 1, visibleStartedAt: root.fechaIngreso, visibleEndedAt: root.fechaEgreso });
+    assert.deepEqual(Object.keys(dto).sort(), ["continuity", "group", "joinedAt", "leftAt", "rowKey", "season", "status", "validityPeriodCount"]);
+    assert.equal(dto.status, "HISTORICAL"); assert.equal(dto.continuity, continuity); assert.equal(dto.validityPeriodCount, 1);
     const serialized = JSON.stringify(dto);
     for (const forbidden of [root.membershipId, root.personId, "previous-root", "schemaVersion", "latestPeriodId"]) assert.equal(serialized.includes(forbidden), false);
   }
@@ -81,10 +80,10 @@ function serviceWith(reader) {
 }
 
 test("servicio devuelve contrato cerrado y cursor anclado en última fila entregada", async () => {
-  const root = membership(4, "activa");
+  const root = membership(4, "finalizada");
   const page = await serviceWith({ async listPage(input) {
     assert.deepEqual(input, { userId: "actor-1", pageSize: 20, cursor: undefined });
-    return { personId: "person-1", rows: [{ membership: root, group: { groupId: "group-1", nombre: "Grupo" }, season: { seasonId: "season-1", nombre: "Temporada" }, validityPeriodCount: 1 }], hasMore: true, cursorAnchor: { lastFechaIngreso: root.fechaIngreso, membershipId: root.membershipId } };
+    return { personId: "person-1", rows: [{ membership: root, group: { groupId: "group-1", nombre: "Grupo" }, season: { seasonId: "season-1", nombre: "Temporada" }, validityPeriodCount: 1, visibleStartedAt: root.fechaIngreso, visibleEndedAt: root.fechaEgreso }], hasMore: true, cursorAnchor: { lastFechaEgreso: root.fechaEgreso, membershipId: root.membershipId } };
   } }).listMyGroupMembershipHistory({ userId: "actor-1", roles: ["admin"] }, { pageSize: 20 });
   assert.deepEqual(Object.keys(page).sort(), ["hasMore", "items", "nextCursor"]);
   assert.equal(page.hasMore, true); assert.equal(page.items.length, 1);
@@ -133,11 +132,11 @@ function readerFixture({ roots, periods = new Map(), anchor = null, cursor = nul
   return { reader: createFirestoreOwnGroupMembershipHistoryReader({ db, personCapability, contextCapability, onMetrics: (value) => metrics.push(value) }), log, metrics, cursor };
 }
 
-function persistedRoot(index, version = 1, periods = 1) {
+function persistedRoot(index, version = 2, periods = 1) {
   const id = `membership-${String(index).padStart(2, "0")}`;
   const groupId = `group-${String(index).padStart(2, "0")}`;
   const seasonId = `season-${String(index).padStart(2, "0")}`;
-  const data = { personId: "person-1", groupId, seasonId, estado: "activa", fechaIngreso: t(1000 - index), createdAt, schemaVersion: version };
+  const data = { personId: "person-1", groupId, seasonId, estado: "finalizada", fechaIngreso: t(1000 - index), fechaEgreso: t(2000 - index), createdAt, schemaVersion: version };
   if (version >= 3) { data.periodCount = periods; data.latestPeriodId = membershipValidityPeriodId(id, periods); }
   if (version === 4) data.previousMembershipId = `previous-${index}`;
   return { id, data };
@@ -153,8 +152,8 @@ test("reader usa query exacta, readOnly de un intento, lookahead y cero escritur
   const roots = [persistedRoot(1), persistedRoot(2)];
   const fixture = readerFixture({ roots });
   const page = await fixture.reader.listPage({ userId: "actor-1", pageSize: 1 });
-  assert.deepEqual(fixture.log.filters, [["personId", "==", "person-1"]]);
-  assert.equal(fixture.log.orders[0][0], "fechaIngreso"); assert.equal(fixture.log.orders[0][1], "desc");
+  assert.deepEqual(fixture.log.filters, [["personId", "==", "person-1"], ["estado", "==", "finalizada"]]);
+  assert.equal(fixture.log.orders[0][0], "fechaEgreso"); assert.equal(fixture.log.orders[0][1], "desc");
   assert.equal(fixture.log.orders[1][1], "desc"); assert.equal(fixture.log.limit, 2);
   assert.deepEqual(fixture.log.options, { readOnly: true }); assert.equal(fixture.metrics.at(-1).attempts, 1); assert.equal(fixture.log.writes, 0);
   assert.equal(page.rows.length, 1); assert.equal(page.hasMore, true); assert.equal(page.cursorAnchor.membershipId, roots[0].id);
@@ -174,8 +173,8 @@ test("v3/v4 validan sólo fronteras deterministas, deduplican período y no leen
     const count = root.data.periodCount;
     const firstId = membershipValidityPeriodId(root.id, 1);
     const latestId = membershipValidityPeriodId(root.id, count);
-    periods.set(`memberships/${root.id}/validityPeriods/${firstId}`, periodData(1, root.data.fechaIngreso, count === 1 ? undefined : t(root.data.fechaIngreso.seconds + 1)));
-    if (count > 1) periods.set(`memberships/${root.id}/validityPeriods/${latestId}`, periodData(count, t(root.data.fechaIngreso.seconds + 2)));
+    periods.set(`memberships/${root.id}/validityPeriods/${firstId}`, periodData(1, root.data.fechaIngreso, count === 1 ? root.data.fechaEgreso : t(root.data.fechaIngreso.seconds + 1)));
+    if (count > 1) periods.set(`memberships/${root.id}/validityPeriods/${latestId}`, periodData(count, t(root.data.fechaIngreso.seconds + 2), root.data.fechaEgreso));
   }
   const fixture = readerFixture({ roots, periods });
   const page = await fixture.reader.listPage({ userId: "actor-1", pageSize: 2 });
@@ -186,23 +185,23 @@ test("v3/v4 validan sólo fronteras deterministas, deduplican período y no leen
 test("instrumentación respeta mínimos, representativo y techo aprobados", async () => {
   async function measured(version, periodCount, cursorMode) {
     const roots = Array.from({ length: 21 }, (_, index) => persistedRoot(index + 1, version, periodCount));
-    if (version === 1) for (const root of roots) { root.data.groupId = "group-1"; root.data.seasonId = "season-1"; }
+    if (version === 2) for (const root of roots) { root.data.groupId = "group-1"; root.data.seasonId = "season-1"; }
     const periods = new Map();
     for (const root of roots.slice(0, 20)) if (version >= 3) {
       const first = membershipValidityPeriodId(root.id, 1); const latest = membershipValidityPeriodId(root.id, periodCount);
-      periods.set(`memberships/${root.id}/validityPeriods/${first}`, periodData(1, root.data.fechaIngreso, periodCount > 1 ? t(root.data.fechaIngreso.seconds + 1) : undefined));
-      if (periodCount > 1) periods.set(`memberships/${root.id}/validityPeriods/${latest}`, periodData(periodCount, t(root.data.fechaIngreso.seconds + 2)));
+      periods.set(`memberships/${root.id}/validityPeriods/${first}`, periodData(1, root.data.fechaIngreso, periodCount > 1 ? t(root.data.fechaIngreso.seconds + 1) : root.data.fechaEgreso));
+      if (periodCount > 1) periods.set(`memberships/${root.id}/validityPeriods/${latest}`, periodData(periodCount, t(root.data.fechaIngreso.seconds + 2), root.data.fechaEgreso));
     }
     let cursor; let anchor;
     if (cursorMode) {
       anchor = { exists: true, data: roots[0].data };
-      cursor = encodeOwnGroupMembershipHistoryCursor({ uid: "actor-1", personId: "person-1", lastFechaIngreso: roots[0].data.fechaIngreso, membershipId: roots[0].id });
+      cursor = encodeOwnGroupMembershipHistoryCursor({ uid: "actor-1", personId: "person-1", lastFechaEgreso: roots[0].data.fechaEgreso, membershipId: roots[0].id });
     }
     const fixture = readerFixture({ roots, periods, anchor });
     await fixture.reader.listPage({ userId: "actor-1", pageSize: 20, cursor });
     return fixture.metrics.at(-1).total;
   }
-  assert.equal(await measured(1, 1, true), 26);
+  assert.equal(await measured(2, 1, true), 26);
   assert.equal(await measured(3, 1, true), 84);
   assert.equal(await measured(4, 2, true), 104);
   assert.equal(await measured(4, 2, false), 103);

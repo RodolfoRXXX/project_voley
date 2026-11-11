@@ -39,7 +39,7 @@ Estado operativo del plan:
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
 - `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
-- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04, IUX-05, IUX-06A E IUX-06B CERRADOS TÉCNICAMENTE EN LOCAL; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA; IUX-06C1/D DEFINIDOS Y C2 BLOQUEADO POR P01/P02`;
+- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04, IUX-05 E IUX-06A/B/C1 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA; IUX-06D DEFINIDO Y C2 BLOQUEADO POR P01/P02`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -2551,8 +2551,23 @@ El siguiente incremento funcional es:
     Novedades e Integrantes sin recarga manual.
 - Evidencia pendiente IUX-06B: las pruebas cubren lazy load, paginación 5 + 2, reactivaciones,
     empates, estados y estructura responsive. Quedan pendientes la inspección humana del Historial
-    real y la revisión visual completa en escritorio y Android 360/390 px. IUX-06C1, C2 y D no se
+    real y la revisión visual completa en escritorio y Android 360/390 px. IUX-06C2 y D no se
     adelantan; no hay despliegue ni habilitación productiva.
+- Sexto incremento, tercer corte: `IUX-06C1 — Integrantes y Tu membresía`, definido por D5-069 e
+    implementado y cerrado técnicamente en local por D5-072. Unifica el padrón en filas
+    desplegables, presenta al Owner primero sin duplicarlo entre páginas, conserva paginación,
+    permisos y acciones canónicas, y mantiene C2 fuera del corte.
+- Correcciones UAT IUX-06C1: la fila Owner inicia contraída y refleja su estado con chevron; los
+    estados sin Persona y elegible usan los textos finales aprobados; el detalle activo muestra
+    `ACTIVA` sin caja ni ID de Temporada. Una lectura tardía del deep-link podía devolver
+    `REQUEST_NOT_PENDING` después de una aprobación confirmada; ahora la decisión terminal descarta
+    esa respuesta residual, retira la Solicitud de Pendientes y refresca el padrón sin repetir el
+    comando.
+- Evidencia IUX-06C1: dos cuentas UAT acreditan `APPROVED`, Solicitud persistida como aprobada,
+    Membresía activa, Pendientes vacío y el nuevo integrante visible por lectores canónicos. La UAT
+    humana informada originó y verificó los hallazgos previos; quedan pendientes la repetición humana
+    post-corrección de la aprobación con una Solicitud nueva y la matriz visual completa en escritorio
+    y Android 360/390 px. No hay despliegue ni habilitación productiva.
 - Continuidad E3: permanecen íntegros los gates productivos de E3-09/E3-10 —UAT, retiro remoto
     verificado de `onMatchClose`, compatibilidad, despliegue coordinado, reconciliación real,
     smoke/UAT y rollback—. IUX no los satisface ni los relaja.
@@ -2784,6 +2799,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-069 | Adopta `IUX-06 — Evolución de Grupos, Explorar e Integrantes`: A amplía el catálogo a Vóley, Fútbol, Básquet, Handball, Hockey, Rugby, Tenis, Pádel y Otro, incorpora publicación Owner y Explorar con privacidad por defecto; B reorganiza Mis grupos, solicitudes propias e historia finalizada; C1 fusiona Tu Membresía con Integrantes; C2 define total exacto y búsqueda completa; D separa Conceptos, Deudas, avisos e Historial | APROBADA | IUX / IUX-06 / Grupos / Integrantes / Economía | IUX-06A, B, C1 y D quedan `LISTOS PARA IMPLEMENTAR — REQUIEREN AUTORIZACIÓN POSTERIOR`; A es el primer corte recomendado. C2 queda definido funcionalmente pero no listo hasta resolver P01 (conteo exacto) y P02 (búsqueda completa). `Otro` no admite texto libre y el deporte no cambia comportamiento. Publicación no altera enlace ni solicitudes. Se preservan permisos, deep-links y gates IUX-02/E3; no autoriza código, configuración, índices, Rules, datos, migración, deploy ni producción. |
 | D5-070 | Registra la implementación y cierre técnico local de `IUX-06A — Explorar grupos`, incluidos catálogo compatible, privacidad por defecto, publicación Owner, descubrimiento mínimo, Solicitud canónica y ajustes de navegación/presentación surgidos de UAT | CERRADO TÉCNICAMENTE EN LOCAL; UAT HUMANA ACOTADA | IUX / IUX-06A / Explorar grupos | Gates locales completos y Emulator acreditan contratos, autorización, privacidad, duplicados y compatibilidad. La aceptación humana cubre las pestañas integradas de Economía y el recorrido aviso pendiente → Ver solicitud propia → Cancelar; sidebar y pestañas del detalle requieren reconfirmación autenticada. Economía fue un cambio visual: Conceptos y la reorganización siguen en IUX-06D. B, C1, C2 y D permanecen fuera; no hay deploy ni habilitación productiva y no se relajan gates IUX-02/E3. |
 | D5-071 | Registra la implementación y cierre técnico local de `IUX-06B — Mis grupos`: relaciones actuales deduplicadas, Solicitudes propias pendientes cancelables e Historial lazy paginado de Membresías finalizadas, incluidas las correcciones UAT de cobertura inicial y catálogo deportivo | CERRADO TÉCNICAMENTE EN LOCAL; UAT HUMANA ACOTADA APROBADA | IUX / IUX-06B / Mis grupos | El HTTP 400 se debía a una validación residual `deporte === "voleibol"`; el contrato ahora acepta el catálogo canónico y se prueba con fútbol. La regresión separa administración y Membresía, incluido Owner sin Membresía. La aceptación humana acredita el mismo Grupo UAT en `Todos`, `Administro` e `Integro`, Solicitudes pendientes/cancelación y Novedades/Integrantes sin recarga. Historial, paginación, reactivación, empates y estructura responsive tienen evidencia automatizada; Historial real y revisión visual completa 360/390 px/escritorio siguen pendientes. C1, C2 y D quedan fuera; no hay deploy ni habilitación productiva. |
+| D5-072 | Registra la implementación y cierre técnico local de `IUX-06C1 — Integrantes y Tu membresía`: padrón unificado en filas desplegables, Owner primero y sin duplicados, acciones canónicas, responsive y accesibilidad de teclado, incluidas las correcciones UAT de presentación y de lectura tardía posterior a aprobación | CERRADO TÉCNICAMENTE EN LOCAL; UAT HUMANA COMPLEMENTARIA PENDIENTE | IUX / IUX-06C1 / Integrantes / Solicitudes | Owner inicia contraído con o sin Membresía; conserva el flujo de Persona y Temporada, muestra `ACTIVA` sin ID de Temporada y usa los textos finales. La carrera `REQUEST_NOT_PENDING` provenía de una lectura deep-link anterior, no del comando confirmado: la Solicitud terminal se retira, el padrón se refresca y no se repite la aprobación. Dos cuentas UAT acreditan decisión `APPROVED`, persistencia, Membresía activa, Pendientes vacío y lectura member-scoped. La reproducción técnica y los gates locales están completos; aprobación post-corrección con una Solicitud humana nueva y revisión visual integral escritorio/Android siguen pendientes. C2/D y gates IUX-02/E3 no cambian; no hay deploy ni habilitación productiva. |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -3047,6 +3063,18 @@ los tres filtros, Solicitudes pendientes/cancelación y actualización de Noveda
 recarga. Las pruebas cubren historial, reactivaciones, empates y estructura responsive; quedan
 pendientes su inspección humana con datos reales y la revisión visual completa en escritorio y
 Android 360/390 px. IUX-06C1/C2/D y los gates IUX-02/E3 no cambian.
+
+D5-072 registra el cierre técnico local de IUX-06C1. `Tu membresía` se integra como primera fila
+contraída del padrón de Integrantes; el Owner no se duplica al paginar, y cada fila conserva detalles,
+acciones canónicas, permisos, teclado, foco visible y apilado móvil. Los ajustes UAT fijan los textos
+«Seguís administrando el grupo. Para sumarte como integrante, necesitás crear tu ficha personal.» y
+«Ya podés sumarte como integrante y seguir administrando el grupo.», retiran el mensaje general sin
+Temporada y simplifican el detalle activo a `ACTIVA` e «Integrante desde». La falsa alerta
+`REQUEST_NOT_PENDING` se originaba en una lectura deep-link tardía posterior al commit exitoso; el
+frontend ahora descarta ese resultado residual, retira la Solicitud terminal y refresca el padrón sin
+repetir el comando. La evidencia con Owner y solicitante acredita el resultado autoritativo y la
+Membresía activa. La revisión humana post-corrección completa en escritorio/Android queda pendiente;
+IUX-06C2/D y los gates IUX-02/E3 permanecen sin cambios.
 
 “Requiere tu atención”, Agenda, notificaciones/campana, navbar/sidebar y roles o permisos permanecen
 fuera del incremento y sujetos a definición posterior. Presupuesto/rendimiento deben medirse durante

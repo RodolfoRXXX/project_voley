@@ -139,8 +139,9 @@ test("arquitectura E2-11 conserva reader/DTO y E2-12 limita la acción a tercero
   assert.match(personCapability, /firstName: person\.nombre, lastName: person\.apellido/);
   assert.doesNotMatch(reader, /memberIds|adminIds|users\.roles|notification|activity|payment|tournament/i);
   assert.doesNotMatch(`${frontend}\n${frontendService}`, /firebase\/firestore|collection\(|getDoc\(|setDoc\(|updateDoc\(/);
-  for (const marker of ["Integrantes", "Cargando integrantes", "NO_OPEN_SEASON", "No hay un roster actual", "Todavía no hay integrantes", "Identidad no disponible", "Owner", "Cargar más", "Reintentar", "ROSTER_CONTEXT_CHANGED", "aria-live", "aria-busy", "role=\"alert\"", "tabIndex={-1}", "min-h-11", "sm:grid-cols-2", "lg:col-span-2"]) assert.match(frontend, new RegExp(marker));
-  for (const marker of [/item\.person\.status === "AVAILABLE" && !item\.isOwner/, /availableThirdParty \?/, /Finalizar Membresía/]) assert.match(frontend, marker);
+  for (const marker of ["Integrantes", "Cargando integrantes", "Identidad no disponible", "Cargar más", "Reintentar", "ROSTER_CONTEXT_CHANGED", "aria-live", "aria-busy", "role=\"alert\"", "tabIndex={-1}", "min-h-11", "aria-expanded", "lg:col-span-2"]) assert.match(frontend, new RegExp(marker));
+  assert.doesNotMatch(frontend, /No hay un roster actual porque el Grupo no posee una Temporada abierta\./);
+  for (const marker of [/mergeRosterPages/, /item\.person\.status === "AVAILABLE"/, /Finalizar Membresía/]) assert.match(frontend, marker);
   assert.doesNotMatch(frontend, />\s*(Expulsar|Suspender)|kebab|checkbox/i);
   for (const collection of ["memberships", "validityPeriods", "activeMembershipGuards", "personas", "seasons", "openSeasonGuards"]) assert.match(rules, new RegExp(collection));
   assert.equal(indexes.indexes.filter((index) => index.collectionGroup === "memberships"

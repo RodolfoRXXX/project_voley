@@ -13,7 +13,8 @@ test("IUX-04 compone Resumen y /members sin total de roster", () => {
   const members = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/members/page.tsx");
   const order = ["GroupNewsCard", "GroupEconomySummaryCard", "GroupSeasonSummaryCard", "GroupMembersSummaryCard"];
   for (let index = 1; index < order.length; index += 1) assert.ok(summary.lastIndexOf(order[index - 1]) < summary.lastIndexOf(order[index]));
-  for (const component of ["OwnMembershipSection", "ActiveGroupMembersSection", "PendingGroupJoinRequestsSection"]) assert.match(members, new RegExp(component));
+  for (const component of ["ActiveGroupMembersSection", "PendingGroupJoinRequestsSection"]) assert.match(members, new RegExp(component));
+  assert.match(read("volley-ranking-frontend/src/components/memberships/ActiveGroupMembersSection.tsx"), /OwnMembershipSection/);
   assert.match(summary, /#integrantes/); assert.match(summary, /joinRequestId|searchParams\.toString/);
   assert.doesNotMatch(summary + members, /totalItems|items\.length.*integrantes/i);
 });

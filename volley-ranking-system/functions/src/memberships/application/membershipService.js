@@ -26,7 +26,7 @@ function requireActor(identity) {
   return identity.userId.trim();
 }
 
-function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, lifecycleGuard, selfExitStore, administrativeFinalizationStore, membershipCargoStore, myMembershipReader, myCurrentGroupMembershipsReader, ownGroupMembershipHistoryReader, memberGroupContext, ownerActiveGroupMembersReader }) {
+function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, lifecycleGuard, selfExitStore, administrativeFinalizationStore, membershipCargoStore, myMembershipReader, myCurrentGroupMembershipsReader, ownGroupMembershipHistoryReader, memberGroupContext, ownerActiveGroupMembersReader, activeRosterCounter }) {
   if (!selfAccountReader || !selfPersonContext || !ownedGroupContext || !openSeasonContext || !membershipRepository || !activeMembershipGuard || !myMembershipReader) {
     throw new TypeError("Membership service dependencies are required");
   }
@@ -75,6 +75,20 @@ function createMembershipService({ selfAccountReader, selfPersonContext, ownedGr
   }
 
   return {
+    async getActiveGroupMemberTotalForOwnedGroup(identity, input) {
+      const userId = requireActor(identity);
+      await requireAccount(userId);
+      if (!activeRosterCounter) throw new MembershipDependencyUnavailableError();
+      return activeRosterCounter.readOrBuild({ userId, groupId: input.groupId, force: false });
+    },
+
+    async reconcileActiveGroupMemberTotalForOwnedGroup(identity, input) {
+      const userId = requireActor(identity);
+      await requireAccount(userId);
+      if (!activeRosterCounter) throw new MembershipDependencyUnavailableError();
+      return activeRosterCounter.readOrBuild({ userId, groupId: input.groupId, force: true });
+    },
+
     async createMyMembershipForOwnedGroup(identity, input) {
       const userId = requireActor(identity);
       await atStage("create", "account", () => requireAccount(userId));

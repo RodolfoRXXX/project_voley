@@ -82,6 +82,7 @@ test("E2-12 finalizacion administrativa Owner es atomica, exacta e idempotente",
     await t.test("Owner sin Persona prepara y finaliza tercero sin altas colaterales ni acceso ajeno", async () => {
       const groupId = "e2-12-owner-without-person", seasonId = `${groupId}-season`, membershipId = `${groupId}-membership`;
       await seedContext(groupId, seasonId, ownerWithoutPerson.uid); await seedV3(groupId, seasonId, membershipId, personIds.member);
+      assert.deepEqual((await call("getActiveGroupMemberTotalForOwnedGroup", { groupId }, ownerWithoutPerson)).body.result, { status: "READY", total: 1, seasonId });
       const collections = ["memberships", "activeMembershipGuards", "membershipLifecycleGuards", "membershipAdministrativeFinalizationIntents"];
       const before = await Promise.all(collections.map((name) => db.collection(name).count().get().then((snapshot) => snapshot.data().count)));
       const peopleBefore = (await db.collection("personas").count().get()).data().count;
@@ -95,6 +96,7 @@ test("E2-12 finalizacion administrativa Owner es atomica, exacta e idempotente",
       const finalized = await call("finalizeActiveGroupMemberForOwnedGroup", { groupId, membershipId, activationRef: prepared.body.result.activationRef, idempotencyKey: key }, ownerWithoutPerson);
       assert.equal(finalized.body.result.outcome, "MEMBERSHIP_FINALIZATION_CONFIRMED", JSON.stringify(finalized.body));
       assert.equal((await db.collection("memberships").doc(membershipId).get()).data().estado, "finalizada");
+      assert.equal((await call("getActiveGroupMemberTotalForOwnedGroup", { groupId }, ownerWithoutPerson)).body.result.total, 0);
       assert.equal((await db.collection("users").doc(ownerWithoutPerson.uid).get()).data().personaId, undefined);
       assert.equal((await db.collection("personas").count().get()).data().count, peopleBefore);
       assert.equal((await db.collection("memberships").count().get()).data().count, before[0]);
@@ -189,6 +191,7 @@ test("E2-12 finalizacion administrativa Owner es atomica, exacta e idempotente",
       const intentPath = `membershipAdministrativeFinalizationIntents/${membershipAdministrativeFinalizationIntentId(owner.uid, key)}`; for (const actor of [null, owner, member, adminUser]) { assert.equal(await direct(process.env.FIRESTORE_EMULATOR_HOST, projectId, intentPath, actor), 403); assert.equal(await direct(process.env.FIRESTORE_EMULATOR_HOST, projectId, intentPath, actor, "PATCH"), 403); }
     });
   } finally {
+    for (const collection of ["activeRosterContributions", "activeRosterSummaries"]) { const snapshot = await db.collection(collection).get(); for (const document of snapshot.docs) await document.ref.delete(); }
     await fixtures.registerQuery(db.collection("membershipAdministrativeFinalizationIntents")); await fixtures.cleanup(); await auth.deleteUsers([owner.uid, member.uid, outsider.uid, adminUser.uid, ownerWithoutPerson.uid]); await app.delete();
   }
 });

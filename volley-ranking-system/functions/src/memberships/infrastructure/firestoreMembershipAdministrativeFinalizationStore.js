@@ -80,7 +80,7 @@ function toResult(intent) {
 }
 
 function createFirestoreMembershipAdministrativeFinalizationStore({
-  db, membershipRepository, groupCapability, personCapability, now = () => Timestamp.now(),
+  db, membershipRepository, groupCapability, personCapability, activeRosterCounter, now = () => Timestamp.now(),
   transactionObserver = createMembershipTransactionObserver(),
 }) {
   if (!db || !membershipRepository || !groupCapability || !personCapability || typeof now !== "function") {
@@ -227,6 +227,7 @@ function createFirestoreMembershipAdministrativeFinalizationStore({
         const consumed = intentData(args, actorPerson, target, SUCCESS, completedAt, true);
         const projection = await dashboardTasks.prepare(transaction, { kind: "N31_AUDIENCE_CHANGED", idempotencyIdentity: args.intentId,
           groupId: args.groupId, resourceType: "MEMBERSHIP", resourceIds: [args.membershipId], fingerprintParts: [args.membershipId, "finalizada"] });
+        const rosterCounter = activeRosterCounter ? await activeRosterCounter.prepareFinalization(transaction, target.membership) : null;
         membershipRepository.persistTransition(transaction, transition);
         transaction.delete(target.activeRef);
         const finalizedLifecycle = {
@@ -238,6 +239,7 @@ function createFirestoreMembershipAdministrativeFinalizationStore({
         else transaction.create(target.lifecycleRef, finalizedLifecycle);
         transaction.create(intentRef, consumed);
         projection.commit();
+        rosterCounter?.commit();
         return Object.freeze({ intent: consumed });
       });
       return toResult(result.intent);

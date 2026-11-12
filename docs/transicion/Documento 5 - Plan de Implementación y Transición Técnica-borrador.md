@@ -39,7 +39,7 @@ Estado operativo del plan:
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
 - `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
-- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04, IUX-05 E IUX-06A/B/C1 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA; IUX-06D DEFINIDO Y C2 BLOQUEADO POR P01/P02`;
+- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04, IUX-05 E IUX-06A/B/C1 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06C2-P01 CERRADO TÉCNICAMENTE EN LOCAL Y UAT APROBADA; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA; IUX-06D DEFINIDO Y C2-P02 PENDIENTE`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -2800,6 +2800,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-070 | Registra la implementación y cierre técnico local de `IUX-06A — Explorar grupos`, incluidos catálogo compatible, privacidad por defecto, publicación Owner, descubrimiento mínimo, Solicitud canónica y ajustes de navegación/presentación surgidos de UAT | CERRADO TÉCNICAMENTE EN LOCAL; UAT HUMANA ACOTADA | IUX / IUX-06A / Explorar grupos | Gates locales completos y Emulator acreditan contratos, autorización, privacidad, duplicados y compatibilidad. La aceptación humana cubre las pestañas integradas de Economía y el recorrido aviso pendiente → Ver solicitud propia → Cancelar; sidebar y pestañas del detalle requieren reconfirmación autenticada. Economía fue un cambio visual: Conceptos y la reorganización siguen en IUX-06D. B, C1, C2 y D permanecen fuera; no hay deploy ni habilitación productiva y no se relajan gates IUX-02/E3. |
 | D5-071 | Registra la implementación y cierre técnico local de `IUX-06B — Mis grupos`: relaciones actuales deduplicadas, Solicitudes propias pendientes cancelables e Historial lazy paginado de Membresías finalizadas, incluidas las correcciones UAT de cobertura inicial y catálogo deportivo | CERRADO TÉCNICAMENTE EN LOCAL; UAT HUMANA ACOTADA APROBADA | IUX / IUX-06B / Mis grupos | El HTTP 400 se debía a una validación residual `deporte === "voleibol"`; el contrato ahora acepta el catálogo canónico y se prueba con fútbol. La regresión separa administración y Membresía, incluido Owner sin Membresía. La aceptación humana acredita el mismo Grupo UAT en `Todos`, `Administro` e `Integro`, Solicitudes pendientes/cancelación y Novedades/Integrantes sin recarga. Historial, paginación, reactivación, empates y estructura responsive tienen evidencia automatizada; Historial real y revisión visual completa 360/390 px/escritorio siguen pendientes. C1, C2 y D quedan fuera; no hay deploy ni habilitación productiva. |
 | D5-072 | Registra la implementación y cierre técnico local de `IUX-06C1 — Integrantes y Tu membresía`: padrón unificado en filas desplegables, Owner primero y sin duplicados, acciones canónicas, responsive y accesibilidad de teclado, incluidas las correcciones UAT de presentación y de lectura tardía posterior a aprobación | CERRADO TÉCNICAMENTE EN LOCAL; UAT HUMANA COMPLEMENTARIA PENDIENTE | IUX / IUX-06C1 / Integrantes / Solicitudes | Owner inicia contraído con o sin Membresía; conserva el flujo de Persona y Temporada, muestra `ACTIVA` sin ID de Temporada y usa los textos finales. La carrera `REQUEST_NOT_PENDING` provenía de una lectura deep-link anterior, no del comando confirmado: la Solicitud terminal se retira, el padrón se refresca y no se repite la aprobación. Dos cuentas UAT acreditan decisión `APPROVED`, persistencia, Membresía activa, Pendientes vacío y lectura member-scoped. La reproducción técnica y los gates locales están completos; aprobación post-corrección con una Solicitud humana nueva y revisión visual integral escritorio/Android siguen pendientes. C2/D y gates IUX-02/E3 no cambian; no hay deploy ni habilitación productiva. |
+| D5-073 | Adopta, implementa y cierra localmente `IUX-06C2-P01 — total exacto de integrantes` mediante contador derivado por Grupo y Temporada, contribuciones idempotentes por Membresía y generaciones reconciliables | CERRADO TÉCNICAMENTE EN LOCAL; UAT HUMANA APROBADA | IUX / IUX-06C2 / P01 / Integrantes | Todos los writers canónicos de alta, aprobación, reactivación, renovación, salida y finalización actualizan el contador en la transacción de la Membresía. `NO_OPEN_SEASON` confirma cero sin Temporada abierta; `READY` acredita cero o el total exacto de la Temporada abierta; `UNAVAILABLE` o error preservan la indisponibilidad cuando el total no puede determinarse. La consulta y reconciliación requieren Owner en backend; el Owner sólo cuenta con Membresía activa válida. UAT acredita la presentación final y Emulator fija sin Temporada `0` → Temporada vacía `0` → alta `1` → finalización `0`, además de comparación multipágina, reintentos, concurrencia, datos anteriores y cambio de Temporada. P02 queda fuera y pendiente; no hay migración, deploy ni habilitación productiva. |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -3075,6 +3076,20 @@ frontend ahora descarta ese resultado residual, retira la Solicitud terminal y r
 repetir el comando. La evidencia con Owner y solicitante acredita el resultado autoritativo y la
 Membresía activa. La revisión humana post-corrección completa en escritorio/Android queda pendiente;
 IUX-06C2/D y los gates IUX-02/E3 permanecen sin cambios.
+
+D5-073 registra la decisión, el cierre técnico local y la UAT aprobada de IUX-06C2-P01. El total de
+Integrantes se deriva por Grupo y Temporada mediante un resumen generacional y una contribución
+idempotente por Membresía. Los writers canónicos actualizan ambos en la misma transacción del cambio
+de estado; la carga inicial y la reconciliación revalidan el padrón paginado mientras comparten la
+generación con altas y bajas concurrentes. Un resumen `READY` expone el conteo exacto de la Temporada
+abierta; la ausencia confirmada de Temporada se distingue como `NO_OPEN_SEASON` y muestra
+«0 integrantes». `BUILDING`, error, incompatibilidad o falta de cobertura se presentan como
+«Total no disponible».
+Consulta y reconciliación requieren Owner en backend, y el Owner integra el total únicamente si posee
+una Membresía activa válida. La aceptación observa `NO_OPEN_SEASON(0)`, `READY(0)`, `READY(2)` y la
+reserva de `UNAVAILABLE`/error para totales no determinables; la regresión fija en un mismo Grupo
+sin Temporada `0` → Temporada vacía `0` → alta `1` → finalización `0`. P02 continúa separado y
+pendiente; rendimiento productivo, deploy y habilitación permanecen fuera de este cierre técnico local.
 
 “Requiere tu atención”, Agenda, notificaciones/campana, navbar/sidebar y roles o permisos permanecen
 fuera del incremento y sujetos a definición posterior. Presupuesto/rendimiento deben medirse durante

@@ -13,7 +13,7 @@
 | IUX-06A — Deportes, publicación y Explorar grupos | **LISTO PARA IMPLEMENTAR** | Autorización posterior y separada |
 | IUX-06B — Mis grupos, solicitudes e historial | **LISTO PARA IMPLEMENTAR** | Autorización posterior y separada |
 | IUX-06C1 — Integrantes y Tu membresía | **LISTO PARA IMPLEMENTAR** | Autorización posterior y separada |
-| IUX-06C2 — Total exacto y búsqueda completa | **DEFINIDO FUNCIONALMENTE; P01 Y P02 PENDIENTES** | Resolver ambas estrategias antes de implementar |
+| IUX-06C2 — Total exacto y búsqueda completa | **P01 CERRADO TÉCNICAMENTE EN LOCAL Y UAT APROBADA; P02 PENDIENTE** | Resolver P02 en un corte separado |
 | IUX-06D — Reorganización de Economía | **LISTO PARA IMPLEMENTAR** | Autorización posterior y separada |
 
 Esta ficha autoriza sólo la definición. No autoriza cambios de código, configuración, índices,
@@ -32,7 +32,8 @@ IUX-06 reduce fricción en cuatro recorridos relacionados sin convertirlos en un
 `IUX-06A` es el primer corte recomendado porque establece el vocabulario deportivo y la distinción
 entre Grupo activo y Grupo publicado que consumen los recorridos posteriores. A, B, C1 y D pueden
 implementarse sólo con una autorización posterior por corte o una autorización posterior que los
-enumere expresamente. C2 no entra en esa habilitación mientras P01 y P02 sigan abiertas.
+enumere expresamente. C2 completo no entra en esa habilitación mientras P02 siga abierta; P01 fue
+autorizado e implementado como corte técnico independiente.
 
 ## 2. Evidencia vigente y límites normativos
 
@@ -258,18 +259,51 @@ cargados o visibles. Menos de tres caracteres no inicia búsqueda. El resultado 
 reglas de autorización, validez y acciones del roster. Invitar a usuarios de la plataforma queda
 fuera de IUX-06.
 
-### 6.2 Pendientes bloqueantes
+### 6.2 Decisión técnica P01 y pendiente P02
 
-- **P01 — estrategia de conteo exacto:** elegir y presupuestar entre una agregación autorizada que
-  revalide la validez canónica o un contador/proyección mantenido y reconciliable. Debe definir
-  consistencia, concurrencia, reparación, costo, autorización, fallos y relación con Temporada.
+#### 6.2.1 P01 — contador derivado exacto
+
+Se adopta un contador materializado por Grupo y Temporada, no `count()` directo ni el tamaño de una
+página. `activeRosterSummaries` conserva generación, estado `BUILDING | READY | INCOMPATIBLE` y
+total; `activeRosterContributions` acredita una contribución idempotente por Membresía y generación.
+Resumen expone el conteo exacto cuando la Temporada abierta coincide y el resumen está `READY`.
+La ausencia confirmada de Temporada abierta se informa como `NO_OPEN_SEASON` y se presenta como
+**0 integrantes**, sin crear un resumen ficticio. `BUILDING`, ausencia de cobertura, error o
+incompatibilidad se presentan como **Total no disponible**.
+
+Las altas Owner, aprobaciones que crean, reactivan o renuevan, salidas y finalizaciones Owner o
+administrativas actualizan contribución y resumen en la misma transacción que cambia la Membresía.
+Crear o borrar la contribución condiciona el incremento o decremento, por lo que reintentos y
+operaciones concurrentes aplican la variación una sola vez. El Owner no recibe tratamiento especial:
+cuenta únicamente cuando posee una Membresía activa que supera la validación canónica.
+
+La carga inicial y la reconciliación abren una generación `BUILDING`, recorren el padrón activo por
+páginas y revalidan cada candidato dentro de transacción. Los writers concurrentes escriben contra
+esa misma generación; la contribución determinista evita pérdidas y doble conteo. Sólo al completar
+el recorrido se publica `READY`. Una fila activa incompatible deja `INCOMPATIBLE` y ningún total
+parcial queda visible. La lectura y la reconciliación son callables backend exclusivos del Owner;
+las colecciones derivadas no admiten acceso directo desde cliente.
+
+Estado: **cerrado técnicamente en local y UAT aprobada; sin deploy ni habilitación productiva**.
+
+La aceptación UAT acredita los tres resultados públicos finales: `NO_OPEN_SEASON` con `total: 0`
+cuando la ausencia de Temporada abierta fue confirmada; `READY` con cero o con el total exacto de la
+Temporada abierta; y `UNAVAILABLE` o error cuando cobertura, consistencia, autorización o lectura no
+permiten determinar el total. Resumen muestra «0 integrantes» para los dos ceros acreditados y
+reserva «Total no disponible» más «Reintentar» para el último caso. La evidencia automatizada fija
+la secuencia del mismo Grupo: sin Temporada `0` → Temporada vacía `0` → alta `1` → finalización `0`;
+también compara el contador con el recorrido canónico multipágina y cubre datos anteriores,
+reintentos, concurrencia, reactivación, renovación, salidas y cambio de Temporada.
+
+#### 6.2.2 P02 — pendiente bloqueante del C2 completo
+
 - **P02 — estrategia de búsqueda completa:** elegir una representación normalizada e indexable o un
   servicio de búsqueda autorizado que cubra todo el padrón. Debe definir normalización
   mayúsculas/tildes, prefijo mínimo, paginación, orden, actualización, revocación, costo y ausencia
   de escaneo ilimitado o filtrado sólo en frontend.
 
-Hasta resolver ambas, C2 no está listo para implementar. No se agregan índices, campos, proyecciones
-ni writers de forma especulativa.
+P02 queda expresamente fuera del corte P01. Hasta resolverla, C2 no está cerrado como conjunto y no
+se agregan campos, proyecciones ni writers de búsqueda de forma especulativa.
 
 ### 6.3 Criterios de aceptación y UAT condicionados
 

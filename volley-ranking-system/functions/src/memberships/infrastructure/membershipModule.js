@@ -23,6 +23,7 @@ const { createFirestoreMyMembershipReader } = require("./firestoreMyMembershipRe
 const { createFirestoreMyCurrentGroupMembershipsReader } = require("./firestoreMyCurrentGroupMembershipsReader");
 const { createFirestoreActiveGroupMembersForOwnerReader } = require("./firestoreActiveGroupMembersForOwnerReader");
 const { createFirestoreOwnGroupMembershipHistoryReader } = require("./firestoreOwnGroupMembershipHistoryReader");
+const { createFirestoreActiveRosterCounter } = require("./firestoreActiveRosterCounter");
 const { createMemberGroupContextAdapter, createOpenSeasonContextAdapter, createOwnedGroupContextAdapter, createSelfPersonContextAdapter } = require("./membershipExternalContexts");
 const { createGroupRosterContextCapability } = require("../../groups/public/groupRosterContextCapability");
 const { createActiveGroupMemberPersonCapability } = require("../../persons/public/activeGroupMemberPersonCapability");
@@ -40,7 +41,9 @@ const groupRepository = createFirestoreGroupRepository({ db });
 const membershipRepository = createFirestoreMembershipRepository({ db });
 const seasonRepository = createFirestoreSeasonRepository({ db });
 const membershipSeasonCapability = createGroupJoinRequestSeasonCapability({ db });
-const lifecycleGuard = createFirestoreMembershipLifecycleGuard({ db, groupRepository, seasonCapability: membershipSeasonCapability });
+const rosterGroupCapability = createGroupRosterContextCapability({ db });
+const activeRosterCounter = createFirestoreActiveRosterCounter({ db, membershipRepository, groupCapability: rosterGroupCapability });
+const lifecycleGuard = createFirestoreMembershipLifecycleGuard({ db, groupRepository, seasonCapability: membershipSeasonCapability, activeRosterCounter });
 const selfExitStore = createFirestoreMembershipSelfExitStore({
   db,
   membershipRepository,
@@ -49,8 +52,8 @@ const selfExitStore = createFirestoreMembershipSelfExitStore({
   userPersonLinkRepository,
   personRepository,
   lifecycleGuard,
+  activeRosterCounter,
 });
-const rosterGroupCapability = createGroupRosterContextCapability({ db });
 const rosterPersonCapability = createActiveGroupMemberPersonCapability({ db });
 const administrativeGroupCapability = createAdministrativeMembershipFinalizationContextCapability({ db });
 const administrativeFinalizationStore = createFirestoreMembershipAdministrativeFinalizationStore({
@@ -58,6 +61,7 @@ const administrativeFinalizationStore = createFirestoreMembershipAdministrativeF
   membershipRepository,
   groupCapability: administrativeGroupCapability,
   personCapability: createAdministrativeMembershipFinalizationPersonCapability({ db }),
+  activeRosterCounter,
 });
 
 module.exports = createMembershipService({
@@ -68,7 +72,7 @@ module.exports = createMembershipService({
   ownedGroupContext: createOwnedGroupContextAdapter({ groupService }),
   openSeasonContext: createOpenSeasonContextAdapter({ seasonService }),
   membershipRepository,
-  activeMembershipGuard: createFirestoreActiveMembershipGuard({ db, groupRepository, seasonCapability: membershipSeasonCapability }),
+  activeMembershipGuard: createFirestoreActiveMembershipGuard({ db, groupRepository, seasonCapability: membershipSeasonCapability, activeRosterCounter }),
   lifecycleGuard,
   selfExitStore,
   administrativeFinalizationStore,
@@ -92,4 +96,5 @@ module.exports = createMembershipService({
     groupCapability: rosterGroupCapability,
     personCapability: rosterPersonCapability,
   }),
+  activeRosterCounter,
 });

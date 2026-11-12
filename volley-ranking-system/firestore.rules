@@ -168,6 +168,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /activeRosterSummaries/{summaryId} {
+      allow read, write: if false;
+    }
+
+    match /activeRosterContributions/{contributionId} {
+      allow read, write: if false;
+    }
+
     match /membershipLifecycleGuards/{guardId} {
       allow read, write: if false;
     }

@@ -55,6 +55,7 @@ test("E2-18 renueva por Solicitud, recupera retry y preserva lineage", async () 
     createdMembershipId = first.body.result.decision.membership.id;
     assert.equal(retry.body.result.decision.membership.id, createdMembershipId);
     assert.notEqual(createdMembershipId, predecessorId);
+    assert.deepEqual((await call("getActiveGroupMemberTotalForOwnedGroup", { groupId })).body.result, { status: "READY", total: 1, seasonId: openSeasonId });
 
     const [predecessor, middleSeason, created, activeGuard, lifecycle, request, roots] = await Promise.all([
       db.collection("memberships").doc(predecessorId).get(), db.collection("seasons").doc(middleSeasonId).get(),
@@ -84,7 +85,7 @@ test("E2-18 renueva por Solicitud, recupera retry y preserva lineage", async () 
       await db.collection("memberships").doc(createdMembershipId).collection("validityPeriods").doc(membershipValidityPeriodId(createdMembershipId, 1)).delete().catch(() => {});
       refs.push(db.collection("memberships").doc(createdMembershipId));
     }
-    const dynamicCollections = ["groupJoinRequestDecisionIntents", "groupJoinRequestApprovalCoordinations", "activeMembershipGuards"];
+    const dynamicCollections = ["groupJoinRequestDecisionIntents", "groupJoinRequestApprovalCoordinations", "activeMembershipGuards", "activeRosterContributions", "activeRosterSummaries"];
     for (const collection of dynamicCollections) { const snapshot = await db.collection(collection).get(); for (const document of snapshot.docs) await document.ref.delete(); }
     for (const ref of refs.reverse()) await ref.delete().catch(() => {});
     await auth.deleteUsers([owner.uid, candidate.uid]); await app.delete();

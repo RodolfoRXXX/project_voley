@@ -5,6 +5,7 @@ const { buildMembership, buildRenewedMembership, InvalidMembershipStateError, ME
 const { MembershipAlreadyExistsError, MembershipError, MembershipGroupIncompatibleError, MembershipIdempotencyConflictError, MembershipIncompatibleStateError, MembershipNotAuthorizedError, MembershipOpenSeasonRequiredError, MembershipPredecessorIncompatibleError, MembershipSeasonIncompatibleError, MembershipSeasonNotReactivatableError } = require("../application/membershipErrors");
 const { activeMembershipGuardId, membershipLifecycleGuardId, membershipValidityPeriodId } = require("../application/membershipHashing");
 const { createFirestoreMembershipRepository } = require("../infrastructure/firestoreMembershipRepository");
+const { createFirestoreActiveRosterCounter } = require("../infrastructure/firestoreActiveRosterCounter");
 const { hydrateActiveMembershipGuard, assertMembershipCorrelated, guardIdempotencyHash, guardRequestHash, mapInfrastructureError } = require("../infrastructure/firestoreActiveMembershipGuard");
 const { hydrateMembershipLifecycleGuard, assertActiveLifecycleCorrelated, assertFinalizedMembershipCorrelated } = require("../infrastructure/firestoreMembershipLifecycleGuard");
 const { createDashboardTaskOutboxCapability } = require("../../dashboardTasks/public/dashboardTaskOutboxCapability");
@@ -13,9 +14,12 @@ const HASH = /^[a-f0-9]{64}$/;
 function validId(value) { return typeof value === "string" && value && value.trim() === value && !value.includes("/") && Buffer.byteLength(value, "utf8") <= 1500; }
 function validOrdinal(value) { return Number.isSafeInteger(value) && value > 0; }
 
-function createGroupJoinRequestMembershipCapability({ db, groupCapability, seasonCapability, now = () => Timestamp.now() }) {
+function createGroupJoinRequestMembershipCapability({ db, groupCapability, seasonCapability, activeRosterCounter, enableActiveRosterCounter = false, now = () => Timestamp.now() }) {
   if (!db || typeof now !== "function") throw new TypeError("db is required");
   const repository = createFirestoreMembershipRepository({ db });
+  const rosterCounter = activeRosterCounter || (enableActiveRosterCounter
+    ? createFirestoreActiveRosterCounter({ db, membershipRepository: repository, groupCapability: Object.freeze({}) })
+    : null);
   const dashboardTasks = createDashboardTaskOutboxCapability({ db, now });
   const refs = (personId, groupId) => ({ activeId: activeMembershipGuardId(groupId, personId), lifecycleId: membershipLifecycleGuardId(groupId, personId) });
 
@@ -122,10 +126,12 @@ function createGroupJoinRequestMembershipCapability({ db, groupCapability, seaso
               const candidate = buildRenewedMembership({ membershipId: input.membershipId, personId: input.personId, groupId: input.groupId, seasonId: input.seasonId, previousMembershipId: input.previousMembershipId });
               const projection = await dashboardTasks.prepare(transaction, { kind: "N31_AUDIENCE_CHANGED", idempotencyIdentity: `${input.decisionIntentId}:membership-activation`,
                 groupId: input.groupId, resourceType: "MEMBERSHIP", resourceIds: [input.membershipId], fingerprintParts: [input.membershipId, 1, "active"] });
+              const rosterCounterPlan = rosterCounter ? await rosterCounter.prepareActivation(transaction, candidate, 1) : null;
               repository.createInitial(transaction, candidate, activatedAt);
               transaction.create(state.activeRef, { membershipId: input.membershipId, personId: input.personId, groupId: input.groupId, seasonId: input.seasonId, activationOrdinal: 1, activatedAt, activationIdempotencyHash: input.idempotencyKeyHash, activationRequestHash: input.requestHash, guardVersion: 2 });
               transaction.set(state.lifecycleRef, { membershipId: input.membershipId, personId: input.personId, groupId: input.groupId, seasonId: input.seasonId, rootState: "active", lastActivationOrdinal: 1, lifecycleGuardVersion: 3 });
               projection.commit();
+              rosterCounterPlan?.commit();
               return Object.freeze({ outcome: "RENEWED_ACTIVE", membershipId: input.membershipId, personId: input.personId, groupId: input.groupId, seasonId: input.seasonId, activationOrdinal: 1 });
             }
             if (input.approvalEffect !== "REACTIVATE_MEMBERSHIP" || state.membership.membershipId !== input.membershipId || state.membership.seasonId !== input.seasonId) throw new MembershipIncompatibleStateError();
@@ -139,10 +145,12 @@ function createGroupJoinRequestMembershipCapability({ db, groupCapability, seaso
             const transition = reactivateMembership({ membership: state.membership, reactivatedAt: activatedAt, firstPeriodId, nextPeriodId, firstPeriod: state.firstPeriod, latestPeriod: state.latestPeriod });
             const projection = await dashboardTasks.prepare(transaction, { kind: "N31_AUDIENCE_CHANGED", idempotencyIdentity: `${input.decisionIntentId}:membership-activation`,
               groupId: input.groupId, resourceType: "MEMBERSHIP", resourceIds: [input.membershipId], fingerprintParts: [input.membershipId, input.expectedActivationOrdinal, "active"] });
+            const rosterCounterPlan = rosterCounter ? await rosterCounter.prepareActivation(transaction, transition.membership, input.expectedActivationOrdinal) : null;
             repository.persistTransition(transaction, transition);
             transaction.set(state.lifecycleRef, { membershipId: input.membershipId, personId: input.personId, groupId: input.groupId, seasonId: input.seasonId, rootState: "active", lastActivationOrdinal: input.expectedActivationOrdinal, lifecycleGuardVersion: 3 });
             transaction.create(state.activeRef, { membershipId: input.membershipId, personId: input.personId, groupId: input.groupId, seasonId: input.seasonId, activationOrdinal: input.expectedActivationOrdinal, activatedAt, activationIdempotencyHash: input.idempotencyKeyHash, activationRequestHash: input.requestHash, guardVersion: 2 });
             projection.commit();
+            rosterCounterPlan?.commit();
             return Object.freeze({ outcome: "REACTIVATED_ACTIVE", membershipId: input.membershipId, personId: input.personId, groupId: input.groupId, seasonId: input.seasonId, activationOrdinal: input.expectedActivationOrdinal });
           }
           if (input.approvalEffect !== "CREATE_MEMBERSHIP" || input.expectedActivationOrdinal !== 1) throw new MembershipIncompatibleStateError();
@@ -150,10 +158,12 @@ function createGroupJoinRequestMembershipCapability({ db, groupCapability, seaso
           const activatedAt = now(); const candidate = buildMembership({ membershipId: input.membershipId, personId: input.personId, groupId: input.groupId, seasonId: input.seasonId });
           const projection = await dashboardTasks.prepare(transaction, { kind: "N31_AUDIENCE_CHANGED", idempotencyIdentity: `${input.decisionIntentId}:membership-activation`,
             groupId: input.groupId, resourceType: "MEMBERSHIP", resourceIds: [input.membershipId], fingerprintParts: [input.membershipId, 1, "active"] });
+          const rosterCounterPlan = rosterCounter ? await rosterCounter.prepareActivation(transaction, candidate, 1) : null;
           repository.createInitial(transaction, candidate, activatedAt);
           transaction.create(state.activeRef, { membershipId: input.membershipId, personId: input.personId, groupId: input.groupId, seasonId: input.seasonId, activationOrdinal: 1, activatedAt, activationIdempotencyHash: input.idempotencyKeyHash, activationRequestHash: input.requestHash, guardVersion: 2 });
           transaction.create(state.lifecycleRef, { membershipId: input.membershipId, personId: input.personId, groupId: input.groupId, seasonId: input.seasonId, rootState: "active", lastActivationOrdinal: 1, lifecycleGuardVersion: 3 });
           projection.commit();
+          rosterCounterPlan?.commit();
           return Object.freeze({ outcome: "CREATED_ACTIVE", membershipId: input.membershipId, personId: input.personId, groupId: input.groupId, seasonId: input.seasonId, activationOrdinal: 1 });
         });
       } catch (error) { throw mapInfrastructureError(error); }

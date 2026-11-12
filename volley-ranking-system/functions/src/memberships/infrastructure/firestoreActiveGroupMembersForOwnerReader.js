@@ -2,7 +2,6 @@
 
 const { FieldPath, Timestamp } = require("firebase-admin/firestore");
 const { InvalidMembershipStateError, hydrateMembership } = require("../domain/membership");
-const { activeMembershipGuardId, membershipLifecycleGuardId } = require("../application/membershipHashing");
 const {
   MembershipAccountRequiredError,
   MembershipDependencyUnavailableError,
@@ -13,8 +12,7 @@ const {
   MembershipRosterContextChangedError,
 } = require("../application/membershipErrors");
 const { isTransientDependencyError } = require("../../shared/application/transientDependencyError");
-const { assertMembershipCorrelated, hydrateActiveMembershipGuard } = require("./firestoreActiveMembershipGuard");
-const { assertActiveLifecycleCorrelated, hydrateMembershipLifecycleGuard } = require("./firestoreMembershipLifecycleGuard");
+const { requireCanonicalActiveMembership } = require("./firestoreActiveMembershipIntegrity");
 
 function createFirestoreActiveGroupMembersForOwnerReader({ db, membershipRepository, groupCapability, personCapability }) {
   if (!db || !membershipRepository || !groupCapability || !personCapability) {
@@ -32,31 +30,6 @@ function createFirestoreActiveGroupMembersForOwnerReader({ db, membershipReposit
       value = value.startAfter(new Timestamp(position.seconds, position.nanoseconds), position.lastMembershipId);
     }
     return value.limit(pageSize + 1);
-  }
-
-  async function requireCandidateIntegrity({ transaction, candidate, groupId, seasonId }) {
-    if (candidate.groupId !== groupId || candidate.seasonId !== seasonId || candidate.estado !== "activa") {
-      throw new MembershipIncompatibleStateError("Membership candidate context is incompatible");
-    }
-    const activeSnapshot = await transaction.get(membershipRepository.activePairQuery({ personId: candidate.personId, groupId }));
-    const active = activeSnapshot.docs.map((document) => hydrateMembership(document.id, document.data()));
-    if (active.length !== 1 || active[0].membershipId !== candidate.membershipId) {
-      throw new MembershipIncompatibleStateError("Active Membership uniqueness is incompatible");
-    }
-    const guardId = activeMembershipGuardId(groupId, candidate.personId);
-    const guard = hydrateActiveMembershipGuard(
-      await transaction.get(db.collection("activeMembershipGuards").doc(guardId)),
-      { guardId, personId: candidate.personId, groupId }
-    );
-    if (!guard) throw new MembershipIncompatibleStateError("Active Membership guard is absent");
-    const periods = await membershipRepository.requirePeriodIntegrity({ transaction, membership: active[0] });
-    assertMembershipCorrelated(active[0], guard, periods.latestPeriod);
-    if ([4, 6].includes(active[0].schemaVersion)) {
-      const lifecycleId = membershipLifecycleGuardId(groupId, candidate.personId);
-      const lifecycle = hydrateMembershipLifecycleGuard(await transaction.get(db.collection("membershipLifecycleGuards").doc(lifecycleId)), { guardId: lifecycleId, personId: candidate.personId, groupId });
-      assertActiveLifecycleCorrelated(active[0], lifecycle, guard, periods.latestPeriod);
-    }
-    return active[0];
   }
 
   return Object.freeze({
@@ -82,7 +55,7 @@ function createFirestoreActiveGroupMembersForOwnerReader({ db, membershipReposit
           const rows = [];
           for (const document of included) {
             const candidate = hydrateMembership(document.id, document.data());
-            const membership = await requireCandidateIntegrity({ transaction, candidate, groupId, seasonId: context.seasonId });
+            const membership = await requireCanonicalActiveMembership({ db, transaction, membershipRepository, candidate, groupId, seasonId: context.seasonId });
             const person = await personCapability.getPresentation({ unitOfWork: transaction, personId: membership.personId });
             if (!["available", "unavailable"].includes(person?.status)) throw new MembershipIncompatibleStateError("Person projection is invalid");
             rows.push(Object.freeze({

@@ -117,6 +117,7 @@ function createFirestoreMembershipSelfExitStore({
   userPersonLinkRepository,
   personRepository,
   lifecycleGuard,
+  activeRosterCounter,
   now = () => Timestamp.now(),
 }) {
   if (!db || !membershipRepository || !groupRepository || !seasonRepository || !userPersonLinkRepository
@@ -235,6 +236,7 @@ function createFirestoreMembershipSelfExitStore({
         });
         const projection = await dashboardTasks.prepare(transaction, { kind: "N31_AUDIENCE_CHANGED", idempotencyIdentity: args.intentId,
           groupId: args.groupId, resourceType: "MEMBERSHIP", resourceIds: [membership.membershipId], fingerprintParts: [membership.membershipId, "finalizada"] });
+        const rosterCounter = activeRosterCounter ? await activeRosterCounter.prepareFinalization(transaction, membership) : null;
         membershipRepository.persistTransition(transaction, transition);
         transaction.delete(activeRef);
         const finalizedLifecycle = {
@@ -251,6 +253,7 @@ function createFirestoreMembershipSelfExitStore({
         else transaction.create(lifecycleRef, finalizedLifecycle);
         transaction.create(intentRef, intentData);
         projection.commit();
+        rosterCounter?.commit();
         return toResult(intentData);
       });
     } catch (error) {

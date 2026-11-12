@@ -23,6 +23,10 @@ export interface FinalizeActiveGroupMemberResult {
   outcome: "MEMBERSHIP_FINALIZATION_CONFIRMED";
   effect: { membershipId: string; finalizedAt: string };
 }
+export type ActiveGroupMemberTotalResult =
+  | { status: "READY"; total: number; seasonId: string }
+  | { status: "NO_OPEN_SEASON"; total: 0 }
+  | { status: "UNAVAILABLE" };
 
 const createCallable = httpsCallable<CreateMyMembershipInput, CreateMyMembershipResult>(functions, "createMyMembershipForOwnedGroup");
 const getCallable = httpsCallable<{ groupId: string }, { membership: OwnMembership | null }>(functions, "getMyMembershipForOwnedGroup");
@@ -32,6 +36,8 @@ const getMyCurrentGroupContextCallable = httpsCallable<{ groupId: string }, MyCu
 const listMyGroupMembershipHistoryCallable = httpsCallable<{ pageSize?: number; cursor?: string }, ListMyGroupMembershipHistoryResult>(functions, "listMyGroupMembershipHistory");
 const leaveMyGroupCallable = httpsCallable<{ groupId: string; idempotencyKey: string }, LeaveMyGroupMembershipResult>(functions, "leaveMyGroupMembership");
 const listActiveGroupMembersCallable = httpsCallable<{ groupId: string; pageSize?: number; cursor?: string }, ListActiveGroupMembersResult>(functions, "listActiveGroupMembersForOwnedGroup");
+const getActiveGroupMemberTotalCallable = httpsCallable<{ groupId: string }, ActiveGroupMemberTotalResult>(functions, "getActiveGroupMemberTotalForOwnedGroup");
+const reconcileActiveGroupMemberTotalCallable = httpsCallable<{ groupId: string }, ActiveGroupMemberTotalResult>(functions, "reconcileActiveGroupMemberTotalForOwnedGroup");
 const prepareAdministrativeFinalizationCallable = httpsCallable<{ groupId: string; membershipId: string }, PrepareActiveGroupMemberFinalizationResult>(functions, "prepareActiveGroupMemberFinalizationForOwnedGroup");
 const finalizeAdministrativeFinalizationCallable = httpsCallable<{ groupId: string; membershipId: string; activationRef: string; idempotencyKey: string }, FinalizeActiveGroupMemberResult>(functions, "finalizeActiveGroupMemberForOwnedGroup");
 const getMembershipCargoCallable = httpsCallable<{ groupId: string; membershipId: string }, MembershipCargoDetail>(functions, "getMembershipCargoForOwnedGroup");
@@ -63,6 +69,14 @@ export async function leaveMyGroupMembership(input: { groupId: string; idempoten
 
 export async function listActiveGroupMembersForOwnedGroup(input: { groupId: string; pageSize?: number; cursor?: string }): Promise<ListActiveGroupMembersResult> {
   return (await listActiveGroupMembersCallable(input)).data;
+}
+
+export async function getActiveGroupMemberTotalForOwnedGroup(groupId: string): Promise<ActiveGroupMemberTotalResult> {
+  return (await getActiveGroupMemberTotalCallable({ groupId })).data;
+}
+
+export async function reconcileActiveGroupMemberTotalForOwnedGroup(groupId: string): Promise<ActiveGroupMemberTotalResult> {
+  return (await reconcileActiveGroupMemberTotalCallable({ groupId })).data;
 }
 
 export async function listMyGroupMembershipHistory(input: { pageSize?: number; cursor?: string } = {}): Promise<ListMyGroupMembershipHistoryResult> {

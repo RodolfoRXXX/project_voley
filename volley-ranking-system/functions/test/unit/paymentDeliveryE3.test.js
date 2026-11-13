@@ -1,6 +1,6 @@
 "use strict";
 const assert = require("node:assert/strict"); const fs = require("node:fs"); const path = require("node:path"); const { pathToFileURL } = require("node:url"); const test = require("node:test");
-const { validateReject, validateReport, validateGrantList, validateOwnerObligationDetail, validateReportedForPayments } = require("../../src/paymentDeliveries/application/paymentDeliveryContract");
+const { validateReject, validateReport, validateGrantList, validateOwnerObligationDetail, validateReportedForPayments, validateResolvedList } = require("../../src/paymentDeliveries/application/paymentDeliveryContract");
 const { validateListActiveGroupMembersForOwnedGroupPayload } = require("../../src/memberships/application/membershipContract");
 const { paymentUpdate, requestHash, transactionBudget } = require("../../src/paymentDeliveries/domain/paymentDelivery");
 
@@ -31,6 +31,12 @@ test("E3-04 readers focales aceptan hasta 20 obligaciones visibles y contratos c
   assert.throws(() => validateOwnerObligationDetail({ groupId: "group-1", paymentId: "payment-1", actorId: "forbidden" }), (error) => error.reason === "VALIDATION_FAILED");
 });
 
+test("IUX-06D valida el lector paginado Owner-only de avisos resueltos", () => {
+  assert.deepEqual(validateResolvedList({ groupId: "group-1", pageSize: 20 }), { groupId: "group-1", pageSize: 20, cursor: undefined });
+  assert.throws(() => validateResolvedList({ groupId: "group-1", decisionState: "CONFIRMED" }), (error) => error.reason === "VALIDATION_FAILED");
+  assert.throws(() => validateResolvedList({ groupId: "group-1", pageSize: 51 }), (error) => error.reason === "VALIDATION_FAILED");
+});
+
 test("E3-03 deriva saldos/revisión y preserva FULL exacto", () => {
   const payment = { amountMinor: 1000, confirmedIncomeMinor: 0, reversedIncomeMinor: 0, economicRevision: 1 };
   const applied = paymentUpdate(payment, 700, 0); assert.deepEqual(applied, { confirmedIncomeMinor: 700, reversedIncomeMinor: 0, netConfirmedIncomeMinor: 700, balanceMinor: 300, economicState: "PARTIAL", estado: "PARTIAL", economicRevision: 2, schemaVersion: 2 });
@@ -58,9 +64,24 @@ test("E3-03 UAT focal muestra economía vigente, advertencia y accesos separados
   const access = fs.readFileSync(path.join(frontend, "components/paymentDeliveries/OwnerPaymentReviewAccessSection.tsx"), "utf8");
   const memberships = fs.readFileSync(path.join(frontend, "components/memberships/MyCurrentGroupMembershipsSection.tsx"), "utf8");
   assert.match(economy, /obligationState\(item\.estado\)/); assert.match(economy, /item\.balanceMinor/); assert.doesNotMatch(economy, /aria-label="Estado económico: Pendiente de pago"/);
-  assert.match(admin, /onEconomyChanged/); assert.match(admin, /Esta acción corrige el registro del pago; no devuelve dinero\./);
+  assert.match(admin, /onEconomyChanged/); assert.doesNotMatch(admin, /La reversión Owner/);
   assert.match(access, /reviewAccessErrorMessage/); assert.match(access, /Todavía no hay concesiones de revisión/); assert.match(access, /Este acceso no concede Tesorería/);
   assert.match(memberships, /getMyPaymentReviewContext/); assert.match(memberships, /Revisar entregas de terceros/); assert.match(memberships, /Abrir Economía · sólo consulta/);
+});
+
+test("IUX-06D separa Conceptos, Deudas, avisos resueltos e Historial sin ampliar capabilities", () => {
+  const frontend = path.resolve(__dirname, "../../../../volley-ranking-frontend/src");
+  const page = fs.readFileSync(path.join(frontend, "app/(protected)/dashboard/groups/[groupId]/economy/page.tsx"), "utf8");
+  const economy = fs.readFileSync(path.join(frontend, "components/payments/OwnerEconomySection.tsx"), "utf8");
+  const notices = fs.readFileSync(path.join(frontend, "components/paymentDeliveries/PaymentDeliveriesAdminSection.tsx"), "utf8");
+  assert.match(page, /id: "debts"[\s\S]*id: "notices"[\s\S]*id: "history"[\s\S]*id: "concepts"/);
+  assert.match(page, /tab === "history"[\s\S]*RegisteredIncomeMovementsSection/);
+  assert.doesNotMatch(page, /tab === "debts"[\s\S]{0,120}RegisteredIncomeMovementsSection/);
+  assert.match(economy, /view === "concepts"/); assert.match(economy, /view === "debts"/);
+  assert.match(economy, /role="dialog"[\s\S]*create-charge-concept-title/); assert.match(economy, /requestAnimationFrame\(\(\) => createConceptTrigger\.current\?\.focus\(\)\)/);
+  assert.doesNotMatch(economy, /Obligaciones pendientes por integrante y contexto|Cada tarjeta muestra sólo/);
+  assert.match(notices, /Avisos resueltos/); assert.match(notices, /Resuelto por registro administrativo/);
+  assert.match(notices, /Acá podés ver los avisos de pago que ya se revisaron y cómo se resolvió cada uno/);
 });
 
 test("E3-03 serializa la carga Owner con los límites de cada contrato y el retry reutiliza el loader", async () => {

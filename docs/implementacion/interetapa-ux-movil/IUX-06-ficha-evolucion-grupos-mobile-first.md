@@ -14,7 +14,7 @@
 | IUX-06B — Mis grupos, solicitudes e historial | **LISTO PARA IMPLEMENTAR** | Autorización posterior y separada |
 | IUX-06C1 — Integrantes y Tu membresía | **LISTO PARA IMPLEMENTAR** | Autorización posterior y separada |
 | IUX-06C2 — Total exacto y búsqueda completa | **P01 INTEGRADO EN DEV; P02 CERRADO LOCALMENTE Y UAT APROBADA** | Revisar los commits P02 antes de integrar |
-| IUX-06D — Reorganización de Economía | **LISTO PARA IMPLEMENTAR** | Autorización posterior y separada |
+| IUX-06D — Reorganización de Economía | **CERRADO LOCALMENTE; UAT APROBADA** | Revisar commits locales antes de integrar |
 
 Esta ficha autoriza sólo la definición. No autoriza cambios de código, configuración, índices,
 Rules, datos, migraciones, despliegues ni habilitación productiva. Los permisos actuales, la
@@ -404,6 +404,21 @@ autorizada.
 - Recepción informada, recepción administrativa, reversión y movimientos asociados en Historial.
 - Abrir deep-links existentes y nuevos, usar Atrás/Adelante y cambiar de Grupo sin fuga de estado.
 - Responsive, teclado, foco, lector de pantalla, zoom 200 % y ausencia de scroll horizontal doble.
+
+### 7.4 Cierre local y UAT aprobada
+
+Estado: **cerrado y versionado localmente sobre `953984bacaffff618f85b8074e6fada2506ce511`; UAT
+humana aprobada para el build `NlxWGcw83yQphYlrWDiE2`; sin deploy ni habilitación productiva**.
+
+La implementación ordena `Deudas | Pagos informados | Historial | Conceptos`, incorpora el lector
+paginado Owner-only de avisos resueltos y conserva permisos, restricciones de archivo y enlaces
+directos. La aceptación humana comprende la reorganización, las secciones y resultados económicos,
+las capacidades delegadas y los ajustes finales: salida en fila discreta con confirmación interna,
+encabezados uniformes, entrada a Integrantes sin foco/scroll inicial hacia Solicitudes e Historia de
+pagos contraída al entrar. Las pruebas automatizadas cubren contratos, autorización, estados,
+relaciones sin doble pago, reversión, navegación, recarga, foco, responsive 390×844 y escritorio.
+ESLint focal pasa; el lint global conserva 31 errores y 8 warnings preexistentes fuera del corte.
+Los datos UAT se preservaron.
 
 ## 8. Seguridad, consistencia y pruebas comunes
 

@@ -20,6 +20,7 @@ function validateMyMembershipNotices(data) { return contextualPage(data); }
 function validateMyPaymentApplications(data) { const page = optionalPage(data, ["paymentId"]); if (page.pageSize > 20) throw new DeliveryValidationError(); return Object.freeze({ paymentId: d.id(data.paymentId), ...page }); }
 function validateGet(data) { closed(data, ["deliveryId"]); return Object.freeze({ deliveryId: d.id(data.deliveryId) }); }
 function validateAdminList(data) { const page = optionalPage(data, ["groupId", "decisionState"]); if (data.decisionState !== "REPORTED") throw new DeliveryValidationError(); return Object.freeze({ groupId: d.id(data.groupId), decisionState: "REPORTED", ...page }); }
+function validateResolvedList(data) { const page = optionalPage(data, ["groupId"]); return Object.freeze({ groupId: d.id(data.groupId), ...page }); }
 function validateAdminGet(data) { closed(data, ["groupId", "deliveryId"]); return Object.freeze({ groupId: d.id(data.groupId), deliveryId: d.id(data.deliveryId) }); }
 function validateHistory(data) { const optional = ["applicationState", "membershipId", "confirmedFrom", "confirmedTo"].filter((field) => data?.[field] !== undefined); const page = optionalPage(data, ["groupId", ...optional]); if (data.applicationState !== undefined && !["APPLIED", "REVERSED"].includes(data.applicationState)) throw new DeliveryValidationError(); const date = (value) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) throw new DeliveryValidationError(); return value; }; return Object.freeze({ groupId: d.id(data.groupId), ...page, ...(data.applicationState ? { applicationState: data.applicationState } : {}), ...(data.membershipId ? { membershipId: d.id(data.membershipId) } : {}), ...(data.confirmedFrom ? { confirmedFrom: date(data.confirmedFrom) } : {}), ...(data.confirmedTo ? { confirmedTo: date(data.confirmedTo) } : {}) }); }
 function validateReviewGrant(data) { closed(data, ["groupId", "membershipId", "idempotencyKey"]); return Object.freeze({ groupId: d.id(data.groupId), membershipId: d.id(data.membershipId), idempotencyKey: d.key(data.idempotencyKey) }); }
@@ -34,6 +35,6 @@ function validateReportedForPayments(data) {
   return Object.freeze({ groupId: d.id(data.groupId), obligations: Object.freeze(obligations) });
 }
 function validateOwnerObligationDetail(data) { const page = optionalPage(data, ["groupId", "paymentId"]); return Object.freeze({ groupId: d.id(data.groupId), paymentId: d.id(data.paymentId), ...page }); }
-module.exports = { validateAdminGet, validateAdminList, validateDeliveryCommand, validateGet, validateGrantList, validateGroup,
+module.exports = { validateAdminGet, validateAdminList, validateResolvedList, validateDeliveryCommand, validateGet, validateGrantList, validateGroup,
   validateHistory, validateMyMembershipNotices, validateMyPaymentApplications, validateOwnList, validateOwnerObligationDetail, validateReject, validateReport, validateReportedForPayments,
   validateReverse, validateReviewGrant, validateReviewRevoke };

@@ -19,6 +19,7 @@ export function MembershipSelfExitControl({ groupId, membershipId, groupName, vi
 }) {
   const machine = useRef(createMembershipSelfExitMachine());
   const sending = useRef(false);
+  const triggerButton = useRef<HTMLButtonElement>(null);
   const cancelButton = useRef<HTMLButtonElement>(null);
   const result = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<ExitView>("idle");
@@ -44,6 +45,7 @@ export function MembershipSelfExitControl({ groupId, membershipId, groupName, vi
   const close = useCallback(() => {
     setReason(null);
     setView(machine.current.cancel().state as ExitView);
+    requestAnimationFrame(() => triggerButton.current?.focus());
   }, []);
 
   const confirm = useCallback(async () => {
@@ -75,17 +77,20 @@ export function MembershipSelfExitControl({ groupId, membershipId, groupName, vi
     onConfirmed();
   }, [onConfirmed]);
 
-  return <div className="mt-6">
-    {view === "idle" ? <button type="button" className="min-h-11 rounded-lg border border-red-400 px-4 py-2 font-semibold text-red-800 focus-visible:outline-2 focus-visible:outline-offset-2" onClick={open}>Salir del grupo</button> : null}
-    {view === "confirmation" ? <div className="rounded-xl border border-amber-300 bg-amber-50 p-4" role="alertdialog" aria-modal="true" aria-labelledby="leave-group-title" aria-describedby="leave-group-description" onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
-      <h3 id="leave-group-title" className="font-semibold text-amber-950">Confirmar “Salir del grupo”</h3>
-      <p id="leave-group-description" className="mt-2 text-sm leading-6 text-amber-950">Vas a finalizar tu propia Membresía activa en {groupName}. Podrás volver a solicitar ingreso más adelante.</p>
-      {viewerIsOwner ? <p className="mt-2 text-sm font-semibold text-amber-950">Seguirás siendo Owner del Grupo. Esta acción no abandona ni transfiere la propiedad.</p> : null}
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row"><button ref={cancelButton} type="button" className="min-h-11 rounded-lg border border-slate-400 px-4 py-2 font-semibold" onClick={close}>Cancelar</button><button type="button" className="min-h-11 rounded-lg bg-red-700 px-4 py-2 font-semibold text-white" onClick={() => void confirm()}>Sí, salir del grupo</button></div>
+  return <section className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4" aria-labelledby="leave-group-card-title">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="min-w-0 flex-1"><h2 id="leave-group-card-title" className="font-semibold">Salir del grupo</h2><p className="mt-1 text-sm text-[var(--text-muted)]">Desde acá podés dejar de participar en este grupo.</p></div>
+      {view === "idle" ? <button ref={triggerButton} type="button" className="min-h-11 shrink-0 rounded-lg border border-red-200 bg-red-50 px-4 py-2 font-semibold text-red-700 hover:bg-red-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600" onClick={open}>Salir del grupo</button> : null}
+    </div>
+    {view === "confirmation" ? <div className="mt-4 border-t border-slate-200 pt-4" role="alertdialog" aria-labelledby="leave-group-title" aria-describedby="leave-group-description" onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
+      <h3 id="leave-group-title" className="font-semibold">Confirmar salida</h3>
+      <p id="leave-group-description" className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Vas a finalizar tu propia Membresía activa en {groupName}. Podrás volver a solicitar ingreso más adelante.</p>
+      {viewerIsOwner ? <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Seguirás siendo Owner del Grupo. Esta acción no abandona ni transfiere la propiedad.</p> : null}
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row"><button ref={cancelButton} type="button" className="min-h-11 rounded-lg border border-slate-400 px-4 py-2 font-semibold" onClick={close}>Cancelar</button><button type="button" className="min-h-11 rounded-lg bg-red-700 px-4 py-2 font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2" onClick={() => void confirm()}>Confirmar salida</button></div>
     </div> : null}
     {view === "submitting" ? <p className="rounded-xl border p-4" role="status">Confirmando tu salida…</p> : null}
     {view === "recoverable" ? <div className="rounded-xl border border-red-300 bg-red-50 p-4" role="alert"><p>{getMembershipErrorMessage(reason || "INTERNAL_ERROR")}</p><button type="button" className="mt-3 min-h-11 rounded-lg border border-red-400 px-4 font-semibold" onClick={() => void confirm()}>Reintentar la misma salida</button></div> : null}
     {view === "season-closed" || view === "blocked" ? <div className={`rounded-xl border p-4 ${view === "season-closed" ? "border-amber-300 bg-amber-50" : "border-red-300 bg-red-50"}`} role="alert"><p>{getMembershipErrorMessage(view === "season-closed" ? "MEMBERSHIP_SEASON_NOT_MODIFIABLE" : reason || "INTERNAL_ERROR")}</p><button type="button" className="mt-3 min-h-11 rounded-lg border px-4 font-semibold" onClick={reset}>Actualizar participación</button></div> : null}
     {view === "confirmed" ? <div ref={result} tabIndex={-1} className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 focus-visible:outline-2" aria-live="polite"><p className="font-semibold text-emerald-950">Salida confirmada.</p><p className="mt-1 text-sm text-emerald-900">La Membresía dejó de aparecer entre tus pertenencias activas.</p></div> : null}
-  </div>;
+  </section>;
 }

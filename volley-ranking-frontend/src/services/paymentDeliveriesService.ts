@@ -10,6 +10,7 @@ const getMineCall = call<{ deliveryId: string }, PaymentDelivery>("getMyPaymentD
 const listMembershipNoticesCall = call<{ groupId: string; membershipId: string; pageSize?: number; cursor?: string }, { items: MembershipPaymentNotice[]; nextCursor?: string }>("listMyMembershipPaymentNotices");
 const listMyApplicationsCall = call<{ paymentId: string; pageSize?: number; cursor?: string }, { items: OwnPaymentApplication[]; nextCursor?: string }>("listMyPaymentObligationApplications");
 const listPendingCall = call<{ groupId: string; decisionState: "REPORTED"; pageSize?: number; cursor?: string }, PaymentDeliveryPage>("listGroupPaymentDeliveries");
+const listResolvedCall = call<{ groupId: string; pageSize?: number; cursor?: string }, PaymentDeliveryPage>("listOwnerResolvedPaymentDeliveries");
 const getPendingCall = call<{ groupId: string; deliveryId: string }, PaymentDelivery>("getGroupPaymentDelivery");
 const listReportedForPaymentsCall = call<{ groupId: string; obligations: Array<{ paymentId: string; membershipId: string }> }, { items: ReportedPaymentDeliveryMatch[] }>("listReportedPaymentDeliveriesForPayments");
 const getOwnerObligationDetailCall = call<{ groupId: string; paymentId: string; pageSize?: number; cursor?: string }, OwnerPaymentObligationDetail>("getOwnerPaymentObligationDetail");
@@ -31,6 +32,7 @@ export const getMyPaymentDelivery = async (deliveryId: string) => (await getMine
 export const listMyMembershipPaymentNotices = async (input: { groupId: string; membershipId: string; pageSize?: number; cursor?: string }) => (await listMembershipNoticesCall({ groupId: input.groupId, membershipId: input.membershipId, ...(input.pageSize === undefined ? {} : { pageSize: input.pageSize }), ...(input.cursor === undefined ? {} : { cursor: input.cursor }) })).data;
 export const listMyPaymentObligationApplications = async (input: { paymentId: string; pageSize?: number; cursor?: string }) => (await listMyApplicationsCall({ paymentId: input.paymentId, ...(input.pageSize === undefined ? {} : { pageSize: input.pageSize }), ...(input.cursor === undefined ? {} : { cursor: input.cursor }) })).data;
 export const listGroupPaymentDeliveries = async (input: { groupId: string; decisionState: "REPORTED"; pageSize?: number; cursor?: string }) => (await listPendingCall(input)).data;
+export const listOwnerResolvedPaymentDeliveries = async (input: { groupId: string; pageSize?: number; cursor?: string }) => (await listResolvedCall(input)).data;
 export const getGroupPaymentDelivery = async (input: { groupId: string; deliveryId: string }) => (await getPendingCall(input)).data;
 export const listReportedPaymentDeliveriesForPayments = async (input: { groupId: string; obligations: Array<{ paymentId: string; membershipId: string }> }) => (await listReportedForPaymentsCall(input)).data;
 export const getOwnerPaymentObligationDetail = async (input: { groupId: string; paymentId: string; pageSize?: number; cursor?: string }) => (await getOwnerObligationDetailCall(input)).data;

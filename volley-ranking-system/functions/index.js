@@ -100,6 +100,7 @@ exports.listMyMembershipPaymentNotices = require("./callables/listMyMembershipPa
 exports.listMyPaymentObligationApplications = require("./callables/listMyPaymentObligationApplications");
 exports.getMyPaymentDelivery = require("./callables/getMyPaymentDelivery");
 exports.listGroupPaymentDeliveries = require("./callables/listGroupPaymentDeliveries");
+exports.listOwnerResolvedPaymentDeliveries = require("./callables/listOwnerResolvedPaymentDeliveries");
 exports.getGroupPaymentDelivery = require("./callables/getGroupPaymentDelivery");
 exports.listReportedPaymentDeliveriesForPayments = require("./callables/listReportedPaymentDeliveriesForPayments");
 exports.getOwnerPaymentObligationDetail = require("./callables/getOwnerPaymentObligationDetail");

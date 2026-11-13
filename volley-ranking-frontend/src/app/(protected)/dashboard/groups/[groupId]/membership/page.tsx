@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useGroupFrame } from "@/components/groups/GroupFrame";
+import { GroupSectionHeader } from "@/components/groups/GroupSectionHeader";
 import { MembershipSelfExitControl } from "@/components/memberships/MembershipSelfExitControl";
 
 export default function GroupMembershipPage() {
@@ -23,11 +24,11 @@ export default function GroupMembershipPage() {
 
   if (legacyEconomyLink) return <p role="status" className="rounded-xl border p-5">Abriendo Economía personal…</p>;
 
-  return <section aria-labelledby="membership-title" className="min-w-0">
-    <h1 id="membership-title" className="text-2xl font-bold tracking-tight">Mi participación</h1>
+  return <section aria-label="Mi participación" className="min-w-0">
+    <GroupSectionHeader title="Mi participación" />
     {!context ? <div role="alert" className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-5"><p>No pudimos acreditar una Membresía vigente para esta vista.</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" className="min-h-11 rounded-lg border border-amber-500 px-4 font-semibold" onClick={retryAccess}>Reintentar</button><Link href="/dashboard/groups" className="inline-flex min-h-11 items-center rounded-lg border px-4 font-semibold">Volver a Mis grupos</Link></div></div> : null}
     {context ? <>
-      <dl className="mt-5 grid gap-4 rounded-2xl border border-[var(--border)] p-5 sm:grid-cols-3">
+      <dl className="grid gap-4 rounded-2xl border border-[var(--border)] p-5 sm:grid-cols-3">
         <div><dt className="text-sm text-[var(--text-muted)]">Grupo</dt><dd className="mt-1 break-words font-semibold">{context.group.nombre}</dd><dd className="mt-1 text-sm text-[var(--text-muted)]">{groupSportLabel(context.group.deporte)} · {context.group.estado === "activo" ? "Activo" : context.group.estado}</dd></div>
         <div><dt className="text-sm text-[var(--text-muted)]">Temporada</dt><dd className="mt-1 break-words font-semibold">{context.season.nombre}</dd></div>
         <div><dt className="text-sm text-[var(--text-muted)]">Vínculo</dt><dd className="mt-1 font-semibold">Membresía activa</dd><dd className="mt-1 text-sm text-[var(--text-muted)]">Desde {new Date(context.membership.fechaIngreso).toLocaleDateString("es-AR", { timeZone: "UTC" })}</dd></div>

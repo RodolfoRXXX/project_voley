@@ -7,7 +7,9 @@ import {
   deliveryErrorMessage,
   deliveryErrorReason,
   getGroupPaymentDelivery,
+  getOwnerPaymentDeliveryHistory,
   listGroupPaymentDeliveries,
+  listOwnerResolvedPaymentDeliveries,
   newDeliveryKey,
   rejectPaymentDelivery,
 } from "@/services/paymentDeliveriesService";
@@ -19,13 +21,50 @@ type Intent =
 
 const person = (item: PaymentDelivery) =>
   item.person?.status === "AVAILABLE" ? `${item.person.firstName} ${item.person.lastName}` : "Persona no disponible";
+const resolvedState = (item: PaymentDelivery) => item.decisionState === "CONFIRMED"
+  ? item.applicationState === "REVERSED" ? "Confirmado · ingreso revertido" : "Confirmado"
+  : item.decisionState === "REJECTED" ? "Rechazado" : "Resuelto por registro administrativo";
+
+function OwnerResolvedPaymentDeliveries({ groupId, onOpen }: { groupId: string; onOpen: (item: PaymentDelivery) => void }) {
+  const [items, setItems] = useState<PaymentDelivery[]>([]);
+  const [cursor, setCursor] = useState<string>();
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [error, setError] = useState("");
+  const busy = useRef(false);
+  const load = useCallback(async (append = false) => {
+    if (busy.current) return;
+    busy.current = true;
+    if (!append) setStatus("loading");
+    setError("");
+    try {
+      const page = await listOwnerResolvedPaymentDeliveries({ groupId, pageSize: 20, ...(append && cursor ? { cursor } : {}) });
+      setItems((current) => append ? [...current, ...page.items] : page.items);
+      setCursor(page.nextCursor);
+      setStatus("ready");
+    } catch (cause) {
+      setError(deliveryErrorMessage(deliveryErrorReason(cause)));
+      if (!append) setItems([]);
+      setStatus("error");
+    } finally { busy.current = false; }
+  }, [cursor, groupId]);
+  useEffect(() => { void load(false); }, [groupId]); // eslint-disable-line react-hooks/exhaustive-deps
+  return <section className="space-y-4 border-t border-[var(--border)] pt-5" aria-labelledby="resolved-deliveries-title">
+    <div><h3 id="resolved-deliveries-title" className="text-lg font-semibold">Avisos resueltos</h3><p className="mt-1 text-sm text-[var(--text-muted)]">Acá podés ver los avisos de pago que ya se revisaron y cómo se resolvió cada uno.</p></div>
+    {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
+    {status === "loading" ? <p role="status">Cargando avisos resueltos…</p> : null}
+    {status === "error" ? <button type="button" className="min-h-11 rounded-lg border px-4 font-semibold" onClick={() => void load(false)}>Reintentar avisos resueltos</button> : null}
+    {status === "ready" ? <>{items.length ? <ul className="divide-y rounded-xl border">{items.map((item) => <li key={item.deliveryId} className="flex flex-wrap items-center justify-between gap-3 p-3"><div><strong>{person(item)}</strong><p className="text-sm text-[var(--text-muted)]">{item.declaredPaidOn} · {formatArs(item.declaredTotalMinor)} · {resolvedState(item)}</p></div><button type="button" className="min-h-11 rounded-lg border px-4 font-semibold" onClick={() => onOpen(item)}>Ver aviso</button></li>)}</ul> : <p className="text-sm text-[var(--text-muted)]">Todavía no hay avisos resueltos.</p>}{cursor ? <button type="button" className="min-h-11 rounded-lg border px-4 font-semibold" onClick={() => void load(true)}>Cargar más avisos resueltos</button> : null}</> : null}
+  </section>;
+}
 
 export function PaymentDeliveriesAdminSection({
   groupId,
+  owner = false,
   requestedDeliveryId,
   onRequestHandled,
   onDetailClosed,
   onEconomyChanged,
+  refreshVersion = 0,
 }: {
   groupId: string;
   owner?: boolean;
@@ -33,6 +72,7 @@ export function PaymentDeliveriesAdminSection({
   onRequestHandled?: () => void;
   onDetailClosed?: () => void;
   onEconomyChanged?: () => void;
+  refreshVersion?: number;
 }) {
   const [pending, setPending] = useState<PaymentDelivery[]>([]);
   const [cursor, setCursor] = useState<string>();
@@ -45,6 +85,7 @@ export function PaymentDeliveriesAdminSection({
   const [notice, setNotice] = useState("");
   const [recovery, setRecovery] = useState<Intent | null>(null);
   const [sending, setSending] = useState(false);
+  const [resolvedRefresh, setResolvedRefresh] = useState(0);
   const busy = useRef(false);
   const section = useRef<HTMLElement>(null);
   const detailClose = useRef<HTMLButtonElement>(null);
@@ -86,7 +127,7 @@ export function PaymentDeliveriesAdminSection({
     busy.current = true;
     setError("");
     try {
-      setDetail(await getGroupPaymentDelivery({ groupId, deliveryId: item.deliveryId }));
+      setDetail(owner ? await getOwnerPaymentDeliveryHistory({ groupId, deliveryId: item.deliveryId }) : await getGroupPaymentDelivery({ groupId, deliveryId: item.deliveryId }));
     } catch (cause) {
       setError(deliveryErrorMessage(deliveryErrorReason(cause)));
       setDetail(null);
@@ -101,8 +142,9 @@ export function PaymentDeliveriesAdminSection({
     if (handledDeepLink.current === key) return;
     handledDeepLink.current = key;
     busy.current = true; setError("");
-    void getGroupPaymentDelivery({ groupId, deliveryId: requestedDeliveryId }).then(setDetail, (cause) => setError(deliveryErrorMessage(deliveryErrorReason(cause)))).finally(() => { busy.current = false; onRequestHandled?.(); });
-  }, [groupId, onRequestHandled, requestedDeliveryId]);
+    const request = owner ? getOwnerPaymentDeliveryHistory({ groupId, deliveryId: requestedDeliveryId }) : getGroupPaymentDelivery({ groupId, deliveryId: requestedDeliveryId });
+    void request.then(setDetail, (cause) => setError(deliveryErrorMessage(deliveryErrorReason(cause)))).finally(() => { busy.current = false; onRequestHandled?.(); });
+  }, [groupId, onRequestHandled, owner, requestedDeliveryId]);
 
   async function execute(fixed?: Intent) {
     const current = fixed ?? intent;
@@ -128,6 +170,7 @@ export function PaymentDeliveriesAdminSection({
       setDetail(null);
       onDetailClosed?.();
       setReason("");
+      setResolvedRefresh((value) => value + 1);
       if (current.kind === "confirm") onEconomyChanged?.();
       busy.current = false;
       await load(false);
@@ -150,8 +193,6 @@ export function PaymentDeliveriesAdminSection({
     <section ref={section} id="payment-deliveries" tabIndex={-1} className="space-y-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-7 lg:col-span-2" aria-labelledby="deliveries-admin-title">
       <div>
         <h2 id="deliveries-admin-title" className="text-xl font-semibold">Pagos informados pendientes</h2>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">Bandeja general accesible aunque el sujeto no aparezca en la página actual de obligaciones. Cada decisión abarca una entrega completa.</p>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">La reversión Owner permanece en el historial. Esta acción corrige el registro del pago; no devuelve dinero.</p>
       </div>
       <div aria-live="polite">
         {notice ? <p className="text-sm text-emerald-700">{notice}</p> : null}
@@ -179,6 +220,7 @@ export function PaymentDeliveriesAdminSection({
           {cursor ? <button type="button" className="min-h-11 rounded-lg border px-4 font-semibold" onClick={() => void load(true)}>Cargar más pagos informados</button> : null}
         </>
       ) : null}
+      {owner ? <OwnerResolvedPaymentDeliveries key={`${groupId}:${refreshVersion}:${resolvedRefresh}`} groupId={groupId} onOpen={(item) => void open(item)} /> : null}
 
       {detail ? (
         <div className="fixed inset-0 z-40 grid place-items-center bg-black/50 p-4" role="presentation" onKeyDown={(event) => { if (event.key === "Escape" && !sending) { setDetail(null); onDetailClosed?.(); } }}>
@@ -186,11 +228,11 @@ export function PaymentDeliveriesAdminSection({
             <h3 id="delivery-detail-title" className="text-lg font-semibold">Entrega completa</h3>
             <p className="mt-2">{person(detail)} · fecha declarada {detail.declaredPaidOn}</p>
             <p className="mt-1">Total derivado: <strong>{formatArs(detail.declaredTotalMinor)}</strong></p>
+            {detail.resolution ? <p className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">Este aviso fue resuelto por el registro administrativo <strong>{detail.resolution.administrativeReceiptId}</strong>. El ingreso pertenece a ese registro; este aviso no genera un segundo pago.</p> : null}
             <ul className="mt-4 divide-y rounded border">{detail.lines?.map((line) => <li key={line.lineId} className="flex justify-between gap-3 p-3 text-sm"><span>{line.conceptName} · {line.selectionMode === "FULL" ? "Total" : "Parcial"}</span><strong>{formatArs(line.requestedAmountMinor)}</strong></li>)}</ul>
             <div className="mt-5 flex flex-wrap justify-end gap-2">
               <button ref={detailClose} type="button" className="min-h-11 rounded-lg border px-4 font-semibold" onClick={() => { setDetail(null); onDetailClosed?.(); }}>Cerrar</button>
-              <button type="button" className="min-h-11 rounded-lg border border-red-400 px-4 font-semibold text-red-800" onClick={() => setIntent({ kind: "reject", delivery: detail, key: newDeliveryKey() })}>Rechazar entrega completa</button>
-              <button type="button" className="min-h-11 rounded-lg bg-orange-600 px-4 font-semibold text-white" onClick={() => setIntent({ kind: "confirm", delivery: detail, key: newDeliveryKey() })}>Confirmar entrega completa</button>
+              {detail.decisionState === "REPORTED" ? <><button type="button" className="min-h-11 rounded-lg border border-red-400 px-4 font-semibold text-red-800" onClick={() => setIntent({ kind: "reject", delivery: detail, key: newDeliveryKey() })}>Rechazar entrega completa</button><button type="button" className="min-h-11 rounded-lg bg-orange-600 px-4 font-semibold text-white" onClick={() => setIntent({ kind: "confirm", delivery: detail, key: newDeliveryKey() })}>Confirmar entrega completa</button></> : <span className="rounded-full border px-3 py-2 text-sm font-semibold">{resolvedState(detail)}</span>}
             </div>
           </div>
         </div>

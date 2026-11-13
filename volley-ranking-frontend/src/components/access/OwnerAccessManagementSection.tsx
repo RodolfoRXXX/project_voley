@@ -29,8 +29,8 @@ export function OwnerAccessManagementSection({ groupId, compact = false }: { gro
             Tres permisos independientes: consultar economía, revisar pagos informados y registrar pagos. El cargo no concede ninguno.
           </p>
         </div>
-        <button ref={trigger} type="button" className={`min-h-11 rounded-lg px-4 font-semibold ${compact ? "border" : "bg-orange-600 text-white"}`} onClick={() => setOpen(true)}>
-          Administrar accesos
+        <button ref={trigger} type="button" aria-label={compact ? "Administrar accesos" : undefined} title={compact ? "Administrar accesos" : undefined} className={`inline-flex min-h-11 items-center justify-center rounded-lg font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 ${compact ? "min-w-11 border border-[var(--border)] p-2.5" : "px-4 bg-orange-600 text-white"}`} onClick={() => setOpen(true)}>
+          {compact ? <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m19 8 2 2-4 4-2-2 4-4Z"/></svg> : "Administrar accesos"}
         </button>
       </div>
 

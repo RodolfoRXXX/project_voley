@@ -27,6 +27,7 @@ export type ActiveGroupMembersScope = { status: "OPEN_SEASON" | "NO_OPEN_SEASON"
 
 export type ListActiveGroupMembersResult = {
   scope: ActiveGroupMembersScope;
+  projection?: { status: "READY" | "UNAVAILABLE" };
   items: ActiveGroupMember[];
   nextCursor: string | null;
 };

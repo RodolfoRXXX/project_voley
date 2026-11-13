@@ -35,7 +35,7 @@ const listMyCurrentGroupsCallable = httpsCallable<{ pageSize?: number; cursor?: 
 const getMyCurrentGroupContextCallable = httpsCallable<{ groupId: string }, MyCurrentGroupMembershipContext>(functions, "getMyCurrentGroupMembershipContext");
 const listMyGroupMembershipHistoryCallable = httpsCallable<{ pageSize?: number; cursor?: string }, ListMyGroupMembershipHistoryResult>(functions, "listMyGroupMembershipHistory");
 const leaveMyGroupCallable = httpsCallable<{ groupId: string; idempotencyKey: string }, LeaveMyGroupMembershipResult>(functions, "leaveMyGroupMembership");
-const listActiveGroupMembersCallable = httpsCallable<{ groupId: string; pageSize?: number; cursor?: string }, ListActiveGroupMembersResult>(functions, "listActiveGroupMembersForOwnedGroup");
+const listActiveGroupMembersCallable = httpsCallable<{ groupId: string; pageSize?: number; cursor?: string; search?: string }, ListActiveGroupMembersResult>(functions, "listActiveGroupMembersForOwnedGroup");
 const getActiveGroupMemberTotalCallable = httpsCallable<{ groupId: string }, ActiveGroupMemberTotalResult>(functions, "getActiveGroupMemberTotalForOwnedGroup");
 const reconcileActiveGroupMemberTotalCallable = httpsCallable<{ groupId: string }, ActiveGroupMemberTotalResult>(functions, "reconcileActiveGroupMemberTotalForOwnedGroup");
 const prepareAdministrativeFinalizationCallable = httpsCallable<{ groupId: string; membershipId: string }, PrepareActiveGroupMemberFinalizationResult>(functions, "prepareActiveGroupMemberFinalizationForOwnedGroup");
@@ -67,7 +67,7 @@ export async function leaveMyGroupMembership(input: { groupId: string; idempoten
   return (await leaveMyGroupCallable(input)).data;
 }
 
-export async function listActiveGroupMembersForOwnedGroup(input: { groupId: string; pageSize?: number; cursor?: string }): Promise<ListActiveGroupMembersResult> {
+export async function listActiveGroupMembersForOwnedGroup(input: { groupId: string; pageSize?: number; cursor?: string; search?: string }): Promise<ListActiveGroupMembersResult> {
   return (await listActiveGroupMembersCallable(input)).data;
 }
 

@@ -3,7 +3,7 @@
 const { buildMembership, InvalidMembershipStateError } = require("../domain/membership");
 const { toAdministrativeFinalizationPreparation, toAdministrativeFinalizationResult, toFinalizedMembershipDto, toMembershipCargoDetail, toMembershipCargoUpdateResult, toMembershipDto, toMembershipSelfExitDto, toMyCurrentGroupMembershipContext, toMyCurrentGroupMembershipItem, toOwnGroupMembershipHistoryItem, toOwnerActiveGroupMemberItem } = require("./membershipDto");
 const { decodeMyGroupsCursor, encodeMyGroupsCursor } = require("./membershipCursor");
-const { decodeOwnerGroupMembersCursor, encodeOwnerGroupMembersCursor } = require("./ownerGroupMembersCursor");
+const { decodeOwnerGroupMembersCursor, decodeOwnerGroupMembersSearchCursor, encodeOwnerGroupMembersCursor, encodeOwnerGroupMembersSearchCursor } = require("./ownerGroupMembersCursor");
 const { encodeOwnGroupMembershipHistoryCursor } = require("./ownGroupMembershipHistoryCursor");
 const {
   MembershipAccountRequiredError,
@@ -26,7 +26,7 @@ function requireActor(identity) {
   return identity.userId.trim();
 }
 
-function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, lifecycleGuard, selfExitStore, administrativeFinalizationStore, membershipCargoStore, myMembershipReader, myCurrentGroupMembershipsReader, ownGroupMembershipHistoryReader, memberGroupContext, ownerActiveGroupMembersReader, activeRosterCounter }) {
+function createMembershipService({ selfAccountReader, selfPersonContext, ownedGroupContext, openSeasonContext, membershipRepository, activeMembershipGuard, lifecycleGuard, selfExitStore, administrativeFinalizationStore, membershipCargoStore, myMembershipReader, myCurrentGroupMembershipsReader, ownGroupMembershipHistoryReader, memberGroupContext, ownerActiveGroupMembersReader, activeRosterCounter, activeRosterSearchProjection }) {
   if (!selfAccountReader || !selfPersonContext || !ownedGroupContext || !openSeasonContext || !membershipRepository || !activeMembershipGuard || !myMembershipReader) {
     throw new TypeError("Membership service dependencies are required");
   }
@@ -276,27 +276,25 @@ function createMembershipService({ selfAccountReader, selfPersonContext, ownedGr
       await atStage(operation, "account", () => requireAccount(userId));
       if (!ownerActiveGroupMembersReader) throw new MembershipDependencyUnavailableError();
       const position = await atStage(operation, "cursor", async () => input.cursor
-        ? decodeOwnerGroupMembersCursor(input.cursor, { groupId: input.groupId, userId })
+        ? input.search
+          ? decodeOwnerGroupMembersSearchCursor(input.cursor, { groupId: input.groupId, userId, query: input.search })
+          : decodeOwnerGroupMembersCursor(input.cursor, { groupId: input.groupId, userId })
         : null);
       try {
-        const page = await atStage(operation, "roster-page", () => ownerActiveGroupMembersReader.listPage({
-          userId,
-          groupId: input.groupId,
-          pageSize: input.pageSize,
-          position,
-        }));
+        const page = await atStage(operation, "roster-page", () => input.search
+          ? activeRosterSearchProjection?.searchPage({ userId, groupId: input.groupId, query: input.search, pageSize: input.pageSize, position })
+          : ownerActiveGroupMembersReader.listPage({ userId, groupId: input.groupId, pageSize: input.pageSize, position }));
+        if (!page) throw new MembershipDependencyUnavailableError();
         const items = await atStage(operation, "dto", async () => Object.freeze(page.rows.map(({ membership, person, isOwner }) =>
           toOwnerActiveGroupMemberItem(membership, person, isOwner))));
         const nextCursor = page.hasLookahead
-          ? encodeOwnerGroupMembersCursor({
-            groupId: input.groupId,
-            seasonId: page.seasonId,
-            userId,
-            ...page.cursorAnchor,
-          })
+          ? input.search
+            ? encodeOwnerGroupMembersSearchCursor({ groupId: input.groupId, seasonId: page.seasonId, userId, query: input.search, ...page.cursorAnchor })
+            : encodeOwnerGroupMembersCursor({ groupId: input.groupId, seasonId: page.seasonId, userId, ...page.cursorAnchor })
           : null;
         return Object.freeze({
           scope: Object.freeze({ status: page.scopeStatus }),
+          ...(input.search ? { projection: Object.freeze({ status: page.projectionStatus || "READY" }) } : {}),
           items,
           nextCursor,
         });

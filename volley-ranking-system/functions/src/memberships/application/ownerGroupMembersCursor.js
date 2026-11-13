@@ -7,6 +7,9 @@ const { OWNER_ROSTER_MAX_CURSOR_LENGTH } = require("./membershipContract");
 const OWNER_ROSTER_CURSOR_CONTRACT = "listActiveGroupMembersForOwnedGroup:v1";
 const OWNER_ROSTER_CURSOR_ORDER = "fechaIngreso:asc,__name__:asc";
 const OWNER_ROSTER_CURSOR_DOMAIN = "sportexa:E2-11:owner-active-roster-cursor:v1";
+const OWNER_ROSTER_SEARCH_CURSOR_CONTRACT = "searchActiveGroupMembersForOwnedGroup:v1";
+const OWNER_ROSTER_SEARCH_CURSOR_ORDER = "sortName:asc,__name__:asc";
+const OWNER_ROSTER_SEARCH_CURSOR_DOMAIN = "sportexa:IUX-06C2-P02:owner-active-roster-search-cursor:v1";
 const OWNER_ROSTER_ACTOR_DOMAIN = "sportexa:E2-11:owner-active-roster-actor:v1";
 const FIRESTORE_MIN_SECONDS = -62135596800;
 const FIRESTORE_MAX_SECONDS = 253402300799;
@@ -114,6 +117,48 @@ function decodeOwnerGroupMembersCursor(token, { groupId, userId }) {
   }
 }
 
+function searchChecksum(payload) {
+  return domainHash(OWNER_ROSTER_SEARCH_CURSOR_DOMAIN, canonicalJson(payload));
+}
+
+function searchHash(query) {
+  return domainHash("sportexa:IUX-06C2-P02:owner-active-roster-search-query:v1", query);
+}
+
+function assertSearchPayload(payload, { groupId, userId, query }) {
+  if (!exactKeys(payload, ["v", "contract", "order", "groupId", "seasonId", "ownerHash", "queryHash", "sortName", "lastEntryId"])) {
+    throw new MembershipValidationError("Search cursor payload is invalid");
+  }
+  if (payload.v !== 1 || payload.contract !== OWNER_ROSTER_SEARCH_CURSOR_CONTRACT || payload.order !== OWNER_ROSTER_SEARCH_CURSOR_ORDER
+    || payload.groupId !== groupId || !validId(payload.groupId) || !validId(payload.seasonId)
+    || payload.ownerHash !== ownerHash(userId) || payload.queryHash !== searchHash(query)
+    || typeof payload.sortName !== "string" || !payload.sortName || !validId(payload.lastEntryId)) {
+    throw new MembershipValidationError("Search cursor context is invalid");
+  }
+  return Object.freeze({ seasonId: payload.seasonId, sortName: payload.sortName, lastEntryId: payload.lastEntryId });
+}
+
+function encodeOwnerGroupMembersSearchCursor({ groupId, seasonId, userId, query, sortName, lastEntryId }) {
+  const payload = { v: 1, contract: OWNER_ROSTER_SEARCH_CURSOR_CONTRACT, order: OWNER_ROSTER_SEARCH_CURSOR_ORDER, groupId, seasonId, ownerHash: ownerHash(userId), queryHash: searchHash(query), sortName, lastEntryId };
+  assertSearchPayload(payload, { groupId, userId, query });
+  return Buffer.from(canonicalJson({ payload, checksum: searchChecksum(payload) }), "utf8").toString("base64url");
+}
+
+function decodeOwnerGroupMembersSearchCursor(token, { groupId, userId, query }) {
+  try {
+    if (typeof token !== "string" || !token || token.length > OWNER_ROSTER_MAX_CURSOR_LENGTH || !BASE64URL_PATTERN.test(token) || token.includes("=")) throw new MembershipValidationError("Search cursor encoding is invalid");
+    const bytes = Buffer.from(token, "base64url");
+    if (!bytes.length || bytes.toString("base64url") !== token) throw new MembershipValidationError("Search cursor encoding is invalid");
+    const decoded = decodeUtf8Strict(bytes); const envelope = JSON.parse(decoded);
+    if (decoded !== canonicalJson(envelope) || !exactKeys(envelope, ["payload", "checksum"])
+      || !HASH_PATTERN.test(envelope.checksum || "") || envelope.checksum !== searchChecksum(envelope.payload)) throw new MembershipValidationError("Search cursor envelope is invalid");
+    return assertSearchPayload(envelope.payload, { groupId, userId, query });
+  } catch (error) {
+    if (error instanceof MembershipValidationError) throw error;
+    throw new MembershipValidationError("Search cursor is invalid", { cause: error });
+  }
+}
+
 module.exports = {
   OWNER_ROSTER_ACTOR_DOMAIN,
   OWNER_ROSTER_CURSOR_CONTRACT,
@@ -121,7 +166,9 @@ module.exports = {
   OWNER_ROSTER_CURSOR_ORDER,
   canonicalJson,
   decodeOwnerGroupMembersCursor,
+  decodeOwnerGroupMembersSearchCursor,
   decodeUtf8Strict,
   encodeOwnerGroupMembersCursor,
+  encodeOwnerGroupMembersSearchCursor,
   ownerHash,
 };

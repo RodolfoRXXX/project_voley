@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { approveGroupJoinRequest, getGroupJoinRequestDecisionResult, getGroupJoinRequestErrorMessage, getGroupJoinRequestErrorReason, getPendingGroupJoinRequestForOwnedGroup, listPendingGroupJoinRequestsForOwnedGroup, rejectGroupJoinRequest } from "@/services/groupJoinRequestsService";
 import type { GroupJoinRequestErrorReason, PendingGroupJoinRequestForOwner } from "@/types/GroupJoinRequest";
@@ -15,6 +16,7 @@ export function PendingGroupJoinRequestsSection({ groupId, requestedRequestId, o
   const [cursor, setCursor] = useState<string | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
+  const [errorReason, setErrorReason] = useState<GroupJoinRequestErrorReason | null>(null);
   const [notice, setNotice] = useState("");
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
@@ -90,14 +92,14 @@ export function PendingGroupJoinRequestsSection({ groupId, requestedRequestId, o
     const intent = intents.current.getOrCreate(action, requestId);
     const reactivates = action === "approve" && item.approvalEffect === "REACTIVATE_MEMBERSHIP";
     const renews = action === "approve" && item.approvalEffect === "RENEW_MEMBERSHIP";
-    markBusy(requestId, true); setError(""); setNotice(action === "approve" ? (renews ? "Coordinando renovación y aprobación…" : reactivates ? "Coordinando reactivación y aprobación…" : "Coordinando creación y aprobación…") : "Confirmando rechazo…");
+    markBusy(requestId, true); setError(""); setErrorReason(null); setNotice(action === "approve" ? (renews ? "Coordinando renovación y aprobación…" : reactivates ? "Coordinando reactivación y aprobación…" : "Coordinando creación y aprobación…") : "Confirmando rechazo…");
     try {
       if (action === "approve") await approveGroupJoinRequest({ groupId, requestId, idempotencyKey: intent.idempotencyKey });
       else await rejectGroupJoinRequest({ groupId, requestId, idempotencyKey: intent.idempotencyKey });
-      terminalRequestIds.current.add(requestId); intents.current.confirm(action, requestId); setError(""); setItems((current) => current.filter((candidate) => candidate.id !== requestId)); setNotice(action === "approve" ? (renews ? "Membresía renovada para la Temporada abierta actual y Solicitud aprobada." : reactivates ? "Membresía reactivada y Solicitud aprobada." : "Membresía creada y Solicitud aprobada.") : "Rechazo confirmado; no se creó ninguna Membresía.");
+      terminalRequestIds.current.add(requestId); intents.current.confirm(action, requestId); setError(""); setErrorReason(null); setItems((current) => current.filter((candidate) => candidate.id !== requestId)); setNotice(action === "approve" ? (renews ? "Membresía renovada para la Temporada abierta actual y Solicitud aprobada." : reactivates ? "Membresía reactivada y Solicitud aprobada." : "Membresía creada y Solicitud aprobada.") : "Rechazo confirmado; no se creó ninguna Membresía.");
       if (action === "approve") window.dispatchEvent(new CustomEvent("group-membership-changed", { detail: { groupId } }));
     } catch (cause) {
-      const reason = getGroupJoinRequestErrorReason(cause); setError(getGroupJoinRequestErrorMessage(reason)); setNotice("");
+      const reason = getGroupJoinRequestErrorReason(cause); setErrorReason(reason); setError(getGroupJoinRequestErrorMessage(reason)); setNotice("");
       if (reason === "GROUP_NOT_ACCESSIBLE") { setItems([]); setConfirmation(null); onAccessLost?.(getGroupJoinRequestErrorMessage(reason)); return; }
       if (["MEMBERSHIP_REACTIVATION_SUPERSEDED", "MEMBERSHIP_RENEWAL_SUPERSEDED"].includes(reason)) intents.current.requireNewConfirmation(action, requestId);
       if (reason === "APPROVAL_IN_PROGRESS" || shouldConsultAfterDecisionError(reason)) await consultAuthoritative(requestId);
@@ -108,7 +110,7 @@ export function PendingGroupJoinRequestsSection({ groupId, requestedRequestId, o
     <h2 id="pending-requests-heading" className="text-lg font-semibold">Solicitudes pendientes</h2>
     <div ref={region} tabIndex={-1} aria-live="polite" className="mt-4 focus-visible:outline-2">
       {notice ? <p role="status" className="mb-3 text-sm text-emerald-700">{notice}</p> : null}
-      {error ? <p role="alert" className="mb-3 text-sm text-red-700">{error}</p> : null}
+      {error ? <div role="alert" className="mb-3 text-sm text-red-700"><p>{error}</p>{errorReason === "OPEN_SEASON_REQUIRED" && error === getGroupJoinRequestErrorMessage("OPEN_SEASON_REQUIRED") ? <Link href={`/dashboard/groups/${groupId}/seasons`} className="mt-2 inline-flex min-h-11 items-center font-semibold text-orange-700 underline decoration-orange-300 underline-offset-4">Ir a Temporada</Link> : null}</div> : null}
       {status === "loading" ? <p role="status">Cargando solicitudes…</p> : null}
       {status === "error" ? <button type="button" className="mt-3 min-h-11 rounded-lg border border-red-300 px-4 py-2 font-semibold" onClick={() => void load()}>Reintentar</button> : null}
       {status === "ready" && items.length === 0 ? <p className="text-sm text-[var(--text-muted)]">No hay solicitudes pendientes.</p> : null}

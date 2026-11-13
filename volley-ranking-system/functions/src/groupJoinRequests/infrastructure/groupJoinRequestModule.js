@@ -23,7 +23,7 @@ module.exports = createGroupJoinRequestService({
     publicationCapability: createGroupJoinRequestPublicationCapability({ db }),
     seasonCapability,
     personCapability,
-    membershipCapability: createGroupJoinRequestMembershipCapability({ db, groupCapability, seasonCapability, enableActiveRosterCounter: true }),
+    membershipCapability: createGroupJoinRequestMembershipCapability({ db, groupCapability, seasonCapability, enableActiveRosterCounter: true, enableActiveRosterSearchProjection: true }),
     repository,
   }),
 });

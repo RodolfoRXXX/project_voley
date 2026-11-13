@@ -146,7 +146,7 @@ function validateListActiveGroupMembersForOwnedGroupPayload(data) {
   if (!isPlainObject(data)) throw new MembershipValidationError();
   const keys = Object.keys(data);
   if (!Object.prototype.hasOwnProperty.call(data, "groupId")
-    || keys.some((key) => !["groupId", "pageSize", "cursor"].includes(key))) {
+    || keys.some((key) => !["groupId", "pageSize", "cursor", "search"].includes(key))) {
     throw new MembershipValidationError("Request contains missing or unknown properties");
   }
   assertGroupId(data.groupId);
@@ -163,9 +163,14 @@ function validateListActiveGroupMembersForOwnedGroupPayload(data) {
       throw new MembershipValidationError("Cursor is invalid");
     }
   }
-  return Object.freeze(cursor === undefined
-    ? { groupId: data.groupId, pageSize }
-    : { groupId: data.groupId, pageSize, cursor });
+  let search;
+  if (Object.prototype.hasOwnProperty.call(data, "search")) {
+    if (typeof data.search !== "string" || data.search.length > 80) throw new MembershipValidationError("Search is invalid");
+    const words = data.search.normalize("NFD").replace(/\p{M}+/gu, "").toLocaleLowerCase("es-AR").split(/[^\p{L}\p{N}]+/gu).filter(Boolean);
+    if (words.length !== 1 || Array.from(words[0]).length < 3) throw new MembershipValidationError("Search requires one term of at least three characters");
+    search = words[0];
+  }
+  return Object.freeze({ groupId: data.groupId, pageSize, ...(cursor === undefined ? {} : { cursor }), ...(search === undefined ? {} : { search }) });
 }
 
 module.exports = {

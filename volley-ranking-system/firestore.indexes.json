@@ -1,6 +1,18 @@
 {
   "indexes": [
     {
+      "collectionGroup": "activeRosterSearchEntries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "seasonId", "mode": "ASCENDING" },
+        { "fieldPath": "generation", "mode": "ASCENDING" },
+        { "fieldPath": "searchPrefixes", "mode": "CONTAINS" },
+        { "fieldPath": "sortName", "mode": "ASCENDING" },
+        { "fieldPath": "__name__", "mode": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "payments",
       "queryScope": "COLLECTION",
       "fields": [

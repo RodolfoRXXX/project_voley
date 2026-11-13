@@ -209,6 +209,9 @@ const misGruposIux06bTestPath = path.join(
 const activeRosterCounterIux06c2TestPath = path.join(
   systemRoot, "functions", "test", "emulator", "activeRosterCounterIux06c2.test.js"
 );
+const activeRosterSearchIux06c2TestPath = path.join(
+  systemRoot, "functions", "test", "emulator", "activeRosterSearchIux06c2.test.js"
+);
 const groupJoinRequestDecisionTestPath = path.join(
   systemRoot,
   "functions",
@@ -388,7 +391,9 @@ const tournamentEconomyRetirementE3TestPath = path.join(
   "emulator",
   "tournamentEconomyRetirementE3.test.js"
 );
-const command = process.env.IUX_06C2_P01_FOCAL === "1"
+const command = process.env.IUX_06C2_P02_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${activeRosterSearchIux06c2TestPath}"`
+  : process.env.IUX_06C2_P01_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${activeRosterCounterIux06c2TestPath}"`
   : process.env.IUX_06B_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${misGruposIux06bTestPath}"`
@@ -500,7 +505,7 @@ const command = process.env.IUX_06C2_P01_FOCAL === "1"
 
 const defaultTestPaths = [accountTestPath, personTestPath, groupTestPath, groupNameUpdateTestPath, groupArchiveTestPath, groupDeletionTestPath,
   seasonTestPath, seasonClosureTestPath, seasonHistoryTestPath, seasonUpdateTestPath, membershipTestPath, membershipListTestPath,
-  groupJoinRequestTestPath, groupDiscoveryIux06aTestPath, misGruposIux06bTestPath, activeRosterCounterIux06c2TestPath, groupJoinRequestDecisionTestPath, groupJoinRequestDecisionGapsTestPath, membershipReactivationTestPath,
+  groupJoinRequestTestPath, groupDiscoveryIux06aTestPath, misGruposIux06bTestPath, activeRosterCounterIux06c2TestPath, activeRosterSearchIux06c2TestPath, groupJoinRequestDecisionTestPath, groupJoinRequestDecisionGapsTestPath, membershipReactivationTestPath,
   membershipSelfExitTestPath, membershipOwnerRosterTestPath, membershipAdministrativeFinalizationTestPath, membershipRenewalTestPath,
   membershipCargoTestPath, ownGroupMembershipHistoryTestPath, legacyJoinRetirementTestPath, paymentE3TestPath, paymentE3CallableTestPath,
   paymentE3SerializationTestPath, treasuryE3TestPath, treasuryE3CallableTestPath, paymentDeliveryE3TestPath, administrativeReceiptE3TestPath,
@@ -508,7 +513,7 @@ const defaultTestPaths = [accountTestPath, personTestPath, groupTestPath, groupN
   dashboardTaskProjectionIux02aTestPath, dashboardTaskQueryIux02bTestPath, emulatorTestPath, autopromotionTestPath, minimumReadPolicyTestPath,
   priorityAssetCharacterizationTestPath, socialMatchEconomyRetirementE3TestPath, tournamentEconomyRetirementE3TestPath, personalEconomyIux05TestPath];
 const defaultTestBatches = partitionTestPaths(defaultTestPaths, 6);
-assertBatchPlan(defaultTestPaths, defaultTestBatches, 45, 8);
+assertBatchPlan(defaultTestPaths, defaultTestBatches, 46, 8);
 const commands = command
   ? [command]
   : defaultTestBatches.map((paths) => `node --test --test-concurrency=1 ${paths.map((entry) => `"${entry}"`).join(" ")}`);

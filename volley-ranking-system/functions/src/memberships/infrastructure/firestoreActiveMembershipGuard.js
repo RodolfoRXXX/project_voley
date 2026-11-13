@@ -206,7 +206,7 @@ async function resolveAfterContention({
   }
 }
 
-function createFirestoreActiveMembershipGuard({ db, groupRepository, seasonCapability, activeRosterCounter, now = () => Timestamp.now() }) {
+function createFirestoreActiveMembershipGuard({ db, groupRepository, seasonCapability, activeRosterCounter, activeRosterSearchProjection, now = () => Timestamp.now() }) {
   if (!db || !groupRepository || typeof now !== "function") throw new TypeError("Active Membership guard dependencies are required");
 
   return {
@@ -263,6 +263,9 @@ function createFirestoreActiveMembershipGuard({ db, groupRepository, seasonCapab
           const rosterCounter = activeRosterCounter
             ? await activeRosterCounter.prepareActivation(transaction, membership, 1)
             : null;
+          const rosterSearch = activeRosterSearchProjection
+            ? await activeRosterSearchProjection.prepareActivation(transaction, membership, 1)
+            : null;
           membershipRepository.createInitial(transaction, membership, activatedAt);
           transaction.create(guardRef, {
             membershipId: membership.membershipId,
@@ -285,6 +288,7 @@ function createFirestoreActiveMembershipGuard({ db, groupRepository, seasonCapab
             lifecycleGuardVersion: 3,
           });
           rosterCounter?.commit();
+          rosterSearch?.commit();
           return { outcome: "CREATED_ACTIVE", membershipId: membership.membershipId };
         });
       } catch (error) {

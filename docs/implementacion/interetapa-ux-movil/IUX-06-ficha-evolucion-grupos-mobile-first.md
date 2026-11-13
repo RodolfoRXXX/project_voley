@@ -13,7 +13,7 @@
 | IUX-06A — Deportes, publicación y Explorar grupos | **LISTO PARA IMPLEMENTAR** | Autorización posterior y separada |
 | IUX-06B — Mis grupos, solicitudes e historial | **LISTO PARA IMPLEMENTAR** | Autorización posterior y separada |
 | IUX-06C1 — Integrantes y Tu membresía | **LISTO PARA IMPLEMENTAR** | Autorización posterior y separada |
-| IUX-06C2 — Total exacto y búsqueda completa | **P01 CERRADO TÉCNICAMENTE EN LOCAL Y UAT APROBADA; P02 PENDIENTE** | Resolver P02 en un corte separado |
+| IUX-06C2 — Total exacto y búsqueda completa | **P01 INTEGRADO EN DEV; P02 CERRADO LOCALMENTE Y UAT APROBADA** | Revisar los commits P02 antes de integrar |
 | IUX-06D — Reorganización de Economía | **LISTO PARA IMPLEMENTAR** | Autorización posterior y separada |
 
 Esta ficha autoriza sólo la definición. No autoriza cambios de código, configuración, índices,
@@ -32,8 +32,8 @@ IUX-06 reduce fricción en cuatro recorridos relacionados sin convertirlos en un
 `IUX-06A` es el primer corte recomendado porque establece el vocabulario deportivo y la distinción
 entre Grupo activo y Grupo publicado que consumen los recorridos posteriores. A, B, C1 y D pueden
 implementarse sólo con una autorización posterior por corte o una autorización posterior que los
-enumere expresamente. C2 completo no entra en esa habilitación mientras P02 siga abierta; P01 fue
-autorizado e implementado como corte técnico independiente.
+enumere expresamente. P01 ya fue integrado y P02 queda cerrado y versionado localmente como corte
+técnico independiente; su integración requiere la autorización posterior correspondiente.
 
 ## 2. Evidencia vigente y límites normativos
 
@@ -259,7 +259,7 @@ cargados o visibles. Menos de tres caracteres no inicia búsqueda. El resultado 
 reglas de autorización, validez y acciones del roster. Invitar a usuarios de la plataforma queda
 fuera de IUX-06.
 
-### 6.2 Decisión técnica P01 y pendiente P02
+### 6.2 Decisiones técnicas P01 y P02
 
 #### 6.2.1 P01 — contador derivado exacto
 
@@ -295,15 +295,53 @@ la secuencia del mismo Grupo: sin Temporada `0` → Temporada vacía `0` → alt
 también compara el contador con el recorrido canónico multipágina y cubre datos anteriores,
 reintentos, concurrencia, reactivación, renovación, salidas y cambio de Temporada.
 
-#### 6.2.2 P02 — pendiente bloqueante del C2 completo
+#### 6.2.2 P02 — proyección privada de búsqueda completa
 
-- **P02 — estrategia de búsqueda completa:** elegir una representación normalizada e indexable o un
-  servicio de búsqueda autorizado que cubra todo el padrón. Debe definir normalización
-  mayúsculas/tildes, prefijo mínimo, paginación, orden, actualización, revocación, costo y ausencia
-  de escaneo ilimitado o filtrado sólo en frontend.
+Se adopta `activeRosterSearchEntries`, una fila privada y determinista por Membresía activa, y
+`activeRosterSearchSummaries`, cobertura generacional `BUILDING | READY | INCOMPATIBLE` por Grupo y
+Temporada. Cada fila conserva sólo el identificador de Membresía/Persona, la presentación mínima de
+nombre y apellido, el ordinal de activación, una clave de orden normalizada y el conjunto deduplicado
+de prefijos desde tres caracteres de **cada palabra**. La normalización aplica NFD, elimina marcas
+diacríticas y compara en minúsculas; así cubre palabras intermedias y nombres o apellidos compuestos.
+Una misma fila aparece una sola vez aunque dos o más palabras satisfagan el prefijo.
 
-P02 queda expresamente fuera del corte P01. Hasta resolverla, C2 no está cerrado como conjunto y no
-se agregan campos, proyecciones ni writers de búsqueda de forma especulativa.
+`listActiveGroupMembersForOwnedGroup` acepta `search` como una palabra de al menos tres caracteres.
+El backend vuelve a acreditar Cuenta, ownership, Temporada abierta, Membresía activa canónica y
+Persona antes de devolver la proyección mínima ya autorizada. El cursor de búsqueda queda ligado a
+Cuenta, Grupo, Temporada, término normalizado, orden `sortName,__name__` y versión; no se mezcla con
+el cursor habitual por `fechaIngreso`. Las colecciones de proyección rechazan acceso directo por
+Rules. `Sin resultados` sólo es válido tras una página `READY`; cobertura incompatible, error o
+dependencia no disponible conserva indisponibilidad y reintento, nunca acredita vacío.
+
+La primera búsqueda sobre datos anteriores abre `BUILDING`, recorre todas las Membresías activas por
+páginas, revalida cada fila transaccionalmente y publica `READY` al terminar. Altas Owner,
+aprobaciones, reactivaciones y renovaciones crean o reemplazan la fila dentro de la misma transacción
+canónica; salidas y finalizaciones la eliminan en esa transacción. La generación compartida evita
+perder o duplicar altas y bajas concurrentes con la carga inicial. El sistema vigente no ofrece un
+comando para editar nombre/apellido de Persona: `ensureMyPerson` sólo permite creación inicial. Si se
+autoriza un writer nominal futuro, deberá actualizar todas sus filas activas en el mismo corte antes
+de habilitarse; P02 no presupone escrituras directas de Persona.
+
+Integrantes consulta todo el padrón desde tres caracteres, pagina resultados sin duplicados y conserva
+las acciones actuales sobre cada Membresía. Dos caracteres no disparan backend. Al limpiar el término
+se restaura inmediatamente el padrón habitual ya cargado y su cursor independiente.
+
+Estado: **cerrado y versionado localmente en rama P02; Emulator y UAT aprobados; sin integración,
+deploy ni habilitación productiva**.
+
+La aprobación UAT incluye los tres ajustes finales solicitados por el usuario: al intentar aprobar
+una Solicitud sin Temporada abierta se conserva «Abrí una Temporada antes de aprobar.», la Solicitud
+permanece pendiente y aparece el enlace «Ir a Temporada» hacia la ruta canónica del mismo Grupo; el
+campo de búsqueda permanece montado y con foco al pasar de `par` a `pari` y `parix`, sin permitir que
+una respuesta tardía sustituya el término vigente y restaurando el padrón habitual al bajar de tres
+caracteres; y un Owner con Membresía activa válida aparece una sola vez en los resultados.
+
+La secuencia específica Paredes/Paris (`par` devuelve ambos, `pari` sólo Paris y `parix` acredita
+«Sin resultados») corresponde a la regresión aislada en Emulator. Sobre UAT se verificó, mediante la
+consulta backend autorizada, que Jorge Paredes tenía una Membresía activa en la Temporada abierta,
+que su ausencia inicial pertenecía a una proyección aún no inicializada y que, una vez `READY`, las
+búsquedas `jor` y `par` devolvían esa Membresía exactamente una vez. La inicialización afectó sólo la
+proyección derivada; no modificó datos canónicos de Membresías, Temporadas ni Solicitudes.
 
 ### 6.3 Criterios de aceptación y UAT condicionados
 

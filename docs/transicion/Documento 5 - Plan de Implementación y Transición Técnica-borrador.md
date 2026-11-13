@@ -39,7 +39,7 @@ Estado operativo del plan:
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
 - `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
-- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04, IUX-05 E IUX-06A/B/C1 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06C2-P01 CERRADO TÉCNICAMENTE EN LOCAL Y UAT APROBADA; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA; IUX-06D DEFINIDO Y C2-P02 PENDIENTE`;
+- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04, IUX-05 E IUX-06A/B/C1 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06C2-P01 INTEGRADO EN DEV Y P02 IMPLEMENTADO LOCALMENTE CON UAT PENDIENTE; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA; IUX-06D DEFINIDO`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -2801,6 +2801,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-071 | Registra la implementación y cierre técnico local de `IUX-06B — Mis grupos`: relaciones actuales deduplicadas, Solicitudes propias pendientes cancelables e Historial lazy paginado de Membresías finalizadas, incluidas las correcciones UAT de cobertura inicial y catálogo deportivo | CERRADO TÉCNICAMENTE EN LOCAL; UAT HUMANA ACOTADA APROBADA | IUX / IUX-06B / Mis grupos | El HTTP 400 se debía a una validación residual `deporte === "voleibol"`; el contrato ahora acepta el catálogo canónico y se prueba con fútbol. La regresión separa administración y Membresía, incluido Owner sin Membresía. La aceptación humana acredita el mismo Grupo UAT en `Todos`, `Administro` e `Integro`, Solicitudes pendientes/cancelación y Novedades/Integrantes sin recarga. Historial, paginación, reactivación, empates y estructura responsive tienen evidencia automatizada; Historial real y revisión visual completa 360/390 px/escritorio siguen pendientes. C1, C2 y D quedan fuera; no hay deploy ni habilitación productiva. |
 | D5-072 | Registra la implementación y cierre técnico local de `IUX-06C1 — Integrantes y Tu membresía`: padrón unificado en filas desplegables, Owner primero y sin duplicados, acciones canónicas, responsive y accesibilidad de teclado, incluidas las correcciones UAT de presentación y de lectura tardía posterior a aprobación | CERRADO TÉCNICAMENTE EN LOCAL; UAT HUMANA COMPLEMENTARIA PENDIENTE | IUX / IUX-06C1 / Integrantes / Solicitudes | Owner inicia contraído con o sin Membresía; conserva el flujo de Persona y Temporada, muestra `ACTIVA` sin ID de Temporada y usa los textos finales. La carrera `REQUEST_NOT_PENDING` provenía de una lectura deep-link anterior, no del comando confirmado: la Solicitud terminal se retira, el padrón se refresca y no se repite la aprobación. Dos cuentas UAT acreditan decisión `APPROVED`, persistencia, Membresía activa, Pendientes vacío y lectura member-scoped. La reproducción técnica y los gates locales están completos; aprobación post-corrección con una Solicitud humana nueva y revisión visual integral escritorio/Android siguen pendientes. C2/D y gates IUX-02/E3 no cambian; no hay deploy ni habilitación productiva. |
 | D5-073 | Adopta, implementa y cierra localmente `IUX-06C2-P01 — total exacto de integrantes` mediante contador derivado por Grupo y Temporada, contribuciones idempotentes por Membresía y generaciones reconciliables | CERRADO TÉCNICAMENTE EN LOCAL; UAT HUMANA APROBADA | IUX / IUX-06C2 / P01 / Integrantes | Todos los writers canónicos de alta, aprobación, reactivación, renovación, salida y finalización actualizan el contador en la transacción de la Membresía. `NO_OPEN_SEASON` confirma cero sin Temporada abierta; `READY` acredita cero o el total exacto de la Temporada abierta; `UNAVAILABLE` o error preservan la indisponibilidad cuando el total no puede determinarse. La consulta y reconciliación requieren Owner en backend; el Owner sólo cuenta con Membresía activa válida. UAT acredita la presentación final y Emulator fija sin Temporada `0` → Temporada vacía `0` → alta `1` → finalización `0`, además de comparación multipágina, reintentos, concurrencia, datos anteriores y cambio de Temporada. P02 queda fuera y pendiente; no hay migración, deploy ni habilitación productiva. |
+| D5-074 | Adopta e implementa localmente `IUX-06C2-P02 — búsqueda completa de integrantes` mediante proyección privada generacional por Membresía activa y prefijos normalizados de cada palabra | IMPLEMENTADO LOCALMENTE; EMULATOR APROBADO; UAT PENDIENTE | IUX / IUX-06C2 / P02 / Integrantes | Desde tres caracteres busca el comienzo de cualquier palabra sin distinguir mayúsculas ni tildes sobre toda la Temporada abierta, no sólo páginas cargadas. Backend revalida Owner, scope y Membresía; cursor liga actor, Grupo, Temporada y término. Una fila determinista evita duplicados entre palabras y páginas. Altas, aprobaciones, reactivaciones, renovaciones, salidas y finalizaciones actualizan la proyección en la transacción canónica; datos anteriores se cargan con generación reconciliable. `Sin resultados` exige cobertura `READY`; error o incompatibilidad no se convierten en vacío. El modelo vigente no admite edición nominal posterior a `ensureMyPerson`; cualquier writer futuro deberá mantener la proyección antes de habilitarse. Sin deploy ni habilitación productiva. |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -3090,6 +3091,37 @@ una Membresía activa válida. La aceptación observa `NO_OPEN_SEASON(0)`, `READ
 reserva de `UNAVAILABLE`/error para totales no determinables; la regresión fija en un mismo Grupo
 sin Temporada `0` → Temporada vacía `0` → alta `1` → finalización `0`. P02 continúa separado y
 pendiente; rendimiento productivo, deploy y habilitación permanecen fuera de este cierre técnico local.
+
+D5-074 registra la decisión e implementación local de IUX-06C2-P02. La búsqueda usa una proyección
+privada por Membresía activa y Temporada: normaliza nombre y apellido sin mayúsculas ni diacríticos y
+materializa, sin duplicados, los prefijos desde tres caracteres de cada palabra, incluidas las
+intermedias de nombres y apellidos compuestos. El callable Owner-scoped cubre todo el padrón,
+revalida autorización y validez canónica, devuelve sólo la presentación mínima ya autorizada y pagina
+con cursor ligado a actor, Grupo, Temporada, término y orden. El roster habitual conserva su cursor
+independiente y reaparece al limpiar el término.
+
+La carga de datos anteriores comparte una generación `BUILDING` con los writers concurrentes y sólo
+publica `READY` tras recorrer y revalidar toda la Temporada. Altas Owner, aprobaciones, reactivaciones,
+renovaciones, salidas y finalizaciones mantienen la fila en la transacción que cambia la Membresía.
+La proyección no tiene acceso cliente. Sólo `READY` puede acreditar «Sin resultados»; cobertura
+incompleta, incompatibilidad o error quedan no disponibles. El sistema vigente crea Persona una sola
+vez y no expone cambio de nombre/apellido; un writer nominal futuro deberá incorporar mantenimiento
+de esta proyección antes de habilitarse. Emulator acredita resultado fuera de primera página,
+compuestos, tildes/caso, paginación sin duplicados, alta, baja y rechazo no autorizado.
+
+El usuario aprueba la UAT y los tres ajustes de cierre. Aprobar sin Temporada abierta conserva la
+Solicitud pendiente y el mensaje «Abrí una Temporada antes de aprobar.», y agrega «Ir a Temporada»
+hacia la ruta canónica del mismo Grupo sin relajar la validación backend. El buscador mantiene el
+campo montado y enfocado mientras se refina o borra el término, descarta respuestas tardías y vuelve
+al padrón habitual por debajo de tres caracteres. Un Owner con Membresía activa válida participa de
+la proyección y aparece una sola vez. La secuencia Paredes/Paris (`par` ambos, `pari` sólo Paris,
+`parix` sin resultados) queda atribuida a la prueba aislada en Emulator; la consulta backend
+autorizada sobre UAT confirmó la Membresía activa de Jorge Paredes, localizó su ausencia en una
+proyección todavía no inicializada y, tras quedar `READY`, lo devolvió exactamente una vez con `jor`
+y `par`. Sólo se inicializó información derivada: los datos canónicos UAT fueron preservados.
+
+D5-074 queda cerrado y versionado localmente. Integración, rendimiento productivo, deploy y
+habilitación continúan pendientes.
 
 “Requiere tu atención”, Agenda, notificaciones/campana, navbar/sidebar y roles o permisos permanecen
 fuera del incremento y sujetos a definición posterior. Presupuesto/rendimiento deben medirse durante

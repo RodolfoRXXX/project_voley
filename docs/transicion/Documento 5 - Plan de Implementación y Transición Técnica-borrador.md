@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - cierre local IUX-06D - 13 de noviembre de 2026*
+*Borrador consolidado - cierre documental IUX-06 en dev - 13 de noviembre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -39,7 +39,7 @@ Estado operativo del plan:
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
 - `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
-- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04, IUX-05 E IUX-06A/B/C1/D CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06C2-P01 INTEGRADO EN DEV Y P02 CERRADO LOCALMENTE; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
+- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -2803,6 +2803,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-073 | Adopta, implementa y cierra localmente `IUX-06C2-P01 — total exacto de integrantes` mediante contador derivado por Grupo y Temporada, contribuciones idempotentes por Membresía y generaciones reconciliables | CERRADO TÉCNICAMENTE EN LOCAL; UAT HUMANA APROBADA | IUX / IUX-06C2 / P01 / Integrantes | Todos los writers canónicos de alta, aprobación, reactivación, renovación, salida y finalización actualizan el contador en la transacción de la Membresía. `NO_OPEN_SEASON` confirma cero sin Temporada abierta; `READY` acredita cero o el total exacto de la Temporada abierta; `UNAVAILABLE` o error preservan la indisponibilidad cuando el total no puede determinarse. La consulta y reconciliación requieren Owner en backend; el Owner sólo cuenta con Membresía activa válida. UAT acredita la presentación final y Emulator fija sin Temporada `0` → Temporada vacía `0` → alta `1` → finalización `0`, además de comparación multipágina, reintentos, concurrencia, datos anteriores y cambio de Temporada. P02 queda fuera y pendiente; no hay migración, deploy ni habilitación productiva. |
 | D5-074 | Adopta e implementa localmente `IUX-06C2-P02 — búsqueda completa de integrantes` mediante proyección privada generacional por Membresía activa y prefijos normalizados de cada palabra | IMPLEMENTADO LOCALMENTE; EMULATOR APROBADO; UAT PENDIENTE | IUX / IUX-06C2 / P02 / Integrantes | Desde tres caracteres busca el comienzo de cualquier palabra sin distinguir mayúsculas ni tildes sobre toda la Temporada abierta, no sólo páginas cargadas. Backend revalida Owner, scope y Membresía; cursor liga actor, Grupo, Temporada y término. Una fila determinista evita duplicados entre palabras y páginas. Altas, aprobaciones, reactivaciones, renovaciones, salidas y finalizaciones actualizan la proyección en la transacción canónica; datos anteriores se cargan con generación reconciliable. `Sin resultados` exige cobertura `READY`; error o incompatibilidad no se convierten en vacío. El modelo vigente no admite edición nominal posterior a `ensureMyPerson`; cualquier writer futuro deberá mantener la proyección antes de habilitarse. Sin deploy ni habilitación productiva. |
 | D5-075 | Registra la implementación, UAT humana aprobada y cierre local de `IUX-06D — Reorganización de Economía del grupo`, incluidos el lector Owner-only de avisos resueltos y los ajustes visuales finales | CERRADO TÉCNICAMENTE EN LOCAL; UAT HUMANA APROBADA | IUX / IUX-06D / Economía / cierre local | El build `NlxWGcw83yQphYlrWDiE2` ordena Deudas, Pagos informados, Historial y Conceptos; separa avisos pendientes/resueltos e ingresos sin duplicar pagos; conserva capabilities, archivo y deep-links. UAT acredita la reorganización y los ajustes de salida discreta, encabezados uniformes, entrada a Integrantes sin salto e Historia contraída. Automatización cubre autorización, estados, relación administrativa, reversión, navegación, foco y responsive. Lint focal pasa; lint global mantiene 31 errores y 8 warnings preexistentes. Datos UAT preservados; sin deploy ni habilitación productiva. |
+| D5-076 | Consolida el cierre documental de `IUX-06` desde `dev@ee909ca98d493f47ee40c9779c7b139ab271c69d`, que integra A, B, C1, C2-P01, C2-P02 y D | INTEGRADO EN DEV; UAT HUMANA COMPLEMENTARIA PENDIENTE | IUX / IUX-06 / cierre consolidado | Integraciones: A `f244675`, B `e1fbb05`, C1 `7d471b5`, C2-P01 `a3c8b6e`, C2-P02 `953984b` y D `ee909ca`. La automatización y UAT efectiva quedan discriminadas en la ficha IUX-06. Para una prueba MVP con usuarios condicionan los recorridos correspondientes: Historial de Membresías con datos reales, aprobación humana de una Solicitud nueva post-corrección C1 y Android 360/390 px en gestión de grupos, membresías e Integrantes. La matriz visual exhaustiva, carreras manuales adicionales y accesibilidad ampliada pueden completarse después si se excluyen del guion MVP. D5-075 se conserva; no hay cambios de código, deploy ni habilitación productiva. |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -3137,6 +3138,29 @@ regresiones automatizadas cubren contratos, permisos, estados, reversión, naveg
 390×844/1440×900. ESLint focal, TypeScript, build y diff pasan; el lint global mantiene 31 errores y
 8 warnings preexistentes fuera de IUX-06D. Los datos UAT fueron preservados. Integración, deploy y
 habilitación productiva permanecen fuera del cierre.
+
+D5-076 registra que `origin/dev` y `dev` contienen la integración de IUX-06D en
+`ee909ca98d493f47ee40c9779c7b139ab271c69d` y consolida en esa línea los seis cortes de IUX-06. Los
+SHAs de integración son A `f244675eefcb1f443df98b2ac03d7c237165f625`, B
+`e1fbb05354daef2361fc9eefe72173c6a2f6ec99`, C1
+`7d471b52169322405248756240f3c5a49a073597`, C2-P01
+`a3c8b6efd973ddf576dc5a703bcf221ea5a2a60c`, C2-P02
+`953984bacaffff618f85b8074e6fada2506ce511` y D
+`ee909ca98d493f47ee40c9779c7b139ab271c69d`. D5-075 permanece vigente e inalterada.
+
+La evidencia automatizada está completa en el alcance informado por cada corte y P01, P02 y D tienen
+UAT humana aprobada. A y B conservan aprobación humana acotada; C1 conserva comprobación técnica
+autoritaria, pero no aprobación humana completa posterior a su corrección. Para probar con usuarios
+los recorridos MVP de gestión de grupos, Membresías y pagos, quedan como condiciones del recorrido
+afectado: inspeccionar el Historial de Membresías con datos reales, aprobar una Solicitud humana nueva
+y observar su alta inmediata en Integrantes, y recorrer en Android 360/390 px Explorar, Mis grupos,
+Historial e Integrantes. Economía/pagos tiene UAT humana aprobada y no agrega un bloqueo funcional
+IUX-06 conocido; mantiene fuera de alcance rendimiento productivo, deploy y gates IUX-02/E3.
+
+La matriz visual exhaustiva de estados vacíos/error y múltiples tarjetas, Owner sin Persona repetido
+en navegador, carreras manuales adicionales, zoom/rotación, teclado externo, TalkBack y capturas
+completas pueden realizarse después de una prueba MVP acotada que no pretenda acreditar esos casos.
+Esta clasificación no convierte evidencia automatizada en UAT ni habilita producción.
 
 “Requiere tu atención”, Agenda, notificaciones/campana, navbar/sidebar y roles o permisos permanecen
 fuera del incremento y sujetos a definición posterior. Presupuesto/rendimiento deben medirse durante

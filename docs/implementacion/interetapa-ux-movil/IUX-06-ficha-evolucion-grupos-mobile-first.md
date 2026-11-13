@@ -3,22 +3,55 @@
 ## Estado
 
 - **Incremento:** `IUX-06`.
-- **Estado documental:** `DEFINIDO — IMPLEMENTACIÓN NO AUTORIZADA EN ESTA FICHA`.
-- **Base revisada:** `dev@9d3361106193a03d6b55a547d8e331b98f187034`.
-- **Decisión de Documento 5:** `D5-069`.
-- **Primer corte recomendado:** `IUX-06A`.
+- **Estado documental:** `CIERRE CONSOLIDADO EN DEV — UAT HUMANA COMPLEMENTARIA PENDIENTE`.
+- **Base consolidada:** `dev@ee909ca98d493f47ee40c9779c7b139ab271c69d`.
+- **Decisiones de Documento 5:** `D5-069` a `D5-076`, preservando `D5-075`.
+- **Habilitación productiva:** no incluida; sin deploy ni cierre de los gates IUX-02/E3.
 
-| Corte | Estado | Autorización requerida |
+| Corte | Estado | Integración en `dev` |
 | --- | --- | --- |
-| IUX-06A — Deportes, publicación y Explorar grupos | **LISTO PARA IMPLEMENTAR** | Autorización posterior y separada |
-| IUX-06B — Mis grupos, solicitudes e historial | **LISTO PARA IMPLEMENTAR** | Autorización posterior y separada |
-| IUX-06C1 — Integrantes y Tu membresía | **LISTO PARA IMPLEMENTAR** | Autorización posterior y separada |
-| IUX-06C2 — Total exacto y búsqueda completa | **P01 INTEGRADO EN DEV; P02 CERRADO LOCALMENTE Y UAT APROBADA** | Revisar los commits P02 antes de integrar |
-| IUX-06D — Reorganización de Economía | **CERRADO LOCALMENTE; UAT APROBADA** | Revisar commits locales antes de integrar |
+| IUX-06A — Deportes, publicación y Explorar grupos | **INTEGRADO; UAT HUMANA ACOTADA** | `f244675eefcb1f443df98b2ac03d7c237165f625` |
+| IUX-06B — Mis grupos, solicitudes e historial | **INTEGRADO; UAT HUMANA ACOTADA** | `e1fbb05354daef2361fc9eefe72173c6a2f6ec99` |
+| IUX-06C1 — Integrantes y Tu membresía | **INTEGRADO; UAT HUMANA COMPLEMENTARIA PENDIENTE** | `7d471b52169322405248756240f3c5a49a073597` |
+| IUX-06C2-P01 — Total exacto | **INTEGRADO; UAT HUMANA APROBADA** | `a3c8b6efd973ddf576dc5a703bcf221ea5a2a60c` |
+| IUX-06C2-P02 — Búsqueda completa | **INTEGRADO; UAT HUMANA APROBADA** | `953984bacaffff618f85b8074e6fada2506ce511` |
+| IUX-06D — Reorganización de Economía | **INTEGRADO; UAT HUMANA APROBADA** | `ee909ca98d493f47ee40c9779c7b139ab271c69d` |
 
-Esta ficha autoriza sólo la definición. No autoriza cambios de código, configuración, índices,
-Rules, datos, migraciones, despliegues ni habilitación productiva. Los permisos actuales, la
-separación entre Owner, Membresía y capabilities, y los gates productivos de IUX-02/E3 permanecen.
+Este cierre consolida evidencia ya integrada; no autoriza cambios adicionales de código,
+configuración, índices, Rules, datos, migraciones, despliegues ni habilitación productiva. Los
+permisos actuales, la separación entre Owner, Membresía y capabilities, y los gates productivos de
+IUX-02/E3 permanecen.
+
+### Evidencia consolidada por corte
+
+| Corte | Alcance entregado | Evidencia automatizada | UAT humana efectivamente realizada |
+| --- | --- | --- | --- |
+| A | Catálogo deportivo, privacidad por defecto, publicación Owner, Explorar y Solicitud canónica | 24/24 unitarias focales, 459/459 completas, Emulator focal/completo 1/1 y 8/8, TypeScript, sintaxis, lint baseline, build y diff PASS | Aprobados aviso pendiente, acceso a Solicitud propia y cancelación; también el ajuste visual de Economía. No se reconfirmaron sidebar/pestañas ni el recorrido visual completo en escritorio/Android. |
+| B | Mis grupos deduplicados, solicitudes propias cancelables e Historial lazy de Membresías finalizadas, páginas 5 + 2 | 465/465 unitarias, Emulator focal 1/1, TypeScript, lint focal, sintaxis, build y diff PASS; cubre carrera aprobación/cancelación, reactivación, orden e Historial | Aprobados solicitud/cancelación, actualización de Novedades/Integrantes y Grupo real Owner-integrante de fútbol en los tres filtros. No se inspeccionó humanamente el Historial real ni su paginación/fechas; tampoco la revisión visual integral. |
+| C1 | Tu membresía integrada al padrón, Owner primero y sin duplicados, acciones canónicas y corrección de lectura tardía posterior a aprobar | 44/44 focales, Emulator 8/8 (lote 6 42/42), base aislada 42/42, TypeScript, lint baseline, build y diff PASS; lectores canónicos confirmaron Solicitud aprobada y Membresía activa | La UAT detectó los defectos y fijó textos/presentación; la comprobación posterior fue técnica con las dos cuentas preservadas. No se aprobó humanamente una Solicitud nueva después de la corrección ni se completó escritorio/Android. |
+| C2-P01 | Total exacto por Grupo/Temporada con contador y contribuciones idempotentes | Emulator fija `0 → 0 → 1 → 0` y cubre comparación multipágina, datos anteriores, retry, concurrencia, reactivación, renovación, salidas y cambio de Temporada | Aprobados `NO_OPEN_SEASON(0)`, `READY(0/total)` y la reserva `UNAVAILABLE`/error con reintento. |
+| C2-P02 | Búsqueda completa Owner-scoped desde tres caracteres, normalizada y generacional | Emulator cubre fuera de primera página, palabras compuestas, tildes/caso, paginación, alta/baja, autorización y secuencia Paredes/Paris; consulta UAT verificó proyección `READY` sin alterar datos canónicos | Aprobados mensaje/enlace sin Temporada, foco y descarte de respuestas tardías, restauración del padrón y Owner integrante sin duplicación; consulta autorizada confirmó a Jorge Paredes una vez. |
+| D | Economía en Deudas, Pagos informados, Historial y Conceptos; avisos resueltos Owner-only y ajustes visuales finales | 28/28 regresiones focales finales; Emulator 11/11 + relación administrativa 1/1; navegador 390×844/1440×900, Historial con 1.000 DTOs, TypeScript, ESLint focal, build y diff PASS | Aprobados reorganización, pendientes/resueltos, aviso versus ingreso, permisos Owner/delegados, salida discreta, encabezados, entrada a Integrantes e Historia contraída. |
+
+### Pendientes humanos y efecto sobre una prueba MVP con usuarios
+
+Bloquean o condicionan una prueba MVP del recorrido correspondiente:
+
+1. **Membresías:** abrir el Historial con datos reales y verificar carga lazy, Grupo, Temporada,
+   inicio/fin, `Último período` y `Cargar más`. Sin esto no está acreditado humanamente el recorrido
+   histórico que el usuario ve en `Mis grupos`.
+2. **Gestión de grupos/membresías:** aprobar una Solicitud humana nueva después de la corrección C1 y
+   confirmar, sin recarga, retiro de Pendientes, alta en el padrón y ausencia del error residual. Es
+   condición para probar con usuarios el recorrido crítico solicitud → aprobación → Membresía.
+3. **Android:** completar al menos en 360/390 px los recorridos MVP de Explorar/publicar/solicitar,
+   Mis grupos/Historial y aprobación/Integrantes, comprobando legibilidad, foco, acciones, overflow y
+   scroll. Las pruebas automatizadas responsive no sustituyen el uso en dispositivo/navegador real.
+
+Pueden completarse después de una prueba MVP acotada que excluya expresamente esos casos: matriz
+visual exhaustiva de vacíos/errores y múltiples tarjetas, Owner sin Persona repetido en navegador,
+carrera de cancelación contra aprobación observada manualmente, zoom/rotación, teclado externo,
+TalkBack y capturas exhaustivas. Rendimiento productivo, deploy, rollout y los gates IUX-02/E3 no
+forman parte de esta prueba local y siguen siendo requisitos previos a habilitación productiva.
 
 ## 1. Objetivo y orden recomendado
 

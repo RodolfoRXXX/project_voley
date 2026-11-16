@@ -12,7 +12,7 @@ import UserAvatar from "../ui/avatar/UserAvatar";
 import { useConfirm } from "@/components/confirmModal/ConfirmProvider";
 import ThemeSwitch from "@/components/layout/ThemeSwitch";
 import { useThemeMode } from "@/hooks/useThemeMode";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import useToast from "@/components/ui/toast/useToast";
 import { getActiveNavigationHref } from "@/lib/navigation/activeRoute.mjs";
 import { visibleAccountNavigationItems } from "@/lib/navigation/accountNavigation";
@@ -34,16 +34,6 @@ export default function AppSidebar() {
     pathname,
     navItems.flatMap((item) => item.href ? [item.href] : item.children?.map((child) => child.href) ?? [])
   );
-
-  useEffect(() => {
-    if (pathname.startsWith("/profile")) {
-      setOpenMenus((prev) => ({ ...prev, "Mi perfil": true }));
-    }
-
-    if (pathname.startsWith("/admin")) {
-      setOpenMenus((prev) => ({ ...prev, "Mi gestión": true }));
-    }
-  }, [pathname]);
 
   const logout = async () => {
     const ok = await confirm({
@@ -90,7 +80,8 @@ export default function AppSidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          const isOpen = openMenus[item.label];
+          const isOpen = openMenus[item.label]
+            || (item.label === "Mi perfil" && pathname.startsWith("/profile"));
 
           // ITEM SIMPLE
           if (item.href) {

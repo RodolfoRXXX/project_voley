@@ -16,8 +16,7 @@ export default function RootLayout({
       <body
         className="h-dvh"
         style={{
-          ["--font-outfit" as string]: "'Segoe UI', Inter, Roboto, Arial, sans-serif",
-          ["--font-arizonia" as string]: "'Brush Script MT', 'Lucida Handwriting', cursive",
+          ["--font-brand" as string]: "Inter, 'Segoe UI', Roboto, Arial, sans-serif",
         }}
       >
         <AuthProvider>

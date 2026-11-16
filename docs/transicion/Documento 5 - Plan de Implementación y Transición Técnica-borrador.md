@@ -3184,3 +3184,19 @@ Torneos, ausencia de overflow, ruta canónica de Explorar y cierre del drawer. T
 focal, build final `UliVvIKyxlJ6EBVueJEE-` y `git diff --check` pasan. No se ejecutaron despliegue,
 seeds, migraciones, limpieza ni cambios de datos UAT. Los gates IUX-02/E3 y pendientes anteriores no
 cambian; este cierre no habilita producción ni E4.
+
+D5-078 registra la implementación y el cierre de IUX-08. La Navbar global adopta el wordmark
+`SPORTEXA` aprobado: una única familia sans-serif, con la X naranja del mismo tamaño, peso y línea
+base que las demás letras. El enlace a Inicio, la composición centrada de escritorio y el
+comportamiento responsive móvil permanecen vigentes. El favicon pasa a representar la X naranja
+sobre azul noche mediante un ICO con entradas nativas de 16, 32, 48 y 256 px. La comparativa visual
+se conserva fuera de los commits y no se rediseñan otras superficies de marca.
+
+El usuario aprueba humanamente el logo y favicon del BUILD_ID `dnj8IFSPvltjJWJUtg7ah`. Esa
+confirmación es general para el resultado del incremento y no se desagrega como observación humana
+por cada escenario. La evidencia individual automatizada y visual cubre Navbar pública y
+autenticada, temas claro/oscuro, 1440×900, 360×800 y 390×844, foco, ausencia de solapamientos y
+overflow, y favicon a 16/32 px. TypeScript, ESLint focal, build final
+`TnpH5WxHR0BoSibefP99-` y `git diff --check` pasan. No se ejecutaron despliegue, cambios de
+configuración, seeds, migraciones ni escrituras de datos UAT; los gates IUX-02/E3 y pendientes
+anteriores permanecen sin cambios.

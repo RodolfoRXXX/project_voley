@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - cierre documental IUX-06 en dev - 13 de noviembre de 2026*
+*Borrador consolidado - cierre documental IUX-07 en dev - 16 de noviembre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -39,7 +39,7 @@ Estado operativo del plan:
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
 - `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
-- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
+- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-07 CERRADO, INTEGRADO EN DEV Y CON UAT HUMANA GENERAL APROBADA; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -3167,3 +3167,20 @@ fuera del incremento y sujetos a definición posterior. Presupuesto/rendimiento 
 la ejecución y son gates de habilitación, no decisiones de diseño pendientes. La observación local
 de mejor velocidad y consumo no acredita Android real, rendimiento productivo ni ausencia definitiva
 de fugas. IUX-02 conserva sus gates productivos; el cierre no cierra IUX/E3 ni habilita E4.
+
+D5-077 registra la implementación y el cierre de IUX-07. El Inicio público presenta SPORTEXA como
+herramienta para crear, organizar y participar en grupos deportivos, conserva el acceso con Google y
+ofrece `Ir a Mis grupos` con sesión. Se retiran del Inicio los bloques y el código exclusivo de
+Torneos vigentes y Próximos partidos. La navegación compartida conserva Mis grupos, Explorar grupos,
+Mis obligaciones y el acceso a perfil, y deja de ofrecer Grupos, Torneos, Mis torneos y Mi gestión >
+Torneos, incluido el contenedor Mi gestión al quedar vacío. Explorar conserva
+`/dashboard/groups/explore`; sidebar, drawer, Navbar y menú de cuenta no exponen accesos equivalentes.
+
+Las rutas, código, datos y permisos de Torneos permanecen sin cambios para una etapa posterior al
+MVP. El usuario aprueba de forma general la UAT del BUILD_ID `MNZQG2uQHntRJuO3jLCF1`; no informó una
+matriz humana desglosada por escenario. La evidencia individual corresponde al runner reproducible:
+1440×900, 360×800 y 390×844 acreditan copy, CTA con sesión sintética, navegación administradora sin
+Torneos, ausencia de overflow, ruta canónica de Explorar y cierre del drawer. TypeScript, ESLint
+focal, build final `UliVvIKyxlJ6EBVueJEE-` y `git diff --check` pasan. No se ejecutaron despliegue,
+seeds, migraciones, limpieza ni cambios de datos UAT. Los gates IUX-02/E3 y pendientes anteriores no
+cambian; este cierre no habilita producción ni E4.

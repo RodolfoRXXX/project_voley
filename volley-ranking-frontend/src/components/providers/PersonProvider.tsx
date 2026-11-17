@@ -21,6 +21,7 @@ type PersonState = {
   personOutcome: "created" | "existing" | null;
   savingPerson: boolean;
   ensureMyPerson: (input: EnsureMyPersonInput) => Promise<EnsureMyPersonResult>;
+  refreshMyPerson: () => Promise<MyPerson | null>;
   retryPerson: () => void;
 };
 
@@ -36,60 +37,72 @@ export function PersonProvider({ children }: { children: React.ReactNode }) {
   const [savingPerson, setSavingPerson] = useState(false);
   const [retryVersion, setRetryVersion] = useState(0);
   const inFlight = useRef<Promise<EnsureMyPersonResult> | null>(null);
+  const activeAccountId = useRef<string | null>(null);
+  const requestGeneration = useRef(0);
+
+  const refreshMyPerson = useCallback(async () => {
+    if (accountStatus !== "ready" || !account) return null;
+    const accountId = account.userId;
+    const generation = ++requestGeneration.current;
+    setPersonStatus("loading");
+    setPersonError(null);
+    try {
+      const nextPerson = await getMyPerson();
+      if (activeAccountId.current !== accountId || requestGeneration.current !== generation) return null;
+      setPerson(nextPerson);
+      setPersonAccountId(accountId);
+      setPersonOutcome(nextPerson ? "existing" : null);
+      setPersonStatus(nextPerson ? "ready" : "empty");
+      return nextPerson;
+    } catch (error) {
+      if (activeAccountId.current !== accountId || requestGeneration.current !== generation) return null;
+      setPerson(null);
+      setPersonAccountId(accountId);
+      setPersonError(getPersonErrorMessage(error));
+      const reason = getPersonErrorReason(error);
+      setPersonStatus(reason === "PERSON_LINK_INCONSISTENT" ? "inconsistent" : reason === "AUTHENTICATION_REQUIRED" ? "sessionInvalid" : "error");
+      throw error;
+    }
+  }, [account, accountStatus]);
 
   useEffect(() => {
     let active = true;
-    const load = async () => {
-      await Promise.resolve();
+    activeAccountId.current = account?.userId ?? null;
+    requestGeneration.current += 1;
+    inFlight.current = null;
+    queueMicrotask(() => {
       if (!active) return;
-      if (accountStatus !== "ready" || !account) {
-        setPersonAccountId(null);
-        setPerson(null);
-        setPersonError(null);
-        setPersonOutcome(null);
-        setPersonStatus("idle");
-        return;
-      }
-
-      setPersonStatus("loading");
       setPersonAccountId(null);
+      setPerson(null);
       setPersonError(null);
-      try {
-        const nextPerson = await getMyPerson();
-        if (!active) return;
-        setPerson(nextPerson);
-        setPersonAccountId(account.userId);
-        setPersonOutcome(nextPerson ? "existing" : null);
-        setPersonStatus(nextPerson ? "ready" : "empty");
-      } catch (error) {
-        if (!active) return;
-        setPerson(null);
-        setPersonAccountId(account.userId);
-        setPersonError(getPersonErrorMessage(error));
-        const reason = getPersonErrorReason(error);
-        setPersonStatus(reason === "PERSON_LINK_INCONSISTENT" ? "inconsistent" : reason === "AUTHENTICATION_REQUIRED" ? "sessionInvalid" : "error");
-      }
-    };
-    void load();
-
+      setPersonOutcome(null);
+      setSavingPerson(false);
+      setPersonStatus("idle");
+      if (accountStatus === "ready" && account) void refreshMyPerson().catch(() => undefined);
+    });
     return () => {
       active = false;
+      requestGeneration.current += 1;
     };
-  }, [account, accountStatus, retryVersion]);
+  }, [account, accountStatus, refreshMyPerson, retryVersion]);
 
   const ensureMyPerson = useCallback((input: EnsureMyPersonInput) => {
     if (inFlight.current) return inFlight.current;
+    const accountId = account?.userId ?? null;
+    const generation = ++requestGeneration.current;
     setPersonError(null);
     setSavingPerson(true);
     const request = ensureMyPersonRequest(input)
       .then((result) => {
+        if (!accountId || activeAccountId.current !== accountId || requestGeneration.current !== generation) return result;
         setPerson(result.person);
-        setPersonAccountId(account?.userId ?? null);
+        setPersonAccountId(accountId);
         setPersonOutcome(result.outcome);
         setPersonStatus("ready");
         return result;
       })
       .catch((error) => {
+        if (!accountId || activeAccountId.current !== accountId || requestGeneration.current !== generation) throw error;
         setPersonError(getPersonErrorMessage(error));
         setPersonAccountId(account?.userId ?? null);
         const reason = getPersonErrorReason(error);
@@ -97,8 +110,8 @@ export function PersonProvider({ children }: { children: React.ReactNode }) {
         throw error;
       })
       .finally(() => {
-        inFlight.current = null;
-        setSavingPerson(false);
+        if (inFlight.current === request) inFlight.current = null;
+        if (activeAccountId.current === accountId && requestGeneration.current === generation) setSavingPerson(false);
       });
     inFlight.current = request;
     return request;
@@ -113,8 +126,9 @@ export function PersonProvider({ children }: { children: React.ReactNode }) {
     personOutcome,
     savingPerson,
     ensureMyPerson,
+    refreshMyPerson,
     retryPerson,
-  }), [ensureMyPerson, person, personAccountId, personError, personOutcome, personStatus, retryPerson, savingPerson]);
+  }), [ensureMyPerson, person, personAccountId, personError, personOutcome, personStatus, refreshMyPerson, retryPerson, savingPerson]);
 
   return <PersonContext.Provider value={value}>{children}</PersonContext.Provider>;
 }

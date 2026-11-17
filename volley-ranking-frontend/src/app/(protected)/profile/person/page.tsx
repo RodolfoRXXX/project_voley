@@ -1,24 +1,32 @@
 "use client";
 
+import { useEffect } from "react";
 import PersonBootstrapForm from "@/components/person/PersonBootstrapForm";
+import { GroupPageShell } from "@/components/groups/GroupPageShell";
+import { RefreshButton } from "@/components/ui/RefreshButton";
 import { usePerson } from "@/hooks/usePerson";
 
 export default function MyPersonPage() {
-  const { person, personStatus, personError, personOutcome, retryPerson } = usePerson();
+  const { person, personStatus, personError, personOutcome, refreshMyPerson, retryPerson } = usePerson();
+
+  useEffect(() => {
+    void refreshMyPerson().catch(() => undefined);
+  }, [refreshMyPerson]);
 
   return (
-    <section className="mx-auto w-full max-w-2xl space-y-5">
-      <header>
-        <p className="text-sm font-medium text-orange-600">Mi perfil</p>
-        <h1 className="text-2xl font-bold">Ficha personal</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">Estos datos identifican tu persona dentro de Sportexa.</p>
-      </header>
+    <GroupPageShell
+      backHref="/profile/info"
+      title="Ficha personal"
+      description="Estos datos identifican tu persona dentro de Sportexa."
+      actions={<RefreshButton loading={personStatus === "loading"} onClick={() => void refreshMyPerson().catch(() => undefined)} label="Actualizar ficha personal" />}
+    >
+      <section className="w-full max-w-2xl space-y-5">
 
       {(personStatus === "idle" || personStatus === "loading") && (
         <p className="rounded-md border border-[var(--border)] p-5 text-sm">Cargando tu ficha…</p>
       )}
 
-      {personStatus === "empty" && <PersonBootstrapForm />}
+      {personStatus === "empty" && <div className="space-y-4"><p className="text-sm leading-6 text-[var(--text-muted)]">La ficha personal te identifica dentro de SPORTEXA y habilita tus recorridos personales.</p><PersonBootstrapForm /></div>}
 
       {personStatus === "ready" && person && (
         <div className="space-y-3 rounded-md border border-[var(--border)] bg-[var(--background)] p-5 sm:p-6">
@@ -46,6 +54,7 @@ export default function MyPersonPage() {
           )}
         </div>
       )}
-    </section>
+      </section>
+    </GroupPageShell>
   );
 }

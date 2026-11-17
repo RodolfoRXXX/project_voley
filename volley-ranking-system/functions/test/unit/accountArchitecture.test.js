@@ -214,9 +214,9 @@ test("public account DTO is Firebase-free and exact", () => {
   const dtoType = read("volley-ranking-frontend/src/types/MyAccount.ts");
   const dtoMapper = read("volley-ranking-system/functions/src/users/application/accountDto.js");
 
-  assert.doesNotMatch(dtoType, /firebase|firestore|Timestamp|createdAt/i);
-  assert.doesNotMatch(dtoMapper, /FieldValue|Timestamp|createdAt|roles|onboarded/);
-  for (const field of ["userId", "displayName", "accessEmail", "accountPhotoUrl"]) {
+  assert.doesNotMatch(dtoType, /firebase|firestore|Timestamp/i);
+  assert.doesNotMatch(dtoMapper, /FieldValue|Timestamp|roles|onboarded/);
+  for (const field of ["userId", "displayName", "accessEmail", "accountPhotoUrl", "accountCreatedAt"]) {
     assert.match(dtoType, new RegExp(`\\b${field}\\b`));
     assert.match(dtoMapper, new RegExp(`\\b${field}\\b`));
   }

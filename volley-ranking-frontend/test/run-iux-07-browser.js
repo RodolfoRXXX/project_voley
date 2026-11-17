@@ -134,6 +134,11 @@ let browser;
           assertions.desktopSidebarVisible = sidebar && getComputedStyle(sidebar).display !== "none";
           const sidebarText = sidebar?.textContent || "";
           assertions.desktopInventory = sidebarText.includes("Mis grupos") && sidebarText.includes("Explorar grupos") && sidebarText.includes("Mi perfil") && !sidebarText.includes("Torneos") && !sidebarText.includes("Mi gestión");
+          const profileButton = [...(sidebar?.querySelectorAll("button") || [])].find((button) => button.textContent?.includes("Mi perfil"));
+          profileButton?.click();
+          await new Promise((resolve) => setTimeout(resolve, 150));
+          const profileLinks = [...(sidebar?.querySelectorAll("a") || [])].filter((link) => ["/profile/info", "/profile/person", "/dashboard/obligations"].includes(link.getAttribute("href") || ""));
+          assertions.desktopProfileNavigation = profileLinks.length === 3;
           const accountButton = [...document.querySelectorAll("button")].find((button) => button.textContent?.trim() === "Cuenta administradora");
           assertions.adminAccountButton = Boolean(accountButton);
           for (let attempt = 0; accountButton && accountButton.getAttribute("aria-expanded") !== "true" && attempt < 20; attempt += 1) {
@@ -143,15 +148,20 @@ let browser;
           const accountMenuLinks = allLinks().filter((link) => link.closest("nav") && link.getAttribute("href") === "/dashboard");
           assertions.adminAccountMenu = accountButton?.getAttribute("aria-expanded") === "true" && accountMenuLinks.length >= 1 && !allLinks().some((link) => forbidden.some((href) => link.getAttribute("href")?.startsWith(href)));
         } else {
-          const menuButton = [...document.querySelectorAll("button")].find((button) => button.textContent?.includes("☰"));
+          const menuButton = document.querySelector('button[aria-label="Abrir menú"]');
           menuButton?.click();
           await waitFor(() => visibleText().includes("Explorar grupos"));
           assertions.mobileAdminInventory = visibleText().includes("Mis grupos") && visibleText().includes("Explorar grupos") && visibleText().includes("Mi perfil") && !visibleText().includes("Torneos") && !visibleText().includes("Mi gestión");
+          const profileButton = [...document.querySelectorAll("button")].find((button) => button.textContent?.includes("Mi perfil"));
+          profileButton?.click();
+          await new Promise((resolve) => setTimeout(resolve, 150));
+          const profileLinks = allLinks().filter((link) => ["/profile/info", "/profile/person", "/dashboard/obligations"].includes(link.getAttribute("href") || ""));
+          assertions.mobileProfileNavigation = profileLinks.length === 3;
           const explore = allLinks().find((link) => link.textContent?.trim() === "Explorar grupos");
           assertions.canonicalExploreRoute = explore?.getAttribute("href") === "/dashboard/groups/explore";
           explore?.addEventListener("click", (event) => event.preventDefault(), { once: true });
           explore?.click();
-          await waitFor(() => !visibleText().includes("Mis obligaciones"));
+          await new Promise((resolve) => setTimeout(resolve, 150));
           assertions.mobileMenuClosed = !visibleText().includes("Mis obligaciones");
         }
         return { passed: Object.values(assertions).every(Boolean), assertions, viewport: { width: innerWidth, height: innerHeight, scrollWidth: document.documentElement.scrollWidth } };

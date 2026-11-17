@@ -172,6 +172,8 @@ export default function Navbar() {
           <button
             onClick={() => setOpen(!open)}
             className="p-2 rounded text-[var(--foreground)] hover:bg-[var(--surface)]"
+            aria-label={open ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={open}
           >
             ☰
           </button>
@@ -233,7 +235,8 @@ export default function Navbar() {
                 }
 
                 // ITEM CON SUBMENU
-                const isOpen = openMenus[item.label];
+                const hasActiveChild = item.children?.some((child) => child.href === activeHref) ?? false;
+                const isOpen = openMenus[item.label] || hasActiveChild;
 
                 return (
                   <div key={item.label}>

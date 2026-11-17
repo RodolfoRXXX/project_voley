@@ -9,11 +9,12 @@ export const accountNavigationItems: AccountNavigationItem[] = [
   { label: "Inicio", href: "/dashboard" },
   { label: "Mis grupos", href: "/dashboard/groups" },
   { label: "Explorar grupos", href: "/dashboard/groups/explore" },
-  { label: "Mis obligaciones", href: "/dashboard/obligations" },
   {
     label: "Mi perfil",
     children: [
+      { label: "Resumen", href: "/profile/info" },
       { label: "Ficha personal", href: "/profile/person" },
+      { label: "Mis obligaciones", href: "/dashboard/obligations" },
     ],
   },
 ];

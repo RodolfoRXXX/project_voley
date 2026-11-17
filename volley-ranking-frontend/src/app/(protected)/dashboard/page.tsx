@@ -25,7 +25,7 @@ export default function DashboardPage() {
   const greeting = dashboardGreeting(account?.displayName, firebaseUser?.displayName);
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 pb-10 pt-6 sm:px-6 sm:pt-8 lg:px-8">
+    <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <header className="mb-6 sm:mb-8">
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-orange-600">Dashboard</p>
         <h1 className="mt-1 text-3xl font-bold tracking-tight text-[var(--foreground)] sm:text-4xl">{greeting}</h1>

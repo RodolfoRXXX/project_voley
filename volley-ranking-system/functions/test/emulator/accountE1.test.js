@@ -119,12 +119,15 @@ test("E1-01 materializa y consulta únicamente la cuenta autenticada", async (t)
       assert.equal(first.status, 200, JSON.stringify(first.body));
       assert.equal(second.status, 200, JSON.stringify(second.body));
       assert.deepEqual(first.body?.result, second.body?.result);
-      assert.deepEqual(first.body?.result, {
+      assert.deepEqual({ ...first.body?.result, accountCreatedAt: undefined }, {
         userId: actor.uid,
         displayName: "",
         accessEmail: actor.email,
         accountPhotoUrl: null,
+        accountCreatedAt: undefined,
       });
+      assert.equal(first.body?.result?.accountCreatedAt, second.body?.result?.accountCreatedAt);
+      assert.equal(new Date(first.body.result.accountCreatedAt).toISOString(), first.body.result.accountCreatedAt);
 
       const snapshot = await accountRef.get();
       assert.equal(snapshot.exists, true);
@@ -152,7 +155,9 @@ test("E1-01 materializa y consulta únicamente la cuenta autenticada", async (t)
         displayName: "Nombre persistido",
         accessEmail: actor.email,
         accountPhotoUrl: null,
+        accountCreatedAt: getResult.body?.result?.accountCreatedAt,
       };
+      assert.equal(new Date(expected.accountCreatedAt).toISOString(), expected.accountCreatedAt);
       assert.deepEqual(getResult.body?.result, expected);
       assert.deepEqual(retryResult.body?.result, expected);
       assert.equal((await accountRef.get()).data().nombre, "Nombre persistido");

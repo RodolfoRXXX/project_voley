@@ -146,7 +146,10 @@ test("IUX-05 presenta lenguaje propio, delega el aviso y normaliza Actualizar", 
   assert.match(obligations, /useSearchParams/);
   assert.match(obligations, /getMyPaymentObligationDetail\(requestedPaymentId\)/);
   assert.match(obligations, /Obligación seleccionada/);
-  assert.match(obligations, /Volver a Economía personal/);
+  const obligationsPage = read("volley-ranking-frontend/src/app/(protected)/dashboard/obligations/page.tsx");
+  assert.match(obligationsPage, /candidate\.startsWith\("\/dashboard\/groups\/"\)/);
+  assert.match(obligationsPage, /candidate : "\/profile\/info"/);
+  assert.match(obligationsPage, /backHref=\{backHref\}/);
   assert.match(refresh, /aria-label=\{label\}/);
   assert.match(refresh, /title=\{label\}/);
   assert.match(refresh, />Actualizar<\/span>/);

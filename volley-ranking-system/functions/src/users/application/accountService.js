@@ -41,7 +41,6 @@ function createAccountService({ userRepository }) {
 
       try {
         await userRepository.create(identity.userId, initialUser);
-        return toMyAccountDto(identity.userId, initialUser);
       } catch (error) {
         if (!(error instanceof AccountAlreadyExistsError)) {
           if (error instanceof AccountPersistenceError) throw error;

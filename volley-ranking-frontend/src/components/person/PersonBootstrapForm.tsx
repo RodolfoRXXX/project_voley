@@ -66,7 +66,7 @@ export default function PersonBootstrapForm() {
         disabled={savingPerson || missingRequired}
         className="rounded-md bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {savingPerson ? "Guardando…" : "Crear mi ficha"}
+        {savingPerson ? "Guardando…" : "Crear mi ficha personal"}
       </button>
     </form>
   );

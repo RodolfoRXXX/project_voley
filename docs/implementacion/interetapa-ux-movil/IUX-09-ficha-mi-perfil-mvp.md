@@ -436,4 +436,3 @@ en `dev` y push normal; no autoriza despliegue ni cambios de datos UAT.
 La evidencia automatizada acredita los escenarios técnicos indicados, pero no sustituye ni amplía
 la aprobación humana. `visuals/`, capturas, builds, configuración local y exportaciones UAT quedan
 fuera de los commits.
-

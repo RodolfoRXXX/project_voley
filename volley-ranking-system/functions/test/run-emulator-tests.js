@@ -391,7 +391,9 @@ const tournamentEconomyRetirementE3TestPath = path.join(
   "emulator",
   "tournamentEconomyRetirementE3.test.js"
 );
-const command = process.env.IUX_06C2_P02_FOCAL === "1"
+const command = process.env.IUX_09_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${myObligationsEmptyE3TestPath}"`
+  : process.env.IUX_06C2_P02_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${activeRosterSearchIux06c2TestPath}"`
   : process.env.IUX_06C2_P01_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${activeRosterCounterIux06c2TestPath}"`

@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import ProfileSummary from "@/components/profile/ProfileSummary";
 
 export default function ProfileInfoPage() {
-  redirect("/dashboard");
+  return <ProfileSummary />;
 }

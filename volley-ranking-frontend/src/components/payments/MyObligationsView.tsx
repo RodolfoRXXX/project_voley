@@ -34,8 +34,6 @@ export function MyObligationsView() {
   const requestedPaymentId = searchParams.get("paymentId") ?? "";
   const requestedGroupId = searchParams.get("groupId") ?? "";
   const requestedMembershipId = searchParams.get("membershipId") ?? "";
-  const requestedReturnTo = searchParams.get("returnTo") ?? "";
-  const returnTo = requestedReturnTo.startsWith("/dashboard/groups/") ? requestedReturnTo : "";
   const [items, setItems] = useState<Obligation[]>([]); const [cursor, setCursor] = useState<string>(); const [receipts, setReceipts] = useState<PaymentReceipt[]>([]); const [receiptCursor, setReceiptCursor] = useState<string>();
   const [obligationStatus, setObligationStatus] = useState<"OPEN" | "SETTLED" | "VOIDED">("OPEN"); const [paymentDetail, setPaymentDetail] = useState<MyPaymentObligationDetail | null>(null);
   const [labels, setLabels] = useState<Map<string, { groupName: string; seasonName: string }>>(new Map()); const [detail, setDetail] = useState<PaymentReceipt | null>(null);
@@ -101,7 +99,7 @@ export function MyObligationsView() {
   if (personStatus === "empty") return <section className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-950"><p>Necesitás crear o vincular tu Persona para consultar tus obligaciones.</p><Link className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-amber-500 px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2" href="/profile/person">Ir a mi Persona</Link></section>;
   if (personStatus !== "ready" || !person) return <section role="alert" className="rounded-xl border border-red-300 bg-red-50 p-5 text-red-900"><p>{personError ?? "No pudimos verificar la vinculación de tu Persona."}</p><Link className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-red-400 px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2" href="/profile/person">Revisar mi Persona</Link></section>;
 
-  return <div className="space-y-6">{returnTo ? <Link href={returnTo} className="inline-flex min-h-11 items-center text-sm font-semibold text-orange-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500">Volver a Economía personal</Link> : null}<div ref={feedback} tabIndex={-1} aria-live="polite">{notice ? <p className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p> : null}{error ? <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}</div>
+  return <div className="space-y-6"><div ref={feedback} tabIndex={-1} aria-live="polite">{notice ? <p className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p> : null}{error ? <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}</div>
     <h2 className="text-lg font-semibold">{obligationStatus === "OPEN" ? "Mis obligaciones pendientes" : "Mis obligaciones anuladas"}</h2>
     {recoveryInput ? <button type="button" className="rounded-lg border border-amber-600 px-4 py-2 font-semibold" onClick={() => void submit(recoveryInput)}>Recuperar la misma entrega</button> : null}
     {status === "loading" && items.length === 0 ? <p role="status">Cargando {obligationStatus === "OPEN" ? "obligaciones pendientes" : "obligaciones anuladas"}…</p> : null}{status === "error" ? <button onClick={() => void load(false)} className="rounded-lg border px-4 py-2 font-semibold">Reintentar</button> : null}

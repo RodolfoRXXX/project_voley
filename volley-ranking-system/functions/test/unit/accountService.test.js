@@ -20,12 +20,17 @@ const identity = Object.freeze({
   photoUrl: "https://example.invalid/avatar.png",
 });
 
+const createdAt = Object.freeze({
+  toDate: () => new Date("2026-11-17T12:34:56.000Z"),
+});
+
 function expectedDto() {
   return {
     userId: identity.userId,
     displayName: identity.displayName,
     accessEmail: identity.email,
     accountPhotoUrl: identity.photoUrl,
+    accountCreatedAt: "2026-11-17T12:34:56.000Z",
   };
 }
 
@@ -41,7 +46,7 @@ function createMemoryRepository() {
     async create(userId, user) {
       createCalls += 1;
       if (users.has(userId)) throw new AccountAlreadyExistsError();
-      users.set(userId, { ...user, createdAt: { synthetic: true } });
+      users.set(userId, { ...user, createdAt });
     },
     async getById(userId) {
       getCalls += 1;
@@ -59,7 +64,7 @@ test("ensure crea una única cuenta y devuelve el DTO exacto", async () => {
     nombre: "Cuenta",
     email: identity.email,
     photoURL: identity.photoUrl,
-    createdAt: { synthetic: true },
+    createdAt,
   });
 });
 
@@ -77,6 +82,7 @@ test("ensure recupera la cuenta existente sin actualizarla", async () => {
     displayName: "Nombre original",
     accessEmail: "original@example.invalid",
     accountPhotoUrl: null,
+    accountCreatedAt: null,
   });
   assert.equal(repository.getCalls, 1);
 });
@@ -110,6 +116,7 @@ test("get recupera la cuenta y no la crea", async () => {
     nombre: identity.displayName,
     email: identity.email,
     photoURL: identity.photoUrl,
+    createdAt,
   });
   const service = createAccountService({ userRepository: repository });
 

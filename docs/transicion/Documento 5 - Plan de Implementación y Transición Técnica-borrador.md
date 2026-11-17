@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - cierre documental IUX-07 en dev - 16 de noviembre de 2026*
+*Borrador consolidado - cierre documental IUX-09 - 17 de noviembre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -39,7 +39,7 @@ Estado operativo del plan:
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
 - `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
-- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-07 CERRADO, INTEGRADO EN DEV Y CON UAT HUMANA GENERAL APROBADA; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
+- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-07 E IUX-08 CERRADOS E INTEGRADOS EN DEV CON UAT HUMANA APROBADA; IUX-09 CERRADO CON UAT HUMANA APROBADA E INTEGRACIÓN AUTORIZADA; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -3200,3 +3200,28 @@ overflow, y favicon a 16/32 px. TypeScript, ESLint focal, build final
 `TnpH5WxHR0BoSibefP99-` y `git diff --check` pasan. No se ejecutaron despliegue, cambios de
 configuración, seeds, migraciones ni escrituras de datos UAT; los gates IUX-02/E3 y pendientes
 anteriores permanecen sin cambios.
+
+D5-079 registra la implementación y el cierre de IUX-09. Mi perfil queda organizado en Resumen
+(`/profile/info`), Ficha personal (`/profile/person`) y Mis obligaciones
+(`/dashboard/obligations`) tanto en escritorio como en móvil, preservando rutas directas y el acceso
+desde Economía personal. `MyAccount` incorpora de forma aditiva `accountCreatedAt`, leído sólo de
+`users.createdAt` con la serialización ISO vigente; un valor ausente o inválido se representa como
+`null` y se omite visualmente. Resumen muestra el estado confirmado de Persona y una única página
+parcial de hasta tres obligaciones abiertas, sin total ni recorrido de páginas adicionales. Ficha
+personal reutiliza el alta vigente, permite reconsultar y descarta datos o respuestas tardías al
+cambiar de cuenta.
+
+El ajuste visual aprobado uniforma márgenes, separación superior, tamaño, peso y alineación de
+títulos en Resumen, Ficha personal, Mis obligaciones, Inicio autenticado, Mis grupos y Explorar
+grupos. Ficha personal y Mis obligaciones ubican «Volver» arriba del título; el retorno ordinario
+lleva a Resumen y Mis obligaciones conserva el retorno contextual cuando se ingresa desde Economía
+personal. El usuario aprobó humanamente la UAT funcional y visual del BUILD_ID
+`2qn119a5HcGb_Qg4yvYWL` el 17 de noviembre de 2026.
+
+Por separado, las comprobaciones automatizadas focales de Cuenta, Persona, obligaciones,
+navegación, aislamiento y presentación pasan, al igual que TypeScript, ESLint focal, build,
+`git diff --check` y la matriz de 1440×900, 360×800 y 390×844 sin overflow horizontal. IUX-06A
+mantiene 2/3 tanto en la rama como en `dev@3f518b2`: la expectativa `gridTemplateColumns` es un
+fallo preexistente, no una regresión de IUX-09. `visuals/`, capturas, builds, configuración local y
+exportaciones UAT se excluyen. No se ejecutan despliegue ni cambios de datos UAT; los gates IUX-02/E3
+y pendientes previos no cambian.

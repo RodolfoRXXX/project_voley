@@ -80,8 +80,8 @@ export default function AppSidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          const isOpen = openMenus[item.label]
-            || (item.label === "Mi perfil" && pathname.startsWith("/profile"));
+          const hasActiveChild = item.children?.some((child) => child.href === activeHref) ?? false;
+          const isOpen = openMenus[item.label] || hasActiveChild;
 
           // ITEM SIMPLE
           if (item.href) {

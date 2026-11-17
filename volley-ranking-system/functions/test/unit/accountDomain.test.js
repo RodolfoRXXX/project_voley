@@ -37,12 +37,12 @@ test("rechaza identidad sin correo", () => {
   );
 });
 
-test("DTO expone sólo la cuenta propia y omite timestamps", () => {
+test("DTO expone la fecha de Cuenta serializada como ISO-8601", () => {
   const dto = toMyAccountDto("firebase-uid", {
     nombre: "Cuenta",
     email: "account@example.invalid",
     photoURL: "",
-    createdAt: { seconds: 1 },
+    createdAt: { toDate: () => new Date("2026-11-17T12:34:56.000Z") },
     roles: "admin",
     onboarded: true,
   });
@@ -52,5 +52,15 @@ test("DTO expone sólo la cuenta propia y omite timestamps", () => {
     displayName: "Cuenta",
     accessEmail: "account@example.invalid",
     accountPhotoUrl: null,
+    accountCreatedAt: "2026-11-17T12:34:56.000Z",
   });
+});
+
+test("DTO representa users.createdAt ausente o inválido como null", () => {
+  const base = { nombre: "Cuenta", email: "account@example.invalid", photoURL: "" };
+  assert.equal(toMyAccountDto("missing", base).accountCreatedAt, null);
+  assert.equal(
+    toMyAccountDto("invalid", { ...base, createdAt: { toDate: () => new Date("invalid") } }).accountCreatedAt,
+    null
+  );
 });

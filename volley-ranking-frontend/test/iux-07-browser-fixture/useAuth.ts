@@ -9,6 +9,7 @@ const account = {
   displayName: "Cuenta administradora",
   accessEmail: "admin@example.invalid",
   accountPhotoUrl: "",
+  accountCreatedAt: null,
 };
 
 const state = {

@@ -2,7 +2,7 @@
 
 ## Estado de la ficha
 
-- **Estado:** `DEFINIDO — LISTO PARA DECISIÓN Y AUTORIZACIÓN DE IMPLEMENTACIÓN`.
+- **Estado:** `CERRADO — UAT HUMANA APROBADA; INTEGRACIÓN AUTORIZADA`.
 - **Fecha:** 17 de noviembre de 2026.
 - **Base verificada:** `dev@3f518b214feb514005e30402cbc4888a2848f2d9`, integración de IUX-08.
 - **Etapa del roadmap:** interetapa `IUX` entre E3 y E4.
@@ -11,6 +11,8 @@
   versionado, push, despliegue, migraciones ni cambios de datos.
 - **Estado local observado:** `visuals/` sin seguimiento. Se preserva íntegramente y queda fuera de
   este incremento.
+- **Aprobación humana:** UAT funcional y ajuste visual final aprobados el 17 de noviembre de 2026
+  sobre el BUILD_ID `2qn119a5HcGb_Qg4yvYWL`.
 
 IUX-08 es el último incremento IUX integrado en la base y Documento 5 registra decisiones hasta
 `D5-078`. No existe otra ficha `IUX-09`; por lo tanto, `IUX-09` es el identificador siguiente.
@@ -398,4 +400,40 @@ La enumeración orienta el corte; no autoriza cambios:
 No se prevé modificar `MyObligationsView` salvo una corrección estrictamente necesaria para
 preservar deep-links demostrada por pruebas. No se prevén cambios a persistencia, índices, Rules o
 datos.
+
+## 13. Evidencia de cierre
+
+La implementación conserva las rutas canónicas `/profile/info`, `/profile/person` y
+`/dashboard/obligations`, amplía `MyAccount` de manera compatible con `accountCreatedAt` obtenido
+exclusivamente de `users.createdAt` y representa el valor ausente o inválido como `null`. Resumen
+omite la fecha cuando no puede serializarse, consulta una sola página de hasta tres obligaciones
+`OPEN` y no presenta un total.
+
+Los ajustes finales normalizan márgenes laterales, separación superior, títulos y encabezados de
+Resumen, Ficha personal, Mis obligaciones, Inicio autenticado, Mis grupos y Explorar grupos en los
+breakpoints verificados. Ficha personal y Mis obligaciones ubican «Volver» arriba del título; desde
+Mi perfil retorna a `/profile/info`, mientras que Mis obligaciones conserva el `returnTo` de
+Economía personal. Los bloques que requieren un ancho interno menor lo mantienen sin duplicar el
+padding del layout.
+
+### UAT humana
+
+El usuario aprobó la UAT funcional y el ajuste visual final sobre el BUILD_ID
+`2qn119a5HcGb_Qg4yvYWL` el 17 de noviembre de 2026. La aprobación autoriza versionado, integración
+en `dev` y push normal; no autoriza despliegue ni cambios de datos UAT.
+
+### Comprobaciones automatizadas
+
+- pruebas focales de Cuenta, Persona, obligaciones, navegación, aislamiento entre cuentas y
+  presentación IUX-09: aprobadas;
+- TypeScript, ESLint focal, build y `git diff --check`: aprobados;
+- navegación y alineación de las seis vistas a 1440×900, 360×800 y 390×844: aprobadas, sin overflow
+  horizontal;
+- IUX-06A: 2/3 tanto en la rama IUX-09 como en `dev@3f518b2`; el caso restante exige
+  `gridTemplateColumns` en una vista que ya no lo contiene. Se registra como fallo preexistente y no
+  como regresión de IUX-09.
+
+La evidencia automatizada acredita los escenarios técnicos indicados, pero no sustituye ni amplía
+la aprobación humana. `visuals/`, capturas, builds, configuración local y exportaciones UAT quedan
+fuera de los commits.
 

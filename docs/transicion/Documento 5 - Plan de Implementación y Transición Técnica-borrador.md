@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - cierre documental IUX-09 - 17 de noviembre de 2026*
+*Borrador consolidado - definición documental IUX-10 - 17 de noviembre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -39,7 +39,7 @@ Estado operativo del plan:
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
 - `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
-- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-07 E IUX-08 CERRADOS E INTEGRADOS EN DEV CON UAT HUMANA APROBADA; IUX-09 CERRADO CON UAT HUMANA APROBADA E INTEGRACIÓN AUTORIZADA; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
+- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-07 E IUX-08 CERRADOS E INTEGRADOS EN DEV CON UAT HUMANA APROBADA; IUX-09 CERRADO CON UAT HUMANA APROBADA E INTEGRACIÓN AUTORIZADA; IUX-10 DEFINIDO Y LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -2568,6 +2568,25 @@ El siguiente incremento funcional es:
     humana informada originó y verificó los hallazgos previos; quedan pendientes la repetición humana
     post-corrección de la aprobación con una Solicitud nueva y la matriz visual completa en escritorio
     y Android 360/390 px. No hay despliegue ni habilitación productiva.
+- Décimo incremento: `IUX-10 — Agregar integrantes: búsqueda e invitaciones`, adoptado por D5-080 y
+    listo para implementar sólo con autorización separada. Incorpora localización opt-in de Persona,
+    privada por defecto, y un directorio Owner-scoped por prefijo que expone nombre, apellido y correo
+    de contacto únicamente con consentimiento vigente. Un Owner con Cuenta canónica no necesita
+    Persona propia para buscar o invitar; sí requiere Grupo activo, ownership vigente y Temporada
+    abierta.
+- Invitaciones IUX-10: el destinatario las ve en Mis grupos y puede aceptar o declinar; el Owner
+    vigente puede cancelar antes de adquirida la aceptación. La Invitación queda ligada a la
+    Temporada original, sobrevive transferencias de ownership y pasa a ser gestionada por el nuevo
+    Owner. Correo exacto y notificaciones externas quedan diferidos.
+- Arquitectura IUX-10: Solicitud e Invitación compiten por el mismo documento determinista físico de
+    `pendingGroupJoinRequestGuards`, con schema v1 compatible para Solicitud y v2 para Invitación. La
+    expiración por cierre libera el guard mediante coordinación idempotente separada antes de un
+    ingreso sucesor. Aceptar generaliza por origen la única capacidad canónica de Membresía y conserva
+    alta, reactivación, renovación, Períodos, guards, contador, búsqueda del padrón y outbox. El
+    directorio usa referencias aleatorias opacas por ciclo de consentimiento, páginas máximas de 10,
+    límites operativos y techo conservador de 95 lecturas lógicas por intento.
+- Fuentes IUX-10: [ficha](../implementacion/interetapa-ux-movil/IUX-10-ficha-agregar-integrantes-busqueda-invitaciones.md)
+    y [addendum conjunto](../arquitectura/Documento-1-1.5-2-3-4-addendum-IUX-10-agregar-integrantes-invitaciones.md).
 - Continuidad E3: permanecen íntegros los gates productivos de E3-09/E3-10 —UAT, retiro remoto
     verificado de `onMatchClose`, compatibilidad, despliegue coordinado, reconciliación real,
     smoke/UAT y rollback—. IUX no los satisface ni los relaja.
@@ -2804,6 +2823,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-074 | Adopta e implementa localmente `IUX-06C2-P02 — búsqueda completa de integrantes` mediante proyección privada generacional por Membresía activa y prefijos normalizados de cada palabra | IMPLEMENTADO LOCALMENTE; EMULATOR APROBADO; UAT PENDIENTE | IUX / IUX-06C2 / P02 / Integrantes | Desde tres caracteres busca el comienzo de cualquier palabra sin distinguir mayúsculas ni tildes sobre toda la Temporada abierta, no sólo páginas cargadas. Backend revalida Owner, scope y Membresía; cursor liga actor, Grupo, Temporada y término. Una fila determinista evita duplicados entre palabras y páginas. Altas, aprobaciones, reactivaciones, renovaciones, salidas y finalizaciones actualizan la proyección en la transacción canónica; datos anteriores se cargan con generación reconciliable. `Sin resultados` exige cobertura `READY`; error o incompatibilidad no se convierten en vacío. El modelo vigente no admite edición nominal posterior a `ensureMyPerson`; cualquier writer futuro deberá mantener la proyección antes de habilitarse. Sin deploy ni habilitación productiva. |
 | D5-075 | Registra la implementación, UAT humana aprobada y cierre local de `IUX-06D — Reorganización de Economía del grupo`, incluidos el lector Owner-only de avisos resueltos y los ajustes visuales finales | CERRADO TÉCNICAMENTE EN LOCAL; UAT HUMANA APROBADA | IUX / IUX-06D / Economía / cierre local | El build `NlxWGcw83yQphYlrWDiE2` ordena Deudas, Pagos informados, Historial y Conceptos; separa avisos pendientes/resueltos e ingresos sin duplicar pagos; conserva capabilities, archivo y deep-links. UAT acredita la reorganización y los ajustes de salida discreta, encabezados uniformes, entrada a Integrantes sin salto e Historia contraída. Automatización cubre autorización, estados, relación administrativa, reversión, navegación, foco y responsive. Lint focal pasa; lint global mantiene 31 errores y 8 warnings preexistentes. Datos UAT preservados; sin deploy ni habilitación productiva. |
 | D5-076 | Consolida el cierre documental de `IUX-06` desde `dev@ee909ca98d493f47ee40c9779c7b139ab271c69d`, que integra A, B, C1, C2-P01, C2-P02 y D | INTEGRADO EN DEV; UAT HUMANA COMPLEMENTARIA PENDIENTE | IUX / IUX-06 / cierre consolidado | Integraciones: A `f244675`, B `e1fbb05`, C1 `7d471b5`, C2-P01 `a3c8b6e`, C2-P02 `953984b` y D `ee909ca`. La automatización y UAT efectiva quedan discriminadas en la ficha IUX-06. Para una prueba MVP con usuarios condicionan los recorridos correspondientes: Historial de Membresías con datos reales, aprobación humana de una Solicitud nueva post-corrección C1 y Android 360/390 px en gestión de grupos, membresías e Integrantes. La matriz visual exhaustiva, carreras manuales adicionales y accesibilidad ampliada pueden completarse después si se excluyen del guion MVP. D5-075 se conserva; no hay cambios de código, deploy ni habilitación productiva. |
+| D5-080 | Adopta `IUX-10 — Agregar integrantes: búsqueda e invitaciones`, D01–D14 y el addendum conjunto a Documentos 1/1.5/2/3/4: localización opt-in, directorio privado, Invitación separada, exclusión compatible con Solicitudes y aceptación mediante el writer canónico de Membresía | APROBADA; LISTA PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA | IUX / IUX-10 / Integrantes / Invitaciones / Identidad / Organización | Owner sin Persona puede buscar/invitar con Grupo activo y Temporada abierta; destinatario exige vínculo Persona válido. Invitaciones se responden en Mis grupos, pertenecen a la Temporada original, sobreviven transferencias y admiten cancelación por Owner vigente. Se conserva `pendingGroupJoinRequestGuards` como autoridad física v1/v2; expiración libera de forma recuperable; Membresía conserva alta/reactivación/renovación, contador, padrón y outbox. Directorio máximo 10, rate limits y techo conservador 95 lecturas; `candidateRef` es aleatorio opaco con revalidación, no firmado. Correo exacto/notificaciones externas quedan fuera. No autoriza código, índices, Rules, datos, migración, commit, push, deploy ni producción; no cierra IUX-02/E3 ni habilita E4. |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -3225,3 +3245,27 @@ mantiene 2/3 tanto en la rama como en `dev@3f518b2`: la expectativa `gridTemplat
 fallo preexistente, no una regresión de IUX-09. `visuals/`, capturas, builds, configuración local y
 exportaciones UAT se excluyen. No se ejecutan despliegue ni cambios de datos UAT; los gates IUX-02/E3
 y pendientes previos no cambian.
+
+D5-080 adopta IUX-10 y el addendum conjunto a Documentos 1, 1.5, 2, 3 y 4. La localización de
+Persona es opt-in y desactivada por defecto; antes de activarla se informa que Owners de Grupos con
+Temporada abierta podrán ver nombre, apellido y correo de contacto. Una Persona sin correo compatible
+no puede publicarse. El directorio privado busca prefijos desde tres caracteres, usa páginas máximas
+de 10, referencias aleatorias opacas renovadas por ciclo de consentimiento, rate limits concretos y
+un techo conservador de 95 lecturas lógicas por intento. La firma de `candidateRef` se descarta por no
+agregar autoridad frente a la revalidación backend completa.
+
+La Invitación es un Aggregate Root separado, visible al destinatario en Mis grupos con Aceptar y
+Declinar. Permanece ligada a la Temporada original, sobrevive a transferencias de ownership y la
+gestiona el Owner vigente, que puede cancelarla antes de adquirida la aceptación. Owner no requiere
+Persona propia para buscar o invitar; aceptar sí exige vínculo Cuenta–Persona destinataria válido.
+Correo exacto y notificaciones externas quedan diferidos.
+
+Solicitud e Invitación compiten por la misma clave física Persona–Grupo en
+`pendingGroupJoinRequestGuards`: schema v1 preserva Solicitudes existentes y v2 representa
+Invitación, con rollout escalonado y fallo cerrado de versiones anteriores. Una Invitación expirada
+por cierre se terminaliza y libera en una transacción propia; el ingreso sucesor compite después, por
+lo que un fallo intermedio queda seguro y recuperable. Aceptar generaliza por origen la capacidad
+canónica de Membresía y conserva alta, reactivación, renovación, Períodos, active/lifecycle guards,
+contador, búsqueda del padrón y outbox. La ficha queda `LISTA PARA IMPLEMENTAR — REQUIERE
+AUTORIZACIÓN SEPARADA`; D5-080 no autoriza código, índices, Rules, datos, migración, commit, push,
+deploy ni producción, no cierra IUX-02/E3 y no habilita E4.

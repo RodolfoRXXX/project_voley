@@ -2,18 +2,18 @@
 
 ## Estado de la ficha
 
-- **Estado:** `LISTA PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA`.
-- **Fecha:** 17 de noviembre de 2026.
+- **Estado:** `CERRADA; IMPLEMENTACIÓN Y AMPLIACIÓN D5-081 APROBADAS EN UAT E INTEGRACIÓN AUTORIZADA`.
+- **Fecha:** 18 de noviembre de 2026.
 - **Base verificada:** `dev@2d5a4b4ae77c48d18e9421ea9a19f412076bd82b`, idéntica a `HEAD` y `origin/dev`; contiene IUX-09 integrado.
 - **Etapa:** interetapa `IUX` entre E3 y E4.
 - **Identificador:** `IUX-10`.
-- **Decisión de Documento 5:** `D5-080`.
+- **Decisiones de Documento 5:** `D5-080` y ampliación post-UAT `D5-081`.
 - **Addendum adoptado:** `docs/arquitectura/Documento-1-1.5-2-3-4-addendum-IUX-10-agregar-integrantes-invitaciones.md`.
 - **Ruta:** `docs/implementacion/interetapa-ux-movil/IUX-10-ficha-agregar-integrantes-busqueda-invitaciones.md`.
-- **Alcance:** definición funcional y técnica. No autoriza implementación, índices, Rules, datos, migraciones, correo, notificaciones externas, commit, push ni despliegue.
+- **Alcance de esta revisión:** documentación de la ampliación post-UAT. Preserva la implementación local existente y no autoriza implementar esta ampliación, crear commits, push ni despliegue.
 - **Estado local preservado:** `visuals/` continúa sin seguimiento y no fue modificado.
 
-La definición queda completa para una implementación posterior expresamente autorizada. Las decisiones funcionales solicitadas están adoptadas; no queda una elección funcional nueva bloqueante.
+La ampliación queda completa para una implementación posterior expresamente autorizada. Las decisiones funcionales solicitadas están adoptadas; no queda una elección funcional nueva bloqueante.
 
 ## 1. Objetivo y resultado observable
 
@@ -25,7 +25,7 @@ Aceptar revalida Cuenta–Persona, Grupo, Temporada original y elegibilidad, y c
 
 1. La localización es **opt-in** y está desactivada por defecto.
 2. Antes de activarla se explica que **los administradores de Grupos con una Temporada abierta podrán ver tu nombre, apellido y correo de contacto para invitarte**.
-3. Las invitaciones recibidas se muestran en `/dashboard/groups`, sección **Invitaciones pendientes**, con **Aceptar** y **Declinar**.
+3. Las invitaciones recibidas se muestran en `/dashboard/groups`, dentro de **Solicitudes e invitaciones**, con **Aceptar** y **Declinar**.
 4. Cada Invitación queda vinculada exclusivamente al `seasonId` original.
 5. La Invitación pertenece al Grupo, sobrevive a transferencias y pasa a ser gestionada por el Owner vigente; `invitedBy` queda como auditoría, no como autorización.
 6. El primer corte incluye **Cancelar invitación** para el Owner.
@@ -56,7 +56,7 @@ Aceptar revalida Cuenta–Persona, Grupo, Temporada original y elegibilidad, y c
 - corrección de nombre, apellido o correo de Cuenta/Persona;
 - obligaciones de una Persona sin vínculo;
 - invitación por correo libre o a Persona no localizable;
-- correo exacto, proveedor de email, push, SMS, campana o tarea IUX-02 nueva;
+- correo exacto, proveedor de email, push, SMS, campana o notificación externa;
 - carga forzada, aceptación automática, cargo, rol, permisos, posición o dorsal;
 - reapertura o traslado de Invitación a otra Temporada;
 - migración masiva, backfill productivo, publicación o despliegue;
@@ -234,7 +234,7 @@ Autoridades incompatibles producen `UNAVAILABLE`, no prioridad visual.
 
 ## 9. Destinatario en Mis grupos
 
-`/dashboard/groups` incorpora **Invitaciones pendientes** antes de Historial. La consulta deriva Persona; sin vínculo válido devuelve `PERSON_REQUIRED/INCOMPATIBLE`, nunca lista ajena.
+`/dashboard/groups` incorpora las Invitaciones recibidas dentro del bloque compacto **Solicitudes e invitaciones**. La consulta deriva Persona; sin vínculo válido devuelve `PERSON_REQUIRED/INCOMPATIBLE`, nunca lista ajena.
 
 Cada tarjeta muestra Grupo, Temporada original, fecha y **Aceptar** / **Declinar**.
 
@@ -403,13 +403,151 @@ Datos sintéticos: Cuenta A Owner **sin Persona**, Grupo activo/Temporada abiert
 | IUX-10-D12 | Cancelar invitación Owner en primer corte | APROBADA |
 | IUX-10-D13 | Addendum conjunto y D5-080 | ADOPTADA DOCUMENTALMENTE |
 | IUX-10-D14 | `candidateRef` aleatorio opaco, no firmado, con revalidación | ADOPTADA TÉCNICAMENTE |
+| IUX-10-D15 | X accesible, reset completo, foco estable y descarte tardío en el buscador | APROBADA POR D5-081 |
+| IUX-10-D16 | Invitación destinataria N42 en coverage V2 paralela, sin mutar N20/N31 V1 | ADOPTADA TÉCNICAMENTE POR D5-081 |
+| IUX-10-D17 | Solicitudes e invitaciones en bloque compacto, contraído y con coberturas independientes | APROBADA POR D5-081 |
+| IUX-10-D18 | Historial finalizado en Mi perfil con último Período correctamente rotulado | APROBADA POR D5-081 |
 
 ### Decisiones funcionales nuevas pendientes
 
-**Ninguna.** Persona sin correo no localizable es consecuencia necesaria de mostrar conjuntamente nombre, apellido y correo, y de privacidad por defecto. Habilitar correo incompleto, invitación por correo o notificación externa requerirá otra decisión.
+**Ninguna.** D5-081 adopta la ampliación post-UAT definida en §19. Persona sin correo no localizable sigue siendo consecuencia necesaria de mostrar conjuntamente nombre, apellido y correo, y de privacidad por defecto. Habilitar correo incompleto, invitación por correo o notificación externa requerirá otra decisión.
 
 ## 18. Gates
 
-La ficha/addendum están listos para implementar, pero requieren autorización separada. Esa autorización deberá exigir rollout escalonado v1/v2, índices/Rules antes de UI, pruebas Emulator de carreras, medición del techo de 95 lecturas/rate limits, UAT Owner sin Persona + destinatario con Persona, cero PII y rollout/rollback separado.
+El alcance D01–D18 quedó implementado y validado. La habilitación productiva sigue separada: exige secretos estables, construcción remota de índices, medición de la composición V2 y procedimiento coordinado de rollout/rollback. No hubo despliegue.
 
 IUX-10 no cierra IUX-02/E3, no habilita E4 y no cambia pendientes previos.
+
+## 19. Ampliación post-UAT adoptada por D5-081
+
+Esta sección prevalece sobre la ubicación y presentación anteriores cuando exista conflicto. Es una ampliación documental: la implementación local descripta en el informe se conserva sin cambios.
+
+### 19.1 Buscador
+
+- El campo muestra una **X** accesible sólo cuando contiene texto. Es un `button` con nombre **Limpiar búsqueda**, objetivo mínimo 44×44 px y no reemplaza la selección de texto del input.
+- Vaciar manualmente o activar la X incrementa la generación de búsqueda y elimina atómicamente resultados, error, `nextCursor`, estados derivados y cualquier selección; no dispara una consulta vacía.
+- Con cero, uno o dos caracteres se muestra la ayuda inicial: **Escribí al menos tres letras del nombre o apellido.** No se conserva el vacío ni el error de la consulta anterior.
+- El input conserva el foco al escribir, limpiar, recibir resultados, paginar o descartar una respuesta. La X devuelve el foco al input.
+- Cada request queda ligada a `{accountId, groupId, seasonId, normalizedQuery, cursor, generation}`. Sólo la generación vigente puede mutar la UI; cambiar Cuenta, Grupo, Temporada, texto o limpiar invalida respuestas tardías y cursores previos.
+
+### 19.2 Invitación recibida como pendiente `IUX-N42`
+
+Se incorpora **IUX-N42 — Invitación de ingreso recibida** a Pendientes de Inicio. Es una tarea accionable de la Cuenta actualmente vinculada a la Persona destinataria. Una Solicitud enviada no se transforma en tarea para el solicitante: continúa siendo una espera de respuesta del administrador; N20 sigue perteneciendo al decisor Owner.
+
+La tarjeta N42 muestra Grupo, Temporada original y **Ver invitación**. Su destino canónico es:
+
+```text
+/dashboard/groups?section=requests-invitations&invitationRef={opaqueRef}
+```
+
+El destino abre el bloque, obtiene la Invitación por `getMyGroupInvitation`, la revalida y la localiza sin recorrer páginas. No acepta `personId`, UID ni correo en URL.
+
+#### Ciclo de la tarea
+
+| Hecho fuente | Efecto de proyección |
+| --- | --- |
+| creación `pending` | en el mismo commit prepara `N42_CREATED` para la Cuenta vinculada vigente |
+| aceptar o declinar | terminal + liberación del guard preparan `N42_RESOLVED` |
+| cancelar por Owner | terminal + liberación preparan `N42_RESOLVED` |
+| expirar por cierre/incompatibilidad | la transacción que materializa `expired` y libera el guard prepara `N42_RESOLVED` |
+| cambio de vínculo Cuenta–Persona o reparación | evento de audiencia cuando exista productor; la reconciliación es obligatoria y corrige alta, baja o traslado |
+
+Eventos duplicados son idempotentes por `(kind, invitationId, terminalRevision)`. La tarea no se acredita por el outbox: la consulta relee vínculo Cuenta–Persona, Invitación pendiente, Grupo y Temporada original. Una autorización perdida omite el item, degrada cobertura a `UPDATING` y solicita reconciliación; nunca revela el recurso. La reconciliación pagina Invitaciones pendientes, recalcula el único destinatario y barre items sobrantes. Debe completar el objetivo operativo ya definido para la proyección (normal ≤5 min; reparación ≤24 h) y no inventa una Invitación.
+
+#### Cobertura, generaciones, cursores y contadores
+
+`N20_N31_V1` es inmutable: el código vigente fija ese literal, sólo admite `N20|N31`, liga cursores a coverage/generación y exige `total=N20+N31`. Agregar N42 bajo V1 falsearía cobertura y rompería invariantes. Se adopta:
+
+- nueva cobertura `N20_N31_N42_V2` y generación independiente `live-v2`;
+- V1 continúa sirviendo N20/N31, sus cursores, contadores y consumidores contextuales IUX-03/IUX-04 sin reinterpretación;
+- la superficie global de Pendientes cambia a V2 sólo cuando el backfill/rebuild marque `READY`; antes conserva V1 sin afirmar N42;
+- V2 usa `taskType: N20|N31|N42`, `total=N20+N31+N42` y contadores por Grupo con los tres desgloses;
+- los cursores se ligan a Cuenta, coverage, generación, filtro y ancla. Un cursor V1 no se acepta en V2: al conmutar se descarta y se recarga desde el inicio;
+- N20/N31 se proyectan también en V2 desde sus fuentes canónicas; N42 no se inyecta en V1;
+- las consultas contextuales actuales permanecen en V1 en este corte. No reciben N42 ni cambian badges/contadores. El consumidor global V2 revalida cada tipo con su autoridad propia.
+
+El mecanismo existente se reutiliza —outbox, scope revision, lease, manifests, sets por usuario, rebuild y reconciliación—, pero requiere contratos nuevos de modelo/source reader/query para V2; no es una adición de datos compatible con el enum vigente.
+
+### 19.3 Mis grupos
+
+- **Grupos actuales** conserva prioridad visual y comportamiento.
+- Invitaciones recibidas y Solicitudes enviadas se reúnen debajo en una única fila compacta **Solicitudes e invitaciones**, inicialmente contraída.
+- Las dos primeras páginas se consultan en paralelo e independientemente aunque el bloque esté contraído, para acreditar el indicador. Se muestra un punto/estado no numérico accesible con texto **Hay solicitudes o invitaciones pendientes** si al menos una consulta exitosa acredita un item; un error nunca acredita ausencia ni presencia.
+- Al abrir, aparecen dos subsecciones: **Invitaciones recibidas** y **Solicitudes enviadas**, con sus acciones, error, retry, cursor, `Cargar más`, single-flight y generación independientes.
+- **Sin solicitudes ni invitaciones pendientes** sólo aparece cuando ambas primeras consultas terminaron `ready`, sin items ni cursores. Si una falla, se conserva lo acreditado por la otra y se informa cobertura parcial.
+- La entrada normal no abre el bloque ni mueve el foco. Un enlace con `section=requests-invitations` lo abre; `invitationRef` localiza mediante `getMyGroupInvitation`; `groupId+requestId` localiza mediante `getMyCurrentGroupJoinRequest` y exige coincidencia exacta. Un recurso ya terminal muestra su estado vigente y no se presenta como pendiente.
+- Cambio de Cuenta invalida ambas generaciones, páginas, acciones y elementos localizados.
+
+### 19.4 Historial de grupos
+
+El acceso se traslada a **Mi perfil → Historial de grupos**, ruta canónica `/profile/memberships/history`. Mis grupos deja de renderizar el historial.
+
+Se reutiliza sin modificar `listMyGroupMembershipHistory({pageSize: 5,cursor?})`, su cursor firmado, revalidación Cuenta–Persona, orden `fechaEgreso DESC, membershipId DESC`, `rowKey`, reinicio ante cursor inválido/obsoleto y lectura de Grupo/Temporada.
+
+La evidencia del repositorio confirma que el lector filtra `estado == finalizada`: no devuelve pertenencias actuales. Para raíces v3–v6 con reactivaciones lee primer y último Período sólo para validar integridad, pero el DTO expone `joinedAt/leftAt` del **último Período**, más `validityPeriodCount`; no devuelve Períodos intermedios. Por eso:
+
+- cada Membresía finalizada es una fila compacta desplegable con Grupo, Temporada y fecha de finalización;
+- al desplegar, si `validityPeriodCount == 1`, muestra **Inicio de la participación** y **Fin de la participación**;
+- si `validityPeriodCount > 1`, muestra **Inicio del último período**, **Fin del último período** y **Esta membresía tuvo N períodos; este resumen no representa participación continua**;
+- `continuity=RENEWAL` se rotula como renovación en otra raíz/Temporada y tampoco fusiona intervalos;
+- primera página 5 y **Cargar más** conserva páginas confirmadas, deduplica por `rowKey` y descarta respuestas tardías por Cuenta/Persona/generación.
+
+Compatibilidad: enlaces o bookmarks anteriores `/dashboard/groups#historial` y `/dashboard/groups?section=history` redirigen a la ruta canónica sin cargar dos lectores. El acceso anterior se mantiene como redirección durante al menos un release; no se conserva una segunda vista.
+
+### 19.5 Contratos afectados y brechas de implementación
+
+| Contrato | Situación verificada | Delta posterior autorizado sólo documentalmente |
+| --- | --- | --- |
+| buscador `/members/add` | debounce/generación existentes; falta contrato explícito de X/reset total | control accesible y reducer/generación de limpieza |
+| `listMyPendingGroupInvitations` | callable existente; la implementación local aún no entrega cursor real ni Temporada nominal completa | paginación independiente y DTO con Grupo/Temporada para Mis grupos |
+| `getMyGroupInvitation` | existe y revalida destinatario | localizador canónico de deep-link |
+| proyección dashboard | sólo `N20_N31_V1`, enums/contadores/source reader cerrados | N42, coverage/generación V2, productores, backfill, reconciliación y query global V2 |
+| `listMyPendingGroupJoinRequests` + `getMyCurrentGroupJoinRequest` | paginación y lectura propia existentes | composición visual y localización exacta por `groupId+requestId` |
+| `listMyGroupMembershipHistory` | sólo finalizadas, página 1–20, último Período visible | reubicar UI, pedir 5, etiquetas que no afirmen continuidad |
+| navegación/deep-links | Historial vive hoy en Mis grupos | nuevo acceso en Mi perfil y redirecciones compatibles |
+
+No hay una brecha funcional que requiera decisión. Sí hay trabajo técnico imprescindible antes de implementar: versionar la proyección V2 sin mutar V1, añadir el productor/reconciliador N42, completar la paginación de Invitaciones y materializar la ruta/redirecciones de Historial.
+
+### 19.6 Verificaciones de aceptación de la ampliación
+
+1. X visible sólo con texto, accesible por teclado/lector; X y borrado manual limpian items, error y cursor y conservan foco.
+2. Cero a dos caracteres muestran ayuda inicial y ninguna respuesta tardía repuebla la lista.
+3. Crear Invitación genera una sola N42 para el destinatario; reintento/evento duplicado no incrementa contador.
+4. Aceptar, declinar, cancelar y expirar resuelven N42; consulta concurrente revalida y no muestra una tarea terminal.
+5. Cambio de Cuenta–Persona quita audiencia anterior; reconciliación acredita la nueva sólo si el vínculo es válido.
+6. V1 conserva exactamente N20/N31, contadores y cursores; V2 reconstruye N20/N31/N42 y rechaza cursores cruzados.
+7. Inicio no conmuta a V2 hasta `READY`; estados `UPDATING/REBUILDING/DEGRADED` no acreditan totales completos.
+8. Mis grupos mantiene Grupos actuales primero y el bloque compacto contraído sin mover foco.
+9. Indicador aparece con al menos un resultado acreditado; el vacío conjunto sólo aparece con ambas consultas exitosas.
+10. Invitaciones y Solicitudes paginan, fallan y reintentan de forma independiente; links directos abren/localizan el item exacto.
+11. Historial se accede desde Mi perfil, lista sólo finalizadas de a cinco y carga más con el lector/cursor canónico.
+12. Una raíz con dos o más Períodos etiqueta sólo el último intervalo y advierte que no prueba continuidad; una renovación no se fusiona.
+13. Links anteriores de Historial redirigen una vez y no duplican consultas.
+14. UAT con dos Cuentas, 360×800, 390×844, escritorio, teclado, zoom 200 % y lector de pantalla.
+
+## 20. Cierre efectivo — D5-082
+
+Esta sección reemplaza las previsiones de implementación de §19 cuando difieran del corte finalmente validado. El usuario aprobó la UAT del BUILD_ID `y4yCbXKTQaTuXSSZFByXH` y autorizó versionado, integración en `dev` y push normal. La implementación corresponde a `89b4b252415d2782c7bfabb2d9c0277174180af7`.
+
+### 20.1 Composición de lectura V2 finalmente adoptada
+
+`N20_N31_N42_V2` no es una segunda proyección física. La consulta global compone en lectura todas las páginas acreditadas de `N20_N31_V1` con todas las Invitaciones pendientes destinatarias leídas desde su fuente canónica y revalidadas contra Cuenta–Persona, Invitación, Grupo, Temporada y guard. V1 no cambia y sigue atendiendo consumidores contextuales; el valor por defecto del contrato permanece V1.
+
+- la generación pública es `live-v2.<generationId-v1>`;
+- el cursor V2 está firmado y ligado a Cuenta, coverage, generación, filtro global y ancla; no acepta cursores V1;
+- `total`, desgloses y contadores por Grupo se calculan sobre la unión revalidada;
+- `asOf` representa el momento de la respuesta y la continuación es live, no un snapshot: cambios entre páginas pueden desplazar o repetir un recurso; el cliente deduplica por identidad y **Actualizar** reconstruye desde el inicio;
+- cada fuente usa páginas de 10 y un límite defensivo de 100 páginas —hasta 1.000 filas V1 y 1.000 Invitaciones—; superar el límite falla cerrado;
+- una página N42 completa cuesta hasta 43 lecturas lógicas aproximadas —2 de identidad, 11 de consulta/lookahead y hasta 30 de Grupo/Temporada/guard—, además del costo del lector V1. El barrido máximo sería inadecuado como presupuesto productivo y queda como gate de medición/materialización antes de habilitar.
+
+La elección evita una segunda autoridad, outbox N42, backfill y reconciliación de una copia. Aceptar, declinar, cancelar o materializar expiración desaparecen en la siguiente lectura autoritativa. El backfill UAT ejecutado previamente sólo reconcilió V1 —2 Grupos, 2 usuarios, cero scopes dirty/degraded y cero eventos failed/processing—; no se reconstruyó V2. Esta composición satisface cobertura, autorización y compatibilidad funcional, pero su costo/latencia deben medirse antes de producción.
+
+### 20.2 Evidencia de 13 Invitaciones
+
+El escenario Emulator aislado creó los IDs únicos `iux-10-page-invitation-00` a `iux-10-page-invitation-12`. La primera página devolvió `12, 11, 10, 09, 08`, todos pendientes. Entre páginas, `12` pasó a aceptada. La segunda devolvió `07` pendiente, `12` aceptada y `06, 05, 04` terminales; la tercera devolvió `03, 02, 01, 00`. Por eso las respuestas crudas fueron `5/5/4` —14 apariciones— pero la fusión por `invitationId` acreditó exactamente 13 registros únicos y conservó para `12` el estado aceptado más reciente. **Actualizar** descartó cursor/páginas y reconstruyó el orden desde el inicio.
+
+### 20.3 Evidencia y pendientes operacionales
+
+Automatizada: focales `12/12`; Emulator sintético aislado `1/1`; TypeScript, lint baseline, build Next de 24 páginas y `git diff --check` aprobados; suite general `490/491`. El único fallo es IUX-06A: la misma base `dev@2d5a4b4` exige `gridTemplateColumns` en la prueba de Economía y no contiene ese marcador en la página, que IUX-10 no modifica. Humana: UAT funcional/visual aprobada para `y4yCbXKTQaTuXSSZFByXH`, incluidas escritorio, móvil, navegación, estados y paginación observados.
+
+Pendientes sin habilitación productiva: configurar secretos estables `IUX10_CURSOR_SECRET` y `DASHBOARD_TASK_CURSOR_SECRET`; construir/verificar remotamente los índices versionados; medir costo/latencia y volumen V2 reales; definir activación y rollback coordinados de Functions, Rules, índices y frontend. No hubo despliegue y los datos/exportaciones UAT se preservan.

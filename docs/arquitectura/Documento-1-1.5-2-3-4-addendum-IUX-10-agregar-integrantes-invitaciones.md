@@ -2,12 +2,12 @@
 
 ## 1. Estado y precedencia
 
-- **Estado:** `ADOPTADO POR D5-080 — REQUIERE AUTORIZACIÓN SEPARADA PARA IMPLEMENTAR`.
-- **Fecha:** 17 de noviembre de 2026.
+- **Estado:** `ADOPTADO, IMPLEMENTADO Y CERRADO POR D5-080/D5-081/D5-082; UAT APROBADA`.
+- **Fecha:** 18 de noviembre de 2026.
 - **Ámbito:** Cuenta, Persona, Grupo, Solicitud, Invitación, Membresía y Temporada.
 - **Ficha vinculada:** `IUX-10 — Agregar integrantes: búsqueda e invitaciones`.
 
-Este addendum amplía los Documentos 1, 1.5, 2, 3 y 4 sólo en los puntos enumerados. Conserva sus límites de Agregado, autorización contextual, privacidad, idempotencia y separación Cuenta–Persona. No autoriza código, índices, Rules, datos, migraciones, commit, push ni despliegue.
+Este addendum amplía los Documentos 1, 1.5, 2, 3 y 4 sólo en los puntos enumerados. Conserva sus límites de Agregado, autorización contextual, privacidad, idempotencia y separación Cuenta–Persona. D5-082 registra la implementación y cierre; no autoriza despliegue ni habilitación productiva.
 
 ## 2. Motivación
 
@@ -187,3 +187,44 @@ La implementación deberá demostrar:
 6. carreras aceptar/cancelar/cerrar y recuperación;
 7. límites, presupuesto y ausencia de PII;
 8. Owner sin Persona puede buscar/invitar y destinatario requiere Persona válida.
+
+## 11. Ampliación post-UAT adoptada por D5-081
+
+### 11.1 Producto y modelo conceptual
+
+- La Invitación pendiente recibida es una tarea accionable del destinatario `IUX-N42`; una Solicitud enviada sigue siendo espera del solicitante y N20 continúa siendo tarea del Owner decisor.
+- Mis grupos conserva Grupos actuales como contenido principal y compone Invitaciones recibidas + Solicitudes enviadas en un bloque compacto contraído, con consultas/paginaciones independientes.
+- Historial de grupos se traslada a Mi perfil y muestra sólo Membresías finalizadas. Un resumen de último Período nunca se presenta como continuidad de todos los Períodos.
+- Limpiar búsqueda es una transición de UI autoritativa: invalida generación, resultados, error y cursor sin perder foco.
+
+### 11.2 Proyección de Pendientes
+
+La proyección existente se reutiliza como mecanismo, no se muta su contrato V1. `N20_N31_V1` permanece inmutable porque su coverage, enums, cursor y contadores declaran exactamente N20+N31.
+
+Se crea `N20_N31_N42_V2` con generación `live-v2`, item N42 por Invitación pendiente y Cuenta destinataria vigente, y contador `total=N20+N31+N42`. V1 sigue atendiendo consumidores contextuales existentes. El consumidor global conmuta a V2 únicamente con rebuild/backfill `READY`; cursores V1/V2 no son intercambiables.
+
+Crear, aceptar, declinar, cancelar y materializar expiración preparan eventos outbox idempotentes dentro de sus commits de dominio. El source reader V2 relee la Invitación. La query revalida Cuenta–Persona destinataria, estado pendiente, Grupo y Temporada; pérdida de autoridad descarta el item y degrada cobertura. Reconciliación paginada corrige audiencia y barre sobrantes, incluida una vinculación de Cuenta modificada.
+
+N42 enlaza a `/dashboard/groups?section=requests-invitations&invitationRef={opaqueRef}`. La posesión de la referencia no autoriza; `getMyGroupInvitation` decide y el frontend localiza sin barrer páginas.
+
+### 11.3 Lecturas propias y navegación
+
+- Invitaciones y Solicitudes mantienen callables, cursores, errores y acciones separados; el vacío combinado exige éxito de ambas consultas.
+- El indicador de Mis grupos es no numérico y sólo se acredita con al menos un item confirmado.
+- Historial usa la ruta `/profile/memberships/history` y `listMyGroupMembershipHistory` con `pageSize=5`.
+- El lector canónico filtra finalizadas y expone el último Período más `validityPeriodCount`; la UI etiqueta el último intervalo cuando hubo interrupciones.
+- `/dashboard/groups#historial` y `/dashboard/groups?section=history` redirigen temporalmente al destino canónico; no se duplica la superficie.
+
+### 11.4 Compatibilidad y salida
+
+La implementación de esta ampliación deberá acreditar V1 intacta, rebuild y reconciliación V2, cursores ligados a coverage/generación, contadores N20/N31/N42, autorización N42 por destinatario, resolución en todas las terminales, búsquedas sin respuestas tardías, estados parciales independientes en Mis grupos y períodos históricos sin continuidad inferida.
+
+No queda decisión funcional nueva pendiente. La ampliación fue implementada sin modificar los Aggregate Roots ni el writer canónico de Membresía.
+
+## 12. Addendum de cierre D5-082 — contrato V2 efectivo
+
+El mecanismo finalmente acreditado conserva la semántica de `N20_N31_N42_V2` pero reemplaza la materialización V2 prevista en §11.2 por composición autoritativa de lectura. `listMyDashboardTasks` obtiene V1 desde su proyección vigente, lee Invitaciones pendientes desde la fuente canónica, revalida destinatario/Grupo/Temporada/guard y combina, ordena, pagina y totaliza la unión. No escribe V2, no crea outbox N42 y no requiere backfill/rebuild ni estado `READY` propios. Crear y terminalizar Invitaciones se observan en la lectura siguiente.
+
+V1 permanece idéntica y disponible para consumidores contextuales. V2 usa generación `live-v2.<generation-v1>` y cursor firmado ligado a Cuenta, coverage, generación, filtro y ancla. La continuación es live, no snapshot: el cliente deduplica identidades y la recarga reconstruye el conjunto. Las fuentes recorren páginas de 10 con máximo defensivo de 100 páginas cada una. Una página N42 completa presupone hasta 43 lecturas lógicas aproximadas además del costo V1; el máximo defensivo no es un presupuesto productivo aceptado.
+
+Esta sustitución técnica preserva las garantías funcionales y elimina una segunda autoridad, pero deja como gates productivos obligatorios la medición de costo/latencia/volumen, la posible materialización si no cumple, secretos estables, construcción remota de índices y rollout/rollback coordinados. La UAT del BUILD_ID `y4yCbXKTQaTuXSSZFByXH` fue aprobada. No hubo despliegue.

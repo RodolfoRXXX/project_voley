@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - definición documental IUX-10 - 17 de noviembre de 2026*
+*Borrador consolidado - ampliación documental post-UAT IUX-10 - 18 de noviembre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -39,7 +39,7 @@ Estado operativo del plan:
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
 - `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
-- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-07 E IUX-08 CERRADOS E INTEGRADOS EN DEV CON UAT HUMANA APROBADA; IUX-09 CERRADO CON UAT HUMANA APROBADA E INTEGRACIÓN AUTORIZADA; IUX-10 DEFINIDO Y LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
+- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-07, IUX-08 E IUX-09 CERRADOS E INTEGRADOS EN DEV CON UAT HUMANA APROBADA; IUX-10 Y SU AMPLIACIÓN D5-081 CERRADOS CON UAT APROBADA E INTEGRACIÓN AUTORIZADA; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -2568,8 +2568,8 @@ El siguiente incremento funcional es:
     humana informada originó y verificó los hallazgos previos; quedan pendientes la repetición humana
     post-corrección de la aprobación con una Solicitud nueva y la matriz visual completa en escritorio
     y Android 360/390 px. No hay despliegue ni habilitación productiva.
-- Décimo incremento: `IUX-10 — Agregar integrantes: búsqueda e invitaciones`, adoptado por D5-080 y
-    listo para implementar sólo con autorización separada. Incorpora localización opt-in de Persona,
+- Décimo incremento: `IUX-10 — Agregar integrantes: búsqueda e invitaciones`, adoptado por D5-080,
+    ampliado por D5-081 y cerrado por D5-082. Incorpora localización opt-in de Persona,
     privada por defecto, y un directorio Owner-scoped por prefijo que expone nombre, apellido y correo
     de contacto únicamente con consentimiento vigente. Un Owner con Cuenta canónica no necesita
     Persona propia para buscar o invitar; sí requiere Grupo activo, ownership vigente y Temporada
@@ -2587,6 +2587,12 @@ El siguiente incremento funcional es:
     límites operativos y techo conservador de 95 lecturas lógicas por intento.
 - Fuentes IUX-10: [ficha](../implementacion/interetapa-ux-movil/IUX-10-ficha-agregar-integrantes-busqueda-invitaciones.md)
     y [addendum conjunto](../arquitectura/Documento-1-1.5-2-3-4-addendum-IUX-10-agregar-integrantes-invitaciones.md).
+- Ampliación post-UAT IUX-10, adoptada por D5-081: el buscador incorpora limpieza accesible y reset
+    por generación; la Invitación recibida se incorpora a Pendientes como `IUX-N42`; Mis grupos
+    compone Solicitudes e Invitaciones en una fila contraída; e Historial de grupos pasa a Mi perfil.
+    La proyección `N20_N31_V1` permanece inmutable y N42 se define en `N20_N31_N42_V2`, con generación,
+    cursores y contadores propios. La implementación final compone V1 con N42 canónica en lectura y
+    no materializa una segunda proyección; D5-082 registra límites, costos y compatibilidad.
 - Continuidad E3: permanecen íntegros los gates productivos de E3-09/E3-10 —UAT, retiro remoto
     verificado de `onMatchClose`, compatibilidad, despliegue coordinado, reconciliación real,
     smoke/UAT y rollback—. IUX no los satisface ni los relaja.
@@ -2824,6 +2830,8 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-075 | Registra la implementación, UAT humana aprobada y cierre local de `IUX-06D — Reorganización de Economía del grupo`, incluidos el lector Owner-only de avisos resueltos y los ajustes visuales finales | CERRADO TÉCNICAMENTE EN LOCAL; UAT HUMANA APROBADA | IUX / IUX-06D / Economía / cierre local | El build `NlxWGcw83yQphYlrWDiE2` ordena Deudas, Pagos informados, Historial y Conceptos; separa avisos pendientes/resueltos e ingresos sin duplicar pagos; conserva capabilities, archivo y deep-links. UAT acredita la reorganización y los ajustes de salida discreta, encabezados uniformes, entrada a Integrantes sin salto e Historia contraída. Automatización cubre autorización, estados, relación administrativa, reversión, navegación, foco y responsive. Lint focal pasa; lint global mantiene 31 errores y 8 warnings preexistentes. Datos UAT preservados; sin deploy ni habilitación productiva. |
 | D5-076 | Consolida el cierre documental de `IUX-06` desde `dev@ee909ca98d493f47ee40c9779c7b139ab271c69d`, que integra A, B, C1, C2-P01, C2-P02 y D | INTEGRADO EN DEV; UAT HUMANA COMPLEMENTARIA PENDIENTE | IUX / IUX-06 / cierre consolidado | Integraciones: A `f244675`, B `e1fbb05`, C1 `7d471b5`, C2-P01 `a3c8b6e`, C2-P02 `953984b` y D `ee909ca`. La automatización y UAT efectiva quedan discriminadas en la ficha IUX-06. Para una prueba MVP con usuarios condicionan los recorridos correspondientes: Historial de Membresías con datos reales, aprobación humana de una Solicitud nueva post-corrección C1 y Android 360/390 px en gestión de grupos, membresías e Integrantes. La matriz visual exhaustiva, carreras manuales adicionales y accesibilidad ampliada pueden completarse después si se excluyen del guion MVP. D5-075 se conserva; no hay cambios de código, deploy ni habilitación productiva. |
 | D5-080 | Adopta `IUX-10 — Agregar integrantes: búsqueda e invitaciones`, D01–D14 y el addendum conjunto a Documentos 1/1.5/2/3/4: localización opt-in, directorio privado, Invitación separada, exclusión compatible con Solicitudes y aceptación mediante el writer canónico de Membresía | APROBADA; LISTA PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA | IUX / IUX-10 / Integrantes / Invitaciones / Identidad / Organización | Owner sin Persona puede buscar/invitar con Grupo activo y Temporada abierta; destinatario exige vínculo Persona válido. Invitaciones se responden en Mis grupos, pertenecen a la Temporada original, sobreviven transferencias y admiten cancelación por Owner vigente. Se conserva `pendingGroupJoinRequestGuards` como autoridad física v1/v2; expiración libera de forma recuperable; Membresía conserva alta/reactivación/renovación, contador, padrón y outbox. Directorio máximo 10, rate limits y techo conservador 95 lecturas; `candidateRef` es aleatorio opaco con revalidación, no firmado. Correo exacto/notificaciones externas quedan fuera. No autoriza código, índices, Rules, datos, migración, commit, push, deploy ni producción; no cierra IUX-02/E3 ni habilita E4. |
+| D5-081 | Adopta la ampliación post-UAT de IUX-10: limpieza accesible del buscador; Invitación recibida `IUX-N42` en Pendientes; composición contraída de Solicitudes e Invitaciones en Mis grupos; e Historial de grupos en Mi perfil | IMPLEMENTADA; CERRADA POR D5-082 | IUX / IUX-10 / IUX-02 / Mis grupos / Historial | N42 pertenece al destinatario y muestra Grupo, Temporada y Ver invitación; Solicitud enviada sigue siendo espera del solicitante. `N20_N31_V1` no cambia y los consumidores contextuales permanecen en V1. Mis grupos sólo acredita vacío tras ambas consultas exitosas. Historial reutiliza `listMyGroupMembershipHistory`, muestra sólo finalizadas de a cinco y etiqueta el último Período sin inferir continuidad. El mecanismo V2 efectivo y sus gates quedan registrados en D5-082. No quedan decisiones funcionales nuevas pendientes. |
+| D5-082 | Registra implementación, validación, UAT aprobada y cierre de IUX-10/D5-081; adopta la composición de lectura efectiva de `N20_N31_N42_V2` | CERRADA; UAT APROBADA; INTEGRACIÓN Y PUSH AUTORIZADOS | IUX / IUX-10 / D5-081 / cierre | BUILD_ID aprobado `y4yCbXKTQaTuXSSZFByXH`; implementación `89b4b252415d2782c7bfabb2d9c0277174180af7`. V2 compone la proyección V1 inmutable con Invitaciones pendientes canónicas revalidadas; usa generación `live-v2.<generation-v1>`, cursor firmado propio, totales de la unión y continuación live deduplicable. Fuentes de 10 con fusible de 100 páginas; una página N42 completa cuesta hasta 43 lecturas lógicas aproximadas además de V1. No hubo rebuild V2 ni despliegue. Secretos estables, índices remotos, medición productiva y rollout/rollback siguen pendientes. Suite focal `12/12`, Emulator aislado `1/1`, build/TypeScript/lint/diff OK; suite general `490/491`, con IUX-06A reproducible en `dev@2d5a4b4`. |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -3269,3 +3277,51 @@ canónica de Membresía y conserva alta, reactivación, renovación, Períodos, 
 contador, búsqueda del padrón y outbox. La ficha queda `LISTA PARA IMPLEMENTAR — REQUIERE
 AUTORIZACIÓN SEPARADA`; D5-080 no autoriza código, índices, Rules, datos, migración, commit, push,
 deploy ni producción, no cierra IUX-02/E3 y no habilita E4.
+
+D5-081 adopta la ampliación surgida de UAT sin modificar la implementación local. El buscador debe
+ofrecer una X accesible y tratar tanto esa acción como el borrado manual como una nueva generación que
+limpia resultados, errores y cursores, conserva foco y descarta respuestas anteriores. Con menos de
+tres caracteres vuelve a la ayuda inicial.
+
+La Invitación recibida pasa a Pendientes como `IUX-N42`, tarea de la Cuenta actualmente vinculada a la
+Persona destinataria. Crear produce la tarea; aceptar, declinar, cancelar o materializar expiración la
+resuelven; toda lectura revalida vínculo, Invitación, Grupo y Temporada y la reconciliación corrige
+cambios de audiencia. Como `N20_N31_V1` codifica enums, contadores y cursores exclusivos de N20/N31,
+N42 usa `N20_N31_N42_V2` y `live-v2`. V1 permanece disponible para consumidores contextuales; Inicio
+conmuta a V2 sólo con backfill/rebuild `READY`. No se reutilizan cursores entre coberturas.
+
+Mis grupos mantiene Grupos actuales como contenido principal y reúne Invitaciones recibidas y
+Solicitudes enviadas en **Solicitudes e invitaciones**, contraído inicialmente, con indicador no
+numérico y estados/paginaciones independientes. Sólo afirma ausencia cuando ambas consultas terminan
+correctamente. Los deep-links abren el bloque y localizan mediante lecturas canónicas; la entrada
+normal no desplaza foco.
+
+Historial de grupos se mueve a `/profile/memberships/history`, accesible desde Mi perfil. Reutiliza
+`listMyGroupMembershipHistory`, que en el repositorio devuelve exclusivamente Membresías finalizadas y,
+si hubo reactivaciones, expone las fechas del último Período junto con `validityPeriodCount`. La UI debe
+nombrar ese intervalo como último Período y advertir que no representa continuidad. La página inicial
+es de cinco; enlaces anteriores desde Mis grupos redirigen durante al menos un release. D5-081 no
+autoriza implementar esta ampliación, commit, push, despliegue ni producción; no cierra IUX-02/E3 ni
+habilita E4.
+
+D5-082 registra el cierre de IUX-10 y reemplaza, para este corte, la previsión de una segunda
+proyección materializada. `N20_N31_N42_V2` compone en lectura la proyección V1 inmutable con las
+Invitaciones pendientes canónicas revalidadas. La generación pública es
+`live-v2.<generation-v1>`; el cursor firmado liga Cuenta, coverage, generación, filtro y ancla, y la
+continuación es live, no snapshot. Totales y contadores pertenecen a la unión. V1 sigue atendiendo
+los consumidores contextuales y no acepta cursores V2.
+
+Cada fuente se recorre en páginas de 10 con máximo defensivo de 100 páginas. Una página completa de
+N42 demanda hasta 43 lecturas lógicas aproximadas además del costo V1; por eso el fusible no constituye
+un presupuesto productivo. No hubo outbox, backfill ni rebuild V2: el backfill UAT previo sólo
+reconcilió V1 —2 Grupos y 2 usuarios, sin scopes dirty/degraded ni eventos failed/processing—. La
+eliminación de la segunda autoridad justifica la variante, y la medición real puede exigir
+materialización antes de habilitar producto.
+
+El Emulator aislado acreditó 13 IDs `iux-10-page-invitation-00`…`12`: páginas crudas `5/5/4` porque
+`12` pasó de pendiente a aceptada entre la primera y la segunda, 14 apariciones y 13 identidades
+finales tras deduplicar. El build `y4yCbXKTQaTuXSSZFByXH` recibió aprobación UAT. Focales `12/12`,
+Emulator `1/1`, TypeScript, lint baseline, build y diff aprobaron; la suite general quedó `490/491`.
+El único fallo IUX-06A es reproducible en `dev@2d5a4b4`, cuya prueba exige `gridTemplateColumns` y
+cuya página de Economía ya carece de ese marcador. Secretos estables, construcción remota de índices,
+medición V2 y habilitación/rollback coordinados quedan operacionales; no hubo despliegue.

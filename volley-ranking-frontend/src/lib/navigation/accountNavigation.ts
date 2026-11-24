@@ -14,6 +14,7 @@ export const accountNavigationItems: AccountNavigationItem[] = [
     children: [
       { label: "Resumen", href: "/profile/info" },
       { label: "Ficha personal", href: "/profile/person" },
+      { label: "Historial de grupos", href: "/profile/memberships/history" },
       { label: "Mis obligaciones", href: "/dashboard/obligations" },
     ],
   },

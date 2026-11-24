@@ -48,7 +48,7 @@ Object.assign(environment, {
   FUNCTIONS_DISCOVERY_TIMEOUT: "30",
   TEST_FIREBASE_PROJECT_ID: SYNTHETIC_DATA.projectId,
   TEST_SECRET_SOURCE: "synthetic-inline",
-  ...(process.env.IUX_04_COVERAGE_FOCAL === "1" ? { ENABLE_DASHBOARD_TASK_PROJECTION: "true" } : {}),
+  ...(["1"].includes(process.env.IUX_04_COVERAGE_FOCAL) || process.env.IUX_10_FOCAL === "1" ? { ENABLE_DASHBOARD_TASK_PROJECTION: "true" } : {}),
   ...(process.env.IUX_04_COVERAGE_FOCAL === "1" ? { IUX_04_COVERAGE_FOCAL: "1" } : {}),
   FUNCTIONS_EMULATOR_HOST: "127.0.0.1:15001",
   HTTP_PROXY: blockedProxy,
@@ -61,6 +61,8 @@ Object.assign(environment, {
   no_proxy: "127.0.0.1,localhost,0.0.0.0,::1",
   npm_config_update_notifier: "false",
   ...SYNTHETIC_SECRETS,
+  DASHBOARD_TASK_CURSOR_SECRET: "dashboard-task-synthetic-cursor-secret-0001",
+  IUX10_CURSOR_SECRET: "iux10-synthetic-cursor-secret-00000000001",
   PUSH_VAPID_PUBLIC_KEY: ephemeralVapidKeys.publicKey,
   PUSH_VAPID_PRIVATE_KEY: ephemeralVapidKeys.privateKey,
 });
@@ -275,6 +277,13 @@ const ownGroupMembershipHistoryTestPath = path.join(
   "emulator",
   "ownGroupMembershipHistoryE2.test.js"
 );
+const groupInvitationIux10TestPath = path.join(
+  systemRoot,
+  "functions",
+  "test",
+  "emulator",
+  "groupInvitationIux10.test.js"
+);
 const paymentE3TestPath = path.join(
   systemRoot,
   "functions",
@@ -391,7 +400,9 @@ const tournamentEconomyRetirementE3TestPath = path.join(
   "emulator",
   "tournamentEconomyRetirementE3.test.js"
 );
-const command = process.env.IUX_09_FOCAL === "1"
+const command = process.env.IUX_10_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${groupInvitationIux10TestPath}"`
+  : process.env.IUX_09_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${myObligationsEmptyE3TestPath}"`
   : process.env.IUX_06C2_P02_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${activeRosterSearchIux06c2TestPath}"`

@@ -404,6 +404,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /personDiscoverability/{personId} { allow read, write: if false; }
+    match /discoverablePersonDirectory/{candidateRef} { allow read, write: if false; }
+    match /groupInvitations/{invitationId} { allow read, write: if false; }
+    match /groupInvitationIntents/{intentId} { allow read, write: if false; }
+    match /groupInvitationDecisionIntents/{intentId} { allow read, write: if false; }
+    match /groupInvitationAcceptanceCoordinations/{invitationId} { allow read, write: if false; }
+    match /groupInvitationRateLimits/{bucketId} { allow read, write: if false; }
+
     match /{document=**} {
       allow read, write: if false;
     }

@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { GroupCard } from "@/components/groups/GroupCard";
 import { GroupPageShell } from "@/components/groups/GroupPageShell";
-import { OwnPendingGroupJoinRequestsSection } from "@/components/groupJoinRequests/OwnPendingGroupJoinRequestsSection";
-import { OwnGroupMembershipHistorySection } from "@/components/memberships/OwnGroupMembershipHistorySection";
+import { RequestsAndInvitationsSection } from "@/components/groups/RequestsAndInvitationsSection";
 import { useAuth } from "@/hooks/useAuth";
 import { usePerson } from "@/hooks/usePerson";
 import { createDashboardTasksClient, dashboardTaskQueryReason } from "@/services/dashboardTasksService";
@@ -26,6 +25,7 @@ export default function OwnGroupsPage() {
   const { firebaseUser } = useAuth();
   const { personStatus, personAccountId, personError, retryPerson } = usePerson();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const generation = useRef(0);
   const [owned, setOwned] = useState<OwnGroup[]>([]);
   const [memberships, setMemberships] = useState<MyCurrentGroupMembership[]>([]);
@@ -112,6 +112,12 @@ export default function OwnGroupsPage() {
   }, [firebaseUser?.uid, loadOwned, loadTaskCounts, taskClient]);
 
   useEffect(() => {
+    if (searchParams.get("section") === "history" || window.location.hash === "#historial") {
+      router.replace("/profile/memberships/history");
+    }
+  }, [router, searchParams]);
+
+  useEffect(() => {
     const requestGeneration = generation.current;
     if (!firebaseUser?.uid) return;
     if (personAccountId !== firebaseUser.uid) return;
@@ -165,8 +171,7 @@ export default function OwnGroupsPage() {
       {!trueEmpty && coverageComplete && filter === "member" && filtered.length === 0 ? <section className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center"><p className="font-semibold">No integrás ningún grupo</p></section> : null}
       {visibleFiltered.length > 0 ? <section aria-label="Listado de grupos" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visibleFiltered.map((group) => <GroupCard key={group.groupId} group={group} actionableTaskCount={taskStatus === "ready" ? taskCounts.get(group.groupId) : undefined} />)}</section> : null}
       {visibleCurrentGroups < filtered.length ? <button type="button" className="mt-4 min-h-11 rounded-lg border border-orange-500 px-4 font-semibold text-orange-700" onClick={() => setVisibleCurrentGroups((current) => current + CURRENT_GROUP_PAGE_SIZE)}>Cargar más grupos actuales</button> : null}
-      <OwnPendingGroupJoinRequestsSection available={membershipStatus !== "person-required"} onChanged={loadMemberships} />
-      <OwnGroupMembershipHistorySection available={membershipStatus !== "person-required"} />
+      <RequestsAndInvitationsSection key={firebaseUser?.uid ?? "signed-out"} available={membershipStatus !== "person-required"} onChanged={loadMemberships} />
     </GroupPageShell>
   );
 }

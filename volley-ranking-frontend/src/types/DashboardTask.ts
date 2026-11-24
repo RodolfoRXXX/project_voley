@@ -1,4 +1,5 @@
-export type DashboardTaskKind = "N20" | "N31";
+export type DashboardTaskKind = "N20" | "N31" | "N42";
+export type DashboardTaskCoverage = "N20_N31_V1" | "N20_N31_N42_V2";
 export type DashboardTaskHealth = "READY" | "UPDATING" | "REBUILDING" | "DEGRADED";
 
 export interface DashboardTask {
@@ -13,10 +14,10 @@ export interface DashboardTask {
 }
 
 export interface DashboardTaskPage {
-  coverage: { version: "N20_N31_V1"; complete: boolean; health: DashboardTaskHealth;
+  coverage: { version: DashboardTaskCoverage; complete: boolean; health: DashboardTaskHealth;
     asOf: string; generationId: string };
   totalTasks?: number;
-  groupTaskCounts?: { groupId: string; count: number; N20: number; N31: number }[];
+  groupTaskCounts?: { groupId: string; count: number; N20: number; N31: number; N42?: number }[];
   items: DashboardTask[];
   nextCursor?: string;
 }

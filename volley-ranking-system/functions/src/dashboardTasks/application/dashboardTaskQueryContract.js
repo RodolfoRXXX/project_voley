@@ -1,6 +1,6 @@
 "use strict";
 
-const { COVERAGE } = require("./dashboardTaskModel");
+const { COVERAGE, COVERAGE_V2 } = require("./dashboardTaskModel");
 const { DashboardTaskValidationError } = require("./dashboardTaskQueryErrors");
 
 function plain(value) {
@@ -13,7 +13,8 @@ function validateDashboardTaskQuery(data) {
   if (!plain(data)) throw new DashboardTaskValidationError();
   const keys = Object.keys(data).sort();
   const expected = ["coverage", ...(data.cursor === undefined ? [] : ["cursor"]), ...(data.groupId === undefined ? [] : ["groupId"])].sort();
-  if (keys.length !== expected.length || keys.some((key, index) => key !== expected[index]) || data.coverage !== COVERAGE) {
+  if (keys.length !== expected.length || keys.some((key, index) => key !== expected[index])
+    || ![COVERAGE, COVERAGE_V2].includes(data.coverage)) {
     throw new DashboardTaskValidationError();
   }
   if (data.cursor !== undefined && (typeof data.cursor !== "string" || data.cursor.length < 20
@@ -22,7 +23,7 @@ function validateDashboardTaskQuery(data) {
     || data.groupId !== data.groupId.trim() || data.groupId.length > 128 || data.groupId.includes("/"))) {
     throw new DashboardTaskValidationError();
   }
-  return Object.freeze({ coverage: COVERAGE, ...(data.groupId === undefined ? {} : { groupId: data.groupId }),
+  return Object.freeze({ coverage: data.coverage, ...(data.groupId === undefined ? {} : { groupId: data.groupId }),
     ...(data.cursor === undefined ? {} : { cursor: data.cursor }) });
 }
 

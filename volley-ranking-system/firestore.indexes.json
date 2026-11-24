@@ -666,6 +666,44 @@
         { "fieldPath": "membershipId", "mode": "ASCENDING" },
         { "fieldPath": "recordedAt", "mode": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "discoverablePersonDirectory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "searchPrefixes", "mode": "CONTAINS" },
+        { "fieldPath": "sortName", "mode": "ASCENDING" },
+        { "fieldPath": "__name__", "mode": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "groupInvitations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "status", "mode": "ASCENDING" },
+        { "fieldPath": "createdAt", "mode": "DESCENDING" },
+        { "fieldPath": "__name__", "mode": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "groupInvitations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "mode": "ASCENDING" },
+        { "fieldPath": "createdAt", "mode": "DESCENDING" },
+        { "fieldPath": "__name__", "mode": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "groupInvitations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "personId", "mode": "ASCENDING" },
+        { "fieldPath": "status", "mode": "ASCENDING" },
+        { "fieldPath": "createdAt", "mode": "DESCENDING" },
+        { "fieldPath": "__name__", "mode": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

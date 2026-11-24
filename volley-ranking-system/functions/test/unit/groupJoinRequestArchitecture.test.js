@@ -13,7 +13,8 @@ test("ocho callables están compuestos y el flujo no toca legado ni otros Agrega
   const index = read("index.js");
   for (const name of ["getKnownGroupJoinPreview", "createMyGroupJoinRequest", "getMyCurrentGroupJoinRequest", "cancelMyGroupJoinRequest", "listMyPendingGroupJoinRequests", "listPendingGroupJoinRequestsForOwnedGroup", "approveGroupJoinRequest", "rejectGroupJoinRequest", "getGroupJoinRequestDecisionResult"]) assert.match(index, new RegExp(`exports\\.${name}`));
   const store = read("src/groupJoinRequests/infrastructure/firestoreGroupJoinRequestStore.js");
-  for (const prohibited of ["pendingRequestIds", "pendingAdminRequestIds", "memberIds", "adminIds", "notifications", "activities", "seasons"]) assert.equal(store.includes(prohibited), false, prohibited);
+  for (const prohibited of ["pendingRequestIds", "pendingAdminRequestIds", "memberIds", "adminIds", "notifications", "activities"]) assert.equal(store.includes(prohibited), false, prohibited);
+  assert.match(store, /transaction\.get\(db\.collection\("seasons"\)\.doc\(invitation\.data\(\)\.seasonId\)\)/);
   assert.doesNotMatch(store, /transaction\.(set|create|update|delete).*memberships|collection\("groups"\).*\.(set|update)/s);
 });
 test("Solicitud consume otros Agregados exclusivamente mediante capacidades públicas", () => {

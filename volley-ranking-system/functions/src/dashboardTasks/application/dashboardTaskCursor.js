@@ -30,7 +30,7 @@ function createDashboardTaskCursorCodec({ secret }) {
         if (value?.v !== VERSION || value.accountId !== accountId || value.coverage !== coverage || cursorGroupId !== groupId || value.order !== ORDER
           || !value.anchor || !Number.isSafeInteger(value.anchor.seconds) || !Number.isSafeInteger(value.anchor.nanoseconds)
           || value.anchor.seconds < 0 || value.anchor.nanoseconds < 0 || value.anchor.nanoseconds > 999999999
-          || !["N20", "N31"].includes(value.anchor.kind) || typeof value.anchor.resourceId !== "string" || !value.anchor.resourceId) {
+          || !["N20", "N31", "N42"].includes(value.anchor.kind) || typeof value.anchor.resourceId !== "string" || !value.anchor.resourceId) {
           throw new DashboardTaskInvalidCursorError();
         }
         if (value.generationId !== generationId) throw new DashboardTaskExpiredCursorError();

@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 import { PendingGroupJoinRequestsSection } from "@/components/groupJoinRequests/PendingGroupJoinRequestsSection";
 import { CopyGroupJoinLinkButton } from "@/components/groups/CopyGroupJoinLinkButton";
@@ -21,7 +22,7 @@ export default function GroupMembersPage() {
   if (!owner || !group || group.estado !== "activo") return <section role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-5">Integrantes sólo está disponible para el Owner de un Grupo activo.</section>;
 
   return <div className="grid gap-5 lg:grid-cols-[2fr_1fr]">
-    <div className="lg:col-span-2"><GroupSectionHeader title="Integrantes" actions={<CopyGroupJoinLinkButton key={group.id} groupId={group.id} />} /></div>
+    <div className="lg:col-span-2"><GroupSectionHeader title="Integrantes" actions={<div className="flex flex-wrap gap-2"><Link className="inline-flex min-h-11 items-center rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white" href={`/dashboard/groups/${group.id}/members/add`}>Agregar integrantes</Link><CopyGroupJoinLinkButton key={group.id} groupId={group.id} /></div>} /></div>
     <ActiveGroupMembersSection groupId={group.id} onAccessLost={handleAccessLost} />
     <PendingGroupJoinRequestsSection groupId={group.id} requestedRequestId={searchParams.get("joinRequestId") ?? undefined} onAccessLost={handleAccessLost} />
   </div>;

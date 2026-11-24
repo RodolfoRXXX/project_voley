@@ -23,6 +23,7 @@ const {
   GroupJoinRequestMembershipReactivationRequiredError, GroupJoinRequestNotAuthorizedError,
   GroupJoinRequestMembershipSeasonNotReactivatableError, GroupJoinRequestMembershipReactivationSupersededError,
   GroupJoinRequestOpenSeasonRequiredError, GroupJoinRequestOwnerCannotRequestError,
+  GroupJoinRequestInvitationPendingError,
   GroupJoinRequestRequestAlreadyPendingError, GroupJoinRequestRequestCancelledError,
   GroupJoinRequestRequestNotFoundError, GroupJoinRequestRequestNotPendingError,
   GroupJoinRequestSeasonIncompatibleError,
@@ -46,6 +47,13 @@ function hydrateGuard(snapshot, { guardId, personId, groupId }) {
   const data = snapshot.data();
   if (!exact(data, GUARD_FIELDS) || !validId(data.requestId) || data.personId !== personId || data.groupId !== groupId || !validTimestamp(data.createdAt) || data.guardVersion !== 1 || snapshot.id !== guardId || guardId !== pendingGroupJoinRequestGuardId(groupId, personId)) throw new GroupJoinRequestIncompatibleStateError();
   return Object.freeze(data);
+}
+function isInvitationGuard(snapshot, { guardId, personId, groupId }) {
+  if (!snapshot.exists) return false;
+  const data = snapshot.data();
+  return snapshot.id === guardId && guardId === pendingGroupJoinRequestGuardId(groupId, personId)
+    && data?.guardVersion === 2 && data.kind === "GROUP_INVITATION" && validId(data.resourceId)
+    && data.personId === personId && data.groupId === groupId && validTimestamp(data.createdAt);
 }
 function hydrateIntent(snapshot) {
   if (!snapshot.exists) return null;
@@ -405,6 +413,21 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, publication
   }
 
   return {
+    async releaseExpiredInvitation({ personId, groupId }) {
+      return db.runTransaction(async (transaction) => {
+        const gRef = guardRef(groupId, personId); const guardSnapshot = await transaction.get(gRef);
+        if (!isInvitationGuard(guardSnapshot, { guardId: gRef.id, personId, groupId })) return false;
+        const invitationRef = db.collection("groupInvitations").doc(guardSnapshot.data().resourceId);
+        const invitation = await transaction.get(invitationRef);
+        if (!invitation.exists || invitation.data().status !== "pending" || invitation.data().personId !== personId || invitation.data().groupId !== groupId) throw new GroupJoinRequestIncompatibleStateError();
+        const season = await transaction.get(db.collection("seasons").doc(invitation.data().seasonId));
+        if (season.exists && season.data().estado === "abierta") return false;
+        const coordination = await transaction.get(db.collection("groupInvitationAcceptanceCoordinations").doc(invitation.id));
+        if (coordination.exists) throw new GroupJoinRequestApprovalInProgressError();
+        transaction.update(invitationRef, { status: "expired", expiredAt: Timestamp.now(), expireReason: "SEASON_CLOSED", schemaVersion: 2 });
+        transaction.delete(gRef); return true;
+      });
+    },
     async preview({ userId, personId, groupId, source, observe = () => {} }) {
       try { return await db.runTransaction(async (transaction) => { observe({ stage: "candidate-context-check", classification: "first-attempt" }); if (source === "EXPLORE") await assertExplorePublished(transaction, groupId); const group = await candidateGroup(transaction, groupId, userId); if (personId) await assertNoActiveMembership(transaction, personId, groupId); observe({ stage: "context-confirmed", classification: "first-attempt" }); return group; }); }
       catch (error) { throw mapFailure(error); }
@@ -419,6 +442,7 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, publication
           const iRef = intentRef(userId, idempotencyKey); const gRef = guardRef(groupId, personId);
           const [intentSnapshot, guardSnapshot] = await transaction.getAll(iRef, gRef);
           const pendingSnapshot = await transaction.get(repository.pendingPairQuery({ personId, groupId }));
+          if (isInvitationGuard(guardSnapshot, { guardId: gRef.id, personId, groupId })) throw new GroupJoinRequestInvitationPendingError();
           const intent = hydrateIntent(intentSnapshot); const guard = hydrateGuard(guardSnapshot, { guardId: gRef.id, personId, groupId });
           const pending = resolvePending(pendingSnapshot, guard, { repository, personId, groupId });
           const referencedSnapshot = intent ? await transaction.get(repository.reference(intent.requestId)) : null;
@@ -447,7 +471,7 @@ function createFirestoreGroupJoinRequestStore({ db, groupCapability, publication
       return "APPROVAL_IN_PROGRESS";
     },
     async getCurrent({ personId, groupId, observe = () => {} }) {
-      try { return await db.runTransaction(async (transaction) => { const gRef = guardRef(groupId, personId); const guardSnapshot = await transaction.get(gRef); const pendingSnapshot = await transaction.get(repository.pendingPairQuery({ personId, groupId })); const guard = hydrateGuard(guardSnapshot, { guardId: gRef.id, personId, groupId }); const request = resolvePending(pendingSnapshot, guard, { repository, personId, groupId }); const decisionStatus = request ? await this.readPendingDecisionStatus(transaction, request) : null; observe({ stage: "authoritative-state-confirmed", classification: "first-attempt" }); return request ? { request, decisionStatus } : null; }); }
+      try { return await db.runTransaction(async (transaction) => { const gRef = guardRef(groupId, personId); const guardSnapshot = await transaction.get(gRef); const pendingSnapshot = await transaction.get(repository.pendingPairQuery({ personId, groupId })); if (isInvitationGuard(guardSnapshot, { guardId: gRef.id, personId, groupId })) { if (!pendingSnapshot.empty) throw new GroupJoinRequestIncompatibleStateError(); return null; } const guard = hydrateGuard(guardSnapshot, { guardId: gRef.id, personId, groupId }); const request = resolvePending(pendingSnapshot, guard, { repository, personId, groupId }); const decisionStatus = request ? await this.readPendingDecisionStatus(transaction, request) : null; observe({ stage: "authoritative-state-confirmed", classification: "first-attempt" }); return request ? { request, decisionStatus } : null; }); }
       catch (error) { throw mapFailure(error); }
     },
     async listMine({ userId, personId, pageSize, cursor, observe = () => {} }) {

@@ -20,16 +20,18 @@ test("IUX-06B limita solicitudes propias a cinco y liga cursor a Persona", () =>
   assert.throws(() => decodeOwnGroupJoinRequestCursor(token, "person-2"), GroupJoinRequestValidationError);
 });
 
-test("IUX-06B presenta tres bloques, carga historia a demanda y no consulta por tarjeta", () => {
+test("IUX-06B conserva Grupos actuales y D5-081 mueve pendientes e historial a destinos canónicos", () => {
   const page = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/page.tsx");
-  const pending = read("volley-ranking-frontend/src/components/groupJoinRequests/OwnPendingGroupJoinRequestsSection.tsx");
-  const history = read("volley-ranking-frontend/src/components/memberships/OwnGroupMembershipHistorySection.tsx");
-  assert.ok(page.indexOf("Grupos actuales") < page.lastIndexOf("<OwnPendingGroupJoinRequestsSection"));
-  assert.ok(page.lastIndexOf("<OwnPendingGroupJoinRequestsSection") < page.lastIndexOf("<OwnGroupMembershipHistorySection"));
+  const pending = read("volley-ranking-frontend/src/components/groups/RequestsAndInvitationsSection.tsx");
+  const historyPage = read("volley-ranking-frontend/src/app/(protected)/profile/memberships/history/page.tsx");
+  const history = read("volley-ranking-frontend/src/components/memberships/OwnGroupMembershipHistoryView.tsx");
+  assert.ok(page.indexOf("Grupos actuales") < page.lastIndexOf("<RequestsAndInvitationsSection"));
   assert.match(page, /CURRENT_GROUP_PAGE_SIZE = 5/); assert.match(page, /Cargar más grupos actuales/); assert.match(page, /filtered\.slice\(0, visibleCurrentGroups\)/);
   assert.match(pending, /pageSize: 5/); assert.match(pending, /Cancelar solicitud/); assert.match(pending, /cancelMyGroupJoinRequest/);
-  assert.doesNotMatch(pending, /getMyCurrentGroupJoinRequest/);
-  assert.match(history, /aria-expanded/); assert.match(history, /status === "idle"/); assert.match(history, /pageSize: 5/); assert.match(history, /Último período/);
+  assert.match(pending, /Solicitudes e invitaciones/); assert.match(pending, /Invitaciones recibidas/); assert.match(pending, /Solicitudes enviadas/);
+  assert.match(pending, /getMyCurrentGroupJoinRequest/); assert.match(pending, /getMyGroupInvitation/);
+  assert.match(historyPage, /Historial de grupos/);
+  assert.match(history, /<details/); assert.match(history, /pageSize: 5/); assert.match(history, /Cargar más/); assert.match(history, /último período/);
 });
 
 test("IUX-06B filtra administración y membresía acreditada como condiciones independientes", async () => {

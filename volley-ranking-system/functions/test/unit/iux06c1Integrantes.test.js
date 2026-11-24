@@ -24,7 +24,8 @@ test("IUX-06C1 integra Tu membresía como primera fila desplegable y preserva ac
   assert.ok(roster.indexOf("<OwnMembershipSection") < roster.indexOf("items.map"));
   for (const marker of ["aria-expanded", "aria-controls", "focus-visible:outline-2", "md:flex-row", "mergeRosterPages", "Cargar más", "Editar cargo", "Finalizar Membresía"]) assert.match(roster, new RegExp(marker));
   for (const marker of ["Todavía no sos integrante", "/profile/person", "Owner", "Incorporarme como integrante", "Finalizar mi Membresía", "getMembershipCargoForOwnedGroup", "Seguís administrando el grupo. Para sumarte como integrante, necesitás crear tu ficha personal.", "Ya podés sumarte como integrante y seguir administrando el grupo."]) assert.match(own, new RegExp(marker));
-  for (const marker of ["useState(false)", "aria-expanded={expanded}", "rotate-180", "Crear mi ficha personal", ">ACTIVA<", "Integrante desde"]) assert.ok(own.includes(marker), `falta ${marker}`);
+  for (const marker of ["useState(false)", "aria-expanded={expanded}", 'expanded ? "−" : "+"', "Crear mi ficha personal", ">ACTIVA<", "Integrante desde"]) assert.ok(own.includes(marker), `falta ${marker}`);
+  assert.doesNotMatch(own, /rotate-180|m6 9 6 6 6-6/);
   assert.doesNotMatch(own, /Crear mi Persona|Temporada: \{membership\.seasonId\}|bg-emerald-50/);
   assert.doesNotMatch(page, /<OwnMembershipSection/);
   assert.doesNotMatch(`${roster}\n${own}`, /firebase\/firestore|collection\(|getDoc\(|setDoc\(|updateDoc\(/);

@@ -38,6 +38,7 @@ function TaskRow({ task }: { task: DashboardTask }) {
             {task.group.name}{task.season ? ` · ${task.season.name}` : ""}
           </span>
         </span>
+        {task.kind === "N42" ? <span className="shrink-0 text-sm font-semibold text-orange-700">Ver invitación</span> : null}
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0 text-orange-600 transition group-hover:translate-x-0.5">
           <path d="m9 18 6-6-6-6" />
         </svg>
@@ -47,7 +48,7 @@ function TaskRow({ task }: { task: DashboardTask }) {
 }
 
 export function PendingTasksSection({ sessionId }: { sessionId: string | null }) {
-  const client = useMemo(() => createDashboardTasksClient(() => sessionId), [sessionId]);
+  const client = useMemo(() => createDashboardTasksClient(() => sessionId, "N20_N31_N42_V2"), [sessionId]);
   const [expanded, setExpanded] = useState(false);
   const [status, setStatus] = useState<LoadState>("loading");
   const [items, setItems] = useState<DashboardTask[]>([]);

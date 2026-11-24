@@ -14,6 +14,7 @@ const definitions = {
   OwnerCannotRequest: ["OWNER_CANNOT_REQUEST", "The Owner cannot request membership"],
   ActiveMembershipExists: ["ACTIVE_MEMBERSHIP_EXISTS", "An active Membership exists"],
   RequestAlreadyPending: ["REQUEST_ALREADY_PENDING", "Another request is pending"],
+  InvitationPending: ["INVITATION_PENDING", "A Group invitation is pending"],
   RequestNotFound: ["REQUEST_NOT_FOUND", "Request was not found"],
   RequestNotPending: ["REQUEST_NOT_PENDING", "Request is not pending"],
   RequestCancelled: ["REQUEST_CANCELLED", "Request was cancelled"],

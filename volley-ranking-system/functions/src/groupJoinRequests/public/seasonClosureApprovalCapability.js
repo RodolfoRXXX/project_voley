@@ -9,7 +9,18 @@ function createSeasonClosureApprovalCapability({ db }) {
   return Object.freeze({
     async findBlocking({ unitOfWork, groupId }) {
       const snapshot = await unitOfWork.get(db.collection("groupJoinRequestApprovalCoordinations").where("groupId", "==", groupId).limit(1));
-      if (snapshot.empty) return Object.freeze({ status: "absent" });
+      if (snapshot.empty) {
+        const invitations = await unitOfWork.get(db.collection("groupInvitationAcceptanceCoordinations").where("groupId", "==", groupId).limit(1));
+        if (invitations.empty) return Object.freeze({ status: "absent" });
+        try {
+          const coordination = invitations.docs[0].data();
+          const invitation = await unitOfWork.get(db.collection("groupInvitations").doc(invitations.docs[0].id));
+          const valid = coordination?.schemaVersion === 1 && coordination.invitationId === invitations.docs[0].id
+            && coordination.groupId === groupId && invitation.exists && invitation.data().status === "pending"
+            && invitation.data().groupId === groupId && invitation.data().personId === coordination.personId;
+          return Object.freeze({ status: valid ? "blocking" : "incompatible" });
+        } catch { return Object.freeze({ status: "incompatible" }); }
+      }
       try {
         const coordination = hydrateCoordination(snapshot.docs[0]);
         const requestSnapshot = await unitOfWork.get(repository.reference(coordination.requestId));

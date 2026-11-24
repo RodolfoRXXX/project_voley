@@ -5,6 +5,7 @@ import PersonBootstrapForm from "@/components/person/PersonBootstrapForm";
 import { GroupPageShell } from "@/components/groups/GroupPageShell";
 import { RefreshButton } from "@/components/ui/RefreshButton";
 import { usePerson } from "@/hooks/usePerson";
+import { DiscoverabilityPreference } from "@/components/person/DiscoverabilityPreference";
 
 export default function MyPersonPage() {
   const { person, personStatus, personError, personOutcome, refreshMyPerson, retryPerson } = usePerson();
@@ -43,7 +44,7 @@ export default function MyPersonPage() {
           </div>
         </div>
       )}
-
+      {personStatus === "ready" && person ? <DiscoverabilityPreference key={person.personId} /> : null}
       {(personStatus === "error" || personStatus === "inconsistent" || personStatus === "sessionInvalid") && (
         <div role="alert" className="space-y-3 rounded-md border border-red-200 bg-red-50 p-5 text-red-900">
           <p>{personError}</p>

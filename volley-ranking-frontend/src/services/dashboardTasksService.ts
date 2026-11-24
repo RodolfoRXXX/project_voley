@@ -1,15 +1,16 @@
 import { httpsCallable } from "firebase/functions";
 import { auth, functions } from "@/lib/firebase";
-import type { DashboardTaskPage, DashboardTaskQueryReason } from "@/types/DashboardTask";
+import type { DashboardTaskCoverage, DashboardTaskPage, DashboardTaskQueryReason } from "@/types/DashboardTask";
 import { createDashboardTaskRequestGate, StaleDashboardTaskResponseError } from "./dashboardTaskRequestGate.mjs";
 
-const listCall = httpsCallable<{ coverage: "N20_N31_V1"; groupId?: string; cursor?: string }, DashboardTaskPage>(functions, "listMyDashboardTasks");
+const listCall = httpsCallable<{ coverage: DashboardTaskCoverage; groupId?: string; cursor?: string }, DashboardTaskPage>(functions, "listMyDashboardTasks");
 
-export function createDashboardTasksClient(getSessionId: () => string | null = () => auth.currentUser?.uid ?? null) {
+export function createDashboardTasksClient(getSessionId: () => string | null = () => auth.currentUser?.uid ?? null,
+  coverage: DashboardTaskCoverage = "N20_N31_V1") {
   const gate = createDashboardTaskRequestGate(getSessionId);
   return Object.freeze({
     list(cursor?: string, groupId?: string) {
-      return gate.run(async () => (await listCall({ coverage: "N20_N31_V1", ...(groupId ? { groupId } : {}),
+      return gate.run(async () => (await listCall({ coverage, ...(groupId ? { groupId } : {}),
         ...(cursor ? { cursor } : {}) })).data);
     },
     invalidate() { gate.invalidate(); },

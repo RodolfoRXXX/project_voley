@@ -285,8 +285,8 @@ function createMembershipService({ selfAccountReader, selfPersonContext, ownedGr
           ? activeRosterSearchProjection?.searchPage({ userId, groupId: input.groupId, query: input.search, pageSize: input.pageSize, position })
           : ownerActiveGroupMembersReader.listPage({ userId, groupId: input.groupId, pageSize: input.pageSize, position }));
         if (!page) throw new MembershipDependencyUnavailableError();
-        const items = await atStage(operation, "dto", async () => Object.freeze(page.rows.map(({ membership, person, isOwner }) =>
-          toOwnerActiveGroupMemberItem(membership, person, isOwner))));
+        const items = await atStage(operation, "dto", async () => Object.freeze(page.rows.map(({ membership, person, isOwner, administrativeCustody }) =>
+          toOwnerActiveGroupMemberItem(membership, person, isOwner, administrativeCustody))));
         const nextCursor = page.hasLookahead
           ? input.search
             ? encodeOwnerGroupMembersSearchCursor({ groupId: input.groupId, seasonId: page.seasonId, userId, query: input.search, ...page.cursorAnchor })

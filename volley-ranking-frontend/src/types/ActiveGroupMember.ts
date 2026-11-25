@@ -8,6 +8,7 @@ export type ActiveGroupMember = {
   isOwner: boolean;
   cargo: string | null;
   person: ActiveGroupMemberPerson;
+  administrativeCustody?: { status: "EDITABLE"; personId: string; revision: number; contactEmail: string | null };
 };
 
 export type MembershipCargoDetail = {

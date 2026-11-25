@@ -22,6 +22,23 @@ function createFirestorePersonRepository({ db }) {
         createdAt: FieldValue.serverTimestamp(),
       });
     },
+    createAdministrative(transaction, person, createdAt) {
+      transaction.create(db.collection("personas").doc(person.personId), {
+        nombre: person.nombre,
+        apellido: person.apellido,
+        ...(person.emailContacto === null ? {} : { emailContacto: person.emailContacto }),
+        createdAt,
+        schemaVersion: 2,
+      });
+    },
+    updateAdministrative(transaction, person) {
+      transaction.update(db.collection("personas").doc(person.personId), {
+        nombre: person.nombre,
+        apellido: person.apellido,
+        emailContacto: person.emailContacto === null ? FieldValue.delete() : person.emailContacto,
+        schemaVersion: 2,
+      });
+    },
   };
 }
 

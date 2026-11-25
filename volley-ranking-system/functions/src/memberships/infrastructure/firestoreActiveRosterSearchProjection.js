@@ -83,8 +83,8 @@ function createFirestoreActiveRosterSearchProjection({ db, membershipRepository,
   const entryReference = (groupId, seasonId, membershipId) => db.collection("activeRosterSearchEntries").doc(searchProjectionEntryId(groupId, seasonId, membershipId));
   const summaryData = ({ groupId, seasonId, status, generation, updatedAt }) => ({ groupId, seasonId, status, generation, updatedAt, schemaVersion: SUMMARY_VERSION });
 
-  async function entryData(transaction, membership, activationOrdinal, generation) {
-    const person = await personCapability.getPresentation({ unitOfWork: transaction, personId: membership.personId });
+  async function entryData(transaction, membership, activationOrdinal, generation, suppliedPresentation = null) {
+    const person = suppliedPresentation || await personCapability.getPresentation({ unitOfWork: transaction, personId: membership.personId });
     if (person?.status !== "available") throw new MembershipIncompatibleStateError("Person is unavailable for roster search projection");
     return {
       groupId: membership.groupId,
@@ -102,11 +102,11 @@ function createFirestoreActiveRosterSearchProjection({ db, membershipRepository,
     };
   }
 
-  async function prepareActivation(transaction, membership, activationOrdinal) {
+  async function prepareActivation(transaction, membership, activationOrdinal, suppliedPresentation = null) {
     const ref = summaryReference(membership.groupId, membership.seasonId);
     const current = hydrateSummary(await transaction.get(ref), membership);
     const summary = current || summaryData({ groupId: membership.groupId, seasonId: membership.seasonId, status: "BUILDING", generation: 1, updatedAt: now() });
-    const entry = await entryData(transaction, membership, activationOrdinal, summary.generation);
+    const entry = await entryData(transaction, membership, activationOrdinal, summary.generation, suppliedPresentation);
     return Object.freeze({
       commit() {
         if (!current) transaction.set(ref, summary);
@@ -237,7 +237,12 @@ function createFirestoreActiveRosterSearchProjection({ db, membershipRepository,
           if (data.personId !== canonical.personId || data.firstName !== person.firstName || data.lastName !== person.lastName
             || data.sortName !== normalizeSearchText(`${person.firstName} ${person.lastName}`).trim()
             || !searchPrefixes(person.firstName, person.lastName).includes(query)) throw new MembershipIncompatibleStateError("Roster search entry is stale");
-          rows.push(Object.freeze({ membership: canonical, person, isOwner: ownerPerson?.status === "found" && ownerPerson.personId === canonical.personId }));
+          const custodySnapshot = await transaction.get(db.collection("administrativePersonCustodies").doc(canonical.personId));
+          const custodyValue = custodySnapshot.exists ? custodySnapshot.data() : null;
+          const administrativePersonSnapshot = custodyValue ? await transaction.get(db.collection("personas").doc(canonical.personId)) : null;
+          const administrativeCustody = custodyValue?.state === "UNLINKED" && custodyValue.custodianGroupId === groupId && Number.isSafeInteger(custodyValue.revision)
+            ? Object.freeze({ status: "EDITABLE", personId: canonical.personId, revision: custodyValue.revision, contactEmail: administrativePersonSnapshot?.data()?.emailContacto ?? null }) : null;
+          rows.push(Object.freeze({ membership: canonical, person, isOwner: ownerPerson?.status === "found" && ownerPerson.personId === canonical.personId, administrativeCustody }));
         }
         const last = included.at(-1);
         return Object.freeze({ scopeStatus: "OPEN_SEASON", projectionStatus: "READY", seasonId: ready.seasonId, rows: Object.freeze(rows), hasLookahead: snapshot.size > pageSize, cursorAnchor: last ? Object.freeze({ sortName: last.get("sortName"), lastEntryId: last.id }) : null });

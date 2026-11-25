@@ -1,0 +1,6 @@
+"use strict";
+const functions = require("firebase-functions/v1");
+const { AdministrativePersonError } = require("./administrativePersonModule");
+const codes = { NOT_AUTHORIZED: "permission-denied", NOT_FOUND: "not-found", GROUP_NOT_ACTIVE: "failed-precondition", OPEN_SEASON_REQUIRED: "failed-precondition", ORPHANED_CUSTODY: "failed-precondition", STALE_REVISION: "aborted", IDEMPOTENCY_CONFLICT: "already-exists", INCOMPATIBLE_STATE: "failed-precondition", CURSOR_INVALID: "invalid-argument", CONTEXT_CHANGED: "aborted", ALREADY_ACTIVE: "already-exists" };
+function handler(operation, validate) { return async (raw, context) => { if (!context.auth?.uid) throw new functions.https.HttpsError("unauthenticated", "Authentication is required"); let input; try { input = validate(raw); } catch { throw new functions.https.HttpsError("invalid-argument", "Invalid administrative Person request"); } try { return await operation({ actorUserId: context.auth.uid, input }); } catch (error) { if (error instanceof AdministrativePersonError) throw new functions.https.HttpsError(codes[error.reason] || "failed-precondition", error.message, { reason: error.reason }); console.error("administrative-person", error); throw new functions.https.HttpsError("internal", "Administrative Person operation failed"); } }; }
+module.exports = { handler };

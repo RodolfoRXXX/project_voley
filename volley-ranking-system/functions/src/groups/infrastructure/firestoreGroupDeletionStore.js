@@ -27,7 +27,7 @@ const { hydrateReceipt: hydrateMembershipCargoReceipt } = require("../../members
 const { hydrateCoordination, hydrateDecisionIntent, hydrateGuard: hydrateRequestGuard, hydrateIntent: hydrateRequestIntent } = require("../../groupJoinRequests/infrastructure/firestoreGroupJoinRequestStore");
 
 const BLOCKER_ORDER = Object.freeze([
-  "SEASONS_EXIST", "MEMBERSHIPS_EXIST", "REQUESTS_EXIST",
+  "SEASONS_EXIST", "MEMBERSHIPS_EXIST", "ADMINISTRATIVE_PERSON_CUSTODY_EXISTS", "REQUESTS_EXIST",
   "FUNCTIONAL_REFERENCES_EXIST", "OPERATION_IN_PROGRESS",
 ]);
 const FUNCTIONAL_COLLECTIONS = Object.freeze([
@@ -73,6 +73,7 @@ function createFirestoreGroupDeletionStore({ db, groupRepository, membershipRepo
       transaction.get(queryByGroup(db, "seasons", groupId)),
       transaction.get(queryByGroup(db, "memberships", groupId)),
       transaction.get(queryByGroup(db, "groupJoinRequests", groupId)),
+      transaction.get(db.collection("administrativePersonCustodies").where("custodianGroupId", "==", groupId).limit(1)),
       transaction.get(db.collection("openSeasonGuards").doc(groupId)),
       ...FUNCTIONAL_COLLECTIONS.map((name) => transaction.get(queryByGroup(db, name, groupId, 1))),
       transaction.get(queryByGroup(db, "groupJoinRequestApprovalCoordinations", groupId)),
@@ -85,7 +86,7 @@ function createFirestoreGroupDeletionStore({ db, groupRepository, membershipRepo
     ];
     const results = await Promise.all(queries);
     let cursor = 0;
-    const seasonsSnapshot = results[cursor++]; const membershipsSnapshot = results[cursor++]; const requestsSnapshot = results[cursor++];
+    const seasonsSnapshot = results[cursor++]; const membershipsSnapshot = results[cursor++]; const requestsSnapshot = results[cursor++]; const custodiesSnapshot = results[cursor++];
     const openSeasonGuardSnapshot = results[cursor++];
     let seasons;
     try { seasons = seasonsSnapshot.docs.map((snapshot) => hydrateSeason(snapshot.id, snapshot.data())); }
@@ -166,6 +167,7 @@ function createFirestoreGroupDeletionStore({ db, groupRepository, membershipRepo
     const present = new Set();
     if (!seasonsSnapshot.empty) present.add("SEASONS_EXIST");
     if (!membershipsSnapshot.empty) present.add("MEMBERSHIPS_EXIST");
+    if (!custodiesSnapshot.empty) present.add("ADMINISTRATIVE_PERSON_CUSTODY_EXISTS");
     if (!requestsSnapshot.empty) present.add("REQUESTS_EXIST");
     if (functional.some((snapshot) => !snapshot.empty)) present.add("FUNCTIONAL_REFERENCES_EXIST");
     if (!coordinations.empty) present.add("OPERATION_IN_PROGRESS");

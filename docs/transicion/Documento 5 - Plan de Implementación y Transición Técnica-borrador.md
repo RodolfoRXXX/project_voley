@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - ampliación documental post-UAT IUX-10 - 18 de noviembre de 2026*
+*Borrador consolidado - refinamiento documental IUX-11 - 24 de noviembre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -39,7 +39,7 @@ Estado operativo del plan:
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
 - `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
-- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-07, IUX-08 E IUX-09 CERRADOS E INTEGRADOS EN DEV CON UAT HUMANA APROBADA; IUX-10 Y SU AMPLIACIÓN D5-081 CERRADOS CON UAT APROBADA E INTEGRACIÓN AUTORIZADA; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
+- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-07, IUX-08 E IUX-09 CERRADOS E INTEGRADOS EN DEV CON UAT HUMANA APROBADA; IUX-10 Y SU AMPLIACIÓN D5-081 CERRADOS CON UAT APROBADA E INTEGRACIÓN AUTORIZADA; IUX-11 ADOPTADO DOCUMENTALMENTE POR D5-083, CON A LISTO BAJO AUTORIZACIÓN SEPARADA Y B/C NO LISTOS; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -2587,6 +2587,14 @@ El siguiente incremento funcional es:
     límites operativos y techo conservador de 95 lecturas lógicas por intento.
 - Fuentes IUX-10: [ficha](../implementacion/interetapa-ux-movil/IUX-10-ficha-agregar-integrantes-busqueda-invitaciones.md)
     y [addendum conjunto](../arquitectura/Documento-1-1.5-2-3-4-addendum-IUX-10-agregar-integrantes-invitaciones.md).
+- Undécimo incremento: `IUX-11 — Fichas administrativas, vinculación y fusión`,
+    refinado por D5-083. IUX-11A incorpora alta administrativa con correo opcional, Membresía y
+    economía sin Cuenta vinculada. IUX-11B/C definen candidatura interna por correo verificado,
+    ficha principal, asignaciones trazables y fusión sin reescribir raíces históricas; permanecen no
+    listos hasta resolver sus dependencias y decisiones pendientes. El correo externo queda diferido.
+- Fuentes IUX-11: [relevamiento](../implementacion/interetapa-ux-movil/IUX-11-relevamiento-fichas-administrativas-vinculacion-fusion.md),
+    [ficha](../implementacion/interetapa-ux-movil/IUX-11-ficha-fichas-administrativas-vinculacion-fusion.md)
+    y [addendum conjunto](../arquitectura/Documento-1-1.5-2-3-4-addendum-IUX-11-fichas-administrativas-vinculacion-fusion.md).
 - Ampliación post-UAT IUX-10, adoptada por D5-081: el buscador incorpora limpieza accesible y reset
     por generación; la Invitación recibida se incorpora a Pendientes como `IUX-N42`; Mis grupos
     compone Solicitudes e Invitaciones en una fila contraída; e Historial de grupos pasa a Mi perfil.
@@ -2832,6 +2840,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-080 | Adopta `IUX-10 — Agregar integrantes: búsqueda e invitaciones`, D01–D14 y el addendum conjunto a Documentos 1/1.5/2/3/4: localización opt-in, directorio privado, Invitación separada, exclusión compatible con Solicitudes y aceptación mediante el writer canónico de Membresía | APROBADA; LISTA PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA | IUX / IUX-10 / Integrantes / Invitaciones / Identidad / Organización | Owner sin Persona puede buscar/invitar con Grupo activo y Temporada abierta; destinatario exige vínculo Persona válido. Invitaciones se responden en Mis grupos, pertenecen a la Temporada original, sobreviven transferencias y admiten cancelación por Owner vigente. Se conserva `pendingGroupJoinRequestGuards` como autoridad física v1/v2; expiración libera de forma recuperable; Membresía conserva alta/reactivación/renovación, contador, padrón y outbox. Directorio máximo 10, rate limits y techo conservador 95 lecturas; `candidateRef` es aleatorio opaco con revalidación, no firmado. Correo exacto/notificaciones externas quedan fuera. No autoriza código, índices, Rules, datos, migración, commit, push, deploy ni producción; no cierra IUX-02/E3 ni habilita E4. |
 | D5-081 | Adopta la ampliación post-UAT de IUX-10: limpieza accesible del buscador; Invitación recibida `IUX-N42` en Pendientes; composición contraída de Solicitudes e Invitaciones en Mis grupos; e Historial de grupos en Mi perfil | IMPLEMENTADA; CERRADA POR D5-082 | IUX / IUX-10 / IUX-02 / Mis grupos / Historial | N42 pertenece al destinatario y muestra Grupo, Temporada y Ver invitación; Solicitud enviada sigue siendo espera del solicitante. `N20_N31_V1` no cambia y los consumidores contextuales permanecen en V1. Mis grupos sólo acredita vacío tras ambas consultas exitosas. Historial reutiliza `listMyGroupMembershipHistory`, muestra sólo finalizadas de a cinco y etiqueta el último Período sin inferir continuidad. El mecanismo V2 efectivo y sus gates quedan registrados en D5-082. No quedan decisiones funcionales nuevas pendientes. |
 | D5-082 | Registra implementación, validación, UAT aprobada y cierre de IUX-10/D5-081; adopta la composición de lectura efectiva de `N20_N31_N42_V2` | CERRADA; UAT APROBADA; INTEGRACIÓN Y PUSH AUTORIZADOS | IUX / IUX-10 / D5-081 / cierre | BUILD_ID aprobado `y4yCbXKTQaTuXSSZFByXH`; implementación `89b4b252415d2782c7bfabb2d9c0277174180af7`. V2 compone la proyección V1 inmutable con Invitaciones pendientes canónicas revalidadas; usa generación `live-v2.<generation-v1>`, cursor firmado propio, totales de la unión y continuación live deduplicable. Fuentes de 10 con fusible de 100 páginas; una página N42 completa cuesta hasta 43 lecturas lógicas aproximadas además de V1. No hubo rebuild V2 ni despliegue. Secretos estables, índices remotos, medición productiva y rollout/rollback siguen pendientes. Suite focal `12/12`, Emulator aislado `1/1`, build/TypeScript/lint/diff OK; suite general `490/491`, con IUX-06A reproducible en `dev@2d5a4b4`. |
+| D5-083 | Adopta el refinamiento documental de `IUX-11 — Fichas administrativas, vinculación y fusión`: alta administrativa con correo opcional y economía; candidatura interna por correo verificado; una ficha principal con asignaciones trazables; y finalización canónica elegida de Membresía activa duplicada sin alterar economía | APROBADA DOCUMENTALMENTE; IUX-11A LISTO CON AUTORIZACIÓN SEPARADA; IUX-11B/C NO LISTOS | IUX / IUX-11 / Identidad / Integrantes / Membresías / Economía | No impone unicidad de Persona por correo ni reescribe `personId`/`membershipId`. A adopta custodia por Owner vigente, transferencia contextual, corrección en Grupo archivado, delete bloqueado por Membresía/custodia y `ORPHANED_CUSTODY` sin autoridad residual ante ausencia anómala; creación/corrección quedan atómicas, idempotentes y recuperables. Archivo, cierre y finalización no bloquean vinculación futura. `users.personaId` queda propuesto como proyección de principal. B/C siguen no listos hasta elegir contratos de rechazo, nombre, fusiones sucesivas, admisiones pendientes y capabilities, además de retención. Aviso por correo diferido. No autoriza código, configuración, índices, Rules, datos, migración, commit, push, despliegue ni producción. |
 
 
 # 9. Decisiones abiertas no bloqueantes

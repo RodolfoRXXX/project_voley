@@ -10,7 +10,7 @@ const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
 
 test("IUX-10 centraliza estados en español y pagina invitaciones enviadas de a cinco", () => {
   const service = read("volley-ranking-frontend/src/services/groupInvitationPresentation.mjs");
-  const page = read("volley-ranking-frontend/src/app/(protected)/dashboard/groups/[groupId]/members/add/page.tsx");
+  const page = read("volley-ranking-frontend/src/components/groupInvitations/OwnedGroupInvitationsSection.tsx");
   for (const label of ["Pendiente", "Aceptada", "Rechazada", "Cancelada", "Vencida"]) assert.match(service, new RegExp(`\\b${label}\\b`));
   assert.match(service, /INVITATION_STATUS_LABELS/);
   assert.match(service, /DIRECTORY_CANDIDATE_STATE_LABELS/);
@@ -18,7 +18,7 @@ test("IUX-10 centraliza estados en español y pagina invitaciones enviadas de a 
   assert.match(service, /right\.status === "pending"/);
   assert.match(page, /pageSize: 5/);
   assert.match(page, /"Mostrar más"/);
-  assert.match(page, />Actualizar<\/button>/);
+  assert.match(page, /Cancelar invitación/);
   assert.match(page, /invitationStatusLabel\(item\.status\)/);
   assert.doesNotMatch(page, />\{item\.status\}</);
 });

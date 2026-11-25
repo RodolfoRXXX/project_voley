@@ -63,6 +63,11 @@ test("IUX-10 integra opt-in, exclusión, carreras y recuperación canónica", as
     const combined = [...firstPage.body.result.items, ...secondPage.body.result.items, ...thirdPage.body.result.items];
     const latestById = new Map(combined.map((item) => [item.invitationId, item]));
     assert.equal(latestById.size, 13); assert.equal(latestById.get("iux-10-page-invitation-12").status, "accepted");
+    const archivedPendingId = "iux-10-page-invitation-07", archivedPendingPerson = "iux-10-page-person-07";
+    await db.collection("pendingGroupJoinRequestGuards").doc(pendingGroupJoinRequestGuardId(paginationGroup, archivedPendingPerson)).set({ resourceId: archivedPendingId, personId: archivedPendingPerson, groupId: paginationGroup, kind: "GROUP_INVITATION", createdAt: at, guardVersion: 2 });
+    await db.collection("groups").doc(paginationGroup).update({ estado: "archivado", archivedAt: T.fromMillis(40_000), schemaVersion: 2 });
+    const archivedPage = await call("listGroupInvitationsForOwnedGroup", { groupId: paginationGroup, pageSize: 5 }, owner); assert.equal(archivedPage.status, 200, JSON.stringify(archivedPage.body));
+    const archivedCancellation = await call("cancelGroupInvitation", { invitationId: archivedPendingId, idempotencyKey: "iux-11a1-archived-cancel-01" }, owner); assert.equal(archivedCancellation.status, 200, JSON.stringify(archivedCancellation.body)); assert.equal((await db.collection("groupInvitations").doc(archivedPendingId).get()).data().status, "cancelled");
     await call("setMyPersonDiscoverability", { enabled: false }, candidate); const removed = await call("searchDiscoverablePeopleForOwnedGroup", { groupId, query: "gar", pageSize: 10 }, owner); assert.equal(removed.body.result.items.length, 0);
   } finally { await app.delete(); }
 });

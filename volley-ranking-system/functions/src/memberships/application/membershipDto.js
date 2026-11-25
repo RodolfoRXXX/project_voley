@@ -77,7 +77,7 @@ function toMembershipSelfExitDto(result) {
   });
 }
 
-function toOwnerActiveGroupMemberItem(membership, person, isOwner) {
+function toOwnerActiveGroupMemberItem(membership, person, isOwner, administrativeCustody = null) {
   const personDto = person?.status === "available"
     ? Object.freeze({ status: "AVAILABLE", firstName: person.firstName, lastName: person.lastName })
     : Object.freeze({ status: "UNAVAILABLE" });
@@ -87,6 +87,7 @@ function toOwnerActiveGroupMemberItem(membership, person, isOwner) {
     isOwner: Boolean(isOwner),
     cargo: Object.prototype.hasOwnProperty.call(membership, "cargo") ? membership.cargo : null,
     person: personDto,
+    ...(administrativeCustody ? { administrativeCustody } : {}),
   });
 }
 

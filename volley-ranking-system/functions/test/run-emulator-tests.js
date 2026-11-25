@@ -284,6 +284,7 @@ const groupInvitationIux10TestPath = path.join(
   "emulator",
   "groupInvitationIux10.test.js"
 );
+const administrativePersonIux11aTestPath = path.join(systemRoot, "functions", "test", "emulator", "administrativePersonIux11a.test.js");
 const paymentE3TestPath = path.join(
   systemRoot,
   "functions",
@@ -400,7 +401,9 @@ const tournamentEconomyRetirementE3TestPath = path.join(
   "emulator",
   "tournamentEconomyRetirementE3.test.js"
 );
-const command = process.env.IUX_10_FOCAL === "1"
+const command = process.env.IUX_11A_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${administrativePersonIux11aTestPath}"`
+  : process.env.IUX_10_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${groupInvitationIux10TestPath}"`
   : process.env.IUX_09_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${accountTestPath}" "${personTestPath}" "${myObligationsEmptyE3TestPath}"`

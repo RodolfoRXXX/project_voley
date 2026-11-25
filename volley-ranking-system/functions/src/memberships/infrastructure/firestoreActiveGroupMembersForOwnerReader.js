@@ -58,10 +58,16 @@ function createFirestoreActiveGroupMembersForOwnerReader({ db, membershipReposit
             const membership = await requireCanonicalActiveMembership({ db, transaction, membershipRepository, candidate, groupId, seasonId: context.seasonId });
             const person = await personCapability.getPresentation({ unitOfWork: transaction, personId: membership.personId });
             if (!["available", "unavailable"].includes(person?.status)) throw new MembershipIncompatibleStateError("Person projection is invalid");
+            const custodySnapshot = await transaction.get(db.collection("administrativePersonCustodies").doc(membership.personId));
+            const custodyValue = custodySnapshot.exists ? custodySnapshot.data() : null;
+            const administrativePersonSnapshot = custodyValue ? await transaction.get(db.collection("personas").doc(membership.personId)) : null;
+            const administrativeCustody = custodyValue?.state === "UNLINKED" && custodyValue.custodianGroupId === groupId && Number.isSafeInteger(custodyValue.revision)
+              ? Object.freeze({ status: "EDITABLE", personId: membership.personId, revision: custodyValue.revision, contactEmail: administrativePersonSnapshot?.data()?.emailContacto ?? null }) : null;
             rows.push(Object.freeze({
               membership,
               person,
               isOwner: ownerPerson.status === "found" && ownerPerson.personId === membership.personId,
+              administrativeCustody,
             }));
           }
           const last = included.at(-1);

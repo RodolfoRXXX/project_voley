@@ -17,7 +17,7 @@ function createGroupJoinRequestSeasonCapability({ db }) {
       if (!seasonSnapshot.exists) return Object.freeze({ status: "incompatible" });
       const season = repository.fromSnapshot(seasonSnapshot);
       if (!season || season.seasonId !== guard.seasonId || season.groupId !== groupId || season.estado !== "abierta") return Object.freeze({ status: "incompatible" });
-      return Object.freeze({ status: "open", seasonId: season.seasonId, groupId });
+      return Object.freeze({ status: "open", seasonId: season.seasonId, seasonName: season.nombre, groupId });
     } catch (error) {
       if (error instanceof InvalidSeasonStateError || error?.reason === "INCOMPATIBLE_STATE") return Object.freeze({ status: "incompatible" });
       throw error;

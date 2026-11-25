@@ -34,9 +34,31 @@ function buildPerson({ personId, firstName, lastName, contactEmail }) {
   });
 }
 
+function buildAdministrativePerson({ personId, firstName, lastName, contactEmail = null }) {
+  const normalized = contactEmail == null || contactEmail === "" ? null : trimmedString(contactEmail, "contactEmail", 254);
+  if (normalized !== null && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(normalized)) {
+    throw new InvalidPersonStateError("contactEmail has an invalid format");
+  }
+  return Object.freeze({
+    personId: trimmedString(personId, "personId", 256),
+    nombre: trimmedString(firstName, "firstName", 80),
+    apellido: trimmedString(lastName, "lastName", 80),
+    emailContacto: normalized,
+    schemaVersion: 2,
+  });
+}
+
 function hydratePerson(personId, data) {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     throw new InvalidPersonStateError("Person data is required");
+  }
+  if (data.schemaVersion === 2) {
+    const expectedV2 = ["apellido", "createdAt", "nombre", "schemaVersion", ...(Object.prototype.hasOwnProperty.call(data, "emailContacto") ? ["emailContacto"] : [])].sort();
+    const actualV2 = Object.keys(data).sort();
+    if (actualV2.length !== expectedV2.length || actualV2.some((key, index) => key !== expectedV2[index]) || data.createdAt == null) {
+      throw new InvalidPersonStateError("Person schema is inconsistent");
+    }
+    return buildAdministrativePerson({ personId, firstName: data.nombre, lastName: data.apellido, contactEmail: data.emailContacto ?? null });
   }
   const expected = ["apellido", "createdAt", "emailContacto", "nombre"];
   const actual = Object.keys(data).sort();
@@ -56,6 +78,7 @@ function hydratePerson(personId, data) {
 
 module.exports = {
   InvalidPersonStateError,
+  buildAdministrativePerson,
   buildPerson,
   hydratePerson,
 };

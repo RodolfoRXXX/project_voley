@@ -2,8 +2,8 @@
 
 ## 1. Estado y precedencia
 
-- **Estado:** `ADOPTADO DOCUMENTALMENTE POR D5-083; IUX-11A LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA; IUX-11B/C NO LISTOS`.
-- **Fecha:** 24 de noviembre de 2026.
+- **Estado:** `D5-085 CIERRA IUX-11A/A.1 CON UAT HUMANA APROBADA; IUX-11B/C, CORREO EXTERNO Y DIRECTORIO AMPLIADO NO LISTOS`.
+- **Fecha:** 25 de noviembre de 2026.
 - **Ámbito:** Cuenta, Identidad, Persona, Grupo, Temporada, Membresía, Solicitud, Invitación, capabilities y economía.
 - **Ficha:** `IUX-11 — Fichas administrativas, vinculación y fusión`.
 
@@ -190,20 +190,91 @@ El correo externo no es parte del protocolo de vinculación. Un corte futuro pue
 
 El adaptador Gmail vigente no constituye garantía operacional. Antes de IUX-11D se requieren proveedor/configuración, secretos, idempotencia, rate limit, rebotes, observabilidad sin PII y política de retención.
 
-## 8. Cortes normativos
+## 8. Addendum post-UAT de IUX-11A
+
+### 8.1 Experiencia normativa
+
+- Alta y corrección administrativa usan un único modal accesible. La intención idempotente sobrevive a error/respuesta perdida; doble envío queda bloqueado; cerrar restaura foco; modificar payload después de un fallo inicia otra intención.
+- La fila de padrón sólo expone `Editar ficha` si un lector backend acredita custodia administrativa `UNLINKED`, Grupo custodio coincidente y revisión. La presentación no deriva autoridad de correo, Membresía, falta de Cuenta ni procedencia.
+- Integrantes adopta una caja única con pestañas URL-driven. La URL es la autoridad de selección para soportar deep-links y Atrás/Adelante; ocultar una pestaña por rol no habilita su reader.
+- Integrantes conserva el padrón vigente. No integrantes e Invitaciones son Owner-only. El primero contiene custodias sin activa en el Grupo; el segundo ordena pendientes antes de terminales y pagina de cinco.
+
+### 8.2 Proyección y lector de No integrantes
+
+Se agrega una proyección backend denormalizada, no una nueva autoridad:
+
+```text
+administrativeCustodyRosterEntries/{entryId}
+  personId
+  custodianGroupId
+  custodyRevision
+  firstName
+  lastName
+  activeMembershipIdInGroup?
+  latestFinalizedMembershipIdInGroup?
+  latestFinalizedSeasonId?
+  projectionRevision
+  updatedAt
+  schemaVersion
+```
+
+El ID es determinista por Grupo + Persona. Alta/corrección, activación, finalización, transferencia de custodia y reparación operacional producen outbox/receipt idempotente. La proyección permite consulta ordenada y acotada, pero cada acción relee custodia, Grupo, Persona y guards canónicos. Divergencia produce `PROJECTION_STALE/INCOMPATIBLE`, nunca autorización.
+
+`listAdministrativeNonMembersForOwnedGroup` usa `limit(pageSize + 1)`, máximo 20, cursor firmado ligado a actor, Grupo, ownership/custody generation, orden y ancla. Excluye cualquier activa en el Grupo, no sólo en la Temporada abierta. Incluye finalizadas actuales/anteriores y Personas activas en otros Grupos. Una corrección que altere el orden invalida continuación previa.
+
+### 8.3 Reincorporación
+
+`prepareAdministrativeReincorporation` y `confirmAdministrativeReincorporation` son adapters Owner-scoped del writer canónico de Membresía:
+
+- sin historia: `CREATE`;
+- finalizada de la misma Temporada abierta: `REACTIVATE` y nuevo Período;
+- finalizada de una Temporada anterior cerrada: `RENEW` con nueva raíz y linaje;
+- activa, contexto cambiado o evidencia incompatible: no-op/error recuperable.
+
+Confirmar relee preview/activation ref, ownership, custodia, Grupo activo y Temporada abierta. No escribe directamente contador, búsqueda, Períodos ni guards. Archivo conserva lectura/corrección pero deshabilita reincorporación.
+
+### 8.4 Invitaciones y navegación
+
+El lector Owner compone pendientes y terminales como streams ordenados, con cursor de fase y página pública de cinco. La cancelación pendiente continúa en el writer IUX-10. Transferencia de ownership reautoriza cada lectura/comando. Los deep-links `joinRequestId` e `invitationId` seleccionan su panel sin saltar autorización; parámetros desconocidos no revelan existencia de recursos.
+
+La autoridad histórica se evalúa contra el Owner vigente y admite Grupo activo o archivado, sin requerir Temporada abierta. En archivado sólo se habilitan lectura y cancelación de una pendiente; creación y aceptación siguen prohibidas. El código IUX-10 ya usa autoridad histórica en `cancelGroupInvitation`, pero el reader vigente llama a `ownedOpen`: A.1 debe separar esa precondición, conservar la expiración por Temporada cerrada y probar que el archivo no concede otra escritura.
+
+### 8.5 Directorio de Cuenta sin Persona
+
+No se incluye en IUX-11A.1. Requiere autoridad nominal y consentimiento separados de Persona:
+
+```text
+accountDirectoryProfiles/{accountId}
+  firstName
+  lastName
+  disclosedContactEmail?
+  discoverability
+  consentRevision
+  consentedAt
+  updatedAt
+  schemaVersion
+```
+
+Nombre/Apellido se capturan explícitamente; nunca se obtiene uno separando `displayName`, ni se activa desde `users.nombre`, Auth o correo por defecto. La alternativa recomendada no muestra correo: entrega nombre, apellido, `candidateKind=ACCOUNT_WITHOUT_PERSON` y referencia opaca. Exponer un correo exige selección de correo verificado y consentimiento adicional.
+
+Crear desde esa referencia debe coordinar ausencia de Persona con `ensureMyPerson`, revalidar consentimiento y crear Persona administrativa + Membresía sin assignment ni vínculo automático. El índice combinado necesita presupuesto, rate limits, protección contra enumeración, expiración de referencias, retención y reconciliación. Hasta cerrar esas decisiones su estado es `NO LISTO`.
+
+## 9. Cortes normativos
 
 | Corte | Estado normativo |
 | --- | --- |
-| IUX-11A | `LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA` |
+| IUX-11A | `CERRADO; UAT HUMANA APROBADA` |
+| IUX-11A.1 | `CERRADO; UAT HUMANA APROBADA` |
+| Directorio Cuenta sin Persona | `SEPARADO; NO LISTO` |
 | IUX-11B | `DEFINIDO PARCIALMENTE; NO LISTO` |
 | IUX-11C | `DEFINIDO PARCIALMENTE; NO LISTO` |
 | IUX-11D | `DIFERIDO` |
 
-Autorizar A no autoriza B/C/D, schema de identidad, migración de vínculos, correo ni fusión.
+El cierre de A/A.1 no autoriza B/C/D, schema de identidad, migración de vínculos, correo ni fusión.
 
-## 9. Decisiones adoptadas, propuestas y pendientes
+## 10. Decisiones adoptadas, propuestas y pendientes
 
-### 9.1 Adoptadas para IUX-11A
+### 10.1 Adoptadas para IUX-11A
 
 - custodia por Owner vigente, transferible con ownership y conservada al archivar;
 - creación con Grupo activo/Temporada abierta; corrección de no vinculada en activo o archivado;
@@ -211,7 +282,9 @@ Autorizar A no autoriza B/C/D, schema de identidad, migración de vínculos, cor
 - recuperación atómica/idempotente de creación y corrección;
 - economía sin ampliación de permisos o estados vigentes.
 
-### 9.2 Propuestas B/C no adoptadas
+Para IUX-11A.1 quedó implementada y aprobada la lectura histórica de Invitaciones y cancelación de pendientes por el Owner vigente en Grupo archivado, con reader/backend y regresión de autorización.
+
+### 10.2 Propuestas B/C no adoptadas
 
 - B-R1 rechazo por Cuenta + Persona + revisión hasta cambio de correo, frente a B-R2 rechazo reversible manual/permanente;
 - C-N1 nombre principal en vistas actuales y original en historia, frente a C-N2 nombre original por registro;
@@ -219,7 +292,7 @@ Autorizar A no autoriza B/C/D, schema de identidad, migración de vínculos, cor
 - C-A1 resolver admisiones redundantes en preview con elección explícita, frente a C-A2 bloquear hasta resolución original;
 - C-C1 conservar capabilities que revaliden íntegramente, frente a C-C2 caducarlas todas.
 
-### 9.3 Pendientes
+### 10.3 Pendientes
 
 - adoptar una alternativa de cada par anterior;
 - aviso al Owner por `PROFILE_MERGE`;
@@ -227,7 +300,15 @@ Autorizar A no autoriza B/C/D, schema de identidad, migración de vínculos, cor
 
 B/C continúan no implementables hasta cerrar estos contratos.
 
-## 10. Criterios de salida
+### 10.4 Pendientes del directorio ampliado
+
+- decidir si se muestra correo verificado consentido o sólo nombre/apellido;
+- fijar invalidación frente a creación propia concurrente;
+- definir retención/borrado de preferencia y evidencia;
+- decidir recurso separado frente a evolución de preferencia IUX-10;
+- presupuestar índice combinado y mitigación de enumeración.
+
+## 11. Criterios de salida
 
 1. correo opcional sin unicidad ni inferencia de Cuenta;
 2. Persona/Membresía/economía administrativas correlacionadas y recuperables;
@@ -241,4 +322,4 @@ B/C continúan no implementables hasta cerrar estos contratos.
 10. carreras y fallos parciales acreditados sin segunda autoridad.
 11. custodia contextual, archivo, bloqueo de delete y `ORPHANED_CUSTODY` acreditados antes de autorizar A.
 
-No se autoriza implementación, índices, Rules, datos, backfill, migración, commit, push, despliegue ni producción.
+IUX-11A/A.1 se cierran con definición `5f01f61`, implementación/pruebas `6703034` y BUILD_ID UAT `gdZvN1YTNPMteaRxngA6N`. Vinculación, fusión, correo externo y directorio de Cuentas sin Persona permanecen pendientes. No se autoriza despliegue, backfill, migración, cambios de datos UAT ni habilitación productiva.

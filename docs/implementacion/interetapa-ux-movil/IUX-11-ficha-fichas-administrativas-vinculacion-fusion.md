@@ -2,15 +2,15 @@
 
 ## Estado de la ficha
 
-- **Estado general:** `DEFINIDA POR CORTES; SÓLO IUX-11A LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA`.
-- **Fecha:** 24 de noviembre de 2026.
+- **Estado general:** `IUX-11A E IUX-11A.1 CERRADOS CON UAT HUMANA APROBADA; B/C, CORREO EXTERNO Y DIRECTORIO AMPLIADO PENDIENTES`.
+- **Fecha:** 25 de noviembre de 2026.
 - **Base:** `dev@e8740549e6ae956f4c9588a4e051a78adbe5ffe9`.
 - **Etapa:** interetapa IUX entre E3 y E4.
 - **Identificador:** `IUX-11`.
-- **Decisión documental:** `D5-083`.
+- **Decisión documental:** `D5-083`, refinada por `D5-084` y cerrada por `D5-085`.
 - **Relevamiento:** `IUX-11-relevamiento-fichas-administrativas-vinculacion-fusion.md`.
 - **Addendum:** `docs/arquitectura/Documento-1-1.5-2-3-4-addendum-IUX-11-fichas-administrativas-vinculacion-fusion.md`.
-- **Restricción:** esta ficha no autoriza código, configuración, índices, datos, migración, commit, push ni despliegue.
+- **Cierre aprobado:** definición `5f01f61`, implementación/pruebas `6703034` y BUILD_ID UAT `gdZvN1YTNPMteaRxngA6N`; sin despliegue ni cambios de datos UAT.
 
 ## 1. Objetivo
 
@@ -20,7 +20,8 @@ Permitir alta administrativa de una Persona sin Cuenta, su incorporación y gest
 
 | Corte | Resultado | Estado |
 | --- | --- | --- |
-| IUX-11A | Owner crea/corrige ficha no vinculada con correo opcional, la incorpora a Temporada abierta y gestiona su economía | **LISTO PARA IMPLEMENTAR — REQUIERE AUTORIZACIÓN SEPARADA** |
+| IUX-11A.1 | Modal, edición acreditada por fila, caja con pestañas, No integrantes, Invitaciones y reincorporación canónica | **CERRADO; UAT HUMANA APROBADA** |
+| IUX-11A | Owner crea/corrige ficha no vinculada con correo opcional, la incorpora a Temporada abierta y gestiona su economía | **CERRADO; UAT HUMANA APROBADA** |
 | IUX-11B | Cuenta encuentra dentro de Ficha personal candidaturas por correo verificado, rechaza o adopta una ficha cuando no tiene Persona | **DEFINIDO PARCIALMENTE; NO LISTO** |
 | IUX-11C | Cuenta con Persona preexistente compara, elige principal, resuelve Membresías activas duplicadas y conserva acceso histórico | **DEFINIDO PARCIALMENTE; NO LISTO** |
 | IUX-11D | Aviso por correo y operación de entrega | **DIFERIDO** |
@@ -29,7 +30,7 @@ Permitir alta administrativa de una Persona sin Cuenta, su incorporación y gest
 
 ### 3.1 Recorrido
 
-1. Owner vigente entra a Integrantes y elige **Crear ficha**.
+1. Owner vigente entra a Integrantes y elige **Crear integrante**.
 2. Carga nombre, apellido y correo opcional.
 3. Backend revalida Cuenta, ownership, Grupo activo y Temporada abierta.
 4. Crea Persona administrativa, custodia e intent idempotente.
@@ -221,9 +222,55 @@ Antes de confirmar muestra:
 
 No se habilita UI B/C antes de completar las capas backend correspondientes.
 
-## 9. Decisiones adoptadas, propuestas y pendientes
+## 9. IUX-11A.1 — refinamiento post-UAT
 
-### 9.1 Adoptadas para A
+**Estado:** `CERRADO; VALIDACIÓN TÉCNICA COMPLETA; UAT HUMANA APROBADA` sobre BUILD_ID `gdZvN1YTNPMteaRxngA6N`.
+
+**Incluye:**
+
+- Crear integrante mediante modal accesible: foco inicial, trampa de foco, `Escape`, retorno de foco, campos conservados ante error, single-flight y retry con intención estable.
+- `Editar ficha` en una fila sólo si el backend devuelve `administrativeCustody: { status: "EDITABLE", custodyRevision }`; `NOT_ADMINISTRATIVE`, `LINKED`, `ORPHANED` o ausencia del campo no habilitan la acción.
+- Caja única y pestañas URL-driven `members`, `non-members`, `invitations`, preservando deep-links y navegación Atrás/Adelante.
+- No integrantes Owner-only: custodia del Grupo actual y ausencia de Membresía activa en ese Grupo; página máxima 20, cursor opaco firmado y reautorización por página.
+- Invitaciones Owner-only: pendientes primero, terminales después, páginas exactas de cinco y cancelación canónica sólo de pendientes.
+- Reincorporación exclusivamente por `CREATE`, `REACTIVATE` o `RENEW` del writer canónico, decidida por preview autoritativo.
+
+**Reglas de borde:**
+
+- Una ficha con Membresía finalizada, incluso de una Temporada anterior, aparece en No integrantes mientras conserve custodia `UNLINKED` y no tenga otra activa en el Grupo.
+- Una ficha activa en otro Grupo puede aparecer; el filtro es el Grupo actual.
+- Grupo archivado permite listar No integrantes y corregir, pero no crear, reincorporar ni invitar. Integrantes conserva la semántica del lector vigente y no fabrica una Temporada abierta histórica.
+- Grupo archivado permite además el listado histórico de Invitaciones al Owner vigente y la cancelación canónica de pendientes; no permite crear ni aceptar. El writer de cancelación IUX-10 ya soporta ese caso, pero su reader actual no y debe dejar de depender de `ownedOpen` para esta vista.
+- Activación/reincorporación confirmada retira la fila de No integrantes mediante la misma coordinación que actualiza guards, contador, padrón y búsqueda.
+- Corrección no reescribe nombres históricos ni cambia Membresías; actualiza proyección nominal y vuelve stale cualquier cursor cuyo orden haya cambiado.
+
+**Contratos dependientes:**
+
+1. enriquecer el DTO de padrón con acreditación de custodia, sin inferencia cliente;
+2. lector/proyección paginada de No integrantes y cursor contextual;
+3. preview/confirmación de reincorporación sobre capabilities de Membresía existentes;
+4. listado de Invitaciones por fases y cursor de cinco, con autorización histórica Owner-only en Grupo activo/archivado; reutiliza la cancelación IUX-10 y no su precondición de lectura `ownedOpen`;
+5. estado de pestaña en URL y reglas de deep-link;
+6. pruebas de transferencia, archivo, finalización, temporada anterior, cursor stale, doble submit, respuesta perdida y foco.
+
+### 9.1 Buscador ampliado — fuera de A.1
+
+Se mantiene como corte independiente y `NO LISTO`:
+
+- `ALREADY_MEMBER` muestra **Ya integra el grupo**;
+- Persona localizable conserva Invitar/Solicitud o Invitación pendiente;
+- vacío acreditado ofrece **Crear integrante** sin afirmar inexistencia;
+- Cuenta sin Persona sólo puede aparecer con una nueva preferencia opt-in que recoja Nombre y Apellido explícitos.
+
+No se separa Auth `displayName`, no se habilita localización por defecto y no se reutiliza `users.nombre` como dos campos. Se propone `accountDirectoryProfiles/{accountId}` con `firstName`, `lastName`, consentimiento/revisión y correo visible sólo si existe una segunda decisión explícita sobre un correo verificado. El resultado expone referencia opaca, nunca `accountId` ni existencia en Auth. Crear desde ese candidato produce Persona administrativa + Membresía sin vínculo automático.
+
+Pendientes antes de autorizar: decidir exposición de correo, retención, carrera con `ensureMyPerson`, evolución o separación de la preferencia IUX-10, presupuesto y defensa contra enumeración.
+
+**Recomendación:** cerrar IUX-11A tras A.1 sin esperar esta ampliación. Mezclarla ampliaría privacidad e identidad y retrasaría un ajuste visual que puede apoyarse en contratos administrativos ya acotados.
+
+## 10. Decisiones adoptadas, propuestas y pendientes
+
+### 10.1 Adoptadas para A
 
 - custodia por Owner vigente; transferencia la mueve y archivo la conserva;
 - creación sólo en Grupo activo con Temporada abierta;
@@ -232,9 +279,11 @@ No se habilita UI B/C antes de completar las capas backend correspondientes.
 - ausencia anómala = `ORPHANED_CUSTODY`, sin autoridad residual y con recovery operacional o vínculo futuro;
 - creación/corrección atómicas, idempotentes y recuperables según §3.5.
 
-No queda decisión funcional de A pendiente. `LISTO` no equivale a autorización de implementación.
+No queda decisión funcional del núcleo A pendiente. A.1 fue implementado, validado y aprobado humanamente sin reabrir B/C.
 
-### 9.2 Propuestas para B/C
+Para A.1 también queda adoptado —no pendiente— que el Owner vigente puede leer Invitaciones y cancelar pendientes en un Grupo archivado. Es una dependencia técnica del reader, no una ampliación general de escritura sobre Grupos archivados.
+
+### 10.2 Propuestas para B/C
 
 | Tema | Recomendada | Alternativa y consecuencia |
 | --- | --- | --- |
@@ -246,13 +295,13 @@ No queda decisión funcional de A pendiente. `LISTO` no equivale a autorización
 
 En cualquier alternativa, todas las Personas asignadas cuentan como identidad propia para prohibiciones de auto-revisión, auto-validación o actuación económica como tercero. La capability de una Membresía finalizada caduca siempre.
 
-### 9.3 Pendientes
+### 10.3 Pendientes
 
 - elegir B-R1/B-R2 para completar B;
 - elegir C-N1/C-N2, C-F1/C-F2, C-A1/C-A2 y C-C1/C-C2 para completar C;
 - aviso informativo al Owner por `PROFILE_MERGE`;
 - retención/eliminación de candidaturas, rechazos, manifests y evidencia.
 
-## 10. Cierre documental de esta revisión
+## 11. Cierre documental de esta revisión
 
-IUX-11A tiene alcance autónomo y contratos suficientes para solicitar implementación posterior. IUX-11B/C no deben agruparse en A ni inferirse de su autorización. IUX-11D permanece opcional. La ficha y el addendum no alteran IUX-10 ni autorizan trabajo técnico.
+IUX-11A e IUX-11A.1 quedan cerrados con UAT humana aprobada sobre `gdZvN1YTNPMteaRxngA6N`. La definición quedó en `5f01f61` y la implementación/pruebas en `6703034`. IUX-11B de vinculación, IUX-11C de fusión, IUX-11D de correo externo y la ampliación Cuenta-sin-Persona no forman parte del cierre y permanecen pendientes. Se autorizó versionar, integrar en `dev` y publicar mediante push normal; no se autorizó despliegue.

@@ -15,7 +15,9 @@
     "e3-10:alerts:reconcile": "node src/scripts/reconcileTournamentPaymentAlerts.js",
     "iux-02a:backfill:emulator": "node src/scripts/manageDashboardTaskProjection.js backfill",
     "iux-02a:rebuild:emulator": "node src/scripts/manageDashboardTaskProjection.js rebuild",
-    "iux-02a:rollback:emulator": "node src/scripts/manageDashboardTaskProjection.js rollback"
+    "iux-02a:rollback:emulator": "node src/scripts/manageDashboardTaskProjection.js rollback",
+    "iux-11b:backfill:inspect": "node src/scripts/backfillAdministrativePersonLinkCandidates.js",
+    "iux-11b:backfill:emulator": "node src/scripts/backfillAdministrativePersonLinkCandidates.js --apply"
   },
   "keywords": [],
   "author": "",

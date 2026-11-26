@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "administrativePersonLinkCandidates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "emailLookup", "mode": "ASCENDING" },
+        { "fieldPath": "__name__", "mode": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "activeRosterSearchEntries",
       "queryScope": "COLLECTION",
       "fields": [

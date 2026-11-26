@@ -6,9 +6,12 @@ import { GroupPageShell } from "@/components/groups/GroupPageShell";
 import { RefreshButton } from "@/components/ui/RefreshButton";
 import { usePerson } from "@/hooks/usePerson";
 import { DiscoverabilityPreference } from "@/components/person/DiscoverabilityPreference";
+import { AdministrativePersonLinkingSection } from "@/components/person/AdministrativePersonLinkingSection";
+import { useAuthContext } from "@/components/providers/AuthProvider";
 
 export default function MyPersonPage() {
   const { person, personStatus, personError, personOutcome, refreshMyPerson, retryPerson } = usePerson();
+  const { account } = useAuthContext();
 
   useEffect(() => {
     void refreshMyPerson().catch(() => undefined);
@@ -55,6 +58,7 @@ export default function MyPersonPage() {
           )}
         </div>
       )}
+      {account ? <AdministrativePersonLinkingSection key={account.userId} accountId={account.userId} onAdopted={refreshMyPerson} /> : null}
       </section>
     </GroupPageShell>
   );

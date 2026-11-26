@@ -63,6 +63,9 @@ Object.assign(environment, {
   ...SYNTHETIC_SECRETS,
   DASHBOARD_TASK_CURSOR_SECRET: "dashboard-task-synthetic-cursor-secret-0001",
   IUX10_CURSOR_SECRET: "iux10-synthetic-cursor-secret-00000000001",
+  ENABLE_IUX11B_LINKING: "true",
+  IUX11B_EMAIL_HMAC_SECRET: "iux11b-synthetic-email-hmac-secret-000001",
+  IUX11B_CURSOR_SECRET: "iux11b-synthetic-cursor-secret-00000001",
   PUSH_VAPID_PUBLIC_KEY: ephemeralVapidKeys.publicKey,
   PUSH_VAPID_PRIVATE_KEY: ephemeralVapidKeys.privateKey,
 });
@@ -285,6 +288,7 @@ const groupInvitationIux10TestPath = path.join(
   "groupInvitationIux10.test.js"
 );
 const administrativePersonIux11aTestPath = path.join(systemRoot, "functions", "test", "emulator", "administrativePersonIux11a.test.js");
+const administrativePersonLinkIux11bTestPath = path.join(systemRoot, "functions", "test", "emulator", "administrativePersonLinkIux11b.test.js");
 const paymentE3TestPath = path.join(
   systemRoot,
   "functions",
@@ -401,7 +405,9 @@ const tournamentEconomyRetirementE3TestPath = path.join(
   "emulator",
   "tournamentEconomyRetirementE3.test.js"
 );
-const command = process.env.IUX_11A_FOCAL === "1"
+const command = process.env.IUX_11B_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${administrativePersonLinkIux11bTestPath}"`
+  : process.env.IUX_11A_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${administrativePersonIux11aTestPath}"`
   : process.env.IUX_10_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${groupInvitationIux10TestPath}"`
@@ -527,9 +533,10 @@ const defaultTestPaths = [accountTestPath, personTestPath, groupTestPath, groupN
   paymentE3SerializationTestPath, treasuryE3TestPath, treasuryE3CallableTestPath, paymentDeliveryE3TestPath, administrativeReceiptE3TestPath,
   administrativeReceiptPaginationE3TestPath, administrativeReceiptConcurrencyE3TestPath, paymentWaiverE3TestPath,
   dashboardTaskProjectionIux02aTestPath, dashboardTaskQueryIux02bTestPath, emulatorTestPath, autopromotionTestPath, minimumReadPolicyTestPath,
-  priorityAssetCharacterizationTestPath, socialMatchEconomyRetirementE3TestPath, tournamentEconomyRetirementE3TestPath, personalEconomyIux05TestPath];
+  priorityAssetCharacterizationTestPath, socialMatchEconomyRetirementE3TestPath, tournamentEconomyRetirementE3TestPath, personalEconomyIux05TestPath,
+  administrativePersonLinkIux11bTestPath];
 const defaultTestBatches = partitionTestPaths(defaultTestPaths, 6);
-assertBatchPlan(defaultTestPaths, defaultTestBatches, 46, 8);
+assertBatchPlan(defaultTestPaths, defaultTestBatches, 47, 8);
 const commands = command
   ? [command]
   : defaultTestBatches.map((paths) => `node --test --test-concurrency=1 ${paths.map((entry) => `"${entry}"`).join(" ")}`);

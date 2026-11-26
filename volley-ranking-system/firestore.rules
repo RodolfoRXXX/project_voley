@@ -411,6 +411,12 @@ service cloud.firestore {
     match /groupInvitationDecisionIntents/{intentId} { allow read, write: if false; }
     match /groupInvitationAcceptanceCoordinations/{invitationId} { allow read, write: if false; }
     match /groupInvitationRateLimits/{bucketId} { allow read, write: if false; }
+    match /administrativePersonLinkCandidates/{candidateId} { allow read, write: if false; }
+    match /accountVerifiedEmailCredentials/{accountId} { allow read, write: if false; }
+    match /administrativePersonLinkDecisions/{decisionId} { allow read, write: if false; }
+    match /administrativePersonLinkReceipts/{receiptId} { allow read, write: if false; }
+    match /administrativePersonLinkRateLimits/{bucketId} { allow read, write: if false; }
+    match /personAccountAssignments/{personId} { allow read, write: if false; }
 
     match /{document=**} {
       allow read, write: if false;

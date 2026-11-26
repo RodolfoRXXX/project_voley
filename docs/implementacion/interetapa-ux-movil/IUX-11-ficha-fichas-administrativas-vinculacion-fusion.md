@@ -214,7 +214,7 @@ UAT local reproducible: Emulator aislado; flag `true`; secretos de prueba fijos 
 | Cuenta con Persona | `RECOGNIZED_PENDING_MERGE` conserva candidatura, custodia y permisos; C revalida todo | puede expresar intención sin que B fusione o quite autoridad existente |
 | Carrera con alta propia | adopción es todo-o-nada y existe como máximo una principal | no queda una ficha parcialmente adoptada ni dos fichas principales |
 
-**Estado:** `DEFINIDO; LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN TÉCNICA SEPARADA`. No queda decisión funcional nueva de B pendiente. No autoriza código, configuración, índices, secretos, backfill, migración, commit, push ni despliegue.
+**Estado de cierre B (26 de noviembre de 2026):** `IMPLEMENTADO; UAT FUNCIONAL APROBADA`. La aprobación corresponde al BUILD_ID `FR-tYzB5t0m4TKc_fpDKo` probado en `demo-sportexa-iux11b-uat`; los ajustes visuales se difieren a un corte posterior. La evidencia automatizada posterior cubre adopción, rechazo, reconsideración, respuesta perdida, carrera con `ensureMyPerson`, dos aceptaciones, corrección concurrente del correo, exclusividad y revocación de edición administrativa. No hubo despliegue ni backfill remoto. Flag, secretos, índice desplegado y backfill productivo continúan como gates de habilitación, y IUX-11C/correo externo permanecen pendientes.
 
 ## 5. IUX-11C — fusión
 

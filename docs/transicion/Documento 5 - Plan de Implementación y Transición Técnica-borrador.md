@@ -3369,3 +3369,29 @@ rechazo; no se agrega outbox. B conserva lectores de una Persona y deja multi-Pe
 listo para implementar con autorización separada; no queda decisión funcional B pendiente. IUX-11C,
 correo externo y directorio ampliado siguen abiertos. No se autoriza código, configuración, cambios de
 datos, commit, push ni despliegue; `visuals/` permanece fuera de alcance.
+
+D5-087 registra la implementación y el cierre funcional de IUX-11B. El usuario aprobó la UAT funcional
+del BUILD_ID `FR-tYzB5t0m4TKc_fpDKo` sobre el proyecto sintético aislado
+`demo-sportexa-iux11b-uat`; la revisión visual y sus ajustes quedan expresamente diferidos. La aprobación
+humana acredita los recorridos funcionales y se distingue de la evidencia automatizada.
+
+La implementación acredita el correo primario verificado mediante Firebase Auth/Admin SDK, presenta
+páginas máximas de diez y revisión explícita, conserva «Ahora no», rechazo estable y reconsideración,
+y adopta una ficha sin Persona previa en un único commit que revoca la edición administrativa. Con una
+Persona previa registra `RECOGNIZED_PENDING_MERGE` sin cambiar custodia ni permisos. La coordinación con
+`ensureMyPerson`, el guard Cuenta–Persona, receipts e intenciones idempotentes impiden adopciones
+parciales, dos principales y pérdida irrecuperable de respuesta. El detalle selecciona explícitamente la
+participación más reciente.
+
+Emulator IUX-11B queda `1/1`; unitarias focales `6/6`; TypeScript, lint focal/baseline, build y
+`git diff --check` pasan. La suite general queda `498/499`. El único fallo es la deuda previa
+`iux06aPresentation.test.js:41`, reproducida aisladamente `2/3`: la prueba presente en `dev@c6619d6`
+todavía exige `gridTemplateColumns`, marcador ausente de la composición vigente de Economía/IUX-06D.
+El build técnico posterior `BFvRmjKpGzzLGkgRh8rMf` acredita los refuerzos automatizados, pero no amplía
+la aprobación visual.
+
+Flag, secretos administrados, construcción remota del índice, App Check cuando exista política
+transversal, backfill/enable productivos y observabilidad de rollout siguen pendientes de habilitación.
+IUX-11C y correo externo continúan fuera de alcance. Configuración local, secretos, datos sintéticos,
+builds, logs, manifests, exportaciones y `visuals/` quedan fuera de Git. No hubo despliegue ni backfill
+remoto y se conservan los datos UAT.

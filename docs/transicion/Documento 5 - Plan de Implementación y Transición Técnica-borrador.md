@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - refinamiento documental IUX-11 - 24 de noviembre de 2026*
+*Borrador consolidado - ajuste final de definición IUX-11B - 26 de noviembre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -39,7 +39,7 @@ Estado operativo del plan:
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
 - `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
-- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-07, IUX-08 E IUX-09 CERRADOS E INTEGRADOS EN DEV CON UAT HUMANA APROBADA; IUX-10 Y SU AMPLIACIÓN D5-081 CERRADOS CON UAT APROBADA E INTEGRACIÓN AUTORIZADA; IUX-11A/A.1 CERRADOS CON UAT HUMANA APROBADA Y B/C/CORREO EXTERNO/DIRECTORIO AMPLIADO PENDIENTES SEGÚN D5-085; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
+- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-07, IUX-08 E IUX-09 CERRADOS E INTEGRADOS EN DEV CON UAT HUMANA APROBADA; IUX-10 Y SU AMPLIACIÓN D5-081 CERRADOS CON UAT APROBADA E INTEGRACIÓN AUTORIZADA; IUX-11A/A.1 CERRADOS CON UAT HUMANA APROBADA, IUX-11B DEFINIDO Y LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA, Y C/CORREO EXTERNO/DIRECTORIO AMPLIADO PENDIENTES SEGÚN D5-086; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -2845,6 +2845,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 
 | D5-084 | Registra UAT satisfactoria de IUX-11A y adopta su refinamiento documental post-UAT: modal accesible, edición acreditada por fila, caja única con pestañas Integrantes/No integrantes/Invitaciones, lector paginado de custodias sin activa y reincorporación canónica | IUX-11A VALIDADO EN UAT; IUX-11A.1 DEFINIDO Y NO AUTORIZADO; DIRECTORIO AMPLIADO NO LISTO | IUX / IUX-11A / Integrantes / Custodia / Invitaciones / Directorio | A.1 conserva precondiciones de A: corrección en Grupo activo/archivado, alta/reincorporación sólo con Grupo activo y Temporada abierta. No integrantes es Owner-only, máximo 20 y excluye toda activa del Grupo; incluye finalizadas y temporadas anteriores. Invitaciones pagina cinco, pendientes antes que terminales, con lectura histórica y cancelación canónica de pendientes por el Owner vigente también en Grupo archivado; crear/aceptar sigue prohibido y el reader IUX-10 debe desacoplarse de `ownedOpen`. Reincorporación prepara `CREATE/REACTIVATE/RENEW` sobre el writer vigente. Ampliar búsqueda a Cuenta sin Persona se separa: requiere Nombre/Apellido explícitos, opt-in revocable, referencia opaca, decisión sobre correo, carrera con `ensureMyPerson`, retención y defensa contra enumeración; no usa `displayName`, no localiza por defecto y no vincula automáticamente. Este paso es documental: preserva implementación, `visuals/` y datos UAT; sin commit, push ni deploy. |
 | D5-085 | Registra implementación, validación, UAT humana aprobada y cierre de IUX-11A/IUX-11A.1 | CERRADA; UAT APROBADA; INTEGRACIÓN Y PUSH AUTORIZADOS | IUX / IUX-11A / IUX-11A.1 / cierre | BUILD_ID aprobado `gdZvN1YTNPMteaRxngA6N`; definición `5f01f6116ca6fab655aa44a053563cb75e7cfdfd`; implementación/pruebas `67030348fbcc37d937a131dc60d87221e93a3dee`. Emulator aislado `1/1` acredita alta con/sin correo, recovery, corrección, custodia, `CREATE/REACTIVATE/RENEW`, rechazo de preview stale, contador, padrón, búsqueda, obligación y pago de ficha sin Cuenta. TypeScript, lint baseline, sintaxis `556/556`, focales `5/5`, build y diff pasan. Suite general `492/493`: deuda previa `iux06aPresentation.test.js:41`, reproducida `2/3`, exige `gridTemplateColumns` retirado por IUX-06D. Vinculación B, fusión C, correo externo D y directorio de Cuenta sin Persona permanecen pendientes. Sin despliegue ni cambios de datos UAT. |
+| D5-086 | Adopta el cierre funcional y técnico documental de `IUX-11B — candidatura y adopción` | APROBADA DOCUMENTALMENTE; IUX-11B LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA | IUX / IUX-11B / Identidad / Ficha personal / Vinculación | Coincidencia con correo primario verificado por Firebase Auth/Admin; sin correo no hay candidatura. **Ahora no** cierra sin suspender. Rechazo por Cuenta + Persona retira sugerencia, sobrevive cambios/ida-vuelta del correo y sólo reconsideración explícita lo levanta. Sin Persona, adopción atómica usa `users.personaId` como barrera compartida con `ensureMyPerson` y guard inverso por Persona; con Persona, `RECOGNIZED_PENDING_MERGE` conserva autoridad vigente y C revalida. Página máxima 10; presupuesto 1 Auth + hasta 24 Firestore por página, 9 por detalle y 12 por comando; listado 30/min + burst 10/10 s, detalle/decisiones 12/min y adopción 6/min; paginar/Actualizar consumen solicitud. App Check es gate transversal productivo; flag/secretos/UAT reproducible y backfill emulator son B; backfill remoto y habilitación son separados. Rechazo mínimo persiste hasta reconsideración/borrado de Cuenta; B no usa outbox. Lectores legacy de una Persona conservan contrato; multi-Persona pertenece a C. No autoriza código, configuración, índices, secrets, backfill remoto, migración, commit, push, despliegue ni producción. |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -3356,3 +3357,15 @@ Vinculación IUX-11B, fusión IUX-11C, correo externo IUX-11D y el directorio de
 permanecen pendientes y requieren contratos/autorizaciones propios. `visuals/`, configuración local,
 secretos, builds, exportaciones y datos UAT quedan fuera de Git. Se autoriza integración y push normal;
 no hay despliegue, backfill, migración ni habilitación productiva.
+
+D5-086 completa la definición de IUX-11B sobre `dev@c6619d6752d2a2396b162b6be2d569f966619f08`.
+El rechazo queda por Cuenta + Persona y sólo reconsideración lo levanta. Auth/Admin acredita correo;
+páginas de diez, presupuestos, rate limits y Actualizar quedan verificables. La adopción usa la misma
+barrera `users.personaId` que `ensureMyPerson` y un guard inverso, en un único commit recuperable.
+
+App Check se separa como gate transversal productivo. Flag, secretos de prueba y backfill emulator hacen
+reproducible UAT; backfill remoto/enable siguen autorizaciones productivas. Retención mínima soporta el
+rechazo; no se agrega outbox. B conserva lectores de una Persona y deja multi-Persona a C. IUX-11B queda
+listo para implementar con autorización separada; no queda decisión funcional B pendiente. IUX-11C,
+correo externo y directorio ampliado siguen abiertos. No se autoriza código, configuración, cambios de
+datos, commit, push ni despliegue; `visuals/` permanece fuera de alcance.

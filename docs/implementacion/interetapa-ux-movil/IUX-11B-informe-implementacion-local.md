@@ -52,7 +52,16 @@ El backfill canónico versionado está restringido por código a Firestore Emula
 3. ejecutar `npm run iux-11b:backfill:emulator` para aplicar sólo en el proyecto aislado;
 4. repetir inspección y pruebas.
 
-El seed y los datos sintéticos usados en `demo-sportexa-iux11b-uat` permanecen locales y excluidos de los commits. El backfill recorre sólo custodias `UNLINKED`, omite fichas sin correo, conserva revisiones existentes y actualiza cada Persona en un batch independiente. No existe ruta habilitada para backfill remoto.
+El seed portable exige simultáneamente Auth Emulator y Firestore Emulator sobre loopback, y un `--project demo-*` explícito consistente con toda configuración Firebase presente. No posee fallback remoto. Usa IDs reservados con prefijo `iux11b-uat-`, fecha fija y escrituras deterministas, por lo que una ejecución interrumpida puede repetirse. Crea o reemplaza exactamente 3 usuarios Auth, 3 documentos `users`, 3 Personas, 1 Grupo archivado, 1 Temporada cerrada, 2 custodias `UNLINKED` pre-backfill y 2 Membresías finalizadas. No borra colecciones ni documentos ajenos, pero reemplaza por diseño cualquier documento que ya use esos IDs reservados.
+
+Secuencia portable, siempre sobre un proyecto demo nuevo y nunca sobre la UAT activa:
+
+1. definir `FIREBASE_AUTH_EMULATOR_HOST` y `FIRESTORE_EMULATOR_HOST` con hosts loopback y cargar las variables ficticias de `.env.iux11b.local.example` en el proceso de Functions Emulator;
+2. ejecutar `npm run iux-11b:uat:seed -- --project demo-<nombre-aislado>`;
+3. ejecutar `npm run iux-11b:backfill:inspect` y revisar el manifest;
+4. ejecutar `npm run iux-11b:backfill:emulator` y repetir la inspección.
+
+Las credenciales y los registros producidos siguen siendo sintéticos; no se exportan ni se reutilizan en servicios remotos. El backfill recorre sólo custodias `UNLINKED`, omite fichas sin correo, conserva revisiones existentes y actualiza cada Persona en un batch independiente. No existe ruta habilitada para backfill remoto.
 
 ## Verificación automatizada
 
@@ -60,9 +69,10 @@ El seed y los datos sintéticos usados en `demo-sportexa-iux11b-uat` permanecen 
 - ESLint focal: OK. Lint baseline: OK con los `30` errores y `8` warnings conocidos; `12` hallazgos menos que el baseline.
 - Sintaxis Functions: `571/571` OK.
 - Unitarias focales IUX-11B: `6/6` OK.
+- Guardas portables del seed UAT: `3/3` OK, sin inicializar Firebase ni escribir datos.
 - Emulator IUX-11B: `1/1` OK. Cubre correo no verificado/distinto, rechazo persistente y reconsideración, Grupo archivado, Temporada cerrada, Membresía finalizada, adopción, retry/recuperación, dos aceptaciones, carrera con `ensureMyPerson`, corrección concurrente de correo, pendiente de fusión, rate limit e historia/obligaciones propias posteriores.
 - Regresión Emulator IUX-11A/A.1: `1/1` OK.
-- Suite unitaria general: `498/499`; permanece el único fallo preexistente de `iux06aPresentation.test.js:41`, que exige `gridTemplateColumns` aunque la página vigente de Economía ya no contiene ese marcador. La reproducción aislada queda `2/3`, y la misma expectativa está presente en `dev@c6619d6`.
+- Suite unitaria general tras incorporar las guardas del seed: `501/502`; permanece el único fallo preexistente de `iux06aPresentation.test.js:41`, que exige `gridTemplateColumns` aunque la página vigente de Economía ya no contiene ese marcador. La reproducción aislada queda `2/3`, y la misma expectativa está presente en `dev@c6619d6`.
 - Build Next.js técnico `BFvRmjKpGzzLGkgRh8rMf`: OK.
 - `git diff --check`: OK.
 

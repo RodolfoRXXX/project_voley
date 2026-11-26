@@ -17,7 +17,8 @@
     "iux-02a:rebuild:emulator": "node src/scripts/manageDashboardTaskProjection.js rebuild",
     "iux-02a:rollback:emulator": "node src/scripts/manageDashboardTaskProjection.js rollback",
     "iux-11b:backfill:inspect": "node src/scripts/backfillAdministrativePersonLinkCandidates.js",
-    "iux-11b:backfill:emulator": "node src/scripts/backfillAdministrativePersonLinkCandidates.js --apply"
+    "iux-11b:backfill:emulator": "node src/scripts/backfillAdministrativePersonLinkCandidates.js --apply",
+    "iux-11b:uat:seed": "node src/scripts/seedIux11bUat.js"
   },
   "keywords": [],
   "author": "",

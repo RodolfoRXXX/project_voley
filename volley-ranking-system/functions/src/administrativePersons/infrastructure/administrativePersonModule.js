@@ -16,6 +16,12 @@ const { createGroupJoinRequestGroupCapability } = require("../../groups/public/g
 const { createGroupJoinRequestSeasonCapability } = require("../../groups/public/groupJoinRequestSeasonCapability");
 const { createDashboardTaskOutboxCapability } = require("../../dashboardTasks/public/dashboardTaskOutboxCapability");
 const { createGroupJoinRequestMembershipCapability } = require("../../memberships/public/groupJoinRequestMembershipCapability");
+const {
+  initialEmailRevision,
+  linkingEnabled,
+  nextEmailRevision,
+  writeCandidate,
+} = require("../../administrativePersonLinks/infrastructure/administrativePersonLinkCandidateProjection");
 
 const people = createFirestorePersonRepository({ db });
 const memberships = createFirestoreMembershipRepository({ db });
@@ -73,7 +79,9 @@ async function create({ actorUserId, input }) {
     const searchPlan = await rosterSearch.prepareActivation(transaction, membership, 1, presentation(person));
     const taskPlan = await dashboardTasks.prepare(transaction, { kind: "N31_AUDIENCE_CHANGED", idempotencyIdentity: `${commandRef.id}:membership-activation`, groupId: input.groupId, resourceType: "MEMBERSHIP", resourceIds: [membershipId], fingerprintParts: [membershipId, 1, "active"] });
     people.createAdministrative(transaction, person, timestamp);
-    transaction.create(db.collection("administrativePersonCustodies").doc(personId), { personId, originGroupId: input.groupId, custodianGroupId: input.groupId, createdByAccountId: actorUserId, state: "UNLINKED", revision: 1, createdAt: timestamp, updatedAt: timestamp, schemaVersion: 1 });
+    const custody = { personId, originGroupId: input.groupId, custodianGroupId: input.groupId, createdByAccountId: actorUserId, state: "UNLINKED", revision: 1, emailRevision: initialEmailRevision(person.emailContacto), createdAt: timestamp, updatedAt: timestamp, schemaVersion: 2 };
+    transaction.create(db.collection("administrativePersonCustodies").doc(personId), custody);
+    if (linkingEnabled()) writeCandidate(transaction, db, { person, custody, timestamp });
     memberships.createInitial(transaction, membership, timestamp);
     transaction.create(activeRef, { membershipId, personId, groupId: input.groupId, seasonId: season.seasonId, activationOrdinal: 1, activatedAt: timestamp, activationIdempotencyHash: sha256LengthPrefixed(["sportexa:IUX-11A:activation", commandRef.id]), activationRequestHash: hash, guardVersion: 2 });
     transaction.create(lifecycleRef, { membershipId, personId, groupId: input.groupId, seasonId: season.seasonId, rootState: "active", lastActivationOrdinal: 1, lifecycleGuardVersion: 3 });
@@ -106,8 +114,10 @@ async function update({ actorUserId, input }) {
     let searchPlan = null;
     if (!active.empty) { const membership = memberships.fromSnapshot(active.docs[0]); searchPlan = await rosterSearch.prepareActivation(transaction, membership, membership.periodCount || 1, presentation(person)); }
     const timestamp = Timestamp.now(); const revision = custody.revision + 1;
+    const emailRevision = nextEmailRevision(previous.emailContacto, person.emailContacto, custody.emailRevision);
     people.updateAdministrative(transaction, person);
-    transaction.update(custodyRef, { revision, updatedAt: timestamp });
+    transaction.update(custodyRef, { revision, emailRevision, updatedAt: timestamp, schemaVersion: 2 });
+    if (linkingEnabled()) writeCandidate(transaction, db, { person, custody: { ...custody, revision, emailRevision }, timestamp });
     searchPlan?.commit();
     const result = { personId: input.personId, groupId: input.groupId, revision };
     transaction.create(commandRef, { action: "UPDATE", actorUserId, groupId: input.groupId, personId: input.personId, requestHash: hash, before: { firstName: previous.nombre, lastName: previous.apellido, contactEmail: previous.emailContacto }, after: { firstName: person.nombre, lastName: person.apellido, contactEmail: person.emailContacto }, result, createdAt: timestamp, schemaVersion: 1 });

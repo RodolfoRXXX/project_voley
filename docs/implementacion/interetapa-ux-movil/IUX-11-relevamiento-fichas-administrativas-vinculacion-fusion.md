@@ -2,11 +2,11 @@
 
 ## 1. Estado y base
 
-- **Estado:** `IUX-11A E IUX-11A.1 CERRADOS CON UAT HUMANA APROBADA; VINCULACIÓN, FUSIÓN, CORREO EXTERNO Y DIRECTORIO AMPLIADO PENDIENTES`.
-- **Fecha:** 25 de noviembre de 2026.
-- **Base verificada:** `dev@e8740549e6ae956f4c9588a4e051a78adbe5ffe9`, idéntica a `HEAD` y `origin/dev` al iniciar el relevamiento.
+- **Estado:** `IUX-11A/A.1 CERRADOS; IUX-11B DEFINIDO Y LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA; C, CORREO EXTERNO Y DIRECTORIO AMPLIADO PENDIENTES`.
+- **Fecha:** 26 de noviembre de 2026.
+- **Base verificada:** `dev@c6619d6752d2a2396b162b6be2d569f966619f08`, idéntica a `HEAD` y `origin/dev` al iniciar esta revisión.
 - **Próximo identificador disponible:** `IUX-11`.
-- **Decisión de Documento 5:** `D5-083`, refinada por `D5-084` y cerrada para A/A.1 por `D5-085`; los cortes pendientes mantienen autorización técnica separada.
+- **Decisión de Documento 5:** `D5-083`, refinada por `D5-084`, `D5-085` y `D5-086`; B mantiene autorización técnica separada.
 - **Estado local preservado:** `visuals/` continúa sin seguimiento y no fue modificado.
 - **Cierre A/A.1:** definición `5f01f61`, implementación/pruebas `6703034`, BUILD_ID aprobado `gdZvN1YTNPMteaRxngA6N`; sin despliegue ni modificación de datos UAT.
 
@@ -71,6 +71,8 @@ IUX-10 cerró búsqueda e Invitaciones entre Personas ya existentes, pero dejó 
 
 No se migran referencias históricas de una Persona a otra. Se incorpora una autoridad de identidad que relaciona una Cuenta con todas las Personas reconocidas y designa exactamente una principal.
 
+Esta autoridad plural pertenece a IUX-11C. IUX-11B de adopción simple conserva `users.personaId` como única principal y sólo agrega `personAccountAssignments/{personId}` como guard inverso de titularidad; no habilita varias Personas por Cuenta.
+
 ```text
 accountIdentities/{accountId}
   primaryPersonId
@@ -119,29 +121,47 @@ administrativePersonLinkCandidates/{candidateEntryId}
   personId
   emailLookup
   emailRevision
+  card: { firstName, lastName, maskedEmail, originGroupName,
+          latestParticipation?, hasMoreHistory }
   updatedAt
   schemaVersion
 
-administrativePersonLinkDecisions/{decisionId}
+accountVerifiedEmailCredentials/{accountId}
+  emailFingerprint
+  emailRevision
+  keyVersion
+  firstObservedVerifiedAt
+  observedAt
+  schemaVersion
+
+accounts/{accountId}/administrativePersonLinkDecisions/{personId}
   accountId
   personId
-  emailRevision
-  decision: RECOGNIZED | REJECTED
+  observedEmailRevision?
+  decision: REJECTED | RECOGNIZED_PENDING_MERGE | ADOPTED
+  decisionRevision
   decidedAt
+  schemaVersion
+
+personAccountAssignments/{personId}
+  accountId
+  kind: SIMPLE_PRIMARY
+  assignedAt
   schemaVersion
 ```
 
 - `originGroupId` es procedencia inmutable; `custodianGroupId` es el Grupo cuya ownership vigente autoriza corrección. En A son iguales. Ningún actor se copia como autoridad dentro de custodia.
 - `emailLookup` es HMAC de la normalización acordada con un secreto estable; no es correo en claro ni índice único.
+- En este contrato, `emailRevision` es la revisión de candidatura (`candidateEmailRevision`), separada de la revisión nominal de Persona. Nombre/apellido no la incrementan.
 - Varias filas pueden compartir `emailLookup`; por eso varias fichas con el mismo correo aparecen por separado.
-- El backend deriva correos verificados desde identidad autenticada confiable; el cliente no envía correo como autoridad.
-- Crear o corregir correo actualiza Persona, `emailRevision`, candidatura anterior, nueva candidatura y proyecciones nominales en una coordinación atómica o recuperable.
-- Quitar el correo elimina la candidatura.
-- Rechazo se liga a Cuenta, Persona y `emailRevision`. No borra ficha, Membresía ni economía.
+- El backend relee con Admin SDK el correo primario `emailVerified` de Firebase Auth; token, `users.email`, Persona y cliente no son autoridad. La credencial versionada es evidencia/proyección para cursores y carreras, no una segunda fuente.
+- Cambiar, quitar o agregar un correo normalizado incrementa `emailRevision`, retira inmediatamente la candidatura anterior y crea o elimina la nueva según corresponda. Guardar el mismo valor normalizado y corregir nombre/apellido no la incrementan.
+- **Ahora no** no crea decisión de dominio: sólo cierra la revisión y deja candidatura disponible. `REJECTED` se liga a Cuenta + Persona, no a revisión; sobrevive a cambios y a una ida/vuelta de correo y sólo **Reconsiderar** explícitamente lo retira. No borra ficha, Membresía ni economía.
+- `RECOGNIZED_PENDING_MERGE` conserva la revisión observada sólo para exigir revalidación C; no adquiere assignment, custodia ni permisos.
 - El listado y la aceptación revalidan Persona, candidatura, HMAC, revisión, correo verificado y ausencia de asignación incompatible.
 - Grupo, Temporada y estado de Membresía son presentación de procedencia, no precondiciones de vinculación.
 
-## 5. Autorización tras consolidar
+## 5. Autorización tras consolidar — alcance exclusivo de IUX-11C
 
 ### 5.1 Regla general
 
@@ -217,10 +237,10 @@ Una caída entre fases deja `MERGING` y un plan reintentable. No existe rollback
 
 | Carrera | Regla |
 | --- | --- |
-| `ensureMyPerson` vs adoptar ficha | Compiten por `accountIdentities/{accountId}`; el primer commit fija la realidad. El perdedor relee y pasa a recorrido de fusión, nunca crea un segundo principal silencioso |
+| `ensureMyPerson` vs adoptar ficha | Compiten por `users/{accountId}.personaId`; el primer commit fija la principal. El perdedor reintenta y no confirma su Persona/adopción. Si ganó alta propia, un reconocimiento posterior puede quedar pendiente para C |
 | corregir correo vs listar/reconocer | Corrección incrementa `emailRevision` y reemplaza la candidatura; respuestas con revisión anterior se descartan |
 | corregir correo vs aceptar | Aceptación relee correo verificado, HMAC, `emailRevision` y candidatura en el commit de adquisición; una corrección confirmada gana o fuerza `CANDIDATE_STALE` |
-| dos Cuentas reconocen la misma Persona | Compiten por `personIdentityAssignments/{personId}`; como máximo una adquiere la asignación |
+| dos Cuentas aceptan la misma Persona | Compiten por `personAccountAssignments/{personId}` y custodia; como máximo una adopta |
 | dos fusiones de la misma Cuenta/Persona | `activeMergeId` y coordinaciones por Person impiden dos manifests activos |
 | fusión vs alta/reactivación/renovación | writers de admisión consultan coordinación/estado `MERGING`; no crean una raíz que el manifest no vio |
 | fusión vs finalización/cierre | activation refs y receipts determinan si la finalización ya ocurrió; recovery recalcula sólo outcomes compatibles |
@@ -268,17 +288,21 @@ Dependencias técnicas:
 
 ### IUX-11B — candidatura y adopción sin Persona previa
 
-**Estado:** `DEFINIDO PARCIALMENTE; NO LISTO PARA IMPLEMENTAR`.
+**Estado:** `DEFINIDO; LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA`.
 
-Incluye índice privado por HMAC de correo, listado interno, rechazo/reconocimiento, adopción como principal, Cuenta creada con posterioridad y aviso externo opcional.
+Incluye índice privado por HMAC de correo, listado interno paginado, cierre de revisión sin decisión, rechazo/reconsideración, reconocimiento, adopción como principal, Cuenta creada con posterioridad y reconocimiento pendiente de fusión. El aviso externo continúa fuera.
 
-Dependencias:
+Decisiones cerradas por D5-086:
 
-- fuente confiable de correos verificados de la Cuenta;
-- `accountIdentities` y `personIdentityAssignments` compatibles con `users.personaId`;
-- evolución de `ensureMyPerson/getMyPerson` para competir con adopción;
-- materialización/reconciliación de candidaturas para fichas creadas por IUX-11A antes de habilitar B, sin fabricar correo ni deduplicar Personas;
-- decisión pendiente sobre persistencia/reaparición de rechazos (§12); la custodia de A ya está cerrada.
+- **Ahora no** cierra la revisión y conserva la candidatura inmediatamente disponible, sin suspensión;
+- rechazo por Cuenta + Persona retira la sugerencia, sobrevive a toda revisión/ida-vuelta de correo y sólo reconsideración explícita lo reactiva;
+- sin Persona, aceptación debe ser atómica; con Persona, B sólo registra `RECOGNIZED_PENDING_MERGE`, conserva candidatura/custodia/permisos y C revalida antes de fusionar;
+- Auth/Admin acredita correo primario verificado; página máxima 10, presupuestos/rate limits y Actualizar se fijan en ficha §4.3;
+- adopción contiende con `ensureMyPerson` sobre `users.personaId`, usa guard inverso por Persona y concluye con una principal/cero efectos parciales;
+- B conserva lectores legacy de una única Persona; multi-Persona y autorización consolidada quedan en C;
+- App Check, flag, secretos, backfill, retención y outbox quedan clasificados por necesidad/momento en ficha §4.6.
+
+Evidencia `dev@c6619d6`: `ensureMyPerson` ya crea Persona y `users.personaId` en una transacción y devuelve la existente al reintentar. Lectores propios vigentes derivan la Persona desde ese campo; receipts deny-all, rate-limit documents IUX-10, flag por entorno y scripts emulator/producción con confirmación aportan patrones reutilizables. No existe `enforceAppCheck` ni política TTL común, y el outbox existente atiende proyecciones asíncronas que B simple no modifica.
 
 ### IUX-11C — fusión y elección de principal
 
@@ -324,12 +348,21 @@ Outbox, proveedor, reintentos, rebotes, rate limits, plantillas, métricas y sup
 
 Con estas reglas, no queda una decisión funcional de A abierta. La implementación y UAT de A/A.1 quedaron cerradas; B/C y el directorio mantienen autorización separada.
 
-### 12.2 Recomendaciones para B/C — todavía no adoptadas
+### 12.2 Adoptadas y vinculantes para IUX-11B
 
-**Rechazo de candidatura**
+1. Sin correo en ficha no hay candidatura; corregir/quitar correo retira la anterior inmediatamente.
+2. **Ahora no** cierra y conserva disponible; **Esta ficha no es mía** retira y permite reconsiderar por opción secundaria.
+3. Cambiar/quitar/agregar correo crea revisión; el rechazo por Cuenta + Persona sobrevive incluso a ida/vuelta y sólo reconsideración lo retira. Nombre/apellido no cambian revisión.
+4. Cuenta sin Persona adopta de forma todo-o-nada; Cuenta con Persona sólo registra intención pendiente y conserva autoridad/permiso/custodia hasta C.
+5. `ensureMyPerson` y adopción no pueden dejar dos principales ni una adopción parcial.
+6. Archivo de Grupo, cierre de Temporada y finalización de Membresía no bloquean vinculación.
+7. Firebase Auth/Admin acredita correo primario verificado; consulta/presupuestos/rate limits/Actualizar quedan en ficha §4.3.
+8. `users.personaId` + guard inverso resuelven adopción simple; lectores multi-Persona no pertenecen a B.
+9. Configuración/UAT/rollout y ausencia de outbox se rigen por ficha §4.6.
 
-- **B-R1 recomendada:** ocultar a esa Cuenta la candidatura rechazada mientras conserve el mismo `personId + emailRevision`; corregir sólo nombre/apellido no la repone, cambiar/quitar/agregar correo sí crea otra revisión. Consecuencia: respeta la decisión y permite reconsiderar ante una dirección realmente nueva.
-- **Alternativa B-R2:** rechazo permanente hasta que el usuario lo revierta manualmente. Consecuencia: mayor control, pero exige bandeja de rechazadas y puede ocultar una ficha legítima corregida.
+No queda propuesta B pendiente de aprobación.
+
+### 12.3 Recomendaciones para C — todavía no adoptadas
 
 **Nombre principal y trazabilidad**
 
@@ -352,14 +385,13 @@ Con estas reglas, no queda una decisión funcional de A abierta. La implementaci
 - **Alternativa C-C2:** hacer caducar todas las capabilities de Personas fusionadas y exigir nueva concesión. Consecuencia: seguridad operacional más simple, pero interrumpe permisos válidos aunque su Membresía continúe.
 - En ambas, “propia identidad” abarca todas las Personas asignadas: nunca se permite auto-revisión, auto-validación o registro como tercero usando otra ficha consolidada.
 
-### 12.3 Pendientes que requieren elección
+### 12.4 Pendientes que requieren elección
 
-1. Elegir B-R1 o B-R2 para cerrar IUX-11B.
-2. Elegir C-N1/C-N2, C-F1/C-F2, C-A1/C-A2 y C-C1/C-C2 para cerrar IUX-11C.
-3. Definir si el Owner recibe aviso informativo por finalización `PROFILE_MERGE`; no tendrá veto ni bloqueará recovery.
-4. Fijar retención/eliminación de candidaturas, rechazos, manifests y evidencia de identidad.
+1. Elegir C-N1/C-N2, C-F1/C-F2, C-A1/C-A2 y C-C1/C-C2 para cerrar IUX-11C.
+2. Definir si el Owner recibe aviso informativo por finalización `PROFILE_MERGE`; no tendrá veto ni bloqueará recovery.
+3. Fijar retención/eliminación de manifests y evidencia de fusión.
 
-B/C permanecen `NO LISTOS` hasta adoptar estas alternativas y completar contratos técnicos.
+C permanece `NO LISTO`. B queda listo para implementar con autorización separada.
 
 ## 13. Refinamiento post-UAT de IUX-11A
 
@@ -475,8 +507,8 @@ La ampliación del directorio a Cuenta sin Persona queda fuera de IUX-11A.1 y de
 
 ## 16. Criterios de salida documental
 
-- IUX-11A/A.1 están cerrados; cualquier evolución mantiene B/C apagados hasta sus autorizaciones específicas.
-- IUX-11B no se habilita hasta que identidad y alta propia compartan una autoridad y se acredite Cuenta creada después de la ficha.
+- IUX-11A/A.1 están cerrados; B queda definido/listo pero apagado hasta autorización de implementación, y C conserva autorización específica pendiente.
+- IUX-11B no se habilita hasta que identidad y alta propia compartan una autoridad, se materialicen candidaturas A y se acrediten carreras, presupuestos y Cuenta creada después de la ficha.
 - IUX-11C no se habilita con lectores que todavía autoricen únicamente por `users.personaId`.
 - Ningún corte reescribe `personId`/`membershipId`, altera Pagos ni usa correo como unicidad de Persona.
 - `visuals/`, datos UAT, producción y despliegue quedan fuera.

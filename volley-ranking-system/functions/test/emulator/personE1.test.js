@@ -201,8 +201,12 @@ test("E1-02 crea Persona propia y vincula Usuario de forma atómica", async (t) 
   } finally {
     const users = [actor, concurrentActor, samePayloadActor, noAccountActor];
     const persons = await db.collection("personas").get();
+    const identities = await db.collection("accountIdentities").get();
+    const assignments = await db.collection("personIdentityAssignments").get();
     await Promise.allSettled([
       ...persons.docs.map((doc) => doc.ref.delete()),
+      ...identities.docs.map((doc) => doc.ref.delete()),
+      ...assignments.docs.map((doc) => doc.ref.delete()),
       ...users.map((user) => db.collection("users").doc(user.uid).delete()),
       ...users.map((user) => auth.deleteUser(user.uid)),
     ]);

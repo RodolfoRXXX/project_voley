@@ -91,6 +91,13 @@ test("IUX-11B vincula, rechaza, recupera y coordina carreras sin efectos parcial
     assert.equal((await db.doc(`users/${target.uid}`).get()).data().personaId, created.get("target").personId);
     assert.equal((await db.doc(`administrativePersonCustodies/${created.get("target").personId}`).get()).data().state, "LINKED");
     assert.equal((await db.doc(`personAccountAssignments/${created.get("target").personId}`).get()).data().accountId, target.uid);
+    assert.deepEqual((await db.doc(`accountIdentities/${target.uid}`).get()).data(), {
+      accountId: target.uid, primaryPersonId: created.get("target").personId, state: "MIRRORED_SINGLE", identityRevision: 1,
+      createdAt: (await db.doc(`accountIdentities/${target.uid}`).get()).data().createdAt,
+      updatedAt: (await db.doc(`accountIdentities/${target.uid}`).get()).data().updatedAt,
+      schemaVersion: 1,
+    });
+    assert.equal((await db.doc(`personIdentityAssignments/${created.get("target").personId}`).get()).data().source, "IUX11B_ADOPTION");
     assert.equal((await db.doc(`personDiscoverability/${created.get("target").personId}`).get()).exists, false);
     const ownPerson = await call(process.env.FUNCTIONS_EMULATOR_HOST, projectId, "getMyPerson", {}, target.token); assert.equal(ownPerson.body.result.person.personId, created.get("target").personId);
     const ownHistory = await call(process.env.FUNCTIONS_EMULATOR_HOST, projectId, "listMyGroupMembershipHistory", { pageSize: 5 }, target.token); assert.equal(ownHistory.status, 200, JSON.stringify(ownHistory.body)); assert.equal(ownHistory.body.result.items[0].group.id, groupId); assert.equal(ownHistory.body.result.items[0].status, "HISTORICAL");
@@ -138,7 +145,7 @@ test("IUX-11B vincula, rechaza, recupera y coordina carreras sin efectos parcial
     const limited = await call(process.env.FUNCTIONS_EMULATOR_HOST, projectId, "listMyAdministrativePersonLinkCandidates", { bucket: "PENDING", pageSize: 10 }, rateAccount.token);
     assert.equal(reason(limited), "RATE_LIMITED", JSON.stringify(limited));
   } finally {
-    const collections = ["administrativePersonLinkRateLimits", "administrativePersonLinkReceipts", "administrativePersonLinkDecisions", "accountVerifiedEmailCredentials", "personAccountAssignments", "administrativePersonLinkCandidates", "personDiscoverability", "discoverablePersonDirectory", "dashboardTaskOutbox", "activeRosterSearchEntries", "activeRosterSearchSummaries", "activeRosterContributions", "activeRosterSummaries", "administrativePersonCommandReceipts", "administrativePersonCustodies", "activeMembershipGuards", "membershipLifecycleGuards", "memberships", "openSeasonGuards", "seasons", "groups", "personas", "users"];
+    const collections = ["personIdentityAssignments", "accountIdentities", "administrativePersonLinkRateLimits", "administrativePersonLinkReceipts", "administrativePersonLinkDecisions", "accountVerifiedEmailCredentials", "personAccountAssignments", "administrativePersonLinkCandidates", "personDiscoverability", "discoverablePersonDirectory", "dashboardTaskOutbox", "activeRosterSearchEntries", "activeRosterSearchSummaries", "activeRosterContributions", "activeRosterSummaries", "administrativePersonCommandReceipts", "administrativePersonCustodies", "activeMembershipGuards", "membershipLifecycleGuards", "memberships", "openSeasonGuards", "seasons", "groups", "personas", "users"];
     for (const name of collections) { const snapshot = await db.collection(name).get(); for (const document of snapshot.docs) { for (const nested of await document.ref.listCollections()) { const children = await nested.get(); for (const child of children.docs) await child.ref.delete(); } await document.ref.delete(); } }
     await app.delete();
   }

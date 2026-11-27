@@ -4,6 +4,7 @@ const { InvalidPersonStateError } = require("../domain/person");
 const { createFirestorePersonRepository } = require("../infrastructure/firestorePersonRepository");
 const { createFirestoreUserPersonLinkRepository } = require("../../users/infrastructure/firestoreUserPersonLinkRepository");
 const { createFirestoreSelfPersonReader } = require("../../infrastructure/firestoreSelfPersonReader");
+const { createFirestoreAccountIdentityStore } = require("../../accountIdentities/infrastructure/firestoreAccountIdentityStore");
 
 function createGroupJoinRequestPersonCapability({ db }) {
   if (!db) throw new TypeError("db is required");
@@ -11,6 +12,7 @@ function createGroupJoinRequestPersonCapability({ db }) {
   const selfReader = createFirestoreSelfPersonReader({
     userRepository: createFirestoreUserPersonLinkRepository({ db }),
     personRepository: repository,
+    accountIdentityStore: createFirestoreAccountIdentityStore({ db }),
   });
 
   return Object.freeze({

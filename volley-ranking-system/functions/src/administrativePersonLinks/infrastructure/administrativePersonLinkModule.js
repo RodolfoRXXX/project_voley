@@ -4,6 +4,8 @@ const crypto = require("node:crypto");
 const { FieldPath, Timestamp } = require("firebase-admin/firestore");
 const { admin, db } = require("../../firebase");
 const { sha256LengthPrefixed } = require("../../memberships/application/membershipHashing");
+const { IdentityIncompatibleStateError } = require("../../accountIdentities/domain/accountIdentity");
+const { createFirestoreAccountIdentityStore } = require("../../accountIdentities/infrastructure/firestoreAccountIdentityStore");
 const {
   emailLookup,
   isEmulator,
@@ -31,6 +33,7 @@ const refs = {
   discoverability: db.collection("personDiscoverability"),
   directory: db.collection("discoverablePersonDirectory"),
 };
+const accountIdentityStore = createFirestoreAccountIdentityStore({ db });
 
 function requireEnabled() { if (!linkingEnabled()) throw new AdministrativePersonLinkError("FEATURE_DISABLED"); }
 function cursorSecret() {
@@ -183,7 +186,8 @@ async function recognize({ actorUserId, input }) {
   requireEnabled(); const accreditation = await verifiedEmail(actorUserId); const now = Timestamp.now(); const nowMs = Date.now();
   const preview = decode(input.previewToken, "PREVIEW", actorUserId); const receipt = refs.receipts.doc(receiptId(actorUserId, input.idempotencyKey));
   const request = hash("RECOGNIZE", actorUserId, input.candidateRef, input.previewToken, String(input.expectedEmailRevision));
-  return db.runTransaction(async (transaction) => {
+  try {
+    return await db.runTransaction(async (transaction) => {
     const existing = await transaction.get(receipt); if (existing.exists) { if (existing.data().requestHash !== request) throw new AdministrativePersonLinkError("IDEMPOTENCY_CONFLICT"); return commandResult(existing.data().result, commandOperationRef(actorUserId, receipt), true); }
     const credentialSnapshot = await transaction.get(refs.credentials.doc(actorUserId)); const credential = credentialPlan(credentialSnapshot, actorUserId, accreditation, now);
     const decisionRate = await readRate(transaction, actorUserId, "DECISION_MINUTE", 12, 60000, nowMs);
@@ -196,6 +200,10 @@ async function recognize({ actorUserId, input }) {
     const decisionRevision = (Number.isSafeInteger(previousDecision.data()?.decisionRevision) ? previousDecision.data().decisionRevision : 0) + 1;
     let result;
     if (typeof user.data().personaId === "string" && user.data().personaId) {
+      await accountIdentityStore.assertAccountCompatibleInTransaction(transaction, {
+        accountId: actorUserId,
+        legacyPersonId: user.data().personaId,
+      });
       result = { outcome: "RECOGNIZED_PENDING_MERGE", personId: current.reference.personId, currentPersonId: user.data().personaId, decisionRevision };
       transaction.set(decisionRef, { accountId: actorUserId, personId: current.reference.personId, decision: "RECOGNIZED_PENDING_MERGE", observedEmailRevision: current.candidate.emailRevision, observedAccountEmailRevision: credential.emailRevision, decisionRevision, decidedAt: now, schemaVersion: 1 });
     } else {
@@ -203,6 +211,13 @@ async function recognize({ actorUserId, input }) {
       let directoryRef = null;
       if (preference.exists && typeof preference.data().candidateRef === "string" && preference.data().candidateRef) { directoryRef = refs.directory.doc(preference.data().candidateRef); await transaction.get(directoryRef); }
       result = { outcome: "ADOPTED", personId: current.reference.personId, decisionRevision };
+      const identityOutcome = await accountIdentityStore.ensureMirroredSingleIdentity(transaction, {
+        accountId: actorUserId,
+        personId: current.reference.personId,
+        source: "IUX11B_ADOPTION",
+        occurredAt: now,
+      });
+      if (identityOutcome !== "CREATED") throw new IdentityIncompatibleStateError();
       transaction.update(userRef, { personaId: current.reference.personId });
       transaction.create(assignmentRef, { accountId: actorUserId, personId: current.reference.personId, kind: "SIMPLE_PRIMARY", assignedAt: now, schemaVersion: 1 });
       transaction.update(custodyRef, { state: "LINKED", linkedAccountId: actorUserId, linkedAt: now, revision: custody.data().revision + 1, updatedAt: now, schemaVersion: 2 });
@@ -211,8 +226,15 @@ async function recognize({ actorUserId, input }) {
       if (preference.exists) transaction.delete(preferenceRef); if (directoryRef) transaction.delete(directoryRef); adoptionRate();
     }
     transaction.create(receipt, { actorUserId, action: "RECOGNIZE", requestHash: request, result, createdAt: now, schemaVersion: 1 }); credential.commit(transaction); decisionRate();
-    return commandResult(result, commandOperationRef(actorUserId, receipt), false, result.outcome === "ADOPTED" ? (preference.exists && preference.data().candidateRef ? 12 : 11) : 10);
-  });
+      return commandResult(result, commandOperationRef(actorUserId, receipt), false, result.outcome === "ADOPTED" ? (preference.exists && preference.data().candidateRef ? 12 : 11) : 12);
+    });
+  } catch (error) {
+    const code = String(error?.code || "").toUpperCase();
+    if (error instanceof IdentityIncompatibleStateError || code === "6" || code === "ALREADY_EXISTS") {
+      throw new AdministrativePersonLinkError("INCOMPATIBLE_STATE");
+    }
+    throw error;
+  }
 }
 
 async function result({ actorUserId, input }) {

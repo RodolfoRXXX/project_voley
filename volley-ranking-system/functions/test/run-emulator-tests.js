@@ -289,6 +289,7 @@ const groupInvitationIux10TestPath = path.join(
 );
 const administrativePersonIux11aTestPath = path.join(systemRoot, "functions", "test", "emulator", "administrativePersonIux11a.test.js");
 const administrativePersonLinkIux11bTestPath = path.join(systemRoot, "functions", "test", "emulator", "administrativePersonLinkIux11b.test.js");
+const accountIdentityIux11c0TestPath = path.join(systemRoot, "functions", "test", "emulator", "accountIdentityIux11c0.test.js");
 const paymentE3TestPath = path.join(
   systemRoot,
   "functions",
@@ -405,7 +406,9 @@ const tournamentEconomyRetirementE3TestPath = path.join(
   "emulator",
   "tournamentEconomyRetirementE3.test.js"
 );
-const command = process.env.IUX_11B_FOCAL === "1"
+const command = process.env.IUX_11C0_FOCAL === "1"
+  ? `node --test --test-concurrency=1 "${accountIdentityIux11c0TestPath}"`
+  : process.env.IUX_11B_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${administrativePersonLinkIux11bTestPath}"`
   : process.env.IUX_11A_FOCAL === "1"
   ? `node --test --test-concurrency=1 "${administrativePersonIux11aTestPath}"`
@@ -534,9 +537,9 @@ const defaultTestPaths = [accountTestPath, personTestPath, groupTestPath, groupN
   administrativeReceiptPaginationE3TestPath, administrativeReceiptConcurrencyE3TestPath, paymentWaiverE3TestPath,
   dashboardTaskProjectionIux02aTestPath, dashboardTaskQueryIux02bTestPath, emulatorTestPath, autopromotionTestPath, minimumReadPolicyTestPath,
   priorityAssetCharacterizationTestPath, socialMatchEconomyRetirementE3TestPath, tournamentEconomyRetirementE3TestPath, personalEconomyIux05TestPath,
-  administrativePersonLinkIux11bTestPath];
+  administrativePersonLinkIux11bTestPath, accountIdentityIux11c0TestPath];
 const defaultTestBatches = partitionTestPaths(defaultTestPaths, 6);
-assertBatchPlan(defaultTestPaths, defaultTestBatches, 47, 8);
+assertBatchPlan(defaultTestPaths, defaultTestBatches, 48, 8);
 const commands = command
   ? [command]
   : defaultTestBatches.map((paths) => `node --test --test-concurrency=1 ${paths.map((entry) => `"${entry}"`).join(" ")}`);

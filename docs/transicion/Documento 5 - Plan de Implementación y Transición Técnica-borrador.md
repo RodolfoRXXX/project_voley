@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - definición implementable aprobada IUX-11C y primer corte C0 - 26 de noviembre de 2026*
+*Borrador consolidado - IUX-11C definido y C0 cerrado técnicamente en local - 27 de noviembre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -39,7 +39,7 @@ Estado operativo del plan:
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
 - `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
-- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-07, IUX-08 E IUX-09 CERRADOS E INTEGRADOS EN DEV CON UAT HUMANA APROBADA; IUX-10 Y SU AMPLIACIÓN D5-081 CERRADOS; IUX-11A/A.1 E IUX-11B CERRADOS CON UAT FUNCIONAL APROBADA, IUX-11C DEFINIDO Y LISTO PARA IMPLEMENTAR POR CORTES CON AUTORIZACIÓN SEPARADA —C0 PREPARACIÓN TÉCNICA SIN SUPERFICIE— SEGÚN D5-088, Y CORREO EXTERNO/DIRECTORIO AMPLIADO FUERA DE ALCANCE; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
+- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-07, IUX-08 E IUX-09 CERRADOS E INTEGRADOS EN DEV CON UAT HUMANA APROBADA; IUX-10 Y SU AMPLIACIÓN D5-081 CERRADOS; IUX-11A/A.1 E IUX-11B CERRADOS CON UAT FUNCIONAL APROBADA, IUX-11C0 CERRADO TÉCNICAMENTE EN LOCAL COMO PREPARACIÓN SIN SUPERFICIE Y C1–C4 PENDIENTES CON AUTORIZACIÓN SEPARADA SEGÚN D5-088/D5-089, SIN FUNCIONALIDAD DE FUSIÓN ENTREGADA; CORREO EXTERNO/DIRECTORIO AMPLIADO FUERA DE ALCANCE; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -2588,12 +2588,13 @@ El siguiente incremento funcional es:
 - Fuentes IUX-10: [ficha](../implementacion/interetapa-ux-movil/IUX-10-ficha-agregar-integrantes-busqueda-invitaciones.md)
     y [addendum conjunto](../arquitectura/Documento-1-1.5-2-3-4-addendum-IUX-10-agregar-integrantes-invitaciones.md).
 - Undécimo incremento: `IUX-11 — Fichas administrativas, vinculación y fusión`,
-    refinado por D5-083 a D5-088. IUX-11A/A.1 e IUX-11B están cerrados e integrados en
+    refinado por D5-083 a D5-089. IUX-11A/A.1 e IUX-11B están cerrados e integrados en
     `dev@acc7b263`. C define identidad 1..N, preview paginado, elección separada de principal y
     Membresía ganadora, coordinación recuperable, autorización multi-Persona y conservación de raíces.
-    D5-088 adopta C-N1, C-F1, C-A1 y C-C1, preview de 24 horas y ausencia de aviso dedicado. C queda
-    listo para implementar por C0–C4 con autorizaciones separadas. El correo externo y el directorio
-    de Cuentas sin Persona quedan fuera.
+    D5-088 adopta C-N1, C-F1, C-A1 y C-C1, preview de 24 horas y ausencia de aviso dedicado. D5-089
+    registra C0 cerrado técnicamente en local como preparación compatible: no habilita pluralidad,
+    UI ni fusión. C1–C4 conservan dependencias y autorizaciones separadas. El correo externo y el
+    directorio de Cuentas sin Persona quedan fuera.
 - Fuentes IUX-11: [relevamiento](../implementacion/interetapa-ux-movil/IUX-11-relevamiento-fichas-administrativas-vinculacion-fusion.md),
     [ficha](../implementacion/interetapa-ux-movil/IUX-11-ficha-fichas-administrativas-vinculacion-fusion.md)
     y [addendum conjunto](../arquitectura/Documento-1-1.5-2-3-4-addendum-IUX-11-fichas-administrativas-vinculacion-fusion.md).
@@ -2850,6 +2851,7 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-086 | Adopta el cierre funcional y técnico documental de `IUX-11B — candidatura y adopción` | APROBADA DOCUMENTALMENTE; IUX-11B LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA | IUX / IUX-11B / Identidad / Ficha personal / Vinculación | Coincidencia con correo primario verificado por Firebase Auth/Admin; sin correo no hay candidatura. **Ahora no** cierra sin suspender. Rechazo por Cuenta + Persona retira sugerencia, sobrevive cambios/ida-vuelta del correo y sólo reconsideración explícita lo levanta. Sin Persona, adopción atómica usa `users.personaId` como barrera compartida con `ensureMyPerson` y guard inverso por Persona; con Persona, `RECOGNIZED_PENDING_MERGE` conserva autoridad vigente y C revalida. Página máxima 10; presupuesto 1 Auth + hasta 24 Firestore por página, 9 por detalle y 12 por comando; listado 30/min + burst 10/10 s, detalle/decisiones 12/min y adopción 6/min; paginar/Actualizar consumen solicitud. App Check es gate transversal productivo; flag/secretos/UAT reproducible y backfill emulator son B; backfill remoto y habilitación son separados. Rechazo mínimo persiste hasta reconsideración/borrado de Cuenta; B no usa outbox. Lectores legacy de una Persona conservan contrato; multi-Persona pertenece a C. No autoriza código, configuración, índices, secrets, backfill remoto, migración, commit, push, despliegue ni producción. |
 | D5-087 | Registra implementación, mantenimiento UAT y cierre funcional de `IUX-11B — candidatura y adopción` | CERRADA; UAT FUNCIONAL APROBADA; INTEGRADA EN DEV | IUX / IUX-11B / cierre | Implementación `35e33a6`, cierre `87ff812`, BUILD_ID funcional `FR-tYzB5t0m4TKc_fpDKo` y entorno UAT portable integrado en `acc7b263`. B acredita Auth/Admin, candidatura paginada, rechazo/reconsideración, adopción atómica, `RECOGNIZED_PENDING_MERGE`, carrera con `ensureMyPerson`, exclusividad, receipts y recuperación de respuesta perdida. La revisión visual quedó diferida. Flag, secretos, índice, App Check transversal, backfill/enable y observabilidad productivos siguen como gates separados; no hubo deploy ni backfill remoto. |
 | D5-088 | Adopta la definición de `IUX-11C — fusión y elección de principal` y concreta el primer corte técnico C0 | APROBADA DOCUMENTALMENTE; IUX-11C LISTO POR CORTES; C0 LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA | IUX / IUX-11C / Identidad / Membresías / Economía / Admisiones | C-N1 usa principal en superficies vigentes y nombre original en historia/auditoría. C-F1 admite 1..N y revalida conflictos. C-A1 conserva admisiones compatibles y terminaliza colisiones/redundancias por writers canónicos con confirmación. C-C1 conserva grants válidas, caduca anchor finalizado, revoca self-conflict y no transfiere permisos. Sin aviso Owner dedicado; motivo/trazabilidad consultables. Preview 24 h, revalidación y digest de consecuencias. Retención separa preview efímero, coordinación 30 días, evidencia mínima sin PII nominal y receipts de dominio. C0 crea espejo `MIRRORED_SINGLE`, assignment directo, dual-write atómico de `ensureMyPerson`/B e inspección local; no habilita UI, pluralidad ni fusión. C0–C2 son preparación invisible; C4 remoto/productivo requiere autorización específica. Esta decisión no autoriza código, configuración, índices, datos, backfills, staging, commit, push, deploy ni cambios UAT. |
+| D5-089 | Registra implementación, validación de apply y cierre técnico local de `IUX-11C0 — identidad compatible` | CERRADO TÉCNICAMENTE EN LOCAL; PREPARACIÓN INTERNA; SIN FUNCIONALIDAD DE FUSIÓN ENTREGADA | IUX / IUX-11C0 / Identidad / cierre local | Definición `fa79e6a`; implementación/pruebas `75f1219b30f95a5500e944c8141a4f090bbe3fde`. `accountIdentities` y `personIdentityAssignments` mantienen `MIRRORED_SINGLE` exacto de `users.personaId`; `ensureMyPerson` y adopción B hacen dual-write atómico; fallback legacy no escribe; divergencias y parejas huérfanas se rechazan sin reparación; Rules niegan cliente. Apply pertenece a C0 sólo como validación Emulator local: inspección, interrupción/recuperación por manifest, repetición `created=0`, divergencia rechazada y registros ajenos invariantes. Emulator sintético `341/341`, focal C0 `2/2`, sintaxis `577/577`, TypeScript/build/lint baseline/diff aprobados; unitarias `506/507` con única deuda histórica IUX-06A. No hubo UAT, operación remota, backfill, índice, configuración, deploy ni habilitación. C1–C4 y la fusión continúan pendientes. |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -3396,7 +3398,7 @@ la aprobación visual.
 
 Flag, secretos administrados, construcción remota del índice, App Check cuando exista política
 transversal, backfill/enable productivos y observabilidad de rollout siguen pendientes de habilitación.
-IUX-11C y correo externo continúan fuera de alcance. Configuración local, secretos, datos sintéticos,
+IUX-11C1–C4, la funcionalidad de fusión y correo externo continúan fuera de alcance. Configuración local, secretos, datos sintéticos,
 builds, logs, manifests, exportaciones y `visuals/` quedan fuera de Git. No hubo despliegue ni backfill
 remoto y se conservan los datos UAT.
 
@@ -3414,12 +3416,16 @@ La definición usa manifest paginado, locks/assignments transitorios,
 receipts por efecto, `operationRef`, autorización SUBJECT por assignment, reproyección nominal y cortes
 C0–C4. Los presupuestos son por lote/página y no inventan un máximo de Personas.
 
-C0 materializa `MIRRORED_SINGLE` y assignment directo en el mismo commit de alta propia/adopción B,
-mantiene fallback legacy sin writes y falla cerrado ante divergencia. No consume reconocimiento pendiente,
-no habilita pluralidad, UI ni fusión. Preview completo vive 24 horas; coordinación terminal 30 días;
-evidencia mínima omite nombres/correos/importes y los receipts permanecen bajo cada recurso.
+C0, versionado en `75f1219b30f95a5500e944c8141a4f090bbe3fde`, materializa
+`MIRRORED_SINGLE` y assignment directo en el mismo commit de alta propia/adopción B, mantiene fallback
+legacy sin writes y falla cerrado ante divergencia. El cierre acreditó los diez criterios, incluido
+apply sólo sobre Emulator sintético: inspección previa, interrupción y recuperación por manifest,
+repetición idempotente, rechazo sin reparación y ausencia de efectos sobre registros ajenos. La suite
+Emulator pasó `341/341`; focal C0 `2/2`; sintaxis Functions `577/577`; TypeScript, build, lint baseline
+y diff check pasaron. Unitarias quedaron `506/507` por la deuda histórica IUX-06A ya declarada.
 
-IUX-11C queda listo para implementar por cortes con autorización separada. C0–C2 son preparación técnica
-invisible; C4 remoto/productivo mantiene autorización específica. Esta actualización fue exclusivamente
-documental: no autoriza ni realizó cambios de
-aplicación, configuración, índices, datos, backfills, UAT, `visuals/`, commit, staging, push o despliegue.
+C0 no consume reconocimiento pendiente ni habilita pluralidad, UI o fusión. Preview completo vive 24
+horas; coordinación terminal 30 días; evidencia mínima omite nombres/correos/importes y los receipts
+permanecen bajo cada recurso. IUX-11C1–C4 quedan listos para avanzar por dependencias y con autorización
+separada; C4 remoto/productivo mantiene autorización específica. No se ejecutaron UAT, apply/backfill
+remoto, configuración, índices, datos, `visuals/`, push ni despliegue.

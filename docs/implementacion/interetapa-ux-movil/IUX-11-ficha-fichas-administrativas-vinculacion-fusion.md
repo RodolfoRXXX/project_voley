@@ -2,15 +2,15 @@
 
 ## Estado de la ficha
 
-- **Estado general:** `IUX-11A/A.1 E IUX-11B CERRADOS CON UAT FUNCIONAL APROBADA; IUX-11C FUNCIONAL Y TÉCNICAMENTE DEFINIDO, LISTO PARA IMPLEMENTAR POR CORTES CON AUTORIZACIÓN SEPARADA; CORREO EXTERNO Y DIRECTORIO AMPLIADO FUERA DE ALCANCE`.
-- **Fecha:** 26 de noviembre de 2026.
+- **Estado general:** `IUX-11A/A.1 E IUX-11B CERRADOS CON UAT FUNCIONAL APROBADA; IUX-11C0 CERRADO TÉCNICAMENTE EN LOCAL COMO PREPARACIÓN INTERNA; IUX-11C1–C4 PENDIENTES CON AUTORIZACIÓN SEPARADA; FUSIÓN NO ENTREGADA; CORREO EXTERNO Y DIRECTORIO AMPLIADO FUERA DE ALCANCE`.
+- **Fecha:** 27 de noviembre de 2026.
 - **Base:** `dev@acc7b263195ba7c05ce1362e76da306602a0b2c7`, idéntica a `origin/dev` después de `fetch origin dev` el 26 de noviembre de 2026.
 - **Etapa:** interetapa IUX entre E3 y E4.
 - **Identificador:** `IUX-11`.
-- **Decisión documental:** `D5-083`, refinada por `D5-084` a `D5-088`; D5-088 adopta C-N1, C-F1, C-A1, C-C1, ausencia de aviso dedicado y preview de 24 horas.
+- **Decisión documental:** `D5-083`, refinada por `D5-084` a `D5-088`; D5-088 adopta C-N1, C-F1, C-A1, C-C1, ausencia de aviso dedicado y preview de 24 horas; D5-089 registra el cierre técnico local de C0.
 - **Relevamiento:** `IUX-11-relevamiento-fichas-administrativas-vinculacion-fusion.md`.
 - **Addendum:** `docs/arquitectura/Documento-1-1.5-2-3-4-addendum-IUX-11-fichas-administrativas-vinculacion-fusion.md`.
-- **Cierres aprobados:** A/A.1, definición `5f01f61`, implementación/pruebas `6703034` y BUILD_ID `gdZvN1YTNPMteaRxngA6N`; B, implementación `35e33a6`, cierre `87ff812`, BUILD_ID funcional `FR-tYzB5t0m4TKc_fpDKo` y mantenimiento UAT integrado en `acc7b263`. Sin despliegue, backfill remoto ni cambios de datos UAT.
+- **Cierres aprobados:** A/A.1, definición `5f01f61`, implementación/pruebas `6703034` y BUILD_ID `gdZvN1YTNPMteaRxngA6N`; B, implementación `35e33a6`, cierre `87ff812`, BUILD_ID funcional `FR-tYzB5t0m4TKc_fpDKo` y mantenimiento UAT integrado en `acc7b263`; C0, definición `fa79e6a` e implementación/pruebas `75f1219`. Sin integración a `dev`, despliegue, backfill remoto ni cambios de datos UAT para C0.
 
 ## 1. Objetivo
 
@@ -23,6 +23,7 @@ Permitir alta administrativa de una Persona sin Cuenta, su incorporación y gest
 | IUX-11A.1 | Modal, edición acreditada por fila, caja con pestañas, No integrantes, Invitaciones y reincorporación canónica | **CERRADO; UAT HUMANA APROBADA** |
 | IUX-11A | Owner crea/corrige ficha no vinculada con correo opcional, la incorpora a Temporada abierta y gestiona su economía | **CERRADO; UAT HUMANA APROBADA** |
 | IUX-11B | Cuenta encuentra dentro de Ficha personal candidaturas por correo verificado, cierra/rechaza/reconoce una revisión y adopta una ficha cuando no tiene Persona | **CERRADO; UAT FUNCIONAL APROBADA** |
+| IUX-11C0 | Núcleo de identidad singular compatible, dual-write atómico e inspección/materialización sólo local | **CERRADO TÉCNICAMENTE EN LOCAL; PREPARACIÓN INTERNA** |
 | IUX-11C | Cuenta con Persona preexistente compara el conjunto, elige principal, resuelve Membresías activas duplicadas y conserva acceso histórico | **LISTO PARA IMPLEMENTAR POR CORTES; REQUIERE AUTORIZACIÓN SEPARADA** |
 | IUX-11D | Aviso por correo y operación de entrega | **DIFERIDO** |
 
@@ -328,7 +329,7 @@ Housekeeping sólo procesa `expiresAt/purgeAfter`, es idempotente, no toca coord
 
 ### 5.10 Estado de implementabilidad
 
-**Estado real:** `LISTO PARA IMPLEMENTAR POR CORTES, CON AUTORIZACIÓN SEPARADA`. No queda bloqueo funcional de C. C0 puede implementarse localmente como preparación compatible sin superficie de usuario; C1–C3 dependen de la salida acreditada del corte anterior. C4 productivo —materialización remota, índices, configuración/flags, housekeeping, canary, habilitación y rollback— requiere autorización específica y evidencia local/UAT previa.
+**Estado real:** `C0 CERRADO TÉCNICAMENTE EN LOCAL; C1–C4 LISTOS PARA AVANZAR POR DEPENDENCIAS Y CON AUTORIZACIÓN SEPARADA`. No queda bloqueo funcional de C ni bloqueo técnico de C0. C0 es preparación compatible sin superficie de usuario; su cierre habilita planificar C1, no pluralidad ni fusión. C2 y C3 dependen de la salida acreditada del corte anterior. C4 productivo —materialización remota, índices, configuración/flags, housekeeping, canary, habilitación y rollback— requiere autorización específica y evidencia local/UAT previa.
 
 ## 6. Matriz de preservación
 
@@ -413,11 +414,14 @@ ensureMirroredSingleIdentity({
 
 inspectIdentityMaterialization({ pageSize: 100, cursor? })
 // reporte local/operacional sin escribir
+
+materializeLegacyIdentity({ accountId, occurredAt })
+// MISSING | CREATED | EXISTING; divergencia => INCOMPATIBLE_STATE
 ```
 
 - `ensureMyPerson` y la adopción B llaman `ensureMirroredSingleIdentity` dentro de su transacción vigente: Persona/`users.personaId`, assignment B cuando corresponda, identidad espejo y assignment plural se confirman o fallan juntos.
 - Una Cuenta legacy sin documentos nuevos devuelve `LEGACY_SINGLE` sin escribir durante lectura. No hay lazy write oculto.
-- Materialización existente se separa en `inspect` y futuro `apply`; C0 local puede probar ambos sobre Emulator, pero ningún `apply` remoto pertenece al corte autorizado de implementación local.
+- Materialización existente se separa en `inspect` y `apply`; ambos pertenecen a la validación local de C0 sobre Emulator. Ningún `apply` UAT/remoto ni backfill productivo pertenece a C0: esas operaciones permanecen en C4 y requieren autorización específica.
 - Si identidad, assignment, `users.personaId` o `personAccountAssignments` discrepan, el resolver devuelve `INCOMPATIBLE`; no repara ni elige ganador. Los writers de vínculo fallan cerrados y emiten observabilidad sin PII.
 - Firestore cliente conserva deny-all. C0 no requiere índice compuesto: accesos normales son por ID; la inspección pagina `users` por `__name__`.
 
@@ -439,6 +443,16 @@ inspectIdentityMaterialization({ pageSize: 100, cursor? })
 10. cierre C0 informa por separado evidencia local y cualquier operación productiva no ejecutada.
 
 **Pruebas C0 obligatorias:** unitarias de estados/shape y divergencias; Emulator de commits atómicos, exclusividad, retry y respuesta perdida; carrera `ensureMyPerson` vs adopción B; materialización 0/1/100/101 con cursor; corrupción de cada vínculo; Rules; caracterización de DTOs/callables existentes. No corresponde UAT funcional de fusión en C0 porque no hay superficie entregada; sólo smoke de no regresión de A/B.
+
+**Cierre técnico local (27 de noviembre de 2026):** definición `fa79e6a`; implementación y pruebas
+`75f1219b30f95a5500e944c8141a4f090bbe3fde`. Los diez criterios quedan acreditados. El apply se
+ejecutó únicamente sobre Emulator sintético `demo-sportexa-e0-02`: inspección previa sin writes,
+interrupción después de una página, recuperación por manifest, repetición con `created=0`, rechazo de
+divergencia sin reparación y ausencia de efectos sobre registros ajenos. Suite Emulator completa
+`341/341`, focal C0 `2/2`, sintaxis Functions `577/577`, TypeScript, build, lint baseline y diff check
+aprobados. Unitarias `506/507`: la única falla es la deuda histórica IUX-06A sobre
+`gridTemplateColumns`, ajena a C0. No hubo ejecución UAT/remota, backfill, configuración, índices,
+deploy ni habilitación; C0 no entrega fusión ni habilita C1–C4 a usuarios.
 
 ### 8.2 Matriz de contratos y consumidores
 

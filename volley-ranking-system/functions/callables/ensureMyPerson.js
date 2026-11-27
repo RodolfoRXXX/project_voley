@@ -8,12 +8,14 @@ const { createFirestoreSelfPersonReader } = require("../src/infrastructure/fires
 const { assertEnsurePayload, createSelfPersonCallableHandler } = require("../src/infrastructure/selfPersonBootstrapCallable");
 const { createFirestorePersonRepository } = require("../src/persons/infrastructure/firestorePersonRepository");
 const { createFirestoreUserPersonLinkRepository } = require("../src/users/infrastructure/firestoreUserPersonLinkRepository");
+const { createFirestoreAccountIdentityStore } = require("../src/accountIdentities/infrastructure/firestoreAccountIdentityStore");
 
 const personRepository = createFirestorePersonRepository({ db });
 const userRepository = createFirestoreUserPersonLinkRepository({ db });
+const accountIdentityStore = createFirestoreAccountIdentityStore({ db });
 const service = createSelfPersonBootstrapService({
-  unitOfWork: createFirestoreSelfPersonBootstrapUnitOfWork({ db, personRepository, userRepository }),
-  selfPersonReader: createFirestoreSelfPersonReader({ personRepository, userRepository }),
+  unitOfWork: createFirestoreSelfPersonBootstrapUnitOfWork({ db, personRepository, userRepository, accountIdentityStore }),
+  selfPersonReader: createFirestoreSelfPersonReader({ personRepository, userRepository, accountIdentityStore }),
 });
 
 module.exports = functions.https.onCall(createSelfPersonCallableHandler({

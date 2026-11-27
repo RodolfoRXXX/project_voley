@@ -7,9 +7,10 @@ const {
   PersonLinkInconsistentError,
 } = require("../application/selfPersonBootstrapErrors");
 const { mapPersonPersistenceError } = require("./firestorePersonSupport");
+const { IdentityIncompatibleStateError } = require("../accountIdentities/domain/accountIdentity");
 
-function createFirestoreSelfPersonReader({ userRepository, personRepository }) {
-  if (!userRepository || !personRepository) throw new TypeError("reader dependencies are required");
+function createFirestoreSelfPersonReader({ userRepository, personRepository, accountIdentityStore }) {
+  if (!userRepository || !personRepository || !accountIdentityStore) throw new TypeError("reader dependencies are required");
 
   return {
     async getByUserId(userId) {
@@ -22,6 +23,15 @@ function createFirestoreSelfPersonReader({ userRepository, personRepository }) {
           throw error;
         }
         if (!user) throw new AccountNotInitializedError();
+        try {
+          await accountIdentityStore.assertAccountCompatible({
+            accountId: userId,
+            legacyPersonId: user.personaId,
+          });
+        } catch (error) {
+          if (error instanceof IdentityIncompatibleStateError) throw new PersonLinkInconsistentError({ cause: error });
+          throw error;
+        }
         if (!Object.prototype.hasOwnProperty.call(user, "personaId")) return null;
         try {
           const person = await personRepository.getById(user.personaId);

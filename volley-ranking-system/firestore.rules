@@ -417,6 +417,8 @@ service cloud.firestore {
     match /administrativePersonLinkReceipts/{receiptId} { allow read, write: if false; }
     match /administrativePersonLinkRateLimits/{bucketId} { allow read, write: if false; }
     match /personAccountAssignments/{personId} { allow read, write: if false; }
+    match /accountIdentities/{accountId} { allow read, write: if false; }
+    match /personIdentityAssignments/{personId} { allow read, write: if false; }
 
     match /{document=**} {
       allow read, write: if false;

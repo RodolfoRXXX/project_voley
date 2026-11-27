@@ -2,13 +2,14 @@
 
 ## 1. Estado y base
 
-- **Estado:** `IUX-11A/A.1 CERRADOS; IUX-11B DEFINIDO Y LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA; C, CORREO EXTERNO Y DIRECTORIO AMPLIADO PENDIENTES`.
+- **Estado:** `IUX-11A/A.1 E IUX-11B CERRADOS; IUX-11C DEFINIDO Y LISTO PARA IMPLEMENTAR POR CORTES CON AUTORIZACIÓN SEPARADA; CORREO EXTERNO Y DIRECTORIO AMPLIADO FUERA DE ALCANCE`.
 - **Fecha:** 26 de noviembre de 2026.
-- **Base verificada:** `dev@c6619d6752d2a2396b162b6be2d569f966619f08`, idéntica a `HEAD` y `origin/dev` al iniciar esta revisión.
-- **Próximo identificador disponible:** `IUX-11`.
-- **Decisión de Documento 5:** `D5-083`, refinada por `D5-084`, `D5-085` y `D5-086`; B mantiene autorización técnica separada.
-- **Estado local preservado:** `visuals/` continúa sin seguimiento y no fue modificado.
+- **Base verificada:** `dev@acc7b263195ba7c05ce1362e76da306602a0b2c7`, idéntica a `HEAD`, `origin/dev` y `FETCH_HEAD` después de `fetch origin dev`.
+- **Incremento vigente:** `IUX-11`; registro documental de esta revisión: `D5-088`.
+- **Decisión de Documento 5:** `D5-083`, refinada por `D5-084` a `D5-088`; D5-087 cierra B y D5-088 adopta C-N1/C-F1/C-A1/C-C1, ausencia de aviso dedicado y preview de 24 horas.
+- **Estado local preservado:** working tree limpio al iniciar; `visuals/`, configuración local y datos UAT no fueron modificados.
 - **Cierre A/A.1:** definición `5f01f61`, implementación/pruebas `6703034`, BUILD_ID aprobado `gdZvN1YTNPMteaRxngA6N`; sin despliegue ni modificación de datos UAT.
+- **Cierre B:** implementación `35e33a6`, cierre `87ff812`, BUILD_ID funcional `FR-tYzB5t0m4TKc_fpDKo`; entorno UAT portable integrado por `acc7b263`; sin despliegue ni backfill remoto.
 
 IUX-10 cerró búsqueda e Invitaciones entre Personas ya existentes, pero dejó expresamente fuera el alta de Persona sin vínculo, la corrección nominal, las obligaciones de una Persona sin vínculo, la vinculación, la fusión y el correo exacto. IUX-11 ocupa ese siguiente límite sin reinterpretar el correo como identidad ni imponer unicidad de Persona por correo.
 
@@ -50,16 +51,17 @@ IUX-10 cerró búsqueda e Invitaciones entre Personas ya existentes, pero dejó 
 
 | Área | Contrato vigente | Brecha IUX-11 |
 | --- | --- | --- |
-| Persona | `buildPerson` e `hydratePerson` exigen `emailContacto` y un esquema exacto sin versión | IUX-11A necesita Persona compatible con correo opcional y procedencia administrativa |
-| Cuenta | `users/{uid}.personaId`; `linkPerson` rechaza un segundo vínculo | No representa fichas consolidadas ni permite elegir como principal una ficha administrativa |
-| Alta propia | `ensureMyPerson` reserva Persona y fija el vínculo singular en una transacción | Debe competir con reconocimiento/fusión mediante una autoridad de identidad común |
+| Persona | A ya admite correo opcional y custodia administrativa versionada | C no debe reescribir Persona ni convertir la no principal en editable |
+| Cuenta–Persona | B agrega `personAccountAssignments/{personId}` sólo para adopción simple; `users/{uid}.personaId` sigue singular | Falta identidad 1..N, guard inverso plural y proyección de principal |
+| Alta propia | `ensureMyPerson` reserva Persona y `users.personaId` en una transacción; B comparte esa barrera | C debe tolerar assignment/identidad y fallar cerrado durante `MERGING` |
+| Candidatura B | `RECOGNIZED_PENDING_MERGE` persiste Cuenta, Persona y revisiones, sin assignment, reserva ni cambio de custodia | C debe revalidar y adquirir autoridad; no puede tratar la intención como vínculo |
 | Presentación propia | `getMyPerson`, membresías, historial y economía derivan un único `personaId` | Deben resolver ficha principal para edición y conjunto de Personas autorizadas para historia/economía |
 | Membresía | Raíz y guards se identifican por `personId + groupId`; el alta mantiene Períodos, contador y padrón | Sirve para IUX-11A, pero no detecta duplicado entre dos Personas de la misma identidad consolidada |
 | Finalización | La finalización administrativa es Owner-only, exige contexto modificable, evita self-target y no recibe motivo | La fusión necesita una coordinación interna autorizada por el titular y evidencia `PROFILE_MERGE`, conservando los mismos efectos canónicos |
 | Padrón | Contador cuenta contribuciones por Membresía; búsqueda materializa nombre de la Persona de la Membresía | Finalizar la duplicada debe decrementar una vez; elegir principal debe reproyectar el nombre vigente de Membresías conservadas |
 | Economía | Pago conserva `membershipId`, `personId`, Temporada, concepto y evidencia | No debe reescribirse. Los lectores propios deben autorizar por identidad consolidada y conservar el sujeto original |
-| Solicitudes/Invitaciones | guards e Invitaciones se correlacionan por Persona; responder exige el `users.personaId` exacto | Deben aceptar una Persona asignada a la identidad, no sólo la principal, y coordinar conflictos creados por la fusión |
-| Capabilities | Grants conservan `accountId`, `personId`, `membershipId` y validity anchor; evaluadores comparan contra la Persona propia singular | Una capability de una Membresía conservada debe validar contra el conjunto asignado; la ligada a una Membresía finalizada debe caducar |
+| Solicitudes/Invitaciones | guards y recursos se correlacionan por Persona; `ownPerson`/`ownDirectoryPerson` usan `users.personaId` exacto | Responder por Persona asignada, directorio por principal y resolver redundancias sin aceptar implícitamente |
+| Capabilities | grants conservan `accountId`, `personId`, `membershipId`, anchor y slot; `treasuryAccountIdentityCapability` hace reverse lookup en `users.personaId` | Revalidar por assignment, caducar anchor perdedor y revocar cualquier self-conflict económico |
 | Directorio IUX-10 | Es opt-in, revocable y sólo contiene Personas localizables | No sirve para encontrar Cuentas ni candidaturas IUX-11; ausencia no significa ausencia de usuario |
 | Correo | `emailService` usa Gmail/Nodemailer y envío directo | Sólo puede ser adaptador de un efecto opcional; faltan outbox, retry, estado de entrega y supresión de PII |
 | Ownership | No existe writer canónico de transferencia habilitado | IUX-11 sólo puede fijar compatibilidad futura y autorizar hoy por Owner vigente |
@@ -75,25 +77,30 @@ Esta autoridad plural pertenece a IUX-11C. IUX-11B de adopción simple conserva 
 
 ```text
 accountIdentities/{accountId}
+  accountId
   primaryPersonId
-  state: READY | MERGING
+  state: MIRRORED_SINGLE | READY | MERGING
   identityRevision
   activeMergeId?
+  createdAt
   updatedAt
   schemaVersion
 
 personIdentityAssignments/{personId}
+  personId
   accountId
-  role: PRIMARY | CONSOLIDATED
-  principalPersonId
+  state: ACTIVE | PENDING_MERGE
+  source: SELF_BOOTSTRAP | IUX11B_ADOPTION | LEGACY_MATERIALIZATION | PROFILE_MERGE
   assignmentRevision
-  recognizedAt
+  assignedAt
   mergeId?
   schemaVersion
 ```
 
 - El ID de `personIdentityAssignments` es `personId`: una Persona no puede pertenecer simultáneamente a dos Cuentas.
 - Una Cuenta puede tener varias asignaciones, pero `accountIdentities` acredita una sola principal.
+- Principal/role no se duplica en cada assignment: cambiar principal no reescribe N filas.
+- C0 sólo crea `MIRRORED_SINGLE`, espejo exacto de `users.personaId`; `READY/MERGING`, pluralidad y autoridad plena comienzan después del retrofit C1.
 - `users/{uid}.personaId` permanece temporalmente como **proyección compatible** de `primaryPersonId`; deja de ser la autoridad completa.
 - Elegir como principal la ficha administrativa actualiza esa proyección únicamente dentro del commit final de la coordinación de fusión.
 - Las Personas consolidadas permanecen como raíces históricas inmutables para referencias existentes. No aparecen como fichas personales vigentes editables.
@@ -288,7 +295,7 @@ Dependencias técnicas:
 
 ### IUX-11B — candidatura y adopción sin Persona previa
 
-**Estado:** `DEFINIDO; LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA`.
+**Estado:** `CERRADO; UAT FUNCIONAL APROBADA; INTEGRADO EN dev`.
 
 Incluye índice privado por HMAC de correo, listado interno paginado, cierre de revisión sin decisión, rechazo/reconsideración, reconocimiento, adopción como principal, Cuenta creada con posterioridad y reconocimiento pendiente de fusión. El aviso externo continúa fuera.
 
@@ -302,22 +309,23 @@ Decisiones cerradas por D5-086:
 - B conserva lectores legacy de una única Persona; multi-Persona y autorización consolidada quedan en C;
 - App Check, flag, secretos, backfill, retención y outbox quedan clasificados por necesidad/momento en ficha §4.6.
 
-Evidencia `dev@c6619d6`: `ensureMyPerson` ya crea Persona y `users.personaId` en una transacción y devuelve la existente al reintentar. Lectores propios vigentes derivan la Persona desde ese campo; receipts deny-all, rate-limit documents IUX-10, flag por entorno y scripts emulator/producción con confirmación aportan patrones reutilizables. No existe `enforceAppCheck` ni política TTL común, y el outbox existente atiende proyecciones asíncronas que B simple no modifica.
+Evidencia `dev@acc7b263`: `administrativePersonLinkModule` acredita correo con Admin SDK; lista páginas máximas de diez; persiste rechazo/reconsideración y receipts; adopta en un commit o registra `RECOGNIZED_PENDING_MERGE`; revoca custodia/directorio sólo al adoptar. `ensureMyPerson` crea Persona y `users.personaId` en una transacción y devuelve la existente al reintentar. Emulator, unitarias y UAT funcional acreditan las carreras declaradas. No existe `enforceAppCheck` ni política TTL común, y el outbox vigente atiende proyecciones asíncronas que B simple no modifica.
 
 ### IUX-11C — fusión y elección de principal
 
-**Estado:** `DEFINIDO PARCIALMENTE; NO LISTO PARA IMPLEMENTAR`.
+**Estado:** `LISTO PARA IMPLEMENTAR POR CORTES; REQUIERE AUTORIZACIÓN SEPARADA`.
 
 Incluye preview, elección de principal, asignaciones consolidadas, conflictos de Membresías activas, finalización `PROFILE_MERGE`, autorización multi-Persona, economía histórica y reproyección.
 
-Dependencias:
+Dependencias y secuencia:
 
-- IUX-11B y autoridad de identidad habilitada;
-- retrofit de lectores SUBJECT, Solicitudes, Invitaciones y capabilities;
-- capacidad interna de finalización por fusión con motivo y receipts;
-- manifest/coordinador recuperable;
-- resolución de pendientes funcionales de §12;
-- presupuesto, índices, reconciliación y rollout compatible.
+- C0 núcleo de identidad `MIRRORED_SINGLE`, dual-write de alta propia/adopción B e inspección local, sin UI ni pluralidad;
+- C1 retrofit de readers SUBJECT/self, economía, Solicitudes, Invitaciones, capabilities y proyecciones, primero en sombra;
+- C2 writers canónicos `PROFILE_MERGE`, admisiones/capabilities, manifest, locks y recovery, todavía sin UI pública;
+- C3 preview/confirmación/resultado paginados y UAT bajo flag apagado por defecto;
+- C4 reconciliación, índices, observabilidad, canary y retiro posterior de autoridad singular.
+
+La matriz de contratos, presupuestos, índices, pruebas y UAT está en la ficha §§5 y 8. Cada corte conserva B utilizable y no expone fusión antes de completar backend y recovery. C0–C2 no son funcionalidad entregada: permanecen invisibles/deshabilitados. C4 productivo es una autorización distinta de cualquier implementación local.
 
 ### IUX-11D — avisos externos y operación
 
@@ -362,36 +370,26 @@ Con estas reglas, no queda una decisión funcional de A abierta. La implementaci
 
 No queda propuesta B pendiente de aprobación.
 
-### 12.3 Recomendaciones para C — todavía no adoptadas
+### 12.3 Adoptadas y vinculantes para IUX-11C
 
-**Nombre principal y trazabilidad**
+1. El usuario revisa las fichas y elige principal.
+2. Personas, IDs y referencias históricas se conservan; elegir datos principales no extingue obligaciones, Pagos ni historia.
+3. Participaciones compatibles se conservan.
+4. Duplicados activos del mismo Grupo/Temporada exigen elegir Membresía ganadora por separado de la principal; la otra se finaliza canónicamente con motivo **Fusión de fichas**, sin borrar historia ni deuda.
+5. Todas las Personas consolidadas integran la autorización propia y las restricciones self.
+6. Archivo, cierre o finalización no bloquean por sí solos revisar la vinculación.
+7. Correo externo y directorio de Cuentas sin Persona no integran C.
+8. C-N1 usa la principal en vistas vigentes/búsqueda y conserva nombres originales en historia/auditoría.
+9. C-F1 admite 1..N assignments y revalida todo el conjunto/conflictos en cada operación.
+10. C-A1 conserva admisiones compatibles; el usuario elige ante colisiones y writers canónicos terminalizan redundantes sin admisión implícita.
+11. C-C1 conserva grants que revalidan, caduca anchors finalizados, revoca self-conflict y nunca transfiere permisos a la Membresía ganadora.
+12. El Owner no recibe notificación dedicada en C; conserva motivo y trazabilidad consultables sin veto.
+13. Preview válido 24 horas y revalidación obligatoria al confirmar; el digest confirmado cubre Membresías, admisiones y capabilities afectadas.
+14. Retención categorizada: preview completo efímero; coordinación terminal por 30 días; evidencia mínima sin nombres/correos/importes ligada a Identidad; receipts según recurso autoritativo.
 
-- **C-N1 recomendada:** vistas actuales operativas, padrón y búsqueda usan el nombre de la principal; historia económica/auditoría conserva y muestra sujeto original y, cuando ayude, “consolidada en {principal}”. Consecuencia: una identidad vigente coherente sin falsificar evidencia histórica.
-- **Alternativa C-N2:** toda vista conserva nombre original por registro. Consecuencia: máxima literalidad histórica, pero el usuario continúa apareciendo con varias identidades en superficies actuales y contradice parcialmente la experiencia de ficha única.
+### 12.4 Estado de implementabilidad
 
-**Fusiones sucesivas**
-
-- **C-F1 recomendada:** identidad admite 1..N assignments y cada nueva ficha se fusiona contra el conjunto vigente; el manifest reevalúa conflictos de todas las Personas asignadas. Consecuencia: modelo estable y sin “segunda fusión” especial, con mayor costo de paginación/reconciliación.
-- **Alternativa C-F2:** limitar el primer contrato a exactamente dos Personas. Consecuencia: implementación menor, pero una tercera coincidencia queda bloqueada y obliga a evolucionar modelo y UX luego.
-
-**Solicitudes e Invitaciones pendientes**
-
-- **C-A1 recomendada:** preview agrupa por Grupo. Si ya existe Membresía activa de la identidad, las admisiones redundantes se muestran y el usuario confirma terminalizarlas con motivo `PROFILE_MERGE`; si no existe activa y hay varias pendientes, elige como máximo una para conservar y las restantes se terminalizan. Recursos de Grupos distintos se preservan. Consecuencia: no hay admisión implícita ni guard duplicado después de fusionar.
-- **Alternativa C-A2:** bloquear la fusión hasta que cada Solicitud/Invitación se resuelva por sus flujos originales. Consecuencia: dominio más simple, pero una invitación inaccesible o Temporada cerrada puede impedir indefinidamente consolidar identidad.
-
-**Capabilities**
-
-- **C-C1 recomendada:** conservar sólo grants cuyo `accountId`, assignment, Membresía, anchor, slot, ownership y Temporada revaliden; las ligadas a Membresía perdedora caducan. Consecuencia: preserva permisos legítimos sin transferirlos entre raíces.
-- **Alternativa C-C2:** hacer caducar todas las capabilities de Personas fusionadas y exigir nueva concesión. Consecuencia: seguridad operacional más simple, pero interrumpe permisos válidos aunque su Membresía continúe.
-- En ambas, “propia identidad” abarca todas las Personas asignadas: nunca se permite auto-revisión, auto-validación o registro como tercero usando otra ficha consolidada.
-
-### 12.4 Pendientes que requieren elección
-
-1. Elegir C-N1/C-N2, C-F1/C-F2, C-A1/C-A2 y C-C1/C-C2 para cerrar IUX-11C.
-2. Definir si el Owner recibe aviso informativo por finalización `PROFILE_MERGE`; no tendrá veto ni bloqueará recovery.
-3. Fijar retención/eliminación de manifests y evidencia de fusión.
-
-C permanece `NO LISTO`. B queda listo para implementar con autorización separada.
+No queda elección funcional pendiente. C0 está listo para una implementación local separadamente autorizada y no ofrece funcionalidad al usuario. C1–C3 dependen de la salida del corte anterior. C4 productivo —apply remoto, índices, configuración/flags, housekeeping, canary, enable y rollback— requiere autorización específica; no se deriva de implementar C0–C3 en local.
 
 ## 13. Refinamiento post-UAT de IUX-11A
 
@@ -507,8 +505,8 @@ La ampliación del directorio a Cuenta sin Persona queda fuera de IUX-11A.1 y de
 
 ## 16. Criterios de salida documental
 
-- IUX-11A/A.1 están cerrados; B queda definido/listo pero apagado hasta autorización de implementación, y C conserva autorización específica pendiente.
-- IUX-11B no se habilita hasta que identidad y alta propia compartan una autoridad, se materialicen candidaturas A y se acrediten carreras, presupuestos y Cuenta creada después de la ficha.
+- IUX-11A/A.1 y B están cerrados; B permanece sujeto a sus gates productivos y cada corte C requiere autorización de implementación propia.
+- IUX-11B no se habilita productivamente hasta completar flag, secretos, índice, backfill y observabilidad autorizados; eso no reabre su cierre funcional.
 - IUX-11C no se habilita con lectores que todavía autoricen únicamente por `users.personaId`.
 - Ningún corte reescribe `personId`/`membershipId`, altera Pagos ni usa correo como unicidad de Persona.
 - `visuals/`, datos UAT, producción y despliegue quedan fuera.

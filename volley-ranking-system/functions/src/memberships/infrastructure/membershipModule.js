@@ -6,6 +6,7 @@ const { createFirestoreUserRepository } = require("../../users/infrastructure/fi
 const { createFirestoreUserPersonLinkRepository } = require("../../users/infrastructure/firestoreUserPersonLinkRepository");
 const { createFirestorePersonRepository } = require("../../persons/infrastructure/firestorePersonRepository");
 const { createFirestoreSelfPersonReader } = require("../../infrastructure/firestoreSelfPersonReader");
+const { createFirestoreAccountIdentityStore } = require("../../accountIdentities/infrastructure/firestoreAccountIdentityStore");
 const groupService = require("../../groups/infrastructure/groupModule");
 const seasonService = require("../../groups/infrastructure/seasonModule");
 const memberContext = require("../../groups/infrastructure/memberContextModule");
@@ -38,6 +39,7 @@ const accountService = createAccountService({ userRepository: createFirestoreUse
 const selfAccountReader = createFirestoreSelfAccountReader({ accountService });
 const personRepository = createFirestorePersonRepository({ db });
 const userPersonLinkRepository = createFirestoreUserPersonLinkRepository({ db });
+const accountIdentityStore = createFirestoreAccountIdentityStore({ db });
 const groupRepository = createFirestoreGroupRepository({ db });
 const membershipRepository = createFirestoreMembershipRepository({ db });
 const seasonRepository = createFirestoreSeasonRepository({ db });
@@ -71,7 +73,7 @@ const administrativeFinalizationStore = createFirestoreMembershipAdministrativeF
 module.exports = createMembershipService({
   selfAccountReader,
   selfPersonContext: createSelfPersonContextAdapter({
-    selfPersonReader: createFirestoreSelfPersonReader({ personRepository, userRepository: userPersonLinkRepository }),
+    selfPersonReader: createFirestoreSelfPersonReader({ personRepository, userRepository: userPersonLinkRepository, accountIdentityStore }),
   }),
   ownedGroupContext: createOwnedGroupContextAdapter({ groupService }),
   openSeasonContext: createOpenSeasonContextAdapter({ seasonService }),

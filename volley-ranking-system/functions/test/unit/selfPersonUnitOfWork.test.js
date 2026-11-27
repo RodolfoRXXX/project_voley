@@ -6,12 +6,13 @@ const { createFirestoreSelfPersonBootstrapUnitOfWork } = require("../../src/infr
 const {
   AccountNotInitializedError,
   ConcurrentModificationError,
+  PersonLinkInconsistentError,
   PersonPersistenceError,
   PersonServiceUnavailableError,
 } = require("../../src/application/selfPersonBootstrapErrors");
 
-function setup({ user = null, transactionError = null } = {}) {
-  const calls = { personCreate: 0, userLink: 0 };
+function setup({ user = null, transactionError = null, identityOutcome = "CREATED" } = {}) {
+  const calls = { identityAssert: 0, identityCreate: 0, personCreate: 0, userLink: 0 };
   const transaction = {};
   const db = {
     async runTransaction(operation) {
@@ -28,9 +29,13 @@ function setup({ user = null, transactionError = null } = {}) {
     async getById() { return null; },
     createInitial() { calls.personCreate += 1; },
   };
+  const accountIdentityStore = {
+    async assertAccountCompatibleInTransaction() { calls.identityAssert += 1; },
+    ensureMirroredSingleIdentity() { calls.identityCreate += 1; return identityOutcome; },
+  };
   return {
     calls,
-    unit: createFirestoreSelfPersonBootstrapUnitOfWork({ db, userRepository, personRepository }),
+    unit: createFirestoreSelfPersonBootstrapUnitOfWork({ db, userRepository, personRepository, accountIdentityStore }),
   };
 }
 
@@ -39,13 +44,19 @@ const person = { personId: "opaque-id", nombre: "Ana", apellido: "Díaz", emailC
 test("fallo previo al commit no escribe ninguna raíz", async () => {
   const { calls, unit } = setup();
   await assert.rejects(() => unit.ensureInitialLink({ userId: "uid", person }), AccountNotInitializedError);
-  assert.deepEqual(calls, { personCreate: 0, userLink: 0 });
+  assert.deepEqual(calls, { identityAssert: 0, identityCreate: 0, personCreate: 0, userLink: 0 });
 });
 
 test("unidad confirma Persona y vínculo mediante puertos acotados", async () => {
   const { calls, unit } = setup({ user: { email: "account@example.invalid" } });
   assert.deepEqual(await unit.ensureInitialLink({ userId: "uid", person }), { outcome: "created", person });
-  assert.deepEqual(calls, { personCreate: 1, userLink: 1 });
+  assert.deepEqual(calls, { identityAssert: 0, identityCreate: 1, personCreate: 1, userLink: 1 });
+});
+
+test("alta nueva rechaza materializacion huerfana sin completar Persona ni Usuario", async () => {
+  const { calls, unit } = setup({ user: { email: "account@example.invalid" }, identityOutcome: "EXISTING" });
+  await assert.rejects(() => unit.ensureInitialLink({ userId: "uid", person }), PersonLinkInconsistentError);
+  assert.deepEqual(calls, { identityAssert: 0, identityCreate: 1, personCreate: 0, userLink: 0 });
 });
 
 test("mapea conflicto agotado, indisponibilidad y fallo interno", async () => {

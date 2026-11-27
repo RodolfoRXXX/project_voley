@@ -2,15 +2,15 @@
 
 ## Estado de la ficha
 
-- **Estado general:** `IUX-11A E IUX-11A.1 CERRADOS; IUX-11B DEFINIDO Y LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA; C, CORREO EXTERNO Y DIRECTORIO AMPLIADO PENDIENTES`.
+- **Estado general:** `IUX-11A/A.1 E IUX-11B CERRADOS CON UAT FUNCIONAL APROBADA; IUX-11C FUNCIONAL Y TÉCNICAMENTE DEFINIDO, LISTO PARA IMPLEMENTAR POR CORTES CON AUTORIZACIÓN SEPARADA; CORREO EXTERNO Y DIRECTORIO AMPLIADO FUERA DE ALCANCE`.
 - **Fecha:** 26 de noviembre de 2026.
-- **Base:** `dev@c6619d6752d2a2396b162b6be2d569f966619f08`.
+- **Base:** `dev@acc7b263195ba7c05ce1362e76da306602a0b2c7`, idéntica a `origin/dev` después de `fetch origin dev` el 26 de noviembre de 2026.
 - **Etapa:** interetapa IUX entre E3 y E4.
 - **Identificador:** `IUX-11`.
-- **Decisión documental:** `D5-083`, refinada por `D5-084`, `D5-085` y `D5-086`.
+- **Decisión documental:** `D5-083`, refinada por `D5-084` a `D5-088`; D5-088 adopta C-N1, C-F1, C-A1, C-C1, ausencia de aviso dedicado y preview de 24 horas.
 - **Relevamiento:** `IUX-11-relevamiento-fichas-administrativas-vinculacion-fusion.md`.
 - **Addendum:** `docs/arquitectura/Documento-1-1.5-2-3-4-addendum-IUX-11-fichas-administrativas-vinculacion-fusion.md`.
-- **Cierre aprobado:** definición `5f01f61`, implementación/pruebas `6703034` y BUILD_ID UAT `gdZvN1YTNPMteaRxngA6N`; sin despliegue ni cambios de datos UAT.
+- **Cierres aprobados:** A/A.1, definición `5f01f61`, implementación/pruebas `6703034` y BUILD_ID `gdZvN1YTNPMteaRxngA6N`; B, implementación `35e33a6`, cierre `87ff812`, BUILD_ID funcional `FR-tYzB5t0m4TKc_fpDKo` y mantenimiento UAT integrado en `acc7b263`. Sin despliegue, backfill remoto ni cambios de datos UAT.
 
 ## 1. Objetivo
 
@@ -22,8 +22,8 @@ Permitir alta administrativa de una Persona sin Cuenta, su incorporación y gest
 | --- | --- | --- |
 | IUX-11A.1 | Modal, edición acreditada por fila, caja con pestañas, No integrantes, Invitaciones y reincorporación canónica | **CERRADO; UAT HUMANA APROBADA** |
 | IUX-11A | Owner crea/corrige ficha no vinculada con correo opcional, la incorpora a Temporada abierta y gestiona su economía | **CERRADO; UAT HUMANA APROBADA** |
-| IUX-11B | Cuenta encuentra dentro de Ficha personal candidaturas por correo verificado, cierra/rechaza/reconoce una revisión y adopta una ficha cuando no tiene Persona | **DEFINIDO; LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA** |
-| IUX-11C | Cuenta con Persona preexistente compara, elige principal, resuelve Membresías activas duplicadas y conserva acceso histórico | **DEFINIDO PARCIALMENTE; NO LISTO** |
+| IUX-11B | Cuenta encuentra dentro de Ficha personal candidaturas por correo verificado, cierra/rechaza/reconoce una revisión y adopta una ficha cuando no tiene Persona | **CERRADO; UAT FUNCIONAL APROBADA** |
+| IUX-11C | Cuenta con Persona preexistente compara el conjunto, elige principal, resuelve Membresías activas duplicadas y conserva acceso histórico | **LISTO PARA IMPLEMENTAR POR CORTES; REQUIERE AUTORIZACIÓN SEPARADA** |
 | IUX-11D | Aviso por correo y operación de entrega | **DIFERIDO** |
 
 ## 3. IUX-11A — primer corte
@@ -218,34 +218,117 @@ UAT local reproducible: Emulator aislado; flag `true`; secretos de prueba fijos 
 
 ## 5. IUX-11C — fusión
 
-### 5.1 Preview obligatorio
+### 5.1 Precondición y alcance exactos
 
-Antes de confirmar muestra:
+C parte de una decisión B vigente `RECOGNIZED_PENDING_MERGE`. Al preparar y al confirmar relee Cuenta, correo primario verificado, candidatura y `emailRevision`, Persona candidata, custodia `UNLINKED`, assignment inverso, identidad y todas sus Personas, no sólo la principal. Grupo archivado, Temporada cerrada o Membresía finalizada no bloquean la revisión; sólo cambian lo que se presenta y qué writers pueden actuar.
 
-- ambas fichas y su procedencia;
-- cuál será principal;
-- Membresías activas agrupadas por Grupo/Temporada;
-- elección independiente de la Membresía que continúa en cada conflicto;
-- Membresías/Períodos históricos preservados;
-- obligaciones y Pagos que continúan separados;
-- capabilities que permanecen o caducan por finalizar su anchor;
-- Solicitudes/Invitaciones pendientes que requieren resolución;
-- advertencia de que una Membresía finalizada no se reactiva por cancelar la pantalla o perder la respuesta.
+La fusión preserva `personId`, `membershipId`, Períodos, Solicitudes, Invitaciones, obligaciones, Pagos y auditoría. No incorpora correo externo ni Cuentas sin Persona. Elegir principal y elegir la Membresía ganadora de cada conflicto son controles separados.
 
-### 5.2 Resultado
+### 5.2 Preview obligatorio y paginado
 
-- una ficha personal principal editable;
-- Personas originales preservadas y asignadas a la misma identidad;
-- `users.personaId` proyecta la principal elegida;
-- autorización SUBJECT sobre registros originales de todas las Personas asignadas;
-- una sola Membresía activa por conflicto elegido;
-- finalización perdedora con motivo **Fusión de fichas**;
-- economía sin suma, traslado, deduplicación ni eliminación;
-- contador y búsqueda derivados sólo por writers/proyectores canónicos.
+`prepareMyPersonMerge` crea o recupera un manifest sellado. La UI no confirma hasta que su cobertura sea `READY` y muestra:
 
-### 5.3 Estado
+1. todas las Personas de la identidad más la candidata, nombre original, procedencia, estado de custodia y cuál es hoy principal;
+2. selector de nueva principal, independiente de los conflictos de Membresía;
+3. Membresías activas compatibles y conflictos exactos por `groupId + seasonId`; por cada conflicto exige elegir la que continúa y anticipa que la otra se finaliza con motivo **Fusión de fichas**;
+4. historia preservada por Persona/Membresía, cantidad de Períodos y enlaces contextuales, sin sumar ni presentar como un único saldo obligaciones o Pagos de raíces distintas;
+5. Solicitudes e Invitaciones pendientes agrupadas por Grupo/Temporada y el outcome propuesto para cada una;
+6. capabilities: `RETAINED`, `LAPSED_WITH_MEMBERSHIP` o `REVOKE_SELF_CONFLICT`, con anchor y Grupo visibles;
+7. nombre de la principal que usarán las vistas vigentes y la búsqueda, y aviso de que historia/auditoría conservan el sujeto y nombre originales;
+8. efectos administrativos: fin de corrección nominal por Owner, conservación de facultades sobre sus recursos y ausencia de veto sobre la identidad;
+9. manifest revision, vencimiento, estado de reproyección y advertencia de que, una vez iniciada la confirmación, cerrar la pantalla o perder la respuesta no reactiva una Membresía ya finalizada.
 
-**Estado:** `NO LISTO`; faltan decisiones sobre admisiones pendientes, presentación nominal a terceros y fusiones sucesivas. También requiere retrofit de todos los evaluadores que hoy comparan exclusivamente contra `users.personaId`.
+Personas, Membresías, admisiones y capabilities se presentan en páginas de 20 con cursor firmado ligado a `accountId`, `identityRevision`, `mergeId`, digest, sección y orden. Cada página usa `limit(21)` y no se interpreta una página vacía como cobertura completa si el manifest sigue preparándose.
+
+### 5.3 Contratos cerrados de interfaz
+
+```ts
+prepareMyPersonMerge({ candidateRef, expectedEmailRevision, idempotencyKey })
+getMyPersonMergePreview({ mergeRef, section, pageSize?, cursor? })
+confirmMyPersonMerge({
+  mergeRef,
+  manifestRevision,
+  expectedConsequenceDigest,
+  primaryPersonRef,
+  membershipChoices: [{ conflictRef, retainedMembershipRef }],
+  admissionChoices: [{ conflictRef, retainedAdmissionRef? }],
+  idempotencyKey
+})
+getMyPersonMergeResult({ operationRef })
+```
+
+`prepare` devuelve `mergeRef`, `manifestRevision`, `consequenceDigest`, `preparedAt`, `expiresAt` y cobertura; las páginas devuelven items, `nextCursor` y la misma revisión/digest. El digest cubre Personas, principal propuesta, Membresías preservadas/finalizadas, admisiones conservadas/terminalizadas y capabilities retenidas/caducadas/revocadas. Confirmar con ese digest constituye aceptación conjunta de todas las consecuencias mostradas, aunque sólo principal, Membresías ganadoras y admisiones colisionadas sean elecciones.
+
+Los refs son opacos; el backend deriva IDs, Cuenta, conjunto, conflictos y consecuencias. Confirmación exige elecciones completas y exactas, rechaza extras y no recibe nombres, estados, razones ni importes desde cliente. Siempre relee fuentes autoritativas; token vencido devuelve `PREVIEW_EXPIRED`, cambio compatible exige nuevo preview con `MANIFEST_STALE`, conflicto de assignment devuelve `ALREADY_CLAIMED`, coordinación activa `MERGE_IN_PROGRESS` y divergencia `INCOMPATIBLE_STATE`. Un retry con la misma clave y request hash recupera el mismo resultado; la misma clave con otro payload devuelve `IDEMPOTENCY_CONFLICT`.
+
+### 5.4 Autoridad, exclusividad y estado transitorio
+
+- `accountIdentities/{accountId}` es autoridad de principal y revisión; `users.personaId` queda como proyección compatible.
+- `personIdentityAssignments/{personId}` es guard inverso: una Persona pertenece como máximo a una Cuenta. Adopciones B existentes se incorporan mediante lazy adoption/backfill verificable antes de habilitar C.
+- Al confirmar, un primer commit fija `activeMergeId`, marca identidad `MERGING`, adquiere el guard inverso de la candidata, crea su assignment `PENDING_MERGE`, sella elecciones y consume la intención B. Las Personas ya asignadas están protegidas por la identidad/`activeMergeId`; locks auxiliares se acreditan por lotes antes del primer efecto irreversible. Otra Cuenta, otro merge o una corrección administrativa pierden la carrera sin efectos parciales.
+- Desde ese commit, todas las Personas adquiridas cuentan como **propias** para restricciones de auto-revisión, auto-validación y actuación económica como tercero. Los readers SUBJECT pueden leerlas; edición nominal y presentación siguen usando la principal anterior hasta el commit final.
+- Writers que pueden cambiar el manifest —admisión, reactivación, renovación, finalización, cambio de principal o capability afectada— fallan `MERGE_IN_PROGRESS`. Operaciones económicas sobre obligaciones existentes pueden continuar si revalidan assignment/identity revision y no violan self.
+- El commit final activa assignments, elige principal, actualiza `users.personaId`, cambia custodia a `MERGED`, registra outbox y vuelve la identidad a `READY`. No reescribe raíces históricas.
+
+### 5.5 Membresías, admisiones y capabilities
+
+Participaciones compatibles se conservan. Cada duplicado activo en igual Grupo/Temporada se resuelve mediante el writer canónico de Membresía, con receipt por conflicto, `origin: PROFILE_MERGE`, `mergeId` y motivo público **Fusión de fichas**. Ese writer cierra el Período, guards, contribución, contador, padrón y búsqueda exactamente una vez. La deuda y los Pagos de la perdedora permanecen.
+
+Para Solicitudes/Invitaciones rige C-A1: conservar las compatibles; si ya existe activa consolidada en el mismo Grupo/Temporada, mostrar y terminalizar la admisión redundante sin aceptarla; si hay varias pendientes y ninguna activa, el usuario elige una y las demás se terminalizan. La confirmación incluye esas consecuencias. Cada recurso conserva `personId` y un resultado terminal canónico `IDENTITY_CONSOLIDATED`, receipt y auditoría. C no puede borrar guards ni cambiar estados directamente: invoca writers propios idempotentes.
+
+Para capabilities rige C-C1:
+
+- se conserva una grant sólo si revalida Cuenta, assignment, `grant.personId`, Membresía/anchor, slot, ownership revision, Grupo y Temporada;
+- anchor de Membresía finalizada pasa a `LAPSED` por el mecanismo vigente;
+- si la consolidación convierte al actor en sujeto propio de la operación económica, la grant se revoca canónicamente con `PROFILE_MERGE_SELF_CONFLICT`, receipt y auditoría, aunque su anchor continúe;
+- no se traslada una grant a otra Persona o Membresía y nunca se elimina su historia.
+
+### 5.6 Presentación y permisos administrativos
+
+C-N1 fija nombre/apellido de la principal en ficha vigente, padrón activo, búsqueda y directorio opt-in; recursos históricos y auditoría conservan la Persona y el nombre original, y pueden añadir “actualmente consolidada como …”. Cambiar principal reproyecta superficies vigentes sin reescribir snapshots históricos.
+
+El Owner conserva únicamente permisos vigentes sobre Grupo, Membresía y economía. Ve la principal en vistas operativas y el sujeto original donde la trazabilidad lo exige. No puede elegir/cambiar principal, editar una Persona consolidada, separar assignments, consultar el conjunto de identidad fuera de sus recursos, vetar la fusión ni reactivar la Membresía perdedora. La corrección administrativa termina al adquirir el assignment. C no agrega aviso externo ni notificación dedicada al Owner; la finalización, el motivo **Fusión de fichas** y la trazabilidad quedan consultables por contratos ya autorizados.
+
+### 5.7 Fusiones sucesivas y tercera ficha
+
+C-F1 establece identidad 1..N. Una tercera ficha entra por otra decisión `RECOGNIZED_PENDING_MERGE`; el nuevo manifest incluye todo el conjunto vigente más la candidata, revalida conflictos y permite volver a elegir principal. No se fusionan “dos contra dos” ni se crea una cadena de aliases. Locks por Persona y `activeMergeId` impiden manifests solapados.
+
+### 5.8 Lecturas, proyecciones, índices y presupuesto
+
+No se permite un `IN` global ni una consulta por Persona desde frontend. La capa `IdentitySubjectAuthorization` ofrece `getPrincipalPerson`, `assertPersonInIdentity`, `resolveAccountForPerson` y páginas de assignments. Los readers por `membershipId` conservan el contrato y cambian sólo la autorización. Lectores globales propios —grupos actuales, historial, economía global, Solicitudes e Invitaciones— requieren una proyección por Cuenta/identidad ordenable y cursor ligado a `identityRevision`; el registro original sigue siendo autoridad y se relee antes de escribir.
+
+Índices candidatos, sujetos a construcción y medición en el corte correspondiente:
+
+| Consulta | Índice mínimo |
+| --- | --- |
+| assignments de identidad | `personIdentityAssignments: accountId ASC, assignmentState ASC, personId ASC` |
+| Membresías del manifest | `memberships: personId ASC, estado ASC, groupId ASC, seasonId ASC, __name__ ASC` o proyección equivalente por identidad |
+| Solicitudes propias consolidadas | `groupJoinRequests: identityAccountId ASC, estado ASC, createdAt DESC, __name__ DESC` en proyección, no en raíz |
+| Invitaciones propias consolidadas | `groupInvitations: identityAccountId ASC, status ASC, createdAt DESC, __name__ DESC` en proyección |
+| búsqueda/padrón | índice vigente de `activeRosterSearchEntries`; sólo cambian tokens, `sortName` y principal revision |
+
+Presupuesto por unidad: principal/`assertPersonInIdentity`, máximo 3 lecturas; página de 20 assignments, 22; página de manifest, 21 más hasta 20 relecturas de raíces sólo durante preparación; confirmación inicial, máximo 20 lecturas y escrituras entre identidad, candidata, guard, assignment, intención y manifest; acreditación auxiliar posterior, lotes máximos de 20; cada finalización conserva el presupuesto del writer canónico y receipt propio; `getResult`, máximo 3. El presupuesto total de preparar crece con Personas/recursos, pero cada paso es acotado, observable y reanudable. No se fija un máximo funcional de Personas sin evidencia de producto.
+
+La reproyección usa outbox idempotente para padrón nominal, `activeRosterSearchEntries`, directorio opt-in, tareas y proyecciones propias. `READY` exige outbox durable, no necesariamente aplicado; las consultas afectadas exponen cobertura `REPROJECTING` y nunca convierten una proyección vieja en ausencia.
+
+### 5.9 Concurrencia, recuperación y retención
+
+La coordinación progresa `PREPARING → PREPARED → MERGING → FINALIZING → COMMITTING → COMMITTED`, con `STALE` antes de confirmar y `FAILED_RECOVERABLE` sólo después. Preview vencido o cualquier revisión distinta obliga a preparar otro; no arrastra elecciones silenciosamente. Una respuesta perdida se resuelve exclusivamente con `operationRef`; reintentar no repite finalizaciones ni outbox. No hay rollback de una Membresía finalizada: recovery completa assignments, principal y proyecciones.
+
+El preview vence exactamente 24 horas después de `preparedAt`. Confirmar siempre relee identidad, assignments, correo/candidatura, Membresías, admisiones, capabilities y revisiones aunque el token no haya vencido. Se separan cuatro categorías:
+
+| Categoría | Campos permitidos | Retención |
+| --- | --- | --- |
+| snapshot de preview | tarjetas y nombres de presentación, procedencia, resúmenes no autoritativos de Membresías/admisiones/capabilities, `manifestRevision`, digest, `preparedAt`, `expiresAt` | hasta `expiresAt`; confirmado, stale o vencido queda elegible para purga inmediata y debe eliminarse en la siguiente ejecución de housekeeping, con objetivo máximo 24 h; nunca es auditoría ni fuente de recovery |
+| coordinación operativa | `mergeId`, `accountId`, estado/fase, cursores internos, leases, intentos, error técnico sanitizado, referencias de receipts y timestamps | mientras no sea terminal; tras `COMMITTED` o cancelación pre-efecto, 30 días para retry/diagnóstico y luego purga; un `FAILED_RECOVERABLE` no expira |
+| evidencia mínima de fusión | `mergeId`, `accountId`, `personIds`, principal anterior/elegida, pares de Membresías ganadora/perdedora, IDs y outcomes de admisiones/capabilities, `manifestDigest`, revisiones, actor, motivo, `confirmedAt/completedAt`, receipt refs y schema | vive con `accountIdentities` y sólo se elimina mediante el futuro flujo autorizado de eliminación de Cuenta/Identidad; no contiene nombres, correos, tarjetas, importes ni copia del preview |
+| receipts/auditoría de dominio | IDs del recurso, `mergeId`, operación, motivo, actor, idempotency/request hash, outcome y timestamps definidos por Membresía, Solicitud, Invitación o capability | política del recurso autoritativo; la limpieza del preview/coordinación nunca los elimina ni acorta su historia |
+
+Housekeeping sólo procesa `expiresAt/purgeAfter`, es idempotente, no toca coordinaciones recuperables y requiere autorización operacional separada para producción.
+
+### 5.10 Estado de implementabilidad
+
+**Estado real:** `LISTO PARA IMPLEMENTAR POR CORTES, CON AUTORIZACIÓN SEPARADA`. No queda bloqueo funcional de C. C0 puede implementarse localmente como preparación compatible sin superficie de usuario; C1–C3 dependen de la salida acreditada del corte anterior. C4 productivo —materialización remota, índices, configuración/flags, housekeeping, canary, habilitación y rollback— requiere autorización específica y evidencia local/UAT previa.
 
 ## 6. Matriz de preservación
 
@@ -275,17 +358,132 @@ Antes de confirmar muestra:
 
 ## 8. Rollout requerido para B/C
 
-1. lectores de identidad tolerantes a legacy `users.personaId` y assignments;
-2. materialización/lazy adoption verificable de vínculos existentes;
-3. writers de Cuenta/Persona duales sin dos autoridades divergentes;
-4. lectores SUBJECT por assignment;
-5. capabilities, Solicitudes e Invitaciones compatibles;
-6. coordinador de fusión y finalización `PROFILE_MERGE`;
-7. proyecciones/reconciliación;
-8. UI y UAT;
-9. retiro posterior de lecturas que traten `users.personaId` como autoridad completa.
+B ya está implementado y apagado por flag fuera de su UAT. C se divide para que cada corte sea desplegable sin exponer una fusión incompleta:
 
-No se habilita UI B/C antes de completar las capas backend correspondientes.
+1. **C0 — identidad compatible, sin UI:** materializar el núcleo de identidad en modo espejo, adaptar atómicamente `ensureMyPerson` y adopción B, y agregar inspección/reconciliación local. Mantener `users.personaId` como autoridad visible durante este corte y no habilitar pluralidad ni fusión.
+2. **C1 — autorización y readers:** adaptar todos los SUBJECT/self, economía, admisiones y capabilities; incorporar self sobre el conjunto completo; proyecciones e índices; modo sombra que compara decisión legacy/nueva sin conceder acceso adicional.
+3. **C2 — writers canónicos y coordinador apagado:** finalización `PROFILE_MERGE`, terminalización de admisiones, revocación de capability, locks, receipts, recovery y reproyección. Ningún endpoint público de confirmación todavía.
+4. **C3 — preview/UI/UAT:** contratos públicos, pantalla paginada, confirmación y recuperación. Flag separado `ENABLE_IUX11C_MERGE`, default `false`.
+5. **C4 — habilitación y retiro:** reconciliación acreditada, índices construidos, métricas, canary/rollback y recién después retiro de evaluadores que interpreten `users.personaId` como autoridad completa.
+
+Dependencias: C1 depende de C0; C2 depende de C1; C3 depende de C2; C4 depende de UAT completa. C0–C2 son preparación técnica compatible y permanecen invisibles/deshabilitados para usuarios. No se habilita UI C antes de C3. Implementación local y fixtures no autorizan materialización remota, configuración, índices, housekeeping, canary ni enable productivo de C4.
+
+### 8.1 IUX-11C0 — núcleo de identidad compatible
+
+**Objetivo:** introducir una representación verificable de Cuenta–Identidad–Persona sin cambiar ninguna respuesta pública, autorización efectiva ni experiencia. C0 no fusiona, no crea una segunda Persona para una Cuenta, no consume `RECOGNIZED_PENDING_MERGE`, no cambia principal, no reproyecta nombres y no incorpora callables/UI C.
+
+**Representación física adoptada:**
+
+```text
+accountIdentities/{accountId}
+  accountId
+  primaryPersonId
+  state: MIRRORED_SINGLE
+  identityRevision: 1
+  createdAt
+  updatedAt
+  schemaVersion: 1
+
+personIdentityAssignments/{personId}
+  personId
+  accountId
+  state: ACTIVE
+  source: SELF_BOOTSTRAP | IUX11B_ADOPTION | LEGACY_MATERIALIZATION
+  assignedAt
+  schemaVersion: 1
+```
+
+`primaryPersonId` existe sólo en `accountIdentities`; no se copia como role/principal en cada assignment, evitando reescribir N filas cuando C cambie principal. El documento por `personId` aporta exclusividad y reverse lookup directo. `MIRRORED_SINGLE` declara que C0 refleja exactamente `users.personaId` y todavía no habilita pluralidad; C1 podrá promover a `READY` sólo después de adaptar consumidores.
+
+**Contratos internos; no callables públicos:**
+
+```ts
+getAccountIdentityContext({ unitOfWork, accountId })
+// MISSING | LEGACY_SINGLE | MIRRORED_SINGLE | INCOMPATIBLE
+
+resolveAccountForAssignedPerson({ unitOfWork, personId })
+// MISSING | LEGACY_SINGLE | MIRRORED_SINGLE | INCOMPATIBLE
+
+ensureMirroredSingleIdentity({
+  unitOfWork, accountId, personId,
+  source: "SELF_BOOTSTRAP" | "IUX11B_ADOPTION" | "LEGACY_MATERIALIZATION",
+  occurredAt
+})
+// CREATED | EXISTING; divergencia => INCOMPATIBLE_STATE
+
+inspectIdentityMaterialization({ pageSize: 100, cursor? })
+// reporte local/operacional sin escribir
+```
+
+- `ensureMyPerson` y la adopción B llaman `ensureMirroredSingleIdentity` dentro de su transacción vigente: Persona/`users.personaId`, assignment B cuando corresponda, identidad espejo y assignment plural se confirman o fallan juntos.
+- Una Cuenta legacy sin documentos nuevos devuelve `LEGACY_SINGLE` sin escribir durante lectura. No hay lazy write oculto.
+- Materialización existente se separa en `inspect` y futuro `apply`; C0 local puede probar ambos sobre Emulator, pero ningún `apply` remoto pertenece al corte autorizado de implementación local.
+- Si identidad, assignment, `users.personaId` o `personAccountAssignments` discrepan, el resolver devuelve `INCOMPATIBLE`; no repara ni elige ganador. Los writers de vínculo fallan cerrados y emiten observabilidad sin PII.
+- Firestore cliente conserva deny-all. C0 no requiere índice compuesto: accesos normales son por ID; la inspección pagina `users` por `__name__`.
+
+**Presupuesto técnico C0:** resolver por Cuenta, hasta 3 lecturas (`users`, identidad, assignment directo); reverse lookup nuevo, hasta 2 (assignment, identidad) y hasta 2 adicionales sólo en fallback legacy; writer nuevo, hasta 4 relecturas de coordinación además de las ya presupuestadas por `ensureMyPerson`/B; inspect, `pageSize + 1` usuarios y hasta `2 × pageSize` verificaciones, página máxima 100. Debe medirse Emulator; superar el techo documentado bloquea cierre de C0, no se oculta como optimización posterior.
+
+**Dependencias exactas:** dominio/adapters de identidad; transacciones actuales de `firestoreUserPersonLinkRepository` y `administrativePersonLinkModule`; Rules deny-all para ambas colecciones; observabilidad sanitizada; fixtures legacy, A, B adoptada y B pendiente. No depende de writers de Membresía, economía, Solicitudes, Invitaciones, capabilities, proyecciones, UI o índices de C1–C4.
+
+**Criterios de aceptación C0:**
+
+1. alta propia nueva y adopción B crean espejo + assignment en el mismo commit y mantienen exactamente el resultado público vigente;
+2. retry/respuesta perdida devuelve las mismas raíces sin duplicar identity/assignment ni incrementar revisión;
+3. dos Cuentas por una Persona, dos Personas por Cuenta o documentos divergentes fallan cerrados sin reparación parcial;
+4. Cuenta legacy funciona por `LEGACY_SINGLE`; inspect la clasifica sin escribir; apply Emulator es idempotente y genera sólo `MIRRORED_SINGLE` compatible;
+5. `RECOGNIZED_PENDING_MERGE` continúa sin assignment/custodia nueva y C0 no lo consume;
+6. B con flag apagado/encendido, `ensureMyPerson`, ficha propia, readers, economía, Membresías, Solicitudes e Invitaciones no cambian DTO, autorización ni resultado;
+7. no existen rutas, botones, callables de merge, cambio de principal ni identidad 1..N utilizables por usuario;
+8. Rules niegan cliente, logs no contienen PII y las mediciones respetan el presupuesto;
+9. suites focales de identidad/B, Emulator aislado, regresión A/A.1/B, TypeScript/build/lint baseline y `git diff --check` pasan;
+10. cierre C0 informa por separado evidencia local y cualquier operación productiva no ejecutada.
+
+**Pruebas C0 obligatorias:** unitarias de estados/shape y divergencias; Emulator de commits atómicos, exclusividad, retry y respuesta perdida; carrera `ensureMyPerson` vs adopción B; materialización 0/1/100/101 con cursor; corrupción de cada vínculo; Rules; caracterización de DTOs/callables existentes. No corresponde UAT funcional de fusión en C0 porque no hay superficie entregada; sólo smoke de no regresión de A/B.
+
+### 8.2 Matriz de contratos y consumidores
+
+| Familia/consumidor vigente | Evidencia actual | Adaptación C obligatoria |
+| --- | --- | --- |
+| `ensureMyPerson`, `firestoreSelfPersonReader`, `PersonProvider` | leen/escriben `users.personaId` singular | principal desde identidad; carrera con `MERGING`; dual-write y divergencia cerrada |
+| IUX-11B `administrativePersonLinkModule` | B adopta o deja `RECOGNIZED_PENDING_MERGE`; assignment simple sólo al adoptar | consumir intención, adquirir assignment plural, conservar idempotencia/correo/custodia |
+| `treasuryAccountIdentityCapability` | consulta `users` por `personaId`, incluso reverse lookup | resolver Cuenta/Persona por assignment único; self contra todo el conjunto |
+| `activeGroupMemberPersonCapability`, `ownMembershipHistoryPersonCapability` y readers de Membresía propia | autoridad singular y queries por un `personId` | principal sólo para presentación; SUBJECT/proyección paginada para todas las raíces |
+| `firestorePaymentStore`, deliveries, recibos y tesorería | economía ligada a `personId/membershipId`; varias rutas comparan persona propia singular | conservar IDs; autorizar por assignment; cursors con `identityRevision`; prohibir autoaprobación cruzada |
+| grants/slots de capabilities | grant contiene Cuenta, Persona, Membresía y anchor; reverse lookup singular | revalidar/revocar/lapse según §5.5; nunca transferir grants |
+| Membresía, Períodos, active/lifecycle guards | writer canónico mantiene ciclo, contador y proyecciones | adapter interno `PROFILE_MERGE`, receipts y bloqueo `MERGING`; sin escritura directa |
+| contador, padrón y `activeRosterSearchEntries` | correlación por Membresía/Persona y nombre de esa Persona | contador sólo por finalización; nombre/tokens de principal; correlación original intacta |
+| No integrantes/custodia administrativa | lista `UNLINKED` sin activa y permite corrección Owner | retirar al adquirir merge; `MERGED` no vuelve a No integrantes aunque se finalice una Membresía |
+| Solicitudes y `pendingGroupJoinRequestGuards` | correlación y autoridad por Persona singular | lectura/respuesta por assignment; terminalización C-A canónica; bloquear admisión durante merge |
+| Invitaciones `ownPerson`/`ownDirectoryPerson` | derivan únicamente `users.personaId` | principal para directorio; cualquier assigned target para responder; conflictos C-A |
+| directorio opt-in IUX-10 | entrada por Persona principal legacy | reproyectar a nombre principal sin agregar Cuenta-sin-Persona ni correo externo |
+| dashboard/tareas/deep-links | audiencia ligada a Cuenta/Persona según productor | reproyectar audiencia conservando recurso y autorización; cursor/revisión de identidad |
+| Owner/admin readers | muestran Persona de la Membresía | presentación C-N y trazabilidad original; ningún permiso de identidad nuevo |
+
+### 8.3 Pruebas mínimas de C completo
+
+- dominio/arquitectura: exclusividad Persona–Cuenta, una principal `READY`, conjunto propio completo, raíces económicas inmutables y prohibición de escritura directa de Membresía/admisión/capability;
+- compatibilidad: Cuenta legacy, adopción B, B pendiente, identidad de 2 y 3+ Personas, principal distinta de Membresía ganadora, Persona sin correo y Grupo archivado;
+- carreras: dos Cuentas por candidata; dos merges solapados; merge vs `ensureMyPerson`, corrección, admisión, finalización, cierre de Temporada, archivo, transferencia y cambio/revocación de capability;
+- idempotencia: retry y respuesta perdida antes/después de cada fase, receipt repetido, payload distinto con misma clave y recovery tras cada finalización parcial;
+- Membresía/economía: compatible preservada, duplicada finalizada una vez, Período cerrado, contador 2→1, deuda/Pagos/recibos idénticos y autoaprobación cruzada denegada;
+- admisiones: pendiente compatible, dos pendientes, pendiente con activa consolidada, Temporada cerrada, guard/coordination en vuelo y resultado terminal estable;
+- lectura/paginación: 0/1/20/21 assignments y recursos, cursores stale por nueva fusión/cambio principal, sin N+1 frontend, presupuesto medido e índices declarados;
+- proyección: nombre principal en vivo, original en historia, outbox duplicado/fuera de orden, cobertura `REPROJECTING`, reconciliación y búsqueda sin falsos vacíos;
+- seguridad: Rules deny-all, refs opacos, logs sin PII, Owner sin acceso al conjunto, correo revalidado y flag apagado falla cerrado;
+- regresión: A/A.1, B, Mis grupos, historial, padrón, No integrantes, Solicitudes/Invitaciones, obligaciones, avisos, recibos, tesorería y self-exit.
+
+### 8.4 Recorrido UAT de C3
+
+1. Cuenta con Persona propia reconoce una ficha administrativa; comprobar que B sólo deja `RECOGNIZED_PENDING_MERGE` y el Owner aún puede corregirla.
+2. Abrir preview con Grupo archivado, Temporada cerrada y Membresía finalizada; comprobar que la revisión sigue disponible.
+3. Ver dos Membresías compatibles y un conflicto del mismo Grupo/Temporada; elegir principal distinta de la ganadora y revisar economía preservada.
+4. Revisar y decidir las admisiones afectadas, comprobar capabilities retenidas/caducadas/revocadas y confirmar conjuntamente todas las consecuencias mediante el digest mostrado.
+5. Confirmar, simular respuesta perdida y recuperar por `operationRef`; verificar una ficha vigente, ambas Personas asignadas y la perdedora finalizada con motivo exacto.
+6. Recorrer Mis grupos, historial, obligación/Pago/aviso/recibo de cada raíz, padrón y búsqueda; verificar principal visible y procedencia original donde corresponde.
+7. Intentar auto-revisar/auto-validar economía de la otra Persona consolidada; debe denegarse. Verificar grants retenidas y caducadas/revocadas.
+8. Reconocer una tercera ficha y repetir preview sobre todo el conjunto; probar conflicto nuevo y cambio de principal.
+9. Como Owner, verificar recursos permitidos, pérdida de edición nominal y ausencia de facultad para cambiar/deshacer la identidad.
+10. Repetir en 360/390 px, escritorio, navegación Atrás/Adelante, foco, error/retry, páginas 20+1 y flag apagado.
 
 ## 9. IUX-11A.1 — refinamiento post-UAT
 
@@ -358,23 +556,31 @@ Para A.1 también queda adoptado —no pendiente— que el Owner vigente puede l
 - App Check, flag, backfill, retención y outbox se separan según §4.6;
 - compatibilidad B conserva una sola Persona principal; pluralidad y autorización multi-Persona quedan en C.
 
-### 10.3 Propuestas para C
+El código y la UAT B integrados en `acc7b263` acreditan estas decisiones. `RECOGNIZED_PENDING_MERGE` no es assignment, no reserva Persona y no revoca custodia; C debe revalidar todo.
 
-| Tema | Recomendada | Alternativa y consecuencia |
-| --- | --- | --- |
-| Nombre | C-N1: principal en vistas actuales/búsqueda; original en historia/auditoría con trazabilidad | C-N2: original por registro; conserva literalidad pero mantiene identidades múltiples visibles |
-| Fusiones sucesivas | C-F1: assignments 1..N y manifest contra todo el conjunto | C-F2: sólo dos; menor corte inicial, tercera ficha bloqueada y evolución posterior |
-| Admisiones pendientes | C-A1: preview conserva una por Grupo sin activa o terminaliza redundantes con consentimiento | C-A2: bloquear fusión hasta resolución original; más simple pero puede bloquear indefinidamente |
-| Capabilities | C-C1: conservar sólo las que revaliden assignment, Membresía/anchor, slot, ownership y Temporada | C-C2: caducar todas; más simple/seguro, pero interrumpe permisos válidos |
+### 10.3 Adoptadas para C
 
-En cualquier alternativa, todas las Personas asignadas cuentan como identidad propia para prohibiciones de auto-revisión, auto-validación o actuación económica como tercero. La capability de una Membresía finalizada caduca siempre.
+- el usuario revisa el conjunto y elige ficha principal;
+- Personas, IDs y referencias históricas se conservan;
+- datos principales no extinguen obligaciones, Pagos ni historia;
+- participaciones compatibles se conservan;
+- conflictos activos del mismo Grupo/Temporada requieren elección separada de Membresía ganadora y finalización canónica de la otra con motivo **Fusión de fichas**;
+- identidad consolidada gobierna autorización propia y restricciones self sobre todas las Personas;
+- ficha principal y Membresía ganadora son decisiones independientes;
+- archivo de Grupo, cierre de Temporada o finalización de Membresía no impiden por sí solos revisar;
+- correo externo y directorio de Cuentas sin Persona quedan excluidos.
+- C-N1: la principal nombra vistas actuales/búsqueda; historia y auditoría conservan nombres originales;
+- C-F1: assignments 1..N y revalidación del conjunto/conflictos en cada fusión sucesiva;
+- C-A1: admisiones compatibles permanecen; colisiones se eligen y redundantes se terminalizan mediante writers canónicos;
+- C-C1: capabilities válidas permanecen, las ancladas a Membresía finalizada caducan, conflicto self se revoca y nunca se transfieren permisos a la Membresía ganadora;
+- no hay notificación dedicada al Owner en C; motivo y trazabilidad siguen consultables;
+- preview válido 24 horas con revalidación obligatoria al confirmar;
+- retención separada por categoría según §5.9: preview efímero, coordinación operativa acotada, evidencia mínima sin copia nominal y receipts bajo el recurso autoritativo.
 
-### 10.4 Pendientes
+### 10.4 Bloqueos reales y autorizaciones
 
-- elegir C-N1/C-N2, C-F1/C-F2, C-A1/C-A2 y C-C1/C-C2 para completar C;
-- aviso informativo al Owner por `PROFILE_MERGE`;
-- retención/eliminación de manifests y evidencia de C.
+No queda decisión funcional o técnica bloqueante para implementar C0 localmente. C1–C3 requieren cierre acreditado del corte anterior y autorización de implementación correspondiente. C4 requiere autorización productiva específica para materialización/backfill remoto, configuración/flags, índices, housekeeping, canary, enable y rollback; ninguna evidencia local los autoriza implícitamente.
 
 ## 11. Cierre documental de esta revisión
 
-IUX-11A e IUX-11A.1 permanecen cerrados con UAT humana aprobada. D5-086 registra únicamente las decisiones B adoptadas; IUX-11B queda definido y listo para implementar con autorización separada. IUX-11C, IUX-11D y la ampliación Cuenta-sin-Persona permanecen pendientes. Esta revisión es sólo documental y no autoriza código, configuración, datos, commit, push ni despliegue.
+IUX-11A/A.1 e IUX-11B permanecen cerrados con UAT funcional aprobada; `acc7b263` es la base integrada vigente. D5-088 adopta las decisiones C y deja IUX-11C listo para implementación incremental con autorización separada. C0 está definido en §8.1 y no entrega funcionalidad a usuarios. IUX-11D y la ampliación Cuenta-sin-Persona permanecen fuera. Esta revisión es sólo documental y no autoriza código, configuración, índices, datos, backfills, commit, push ni despliegue.

@@ -2,7 +2,7 @@
 
 **SPORTEXA**
 
-*Borrador consolidado - ajuste final de definición IUX-11B - 26 de noviembre de 2026*
+*Borrador consolidado - definición implementable aprobada IUX-11C y primer corte C0 - 26 de noviembre de 2026*
 
 > Fuente Markdown operativa recuperada del PDF consolidado. Incorpora la ejecución posterior de las Etapas 0, 1 y 2. El PDF de FASE 2 permanece como antecedente histórico hasta una publicación documental posterior.
 
@@ -39,7 +39,7 @@ Estado operativo del plan:
 - `ETAPA 1 CERRADA`;
 - `ETAPA 2 CERRADA CON RIESGO RESIDUAL ACEPTADO`;
 - `ETAPA 3 ABIERTA — ALCANCE FUNCIONAL Y TÉCNICO LOCAL COMPLETO; E3-09 Y E3-10 CON HABILITACIÓN PRODUCTIVA PENDIENTE`;
-- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-07, IUX-08 E IUX-09 CERRADOS E INTEGRADOS EN DEV CON UAT HUMANA APROBADA; IUX-10 Y SU AMPLIACIÓN D5-081 CERRADOS CON UAT APROBADA E INTEGRACIÓN AUTORIZADA; IUX-11A/A.1 CERRADOS CON UAT HUMANA APROBADA, IUX-11B DEFINIDO Y LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA, Y C/CORREO EXTERNO/DIRECTORIO AMPLIADO PENDIENTES SEGÚN D5-086; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
+- `INTERETAPA IUX ENTRE E3 Y E4 — IUX-01, IUX-03, IUX-04 E IUX-05 CERRADOS TÉCNICAMENTE EN LOCAL; IUX-06A/B/C1/C2-P01/C2-P02/D INTEGRADOS EN DEV CON UAT COMPLEMENTARIA PENDIENTE EN A/B/C1; IUX-07, IUX-08 E IUX-09 CERRADOS E INTEGRADOS EN DEV CON UAT HUMANA APROBADA; IUX-10 Y SU AMPLIACIÓN D5-081 CERRADOS; IUX-11A/A.1 E IUX-11B CERRADOS CON UAT FUNCIONAL APROBADA, IUX-11C DEFINIDO Y LISTO PARA IMPLEMENTAR POR CORTES CON AUTORIZACIÓN SEPARADA —C0 PREPARACIÓN TÉCNICA SIN SUPERFICIE— SEGÚN D5-088, Y CORREO EXTERNO/DIRECTORIO AMPLIADO FUERA DE ALCANCE; IUX-02A/B INTEGRADOS EN LOCAL E IUX-02 SIN HABILITACIÓN PRODUCTIVA`;
 - Etapas 4 a 9 conservadas a nivel de roadmap.
 
 El detalle de cada incremento permanece en su Ficha de Incremento Implementable, informe y cierre.
@@ -2588,10 +2588,12 @@ El siguiente incremento funcional es:
 - Fuentes IUX-10: [ficha](../implementacion/interetapa-ux-movil/IUX-10-ficha-agregar-integrantes-busqueda-invitaciones.md)
     y [addendum conjunto](../arquitectura/Documento-1-1.5-2-3-4-addendum-IUX-10-agregar-integrantes-invitaciones.md).
 - Undécimo incremento: `IUX-11 — Fichas administrativas, vinculación y fusión`,
-    refinado por D5-083. IUX-11A incorpora alta administrativa con correo opcional, Membresía y
-    economía sin Cuenta vinculada. IUX-11B/C definen candidatura interna por correo verificado,
-    ficha principal, asignaciones trazables y fusión sin reescribir raíces históricas; permanecen no
-    listos hasta resolver sus dependencias y decisiones pendientes. El correo externo queda diferido.
+    refinado por D5-083 a D5-088. IUX-11A/A.1 e IUX-11B están cerrados e integrados en
+    `dev@acc7b263`. C define identidad 1..N, preview paginado, elección separada de principal y
+    Membresía ganadora, coordinación recuperable, autorización multi-Persona y conservación de raíces.
+    D5-088 adopta C-N1, C-F1, C-A1 y C-C1, preview de 24 horas y ausencia de aviso dedicado. C queda
+    listo para implementar por C0–C4 con autorizaciones separadas. El correo externo y el directorio
+    de Cuentas sin Persona quedan fuera.
 - Fuentes IUX-11: [relevamiento](../implementacion/interetapa-ux-movil/IUX-11-relevamiento-fichas-administrativas-vinculacion-fusion.md),
     [ficha](../implementacion/interetapa-ux-movil/IUX-11-ficha-fichas-administrativas-vinculacion-fusion.md)
     y [addendum conjunto](../arquitectura/Documento-1-1.5-2-3-4-addendum-IUX-11-fichas-administrativas-vinculacion-fusion.md).
@@ -2846,6 +2848,8 @@ La paralelización no deberá utilizarse para ocultar dependencias todavía no r
 | D5-084 | Registra UAT satisfactoria de IUX-11A y adopta su refinamiento documental post-UAT: modal accesible, edición acreditada por fila, caja única con pestañas Integrantes/No integrantes/Invitaciones, lector paginado de custodias sin activa y reincorporación canónica | IUX-11A VALIDADO EN UAT; IUX-11A.1 DEFINIDO Y NO AUTORIZADO; DIRECTORIO AMPLIADO NO LISTO | IUX / IUX-11A / Integrantes / Custodia / Invitaciones / Directorio | A.1 conserva precondiciones de A: corrección en Grupo activo/archivado, alta/reincorporación sólo con Grupo activo y Temporada abierta. No integrantes es Owner-only, máximo 20 y excluye toda activa del Grupo; incluye finalizadas y temporadas anteriores. Invitaciones pagina cinco, pendientes antes que terminales, con lectura histórica y cancelación canónica de pendientes por el Owner vigente también en Grupo archivado; crear/aceptar sigue prohibido y el reader IUX-10 debe desacoplarse de `ownedOpen`. Reincorporación prepara `CREATE/REACTIVATE/RENEW` sobre el writer vigente. Ampliar búsqueda a Cuenta sin Persona se separa: requiere Nombre/Apellido explícitos, opt-in revocable, referencia opaca, decisión sobre correo, carrera con `ensureMyPerson`, retención y defensa contra enumeración; no usa `displayName`, no localiza por defecto y no vincula automáticamente. Este paso es documental: preserva implementación, `visuals/` y datos UAT; sin commit, push ni deploy. |
 | D5-085 | Registra implementación, validación, UAT humana aprobada y cierre de IUX-11A/IUX-11A.1 | CERRADA; UAT APROBADA; INTEGRACIÓN Y PUSH AUTORIZADOS | IUX / IUX-11A / IUX-11A.1 / cierre | BUILD_ID aprobado `gdZvN1YTNPMteaRxngA6N`; definición `5f01f6116ca6fab655aa44a053563cb75e7cfdfd`; implementación/pruebas `67030348fbcc37d937a131dc60d87221e93a3dee`. Emulator aislado `1/1` acredita alta con/sin correo, recovery, corrección, custodia, `CREATE/REACTIVATE/RENEW`, rechazo de preview stale, contador, padrón, búsqueda, obligación y pago de ficha sin Cuenta. TypeScript, lint baseline, sintaxis `556/556`, focales `5/5`, build y diff pasan. Suite general `492/493`: deuda previa `iux06aPresentation.test.js:41`, reproducida `2/3`, exige `gridTemplateColumns` retirado por IUX-06D. Vinculación B, fusión C, correo externo D y directorio de Cuenta sin Persona permanecen pendientes. Sin despliegue ni cambios de datos UAT. |
 | D5-086 | Adopta el cierre funcional y técnico documental de `IUX-11B — candidatura y adopción` | APROBADA DOCUMENTALMENTE; IUX-11B LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA | IUX / IUX-11B / Identidad / Ficha personal / Vinculación | Coincidencia con correo primario verificado por Firebase Auth/Admin; sin correo no hay candidatura. **Ahora no** cierra sin suspender. Rechazo por Cuenta + Persona retira sugerencia, sobrevive cambios/ida-vuelta del correo y sólo reconsideración explícita lo levanta. Sin Persona, adopción atómica usa `users.personaId` como barrera compartida con `ensureMyPerson` y guard inverso por Persona; con Persona, `RECOGNIZED_PENDING_MERGE` conserva autoridad vigente y C revalida. Página máxima 10; presupuesto 1 Auth + hasta 24 Firestore por página, 9 por detalle y 12 por comando; listado 30/min + burst 10/10 s, detalle/decisiones 12/min y adopción 6/min; paginar/Actualizar consumen solicitud. App Check es gate transversal productivo; flag/secretos/UAT reproducible y backfill emulator son B; backfill remoto y habilitación son separados. Rechazo mínimo persiste hasta reconsideración/borrado de Cuenta; B no usa outbox. Lectores legacy de una Persona conservan contrato; multi-Persona pertenece a C. No autoriza código, configuración, índices, secrets, backfill remoto, migración, commit, push, despliegue ni producción. |
+| D5-087 | Registra implementación, mantenimiento UAT y cierre funcional de `IUX-11B — candidatura y adopción` | CERRADA; UAT FUNCIONAL APROBADA; INTEGRADA EN DEV | IUX / IUX-11B / cierre | Implementación `35e33a6`, cierre `87ff812`, BUILD_ID funcional `FR-tYzB5t0m4TKc_fpDKo` y entorno UAT portable integrado en `acc7b263`. B acredita Auth/Admin, candidatura paginada, rechazo/reconsideración, adopción atómica, `RECOGNIZED_PENDING_MERGE`, carrera con `ensureMyPerson`, exclusividad, receipts y recuperación de respuesta perdida. La revisión visual quedó diferida. Flag, secretos, índice, App Check transversal, backfill/enable y observabilidad productivos siguen como gates separados; no hubo deploy ni backfill remoto. |
+| D5-088 | Adopta la definición de `IUX-11C — fusión y elección de principal` y concreta el primer corte técnico C0 | APROBADA DOCUMENTALMENTE; IUX-11C LISTO POR CORTES; C0 LISTO PARA IMPLEMENTAR CON AUTORIZACIÓN SEPARADA | IUX / IUX-11C / Identidad / Membresías / Economía / Admisiones | C-N1 usa principal en superficies vigentes y nombre original en historia/auditoría. C-F1 admite 1..N y revalida conflictos. C-A1 conserva admisiones compatibles y terminaliza colisiones/redundancias por writers canónicos con confirmación. C-C1 conserva grants válidas, caduca anchor finalizado, revoca self-conflict y no transfiere permisos. Sin aviso Owner dedicado; motivo/trazabilidad consultables. Preview 24 h, revalidación y digest de consecuencias. Retención separa preview efímero, coordinación 30 días, evidencia mínima sin PII nominal y receipts de dominio. C0 crea espejo `MIRRORED_SINGLE`, assignment directo, dual-write atómico de `ensureMyPerson`/B e inspección local; no habilita UI, pluralidad ni fusión. C0–C2 son preparación invisible; C4 remoto/productivo requiere autorización específica. Esta decisión no autoriza código, configuración, índices, datos, backfills, staging, commit, push, deploy ni cambios UAT. |
 
 
 # 9. Decisiones abiertas no bloqueantes
@@ -3395,3 +3399,27 @@ transversal, backfill/enable productivos y observabilidad de rollout siguen pend
 IUX-11C y correo externo continúan fuera de alcance. Configuración local, secretos, datos sintéticos,
 builds, logs, manifests, exportaciones y `visuals/` quedan fuera de Git. No hubo despliegue ni backfill
 remoto y se conservan los datos UAT.
+
+D5-088 verifica `dev`, `origin/dev` y `FETCH_HEAD` en `acc7b263195ba7c05ce1362e76da306602a0b2c7`
+después de `fetch origin dev`; no existen avances remotos posteriores. La base contiene IUX-11B y su
+mantenimiento UAT portable. El código confirma que B deja `RECOGNIZED_PENDING_MERGE` como intención
+sin assignment ni cambio de custodia, mientras `ensureMyPerson`, readers propios, Invitaciones,
+Solicitudes, economía y capabilities todavía dependen de una sola `users.personaId`.
+
+La definición aprobada de C conserva Personas, Membresías, Períodos, obligaciones, Pagos y auditoría; separa
+principal de Membresía ganadora; finaliza duplicados activos por el writer canónico y considera propias
+las Personas consolidadas. C-N1, C-F1, C-A1 y C-C1 adoptan presentación principal, identidad 1..N,
+resolución canónica de admisiones y conservación/revocación contextual de capabilities sin transferencia.
+La definición usa manifest paginado, locks/assignments transitorios,
+receipts por efecto, `operationRef`, autorización SUBJECT por assignment, reproyección nominal y cortes
+C0–C4. Los presupuestos son por lote/página y no inventan un máximo de Personas.
+
+C0 materializa `MIRRORED_SINGLE` y assignment directo en el mismo commit de alta propia/adopción B,
+mantiene fallback legacy sin writes y falla cerrado ante divergencia. No consume reconocimiento pendiente,
+no habilita pluralidad, UI ni fusión. Preview completo vive 24 horas; coordinación terminal 30 días;
+evidencia mínima omite nombres/correos/importes y los receipts permanecen bajo cada recurso.
+
+IUX-11C queda listo para implementar por cortes con autorización separada. C0–C2 son preparación técnica
+invisible; C4 remoto/productivo mantiene autorización específica. Esta actualización fue exclusivamente
+documental: no autoriza ni realizó cambios de
+aplicación, configuración, índices, datos, backfills, UAT, `visuals/`, commit, staging, push o despliegue.
